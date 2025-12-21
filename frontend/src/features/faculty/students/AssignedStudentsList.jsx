@@ -190,7 +190,7 @@ const AssignedStudentsList = () => {
               <p className="text-gray-500">{selectedStudent.rollNumber}</p>
             </div>
 
-            <Divider orientation="left">Personal Information</Divider>
+            <Divider plain>Personal Information</Divider>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Email">
                 <a href={`mailto:${selectedStudent.email}`}>
@@ -210,7 +210,7 @@ const AssignedStudentsList = () => {
               </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Academic Information</Divider>
+            <Divider plain>Academic Information</Divider>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Department">
                 {selectedStudent.department?.name}
@@ -239,7 +239,7 @@ const AssignedStudentsList = () => {
               </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Contact Information</Divider>
+            <Divider plain>Contact Information</Divider>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Address">
                 {selectedStudent.address || 'N/A'}
@@ -255,7 +255,7 @@ const AssignedStudentsList = () => {
               </Descriptions.Item>
             </Descriptions>
 
-            <Divider orientation="left">Guardian Information</Divider>
+            <Divider plain>Guardian Information</Divider>
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Guardian Name">
                 {selectedStudent.guardianName || 'N/A'}
@@ -267,7 +267,7 @@ const AssignedStudentsList = () => {
 
             {selectedStudent.currentInternship && (
               <>
-                <Divider orientation="left">Current Internship</Divider>
+                <Divider plain>Current Internship</Divider>
                 <Descriptions column={1} bordered size="small">
                   <Descriptions.Item label="Company">
                     {selectedStudent.currentInternship.company?.name}
@@ -287,7 +287,7 @@ const AssignedStudentsList = () => {
 
             {selectedStudent.skills && (
               <>
-                <Divider orientation="left">Skills</Divider>
+                <Divider plain>Skills</Divider>
                 <div className="flex flex-wrap gap-2">
                   {selectedStudent.skills.split(',').map((skill, idx) => (
                     <Tag key={idx} color="blue">{skill.trim()}</Tag>
@@ -298,7 +298,7 @@ const AssignedStudentsList = () => {
 
             {selectedStudent.resumeUrl && (
               <>
-                <Divider orientation="left">Documents</Divider>
+                <Divider plain>Documents</Divider>
                 <Button type="link" href={selectedStudent.resumeUrl} target="_blank" rel="noopener noreferrer">
                   View Resume
                 </Button>

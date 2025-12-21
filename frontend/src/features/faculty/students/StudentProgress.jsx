@@ -177,6 +177,11 @@ const StudentProgressPage = () => {
   const [selectedReportMonth, setSelectedReportMonth] = useState(() => new Date().getMonth() + 1);
   const [selectedReportYear, setSelectedReportYear] = useState(() => new Date().getFullYear());
 
+  // Internship management state
+  const [editInternshipModal, setEditInternshipModal] = useState({ visible: false, internship: null });
+  const [editInternshipForm] = Form.useForm();
+  const [savingInternship, setSavingInternship] = useState(false);
+
   // Handle URL parameters for auto-selection
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -437,7 +442,7 @@ const StudentProgressPage = () => {
       await API.delete(`/monthly-reports/${reportId}`, {
         data: { studentId: selected.student.id },
       });
-      
+
       toast.success("Monthly report deleted successfully!");
       forceRefresh(); // Refresh student data
     } catch (error) {
@@ -446,6 +451,63 @@ const StudentProgressPage = () => {
         error.response?.data?.message || "Failed to delete monthly report"
       );
     }
+  };
+
+  // Internship Management Handlers
+  const handleEditInternship = (app) => {
+    setEditInternshipModal({ visible: true, internship: app });
+    editInternshipForm.setFieldsValue({
+      status: app.status,
+      hasJoined: app.hasJoined,
+      isSelected: app.isSelected,
+      isApproved: app.isApproved,
+      remarks: app.remarks || '',
+      joiningDate: app.joiningDate ? dayjs(app.joiningDate) : null,
+    });
+  };
+
+  const handleSaveInternship = async (values) => {
+    if (!editInternshipModal.internship?.id) {
+      toast.error("No internship selected");
+      return;
+    }
+
+    setSavingInternship(true);
+    try {
+      await API.put(`/faculty/internships/${editInternshipModal.internship.id}`, {
+        ...values,
+        joiningDate: values.joiningDate?.toISOString(),
+      });
+
+      toast.success("Internship updated successfully!");
+      setEditInternshipModal({ visible: false, internship: null });
+      editInternshipForm.resetFields();
+      forceRefresh();
+    } catch (error) {
+      console.error("Error updating internship:", error);
+      toast.error(error.response?.data?.message || "Failed to update internship");
+    } finally {
+      setSavingInternship(false);
+    }
+  };
+
+  const handleDeleteInternship = async (appId) => {
+    Modal.confirm({
+      title: 'Delete Internship Application',
+      content: 'Are you sure you want to delete this internship application? This action cannot be undone.',
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await API.delete(`/faculty/internships/${appId}`);
+          toast.success("Internship application deleted successfully!");
+          forceRefresh();
+        } catch (error) {
+          console.error("Error deleting internship:", error);
+          toast.error(error.response?.data?.message || "Failed to delete internship");
+        }
+      },
+    });
   };
 
   const reportFileProps = {
@@ -948,6 +1010,33 @@ const StudentProgressPage = () => {
                                               </div>
                                             </div>
                                           )}
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex justify-end gap-2 pt-2 border-t border-gray-200">
+                                          <Tooltip title="Edit Internship">
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              icon={<EditOutlined />}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditInternship(app);
+                                              }}
+                                            />
+                                          </Tooltip>
+                                          <Tooltip title="Delete Internship">
+                                            <Button
+                                              type="text"
+                                              size="small"
+                                              danger
+                                              icon={<DeleteOutlined />}
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDeleteInternship(app.id);
+                                              }}
+                                            />
+                                          </Tooltip>
                                         </div>
                                       </div>
                                     </List.Item>
@@ -2248,6 +2337,123 @@ const StudentProgressPage = () => {
             />
           )}
         </div>
+      </Modal>
+
+      {/* Edit Internship Modal */}
+      <Modal
+        title="Edit Internship Application"
+        open={editInternshipModal.visible}
+        onCancel={() => {
+          setEditInternshipModal({ visible: false, internship: null });
+          editInternshipForm.resetFields();
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setEditInternshipModal({ visible: false, internship: null });
+              editInternshipForm.resetFields();
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="save"
+            type="primary"
+            loading={savingInternship}
+            onClick={() => editInternshipForm.submit()}
+          >
+            Save Changes
+          </Button>,
+        ]}
+        width={600}
+      >
+        <Form
+          form={editInternshipForm}
+          layout="vertical"
+          onFinish={handleSaveInternship}
+          className="mt-4"
+        >
+          {editInternshipModal.internship && (
+            <Alert
+              message={
+                <div>
+                  <strong>
+                    {editInternshipModal.internship.internship?.title ||
+                      editInternshipModal.internship.companyName ||
+                      "Internship"}
+                  </strong>
+                  <br />
+                  <span className="text-sm text-gray-500">
+                    {editInternshipModal.internship.internship?.industry?.companyName ||
+                      "Self-Identified"}
+                  </span>
+                </div>
+              }
+              type="info"
+              className="mb-4"
+            />
+          )}
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="status"
+                label="Status"
+                rules={[{ required: true, message: "Please select a status" }]}
+              >
+                <Select>
+                  <Select.Option value="APPLIED">Applied</Select.Option>
+                  <Select.Option value="UNDER_REVIEW">Under Review</Select.Option>
+                  <Select.Option value="ACCEPTED">Accepted</Select.Option>
+                  <Select.Option value="REJECTED">Rejected</Select.Option>
+                  <Select.Option value="JOINED">Joined</Select.Option>
+                  <Select.Option value="COMPLETED">Completed</Select.Option>
+                  <Select.Option value="WITHDRAWN">Withdrawn</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="joiningDate" label="Joining Date">
+                <DatePicker className="w-full" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="hasJoined" label="Has Joined" valuePropName="checked">
+                <Select>
+                  <Select.Option value={true}>Yes</Select.Option>
+                  <Select.Option value={false}>No</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="isSelected" label="Is Selected" valuePropName="checked">
+                <Select>
+                  <Select.Option value={true}>Yes</Select.Option>
+                  <Select.Option value={false}>No</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="isApproved" label="Is Approved" valuePropName="checked">
+                <Select>
+                  <Select.Option value={true}>Yes</Select.Option>
+                  <Select.Option value={false}>No</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="remarks" label="Remarks">
+            <TextArea
+              rows={3}
+              placeholder="Add any remarks about this internship..."
+            />
+          </Form.Item>
+        </Form>
       </Modal>
     </>
   );

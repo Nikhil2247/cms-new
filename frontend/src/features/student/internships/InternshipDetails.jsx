@@ -41,7 +41,6 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
-import Layouts from "../../../components/Layout";
 import API from "../../../services/api";
 import { toast } from "react-hot-toast";
 import { theme } from "antd";
@@ -286,32 +285,28 @@ const InternshipDetails = () => {
 
   if (loading) {
     return (
-      <Layouts>
-        <div className="flex justify-center items-center min-h-screen">
-          <Spin size="small" />
-          <Text className="ml-4 text-secondary">
-            Loading internship detail...
-          </Text>
-        </div>
-      </Layouts>
+      <div className="flex justify-center items-center min-h-screen">
+        <Spin size="small" />
+        <Text className="ml-4 text-secondary">
+          Loading internship detail...
+        </Text>
+      </div>
     );
   }
 
   if (!internship) {
     return (
-      <Layouts>
-        <div className="text-center py-20">
-          <Title level={3} className="text-secondary">
-            Internship not found
-          </Title>
-          <Button
-            type="primary"
-            onClick={() => navigate("/internships/browse")}
-          >
-            Browse Internships
-          </Button>
-        </div>
-      </Layouts>
+      <div className="text-center py-20">
+        <Title level={3} className="text-secondary">
+          Internship not found
+        </Title>
+        <Button
+          type="primary"
+          onClick={() => navigate("/internships/browse")}
+        >
+          Browse Internships
+        </Button>
+      </div>
     );
   }
 
@@ -319,8 +314,7 @@ const InternshipDetails = () => {
   const eligibility = checkEligibility();
 
   return (
-    <Layouts>
-      <div className="min-h-screen ">
+    <div className="min-h-screen ">
         <div className="l mx-auto">
           {/* Back Button */}
           <Button
@@ -383,66 +377,50 @@ const InternshipDetails = () => {
                 />
               )}
 
-              {/* Header Card */}
+              {/* Header Card - Refactored for Clean UI */}
               <Card
-                className="mb-3 rounded-2xl border-0 overflow-hidden"
-                style={{
-                  background: hasApplied
-                    ? `linear-gradient(135deg, ${token.colorSuccess} 0%, ${token.colorSuccessBg} 100%)`
-                    : `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryBg} 100%)`,
-                }}
+                className="mb-4 rounded-2xl border-border overflow-hidden bg-surface shadow-sm"
+                styles={{ body: { padding: '24px' } }}
               >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-                <div className="relative z-10">
-                  <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                    <Avatar
-                      size={80}
-                      icon={<BankOutlined />}
-                      className="bg-white/20 border-4 border-white/30 flex-shrink-0"
-                    />
-                    <div className="flex-grow text-white">
-                      <div className="flex items-center gap-3 mb-2">
-                        <Title level={2} className="mb-0 text-white">
-                          {internship.title}
-                        </Title>
-                        {hasApplied && (
-                          <Tag
-                            color={getStatusColor(applicationData?.status)}
-                            className="px-3 py-1 rounded-full font-medium"
-                          >
-                            <CheckCircleOutlined className="mr-1" />
-                            {getStatusText(applicationData?.status)}
-                          </Tag>
-                        )}
-                      </div>
-                      <div className="flex items-center mb-4">
-                        <BankOutlined className="mr-2" />
-                        <Text
-                          className="text-lg font-medium text-white"
-                        >
-                          {internship.industry?.companyName}
-                        </Text>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col md:flex-row items-start gap-6">
+                  <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                    <BankOutlined className="text-4xl text-primary" />
+                  </div>
+                  <div className="flex-grow">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      <Title level={2} className="!mb-0 !text-text-primary text-2xl md:text-3xl">
+                        {internship.title}
+                      </Title>
+                      {hasApplied && (
                         <Tag
-                          className="border-white/30 text-white bg-white/10 px-3 py-1 rounded-full"
+                          color={getStatusColor(applicationData?.status)}
+                          className="px-3 py-1 rounded-full font-medium border-0"
                         >
-                          <BookOutlined className="mr-1" />
-                          {internship.fieldOfWork}
+                          {getStatusText(applicationData?.status)}
                         </Tag>
-                        <Tag
-                          className="border-white/30 text-white bg-white/10 px-3 py-1 rounded-full"
-                        >
-                          <EnvironmentOutlined className="mr-1" />
-                          {internship.workLocation?.replace("_", " ")}
-                        </Tag>
-                        <Tag
-                          className="border-white/30 text-white bg-white/10 px-3 py-1 rounded-full"
-                        >
-                          <ClockCircleOutlined className="mr-1" />
-                          {internship.duration}
-                        </Tag>
-                      </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center mb-4">
+                      <Text className="text-lg font-medium text-text-secondary flex items-center">
+                        <BankOutlined className="mr-2 text-text-tertiary" />
+                        {internship.industry?.companyName}
+                      </Text>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <Tag className="px-3 py-1 rounded-full bg-background-tertiary border-border text-text-secondary flex items-center">
+                        <BookOutlined className="mr-1.5 text-text-tertiary" />
+                        {internship.fieldOfWork}
+                      </Tag>
+                      <Tag className="px-3 py-1 rounded-full bg-background-tertiary border-border text-text-secondary flex items-center">
+                        <EnvironmentOutlined className="mr-1.5 text-text-tertiary" />
+                        {internship.workLocation?.replace("_", " ")}
+                      </Tag>
+                      <Tag className="px-3 py-1 rounded-full bg-background-tertiary border-border text-text-secondary flex items-center">
+                        <ClockCircleOutlined className="mr-1.5 text-text-tertiary" />
+                        {internship.duration}
+                      </Tag>
                     </div>
                   </div>
                 </div>
@@ -969,7 +947,6 @@ const InternshipDetails = () => {
           </Form>
         </Modal>
       </div>
-    </Layouts>
   );
 };
 

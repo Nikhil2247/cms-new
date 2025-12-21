@@ -275,7 +275,7 @@ const ApplicationsList = () => {
             </div>
 
             <div>
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Personal Information</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Personal Information</Divider>
               <Descriptions column={1} bordered size="small" className="rounded-xl overflow-hidden">
                 <Descriptions.Item label="Email">{selectedApp.student?.email}</Descriptions.Item>
                 <Descriptions.Item label="Phone">{selectedApp.student?.phone || 'N/A'}</Descriptions.Item>
@@ -284,7 +284,7 @@ const ApplicationsList = () => {
             </div>
 
             <div>
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Academic Information</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Academic Information</Divider>
               <Descriptions column={1} bordered size="small" className="rounded-xl overflow-hidden">
                 <Descriptions.Item label="Institution">
                   {selectedApp.student?.institution?.name || 'N/A'}
@@ -302,7 +302,7 @@ const ApplicationsList = () => {
             </div>
 
             <div>
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Application Details</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Application Details</Divider>
               <Descriptions column={1} bordered size="small" className="rounded-xl overflow-hidden">
                 <Descriptions.Item label="Internship">
                   <Text strong className="text-primary">{selectedApp.internship?.title}</Text>
@@ -320,7 +320,7 @@ const ApplicationsList = () => {
 
             {selectedApp.student?.skills && (
               <div>
-                <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Skills</Divider>
+                <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Skills</Divider>
                 <div className="flex flex-wrap gap-2 px-2">
                   {selectedApp.student.skills.split(',').map((skill, idx) => (
                     <Tag key={idx} color="blue" className="rounded-md m-0">{skill.trim()}</Tag>
@@ -330,7 +330,7 @@ const ApplicationsList = () => {
             )}
 
             <div>
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Documents</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Documents</Divider>
               <div className="px-2">
                 {selectedApp.student?.resumeUrl ? (
                   <Button
@@ -351,7 +351,7 @@ const ApplicationsList = () => {
 
             {selectedApp.status === 'REJECTED' && selectedApp.rejectionReason && (
               <div>
-                <Divider orientation="left" className="!text-error uppercase text-[10px] tracking-widest font-bold">Rejection Reason</Divider>
+                <Divider plain className="!text-error uppercase text-[10px] tracking-widest font-bold">Rejection Reason</Divider>
                 <Alert message={selectedApp.rejectionReason} type="error" className="rounded-xl border-error/20" />
               </div>
             )}

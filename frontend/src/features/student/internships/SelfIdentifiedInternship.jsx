@@ -18,7 +18,6 @@ import {
 import { UploadOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
 import API from "../../../services/api";
-import Layouts from "../../../components/Layout";
 import {
   fetchInstituteAsync,
   selectInstitute,
@@ -284,14 +283,11 @@ const SelfIdentifiedInternship = () => {
   };
 
     return (
+      <div className="max-w-5xl mx-auto p-4 md:p-6 bg-background-secondary min-h-screen">
 
-      <Layouts>
+        <h1 className="text-3xl font-bold text-text-primary mb-2">Submit Internship Details</h1>
 
-        <div className="max-w-5xl mx-auto p-4 md:p-6 bg-background-secondary min-h-screen">
-
-          <h1 className="text-3xl font-bold text-text-primary mb-2">Submit Internship Details</h1>
-
-          <p className="text-text-secondary text-base mb-8">
+        <p className="text-text-secondary text-base mb-8">
 
             Submit internships you found on your own or college provided. Fill in
 
@@ -317,7 +313,7 @@ const SelfIdentifiedInternship = () => {
 
             >
 
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Company Details</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Company Details</Divider>
 
               <Row gutter={24}>
 
@@ -589,7 +585,7 @@ const SelfIdentifiedInternship = () => {
 
   
 
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Industry Supervisor Details</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Industry Supervisor Details</Divider>
 
               <Row gutter={24}>
 
@@ -659,7 +655,7 @@ const SelfIdentifiedInternship = () => {
 
   
 
-              <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Upload Joining Letter</Divider>
+              <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Upload Joining Letter</Divider>
 
               <Row>
 
@@ -782,9 +778,6 @@ const SelfIdentifiedInternship = () => {
           </Card>
 
         </div>
-
-      </Layouts>
-
     );
 
   };

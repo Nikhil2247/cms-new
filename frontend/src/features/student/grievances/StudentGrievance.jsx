@@ -38,7 +38,6 @@ import {
 } from "@ant-design/icons";
 import API from "../../../services/api";
 import toast from "react-hot-toast";
-import Layouts from "../../../components/Layout";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -342,16 +341,15 @@ export default function StudentGrievance() {
   ];
 
   return (
-    <Layouts>
-      <div className="h-full overflow-y-auto hide-scrollbar">
-        <div className="max-w-7xl mx-auto space-y-4">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <Title level={2} className="!mb-1">
-                {/* <AlertOutlined className="mr-2" /> */}
-                My Grievances
-              </Title>
+    <div className="h-full overflow-y-auto hide-scrollbar">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <Title level={2} className="!mb-1">
+              {/* <AlertOutlined className="mr-2" /> */}
+              My Grievances
+            </Title>
               <Text type="secondary">
                 Submit and track your internship-related concerns
               </Text>
@@ -836,6 +834,5 @@ export default function StudentGrievance() {
           </Modal>
         </div>
       </div>
-    </Layouts>
   );
 }

@@ -531,7 +531,7 @@ const CreateIndustryProfile = () => {
                 className="mt-4"
               >
                 {/* Company Information */}
-                <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">
+                <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">
                   Company Details
                 </Divider>
                 <Row gutter={16}>
@@ -671,7 +671,7 @@ const CreateIndustryProfile = () => {
               className=" overflow-y-auto"
             >
               {/* Company Information */}
-              <Divider orientation="left" className="!text-lg !font-semibold">
+              <Divider plain className="!text-lg !font-semibold">
                 <InfoCircleOutlined className="mr-2" />
                 Company Information
               </Divider>
@@ -757,7 +757,7 @@ const CreateIndustryProfile = () => {
               </Row>
 
               {/* Contact Information */}
-              <Divider orientation="left" className="!text-lg !font-semibold">
+              <Divider plain className="!text-lg !font-semibold">
                 <ContactsOutlined className="mr-2" />
                 Contact Information
               </Divider>
@@ -824,7 +824,7 @@ const CreateIndustryProfile = () => {
               </Row>
 
               {/* Address Information */}
-              <Divider orientation="left" className="!text-lg !font-semibold">
+              <Divider plain className="!text-lg !font-semibold">
                 <HomeOutlined className="mr-2" />
                 Address Information
               </Divider>
@@ -877,7 +877,7 @@ const CreateIndustryProfile = () => {
               </Row>
 
               {/* Legal Information */}
-              <Divider orientation="left" className="!text-lg !font-semibold">
+              <Divider plain className="!text-lg !font-semibold">
                 <FileTextOutlined className="mr-2" />
                 Legal Information
               </Divider>
@@ -965,7 +965,7 @@ const CreateIndustryProfile = () => {
             initialValues={{ country: "India" }}
           >
             {/* Section 1: Company Information */}
-            <Divider orientation="left" className="!text-lg !font-semibold">
+            <Divider plain className="!text-lg !font-semibold">
               <InfoCircleOutlined className="mr-2" />
               Company Information
             </Divider>
@@ -1045,7 +1045,7 @@ const CreateIndustryProfile = () => {
             </Row>
 
             {/* Section 2: Contact Information */}
-            <Divider orientation="left" className="!text-lg !font-semibold">
+            <Divider plain className="!text-lg !font-semibold">
               <ContactsOutlined className="mr-2" />
               Contact Information
             </Divider>
@@ -1112,7 +1112,7 @@ const CreateIndustryProfile = () => {
             </Row>
 
             {/* Section 3: Address Information */}
-            <Divider orientation="left" className="!text-lg !font-semibold">
+            <Divider plain className="!text-lg !font-semibold">
               <HomeOutlined className="mr-2" />
               Address Information
             </Divider>
@@ -1165,7 +1165,7 @@ const CreateIndustryProfile = () => {
             </Row>
 
             {/* Section 4: Legal Information */}
-            <Divider orientation="left" className="!text-lg !font-semibold">
+            <Divider plain className="!text-lg !font-semibold">
               <FileTextOutlined className="mr-2" />
               Legal Information
             </Divider>

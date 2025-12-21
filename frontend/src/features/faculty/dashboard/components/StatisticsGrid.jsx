@@ -1,5 +1,5 @@
 import React from 'react';
-import { Row, Col, Card, Progress, theme } from 'antd';
+import { Card } from 'antd';
 import {
   TeamOutlined,
   FileTextOutlined,
@@ -7,40 +7,19 @@ import {
   CalendarOutlined,
 } from '@ant-design/icons';
 
-const StatCard = ({ title, value, icon, gradient, active, total }) => {
-  const { token } = theme.useToken();
-  
+const StatCard = ({ title, value, icon, colorClass, bgClass }) => {
   return (
-    <Card className="overflow-hidden h-full border-border" styles={{ body: { padding: 0 } }}>
-      <div className="p-4 text-white relative" style={{ background: gradient }}>
-        {/* Decorative circles */}
-        <div 
-          className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-20 bg-white translate-x-1/4 -translate-y-1/4"
-        />
-        
-        <div className="flex justify-between items-center relative z-10">
-          <div>
-            <div className="text-3xl font-bold mb-1">{value || 0}</div>
-            <div className="text-sm uppercase tracking-wider opacity-90 font-medium">{title}</div>
-          </div>
-          <div className="p-3 rounded-xl backdrop-blur-sm bg-white/20">
-            {React.cloneElement(icon, { style: { fontSize: '24px' } })}
-          </div>
+    <Card size="small" className="rounded-xl border-border hover:shadow-md transition-all h-full">
+      <div className="flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bgClass} ${colorClass}`}>
+          {React.cloneElement(icon, { style: { fontSize: '18px' } })}
         </div>
-      </div>
-      <div className="p-4 bg-background-tertiary">
-        <div className="flex justify-between mb-1">
-          <span className="text-sm font-medium text-text-primary">Progress</span>
-          <span className="text-sm font-semibold text-text-secondary">
-            {active || 0}/{total || value || 0}
-          </span>
+        <div>
+          <div className="text-2xl font-bold text-text-primary">
+            {value || 0}
+          </div>
+          <div className="text-[10px] uppercase font-bold text-text-tertiary">{title}</div>
         </div>
-        <Progress
-          percent={total > 0 ? Math.round((active / total) * 100) : 0}
-          showInfo={false}
-          strokeColor={token.colorPrimary}
-          size="small"
-        />
       </div>
     </Card>
   );
@@ -51,45 +30,43 @@ const StatisticsGrid = ({ stats }) => {
     {
       title: 'Assigned Students',
       value: stats?.totalStudents || 0,
-      active: stats?.activeStudents || stats?.totalStudents || 0,
-      total: stats?.totalStudents || 0,
       icon: <TeamOutlined />,
-      gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      colorClass: 'text-primary',
+      bgClass: 'bg-primary/10',
     },
     {
       title: 'Pending Reports',
       value: stats?.pendingReports || 0,
-      active: stats?.reviewedReports || 0,
-      total: stats?.totalReports || stats?.pendingReports || 0,
       icon: <FileTextOutlined />,
-      gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      colorClass: 'text-warning',
+      bgClass: 'bg-warning/10',
     },
     {
       title: 'Visits Completed',
       value: stats?.completedVisits || 0,
-      active: stats?.completedVisits || 0,
-      total: stats?.totalVisits || stats?.completedVisits || 0,
       icon: <CalendarOutlined />,
-      gradient: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)',
+      colorClass: 'text-success',
+      bgClass: 'bg-success/10',
     },
     {
       title: 'Approvals Pending',
       value: stats?.pendingApprovals || 0,
-      active: stats?.approvedApplications || 0,
-      total: stats?.totalApplications || stats?.pendingApprovals || 0,
       icon: <CheckCircleOutlined />,
-      gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      colorClass: 'text-info', // Using info color for approvals
+      bgClass: 'bg-info-light', // Assuming global class or we can use bg-blue-50/10 if needed. Let's use Tailwind class directly
     },
   ];
 
+  // Fix for the last card to use tailwind directly to be safe
+  cardConfigs[3].bgClass = 'bg-blue-500/10';
+  cardConfigs[3].colorClass = 'text-blue-500';
+
   return (
-    <Row gutter={[16, 16]} className="mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {cardConfigs.map((card, idx) => (
-        <Col key={idx} xs={24} sm={12} lg={6}>
-          <StatCard {...card} />
-        </Col>
+        <StatCard key={idx} {...card} />
       ))}
-    </Row>
+    </div>
   );
 };
 

@@ -199,82 +199,157 @@ export class ReportProcessor extends WorkerHost {
     userId: string,
     format: ExportFormat,
   ): ExportConfig {
-    const reportTitles = {
-      [ReportType.STUDENT_PROGRESS]: 'Student Progress Report',
-      [ReportType.INTERNSHIP]: 'Internship Report',
-      [ReportType.FACULTY_VISIT]: 'Faculty Visit Report',
-      [ReportType.MONTHLY]: 'Monthly Report',
-      [ReportType.PLACEMENT]: 'Placement Report',
-      [ReportType.INSTITUTION_PERFORMANCE]: 'Institution Performance Report',
+    // Normalize report type for matching
+    const normalizedType = reportType.toLowerCase().replace(/-/g, '_');
+
+    // Title mapping - supports both enum values and string variants
+    const reportTitles: Record<string, string> = {
+      'student_progress': 'Student Progress Report',
+      'student_directory': 'Student Directory Report',
+      'internship': 'Internship Report',
+      'internship_status': 'Internship Status Report',
+      'faculty_visit': 'Faculty Visit Report',
+      'mentor_list': 'Mentor List Report',
+      'monthly': 'Monthly Report',
+      'monthly_report_status': 'Monthly Report Status',
+      'placement': 'Placement Report',
+      'institution_performance': 'Institution Performance Report',
     };
 
-    const reportColumns = {
-      [ReportType.STUDENT_PROGRESS]: [
-        { field: 'enrollmentNumber', header: 'Enrollment Number', type: 'string' as const },
-        { field: 'name', header: 'Student Name', type: 'string' as const },
-        { field: 'email', header: 'Email', type: 'string' as const },
-        { field: 'department', header: 'Department', type: 'string' as const },
-        { field: 'academicYear', header: 'Academic Year', type: 'string' as const },
-        { field: 'semester', header: 'Semester', type: 'number' as const },
-        { field: 'cgpa', header: 'CGPA', type: 'number' as const },
-        { field: 'internshipsCount', header: 'Internships', type: 'number' as const },
-        { field: 'placementsCount', header: 'Placements', type: 'number' as const },
-        { field: 'status', header: 'Status', type: 'string' as const },
+    // Column mapping - matches actual data fields from generator
+    const reportColumns: Record<string, any[]> = {
+      // Student reports - matches generateStudentProgressReport output
+      'student_progress': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'branch', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'currentSemester', header: 'Semester', type: 'number' as const, width: 10 },
+        { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
+        { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
       ],
-      [ReportType.INTERNSHIP]: [
-        { field: 'studentName', header: 'Student Name', type: 'string' as const },
-        { field: 'enrollmentNumber', header: 'Enrollment Number', type: 'string' as const },
-        { field: 'department', header: 'Department', type: 'string' as const },
-        { field: 'companyName', header: 'Company', type: 'string' as const },
-        { field: 'designation', header: 'Designation', type: 'string' as const },
-        { field: 'startDate', header: 'Start Date', type: 'date' as const },
-        { field: 'endDate', header: 'End Date', type: 'date' as const },
-        { field: 'duration', header: 'Duration (months)', type: 'number' as const },
-        { field: 'status', header: 'Status', type: 'string' as const },
-        { field: 'mentorName', header: 'Mentor', type: 'string' as const },
-        { field: 'reportsSubmitted', header: 'Reports Submitted', type: 'number' as const },
+      'student_directory': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
+        { field: 'branch', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'currentSemester', header: 'Semester', type: 'number' as const, width: 10 },
+        { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
+        { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
       ],
-      [ReportType.PLACEMENT]: [
-        { field: 'studentName', header: 'Student Name', type: 'string' as const },
-        { field: 'enrollmentNumber', header: 'Enrollment Number', type: 'string' as const },
-        { field: 'department', header: 'Department', type: 'string' as const },
-        { field: 'cgpa', header: 'CGPA', type: 'number' as const },
-        { field: 'companyName', header: 'Company', type: 'string' as const },
-        { field: 'designation', header: 'Designation', type: 'string' as const },
-        { field: 'package', header: 'Package (LPA)', type: 'number' as const },
-        { field: 'placementDate', header: 'Placement Date', type: 'date' as const },
-        { field: 'location', header: 'Location', type: 'string' as const },
+      // Internship reports - matches generateInternshipReport output
+      'internship': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'branch', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'jobProfile', header: 'Job Profile', type: 'string' as const, width: 20 },
+        { field: 'startDate', header: 'Start Date', type: 'date' as const, width: 12 },
+        { field: 'endDate', header: 'End Date', type: 'date' as const, width: 12 },
+        { field: 'duration', header: 'Duration', type: 'string' as const, width: 10 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
+        { field: 'location', header: 'Location', type: 'string' as const, width: 15 },
       ],
-      [ReportType.FACULTY_VISIT]: [
-        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const },
-        { field: 'department', header: 'Department', type: 'string' as const },
-        { field: 'studentName', header: 'Student Name', type: 'string' as const },
-        { field: 'companyName', header: 'Company', type: 'string' as const },
-        { field: 'visitDate', header: 'Visit Date', type: 'date' as const },
-        { field: 'purpose', header: 'Purpose', type: 'string' as const },
-        { field: 'rating', header: 'Rating', type: 'number' as const },
-        { field: 'status', header: 'Status', type: 'string' as const },
+      'internship_status': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
       ],
-      [ReportType.MONTHLY]: [
-        { field: 'studentName', header: 'Student Name', type: 'string' as const },
-        { field: 'enrollmentNumber', header: 'Enrollment Number', type: 'string' as const },
-        { field: 'companyName', header: 'Company', type: 'string' as const },
-        { field: 'month', header: 'Month', type: 'number' as const },
-        { field: 'year', header: 'Year', type: 'number' as const },
-        { field: 'hoursWorked', header: 'Hours Worked', type: 'number' as const },
-        { field: 'status', header: 'Status', type: 'string' as const },
-        { field: 'submittedAt', header: 'Submitted At', type: 'date' as const },
+      // Faculty/Mentor reports - matches generateFacultyVisitReport output
+      'faculty_visit': [
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 12 },
+        { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 12 },
+        { field: 'visitLocation', header: 'Location', type: 'string' as const, width: 15 },
+        { field: 'followUpRequired', header: 'Follow-up', type: 'boolean' as const, width: 10 },
+        { field: 'nextVisitDate', header: 'Next Visit', type: 'date' as const, width: 12 },
       ],
-      [ReportType.INSTITUTION_PERFORMANCE]: [
-        { field: 'metric', header: 'Metric', type: 'string' as const },
-        { field: 'value', header: 'Value', type: 'number' as const },
-        { field: 'category', header: 'Category', type: 'string' as const },
+      'mentor_list': [
+        { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
+        { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+      ],
+      // Monthly reports - matches generateMonthlyReport output
+      'monthly': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'month', header: 'Month', type: 'number' as const, width: 8 },
+        { field: 'year', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 15 },
+        { field: 'reportFileUrl', header: 'Report URL', type: 'string' as const, width: 30 },
+      ],
+      'monthly_report_status': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'month', header: 'Month', type: 'number' as const, width: 8 },
+        { field: 'year', header: 'Year', type: 'number' as const, width: 8 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+      ],
+      // Placement reports - matches generatePlacementReport output
+      'placement': [
+        { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
+        { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
+        { field: 'jobRole', header: 'Job Role', type: 'string' as const, width: 20 },
+        { field: 'salary', header: 'Salary (LPA)', type: 'number' as const, width: 12 },
+        { field: 'offerDate', header: 'Offer Date', type: 'date' as const, width: 12 },
+        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+      ],
+      // Institution performance - matches generateInstitutionPerformanceReport output
+      'institution_performance': [
+        { field: 'metric', header: 'Metric', type: 'string' as const, width: 25 },
+        { field: 'value', header: 'Value', type: 'number' as const, width: 15 },
+        { field: 'category', header: 'Category', type: 'string' as const, width: 15 },
       ],
     };
+
+    // Get columns for this report type
+    let columns = reportColumns[normalizedType];
+
+    // If no predefined columns, generate from data
+    if (!columns || columns.length === 0) {
+      this.logger.warn(`No predefined columns for report type: ${reportType}, generating from data`);
+      if (data.length > 0) {
+        const firstRow = data[0];
+        columns = Object.keys(firstRow).map(key => ({
+          field: key,
+          header: key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          type: this.inferColumnType(firstRow[key]),
+          width: 15,
+        }));
+      } else {
+        columns = [];
+      }
+    }
+
+    const title = reportTitles[normalizedType] ||
+      reportType.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) + ' Report';
+
+    this.logger.log(`Export config: type=${reportType}, columns=${columns.length}, rows=${data.length}`);
 
     return {
-      title: reportTitles[reportType] || 'Report',
-      columns: reportColumns[reportType] || [],
+      title,
+      columns,
       data,
       format,
       metadata: {
@@ -283,6 +358,21 @@ export class ReportProcessor extends WorkerHost {
         filters,
       },
     };
+  }
+
+  /**
+   * Infer column type from value
+   */
+  private inferColumnType(value: any): 'string' | 'number' | 'date' | 'boolean' {
+    if (value === null || value === undefined) return 'string';
+    if (typeof value === 'number') return 'number';
+    if (typeof value === 'boolean') return 'boolean';
+    if (value instanceof Date) return 'date';
+    if (typeof value === 'string') {
+      // Check if it looks like a date
+      if (/^\d{4}-\d{2}-\d{2}/.test(value)) return 'date';
+    }
+    return 'string';
   }
 
 

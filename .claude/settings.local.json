@@ -25,7 +25,9 @@
       "Bash(curl:*)",
       "Bash(npx tsc:*)",
       "Bash(npm run lint)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(npx eslint:*)",
+      "Bash(node --check:*)"
     ]
   }
 }

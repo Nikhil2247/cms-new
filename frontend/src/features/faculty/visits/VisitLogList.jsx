@@ -11,7 +11,8 @@ const { RangePicker } = DatePicker;
 const VisitLogList = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { visitLogs, loading } = useSelector((state) => state.faculty);
+  const { visitLogs } = useSelector((state) => state.faculty);
+  const { list: visitLogsList = [], loading } = visitLogs || {};
   const [searchText, setSearchText] = useState('');
   const [dateRange, setDateRange] = useState(null);
   const [detailDrawer, setDetailDrawer] = useState(false);
@@ -38,7 +39,7 @@ const VisitLogList = () => {
     });
   };
 
-  const filteredLogs = visitLogs?.filter(log => {
+  const filteredLogs = visitLogsList?.filter(log => {
     const matchesSearch = !searchText ||
       log.student?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
       log.company?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -119,7 +120,7 @@ const VisitLogList = () => {
           </Button>
           <Button
             icon={<EditOutlined />}
-            onClick={() => navigate(`/faculty/visit-logs/${record.id}/edit`)}
+            onClick={() => navigate(`/visit-logs/${record.id}/edit`)}
             size="small"
           >
             Edit
@@ -145,7 +146,7 @@ const VisitLogList = () => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => navigate('/faculty/visit-logs/new')}
+            onClick={() => navigate('/visit-logs/new')}
           >
             Add Visit Log
           </Button>
@@ -261,7 +262,7 @@ const VisitLogList = () => {
                   icon={<EditOutlined />}
                   onClick={() => {
                     setDetailDrawer(false);
-                    navigate(`/faculty/visit-logs/${selectedLog.id}/edit`);
+                    navigate(`/visit-logs/${selectedLog.id}/edit`);
                   }}
                 >
                   Edit

@@ -124,7 +124,7 @@ export class ReportsController {
       res.setHeader('Cache-Control', 'no-cache');
 
       // Send the file buffer
-      return res.end(fileBuffer);
+      res.end(fileBuffer);
     } catch (error) {
       this.logger.error(`Failed to download report ${id}: ${error.message}`);
       return res.status(500).json({

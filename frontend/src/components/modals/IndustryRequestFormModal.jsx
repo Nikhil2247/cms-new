@@ -365,7 +365,7 @@ const IndustryRequestFormModal = ({
 
           {/* Referral Information */}
           <Col span={24}>
-            <Divider orientation="left" className="!text-text-secondary !text-xs uppercase tracking-wider">
+            <Divider plain className="!text-text-secondary !text-xs uppercase tracking-wider">
               Referral Information (Optional)
             </Divider>
           </Col>

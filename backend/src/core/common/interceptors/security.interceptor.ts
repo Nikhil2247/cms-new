@@ -93,13 +93,31 @@ export class SecurityInterceptor implements NestInterceptor {
   /**
    * Remove sensitive fields from response data
    */
-  private removeSensitiveFields(data: any): any {
+  private removeSensitiveFields(data: any, visited = new WeakSet<any>()): any {
     if (typeof data !== 'object' || data === null) {
       return data;
     }
 
+    // Handle circular references
+    if (visited.has(data)) {
+      return;
+    }
+    visited.add(data);
+
+    if (data instanceof Date) return data;
+    if (data instanceof RegExp) return data;
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(data)) return data;
+    
+    // Skip streams and response objects
+    if (
+      (data.pipe && typeof data.pipe === 'function') ||
+      (data.headersSent !== undefined && data.send && typeof data.send === 'function')
+    ) {
+      return data;
+    }
+
     if (Array.isArray(data)) {
-      return data.map((item) => this.removeSensitiveFields(item));
+      return data.map((item) => this.removeSensitiveFields(item, visited));
     }
 
     const cleaned: any = {};
@@ -110,7 +128,7 @@ export class SecurityInterceptor implements NestInterceptor {
       }
 
       if (typeof value === 'object' && value !== null) {
-        cleaned[key] = this.removeSensitiveFields(value);
+        cleaned[key] = this.removeSensitiveFields(value, visited);
       } else {
         cleaned[key] = value;
       }

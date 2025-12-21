@@ -50,7 +50,6 @@ import {
   CameraOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
-import Layouts from "../../../components/Layout";
 import toast from "react-hot-toast";
 
 const { Title, Text } = Typography;
@@ -466,31 +465,26 @@ export default function StudentProfile() {
 
   if (loading)
     return (
-      <Layouts>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            minHeight: "100vh",
-          }}
-        >
-          <Spin size="small" tip="Loading profile..." />
-        </div>
-      </Layouts>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "100vh",
+        }}
+      >
+        <Spin size="small" tip="Loading profile..." />
+      </div>
     );
   if (error)
     return (
-      <Layouts>
-        <div style={{ padding: "32px" }}>
-          <Text type="danger">{error}</Text>
-        </div>
-      </Layouts>
+      <div style={{ padding: "32px" }}>
+        <Text type="danger">{error}</Text>
+      </div>
     );
 
   return (
-    <Layouts>
-      <div className="h-full overflow-y-auto py-4">
+    <div className="h-full overflow-y-auto py-4">
         <div className="max-w-full mx-auto">
           {/* Action Buttons */}
           <div className="flex gap-2 justify-end mb-4 flex-wrap">
@@ -1089,8 +1083,8 @@ export default function StudentProfile() {
             </Tabs>
           </Card>
         </div>
-      </div>
-      {/* Modals remain mostly the same */}
+
+      {/* Modals */}
       <Modal
         title="Edit Student Details"
         open={isModalOpen}
@@ -1418,6 +1412,6 @@ export default function StudentProfile() {
           </Form.Item>
         </Form>
       </Modal>
-    </Layouts>
+    </div>
   );
 }

@@ -32,7 +32,6 @@ import {
 import { grievanceService } from '../../../services/grievance.service';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
-import Layouts from '../../../components/Layout';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -233,8 +232,7 @@ const SubmitGrievance = () => {
   ];
 
   return (
-    <Layouts>
-      <div className="h-full overflow-y-auto hide-scrollbar">
+    <div className="h-full overflow-y-auto hide-scrollbar">
         <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6 bg-background-secondary min-h-screen">
           {/* Header */}
           <div>
@@ -604,7 +602,6 @@ const SubmitGrievance = () => {
           </Modal>
         </div>
       </div>
-    </Layouts>
   );
 };
 

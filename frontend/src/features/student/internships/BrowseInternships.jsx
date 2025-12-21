@@ -32,10 +32,9 @@ import {
   CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import Layouts from '../../components/Layout';
-import API from '../../services/api';
+import API from '../../../services/api';
 import { toast } from "react-hot-toast";
-import { useDebounce } from '../../hooks/useDebounce';
+import { useDebounce } from '../../../hooks/useDebounce';
 import { theme } from 'antd';
 
 const { Title, Text, Paragraph } = Typography;
@@ -186,17 +185,16 @@ const BrowseInternships = () => {
   const currentInternships = filteredInternships.slice(startIndex, endIndex);
 
   return (
-    <Layouts>
-      <div className="min-h-screen ">
-        <div className=" mx-auto">
-          {/* Header */}
-          <div className="mb-6">
-            <Title level={2} className="mb-2">
-              Browse Internships
-            </Title>
-            <Text className="text-text-secondary text-lg">
-              Discover exciting internship opportunities that match your skills and interests
-            </Text>
+    <div className="min-h-screen ">
+      <div className=" mx-auto">
+        {/* Header */}
+        <div className="mb-6">
+          <Title level={2} className="mb-2">
+            Browse Internships
+          </Title>
+          <Text className="text-text-secondary text-lg">
+            Discover exciting internship opportunities that match your skills and interests
+          </Text>
             
             {/* Applied internships info */}
             {appliedCount > 0 && (
@@ -562,7 +560,6 @@ const BrowseInternships = () => {
           }
         `}</style>
       </div>
-    </Layouts>
   );
 };
 

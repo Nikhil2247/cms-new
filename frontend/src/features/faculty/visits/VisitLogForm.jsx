@@ -140,7 +140,7 @@ const VisitLogForm = () => {
           onFinish={onFinish}
           style={{ maxWidth: 900 }}
         >
-          <Divider orientation="left">Visit Information</Divider>
+          <Divider plain>Visit Information</Divider>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
@@ -268,7 +268,7 @@ const VisitLogForm = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left">Visit Details</Divider>
+          <Divider plain>Visit Details</Divider>
 
           <Form.Item
             name="observations"
@@ -321,7 +321,7 @@ const VisitLogForm = () => {
             />
           </Form.Item>
 
-          <Divider orientation="left">Attachments</Divider>
+          <Divider plain>Attachments</Divider>
 
           <Form.Item
             name="attachments"

@@ -183,7 +183,7 @@ const CreateUserFormModal = ({
         }}
         className="mt-4"
       >
-        <Divider orientation="left" className="!text-text-secondary !text-xs uppercase tracking-wider">User Role</Divider>
+        <Divider plain className="!text-text-secondary !text-xs uppercase tracking-wider">User Role</Divider>
 
         <Row gutter={16}>
           <Col xs={24} md={12}>
@@ -269,7 +269,7 @@ const CreateUserFormModal = ({
           />
         )}
 
-        <Divider orientation="left" className="!text-text-secondary !text-xs uppercase tracking-wider">Personal Information</Divider>
+        <Divider plain className="!text-text-secondary !text-xs uppercase tracking-wider">Personal Information</Divider>
 
         <Row gutter={16}>
           <Col xs={24} md={12}>

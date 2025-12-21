@@ -572,7 +572,7 @@ const CredentialsReset = () => {
 
             {resetResults.results.length > 0 && (
               <>
-                <Divider orientation="left">Successful Resets</Divider>
+                <Divider plain>Successful Resets</Divider>
                 <div style={{ maxHeight: 200, overflow: 'auto' }}>
                   {resetResults.results.map((result, index) => (
                     <Alert
@@ -600,7 +600,7 @@ const CredentialsReset = () => {
 
             {resetResults.errors.length > 0 && (
               <>
-                <Divider orientation="left">Failed Resets</Divider>
+                <Divider plain>Failed Resets</Divider>
                 <div style={{ maxHeight: 200, overflow: 'auto' }}>
                   {resetResults.errors.map((error, index) => (
                     <Alert

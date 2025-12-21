@@ -5,7 +5,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import dayjs from 'dayjs';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 
-import Layouts from '../../../components/Layout';
 import { useStudentDashboard } from '../hooks/useStudentDashboard';
 import {
   DashboardHeader,
@@ -117,27 +116,24 @@ const StudentDashboard = () => {
   // Show error state
   if (error) {
     return (
-      <Layouts>
-        <div className="p-6">
-          <Alert
-            type="error"
-            title="Error loading dashboard"
-            description={error}
-            showIcon
-            action={
-              <button onClick={refresh} className="text-blue-600 hover:underline">
-                Try Again
-              </button>
-            }
-          />
-        </div>
-      </Layouts>
+      <div className="p-6">
+        <Alert
+          type="error"
+          title="Error loading dashboard"
+          description={error}
+          showIcon
+          action={
+            <button onClick={refresh} className="text-blue-600 hover:underline">
+              Try Again
+            </button>
+          }
+        />
+      </div>
     );
   }
 
   return (
-    <Layouts>
-      <Spin spinning={isLoading} tip="Loading dashboard...">
+    <Spin spinning={isLoading} tip="Loading dashboard...">
         <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
           {/* Header Section */}
           <DashboardHeader
@@ -204,7 +200,6 @@ const StudentDashboard = () => {
           </Row>
         </div>
       </Spin>
-    </Layouts>
   );
 };
 

@@ -793,4 +793,409 @@ export class FacultyService {
       totalPages: Math.ceil(total / limit),
     };
   }
+
+  // ==================== Internship Management ====================
+
+  /**
+   * Get student internships
+   */
+  async getStudentInternships(studentId: string) {
+    const internships = await this.prisma.internshipApplication.findMany({
+      where: { studentId },
+      include: {
+        internship: {
+          include: {
+            industry: {
+              select: {
+                id: true,
+                companyName: true,
+                address: true,
+              },
+            },
+          },
+        },
+        mentor: {
+          select: {
+            id: true,
+            name: true,
+            designation: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { internships };
+  }
+
+  /**
+   * Update internship application
+   */
+  async updateInternship(id: string, updateDto: any, facultyId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id },
+      include: {
+        student: true,
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Internship application not found');
+    }
+
+    // Verify faculty is the mentor
+    if (application.mentorId && application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to update this application');
+    }
+
+    const updated = await this.prisma.internshipApplication.update({
+      where: { id },
+      data: {
+        status: updateDto.status,
+        hasJoined: updateDto.hasJoined,
+        isSelected: updateDto.isSelected,
+        reviewRemarks: updateDto.remarks,
+        joiningDate: updateDto.joiningDate ? new Date(updateDto.joiningDate) : undefined,
+        reviewedAt: new Date(),
+        reviewedBy: facultyId,
+      },
+      include: {
+        student: true,
+        internship: {
+          include: {
+            industry: true,
+          },
+        },
+      },
+    });
+
+    await this.cache.invalidateByTags(['applications', `application:${id}`]);
+
+    return {
+      success: true,
+      message: 'Internship updated successfully',
+      data: updated,
+    };
+  }
+
+  /**
+   * Delete internship application
+   */
+  async deleteInternship(id: string, facultyId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Internship application not found');
+    }
+
+    // Verify faculty is the mentor
+    if (application.mentorId && application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to delete this application');
+    }
+
+    await this.prisma.internshipApplication.delete({
+      where: { id },
+    });
+
+    await this.cache.invalidateByTags(['applications', `application:${id}`]);
+
+    return {
+      success: true,
+      message: 'Internship application deleted successfully',
+    };
+  }
+
+  // ==================== Monthly Report Actions ====================
+
+  /**
+   * Approve monthly report
+   */
+  async approveMonthlyReport(id: string, remarks: string, facultyId: string) {
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id },
+      include: {
+        application: true,
+      },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Monthly report not found');
+    }
+
+    // Verify faculty is the mentor
+    if (report.application?.mentorId && report.application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to approve this report');
+    }
+
+    const updated = await this.prisma.monthlyReport.update({
+      where: { id },
+      data: {
+        status: 'APPROVED',
+        isApproved: true,
+        approvedAt: new Date(),
+        approvedBy: facultyId,
+        reviewedAt: new Date(),
+        reviewedBy: facultyId,
+        reviewComments: remarks,
+      },
+    });
+
+    await this.cache.invalidateByTags(['reports', `report:${id}`]);
+
+    return {
+      success: true,
+      message: 'Monthly report approved successfully',
+      data: updated,
+    };
+  }
+
+  /**
+   * Reject monthly report
+   */
+  async rejectMonthlyReport(id: string, reason: string, facultyId: string) {
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id },
+      include: {
+        application: true,
+      },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Monthly report not found');
+    }
+
+    // Verify faculty is the mentor
+    if (report.application?.mentorId && report.application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to reject this report');
+    }
+
+    const updated = await this.prisma.monthlyReport.update({
+      where: { id },
+      data: {
+        status: 'REJECTED',
+        isApproved: false,
+        reviewedAt: new Date(),
+        reviewedBy: facultyId,
+        reviewComments: reason,
+      },
+    });
+
+    await this.cache.invalidateByTags(['reports', `report:${id}`]);
+
+    return {
+      success: true,
+      message: 'Monthly report rejected',
+      data: updated,
+    };
+  }
+
+  /**
+   * Delete monthly report
+   */
+  async deleteMonthlyReport(id: string, facultyId: string) {
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id },
+      include: {
+        application: true,
+      },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Monthly report not found');
+    }
+
+    // Verify faculty is the mentor
+    if (report.application?.mentorId && report.application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to delete this report');
+    }
+
+    await this.prisma.monthlyReport.delete({
+      where: { id },
+    });
+
+    await this.cache.invalidateByTags(['reports', `report:${id}`]);
+
+    return {
+      success: true,
+      message: 'Monthly report deleted successfully',
+    };
+  }
+
+  // ==================== Joining Letter Management ====================
+
+  /**
+   * Get joining letters for review
+   */
+  async getJoiningLetters(
+    facultyId: string,
+    params: { page?: number; limit?: number; status?: string },
+  ) {
+    const { status } = params;
+    const page = Number(params.page) || 1;
+    const limit = Number(params.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.InternshipApplicationWhereInput = {
+      mentorId: facultyId,
+      joiningLetterUrl: { not: null },
+    };
+
+    if (status) {
+      where.status = status as any;
+    }
+
+    const [letters, total] = await Promise.all([
+      this.prisma.internshipApplication.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          joiningLetterUrl: true,
+          joiningLetterUploadedAt: true,
+          status: true,
+          reviewedAt: true,
+          reviewedBy: true,
+          reviewRemarks: true,
+          student: {
+            select: {
+              id: true,
+              name: true,
+              rollNumber: true,
+              email: true,
+            },
+          },
+          internship: {
+            include: {
+              industry: {
+                select: {
+                  id: true,
+                  companyName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { joiningLetterUploadedAt: 'desc' },
+      }),
+      this.prisma.internshipApplication.count({ where }),
+    ]);
+
+    return {
+      letters,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /**
+   * Verify joining letter
+   */
+  async verifyJoiningLetter(id: string, remarks: string, facultyId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    // Verify faculty is the mentor
+    if (application.mentorId && application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to verify this joining letter');
+    }
+
+    const updated = await this.prisma.internshipApplication.update({
+      where: { id },
+      data: {
+        reviewedBy: facultyId,
+        reviewedAt: new Date(),
+        reviewRemarks: remarks,
+      },
+    });
+
+    await this.cache.invalidateByTags(['applications', `application:${id}`]);
+
+    return {
+      success: true,
+      message: 'Joining letter verified successfully',
+      data: updated,
+    };
+  }
+
+  /**
+   * Reject joining letter
+   */
+  async rejectJoiningLetter(id: string, reason: string, facultyId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    // Verify faculty is the mentor
+    if (application.mentorId && application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to reject this joining letter');
+    }
+
+    const updated = await this.prisma.internshipApplication.update({
+      where: { id },
+      data: {
+        reviewedBy: facultyId,
+        reviewedAt: new Date(),
+        reviewRemarks: reason,
+      },
+    });
+
+    await this.cache.invalidateByTags(['applications', `application:${id}`]);
+
+    return {
+      success: true,
+      message: 'Joining letter rejected',
+      data: updated,
+    };
+  }
+
+  /**
+   * Delete joining letter
+   */
+  async deleteJoiningLetter(id: string, facultyId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    // Verify faculty is the mentor
+    if (application.mentorId && application.mentorId !== facultyId) {
+      throw new BadRequestException('You are not authorized to delete this joining letter');
+    }
+
+    const updated = await this.prisma.internshipApplication.update({
+      where: { id },
+      data: {
+        joiningLetterUrl: null,
+        joiningLetterUploadedAt: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        reviewRemarks: null,
+      },
+    });
+
+    await this.cache.invalidateByTags(['applications', `application:${id}`]);
+
+    return {
+      success: true,
+      message: 'Joining letter deleted successfully',
+      data: updated,
+    };
+  }
 }

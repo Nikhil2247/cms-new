@@ -79,6 +79,7 @@ import MonthlyReportForm from '../../features/student/reports/MonthlyReportForm'
 import StudentReportSubmit from '../../features/student/reports/StudentReportSubmit';
 import InternshipList from '../../features/student/internships/InternshipList';
 import InternshipDetails from '../../features/student/internships/InternshipDetails';
+import MyApplications from '../../features/student/applications/MyApplications';
 
 // Industry
 import IndustryDashboard from '../../features/industry/dashboard/IndustryDashboard';
@@ -469,6 +470,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
               <InternshipDetails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="my-applications"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
+              <MyApplications />
             </ProtectedRoute>
           }
         />

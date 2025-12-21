@@ -148,9 +148,9 @@ export const menuConfig = {
     icon: <LaptopOutlined />,
     items: [
       { key: 'internships', label: 'Browse Internships', icon: <SearchOutlined />, path: '/internships' },
-      { key: 'my-applications', label: 'My Applications', icon: <FileSyncOutlined />, path: '/applications' },
-      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/reports/new' },
-      { key: 'submit-grievance', label: 'Submit Grievance', icon: <AlertOutlined />, path: '/grievances/new' },
+      { key: 'my-applications', label: 'My Applications', icon: <FileSyncOutlined />, path: '/my-applications' },
+      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/reports/submit' },
+      { key: 'submit-grievance', label: 'Submit Grievance', icon: <AlertOutlined />, path: '/submit-grievance' },
     ],
   },
 

@@ -172,4 +172,95 @@ export class FacultyController {
   ) {
     return this.facultyService.getFeedbackHistory(req.user.userId, { page, limit, studentId });
   }
+
+  // ==================== Internship Management ====================
+
+  @Get('students/:id/internships')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Get student internships' })
+  @ApiResponse({ status: 200, description: 'Student internships retrieved successfully' })
+  async getStudentInternships(@Param('id') studentId: string) {
+    return this.facultyService.getStudentInternships(studentId);
+  }
+
+  @Put('internships/:id')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Update internship application' })
+  @ApiResponse({ status: 200, description: 'Internship updated successfully' })
+  async updateInternship(@Param('id') id: string, @Body() updateDto: any, @Req() req) {
+    return this.facultyService.updateInternship(id, updateDto, req.user.userId);
+  }
+
+  @Delete('internships/:id')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Delete internship application' })
+  @ApiResponse({ status: 200, description: 'Internship deleted successfully' })
+  async deleteInternship(@Param('id') id: string, @Req() req) {
+    return this.facultyService.deleteInternship(id, req.user.userId);
+  }
+
+  // ==================== Monthly Report Actions ====================
+
+  @Put('monthly-reports/:id/approve')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Approve monthly report' })
+  @ApiResponse({ status: 200, description: 'Monthly report approved successfully' })
+  async approveMonthlyReport(@Param('id') id: string, @Body() body: any, @Req() req) {
+    return this.facultyService.approveMonthlyReport(id, body.remarks, req.user.userId);
+  }
+
+  @Put('monthly-reports/:id/reject')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Reject monthly report' })
+  @ApiResponse({ status: 200, description: 'Monthly report rejected successfully' })
+  async rejectMonthlyReport(@Param('id') id: string, @Body() body: any, @Req() req) {
+    return this.facultyService.rejectMonthlyReport(id, body.reason, req.user.userId);
+  }
+
+  @Delete('monthly-reports/:id')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Delete monthly report' })
+  @ApiResponse({ status: 200, description: 'Monthly report deleted successfully' })
+  async deleteMonthlyReport(@Param('id') id: string, @Req() req) {
+    return this.facultyService.deleteMonthlyReport(id, req.user.userId);
+  }
+
+  // ==================== Joining Letter Management ====================
+
+  @Get('joining-letters')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Get joining letters for review' })
+  @ApiResponse({ status: 200, description: 'Joining letters retrieved successfully' })
+  async getJoiningLetters(
+    @Req() req,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('status') status?: string,
+  ) {
+    return this.facultyService.getJoiningLetters(req.user.userId, { page, limit, status });
+  }
+
+  @Put('joining-letters/:id/verify')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Verify joining letter' })
+  @ApiResponse({ status: 200, description: 'Joining letter verified successfully' })
+  async verifyJoiningLetter(@Param('id') id: string, @Body() body: any, @Req() req) {
+    return this.facultyService.verifyJoiningLetter(id, body.remarks, req.user.userId);
+  }
+
+  @Put('joining-letters/:id/reject')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Reject joining letter' })
+  @ApiResponse({ status: 200, description: 'Joining letter rejected successfully' })
+  async rejectJoiningLetter(@Param('id') id: string, @Body() body: any, @Req() req) {
+    return this.facultyService.rejectJoiningLetter(id, body.reason, req.user.userId);
+  }
+
+  @Delete('joining-letters/:id')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Delete joining letter' })
+  @ApiResponse({ status: 200, description: 'Joining letter deleted successfully' })
+  async deleteJoiningLetter(@Param('id') id: string, @Req() req) {
+    return this.facultyService.deleteJoiningLetter(id, req.user.userId);
+  }
 }

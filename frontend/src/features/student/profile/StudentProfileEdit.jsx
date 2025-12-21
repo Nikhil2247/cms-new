@@ -134,7 +134,7 @@ const StudentProfileEdit = () => {
           onFinish={onFinish}
           className="mt-2"
         >
-          <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Personal Information</Divider>
+          <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Personal Information</Divider>
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
@@ -188,7 +188,7 @@ const StudentProfileEdit = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Academic Information</Divider>
+          <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Academic Information</Divider>
 
           <Row gutter={24}>
             <Col xs={24} md={12}>
@@ -230,7 +230,7 @@ const StudentProfileEdit = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Address & Contact</Divider>
+          <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Address & Contact</Divider>
 
           <Form.Item
             name="address"
@@ -277,7 +277,7 @@ const StudentProfileEdit = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Professional Information</Divider>
+          <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Professional Information</Divider>
 
           <Form.Item
             name="skills"
@@ -320,7 +320,7 @@ const StudentProfileEdit = () => {
             )}
           </Form.Item>
 
-          <Divider orientation="left" className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Social Links</Divider>
+          <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold mt-10">Social Links</Divider>
 
           <Row gutter={24}>
             <Col xs={24} md={12}>

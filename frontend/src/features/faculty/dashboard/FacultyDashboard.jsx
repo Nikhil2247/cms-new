@@ -11,6 +11,8 @@ import {
   AssignedStudentsList,
   VisitLogsCard,
   PendingApprovalsCard,
+  MonthlyReportsCard,
+  JoiningLettersCard,
 } from './components';
 
 dayjs.extend(isBetween);
@@ -209,7 +211,7 @@ const FacultyDashboard = () => {
                 loading={isLoading}
                 onViewStudent={handleViewStudent}
                 onScheduleVisit={handleNewVisit}
-                onViewAll={() => navigate('/students')}
+                onViewAll={() => navigate('/assigned-students')}
               />
             </Col>
 
@@ -220,6 +222,26 @@ const FacultyDashboard = () => {
                 loading={isLoading}
                 onCreateNew={() => handleNewVisit()}
                 onViewAll={() => navigate('/visit-logs')}
+              />
+            </Col>
+          </Row>
+
+          {/* Monthly Reports & Joining Letters */}
+          <Row gutter={[16, 16]} className="mt-4">
+            <Col xs={24} lg={12}>
+              <MonthlyReportsCard
+                reports={dashboard?.monthlyReports || []}
+                loading={isLoading}
+                onRefresh={refresh}
+                onViewAll={() => navigate('/monthly-reports')}
+              />
+            </Col>
+            <Col xs={24} lg={12}>
+              <JoiningLettersCard
+                letters={dashboard?.joiningLetters || []}
+                loading={isLoading}
+                onRefresh={refresh}
+                onViewAll={() => navigate('/joining-letters')}
               />
             </Col>
           </Row>

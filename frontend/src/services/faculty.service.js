@@ -126,6 +126,74 @@ export const facultyService = {
     const response = await API.get(url);
     return response.data;
   },
+
+  // Internship Management
+  async getStudentInternships(studentId) {
+    const response = await API.get(`/faculty/students/${studentId}/internships`);
+    return response.data;
+  },
+
+  async updateInternship(internshipId, data) {
+    const response = await API.put(`/faculty/internships/${internshipId}`, data);
+    return response.data;
+  },
+
+  async deleteInternship(internshipId) {
+    const response = await API.delete(`/faculty/internships/${internshipId}`);
+    return response.data;
+  },
+
+  // Joining Letter Management
+  async getJoiningLetters(params = {}) {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page);
+    if (params.limit) queryParams.append('limit', params.limit);
+    if (params.studentId) queryParams.append('studentId', params.studentId);
+    if (params.status) queryParams.append('status', params.status);
+
+    const queryString = queryParams.toString();
+    const url = queryString ? `/faculty/joining-letters?${queryString}` : '/faculty/joining-letters';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async verifyJoiningLetter(letterId, data) {
+    const response = await API.put(`/faculty/joining-letters/${letterId}/verify`, data);
+    return response.data;
+  },
+
+  async rejectJoiningLetter(letterId, reason) {
+    const response = await API.put(`/faculty/joining-letters/${letterId}/reject`, { reason });
+    return response.data;
+  },
+
+  async deleteJoiningLetter(letterId) {
+    const response = await API.delete(`/faculty/joining-letters/${letterId}`);
+    return response.data;
+  },
+
+  // Monthly Report Actions
+  async approveMonthlyReport(reportId, remarks) {
+    const response = await API.put(`/faculty/monthly-reports/${reportId}/approve`, { remarks });
+    return response.data;
+  },
+
+  async rejectMonthlyReport(reportId, reason) {
+    const response = await API.put(`/faculty/monthly-reports/${reportId}/reject`, { reason });
+    return response.data;
+  },
+
+  async deleteMonthlyReport(reportId) {
+    const response = await API.delete(`/faculty/monthly-reports/${reportId}`);
+    return response.data;
+  },
+
+  async downloadMonthlyReport(reportId) {
+    const response = await API.get(`/faculty/monthly-reports/${reportId}/download`, {
+      responseType: 'blob',
+    });
+    return response.data;
+  },
 };
 
 export default facultyService;

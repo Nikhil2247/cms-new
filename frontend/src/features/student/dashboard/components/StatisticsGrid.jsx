@@ -11,47 +11,41 @@ import StatCard from './StatCard';
 const StatisticsGrid = ({ stats }) => {
   const cardConfigs = [
     {
-      title: 'Applications',
+      title: 'Active Applications',
       value: stats?.totalApplications || 0,
-      active: stats?.activeApplications || 0,
       icon: <LaptopOutlined />,
-      iconBg: 'bg-purple-400',
-      description: 'Active',
+      bgClass: 'bg-purple-500/10',
+      colorClass: 'text-purple-500',
     },
     {
       title: 'Selected',
-      value: stats?.totalApplications || 0,
-      active: stats?.selectedApplications || 0,
+      value: stats?.selectedApplications || 0,
       icon: <CheckCircleOutlined />,
-      iconBg: 'bg-green-400',
-      description: 'Selected',
+      bgClass: 'bg-green-500/10',
+      colorClass: 'text-green-500',
     },
     {
-      title: 'Internships',
-      value: stats?.totalInternships || stats?.activeApplications || 0,
-      active: stats?.completedInternships || 0,
+      title: 'Completed Internships',
+      value: stats?.completedInternships || 0,
       icon: <StarOutlined />,
-      iconBg: 'bg-pink-400',
-      description: 'Completed',
+      bgClass: 'bg-pink-500/10',
+      colorClass: 'text-pink-500',
     },
     {
       title: 'Achievements',
       value: stats?.totalAchievements || 0,
-      active: stats?.earnedAchievements || 0,
       icon: <TrophyOutlined />,
-      iconBg: 'bg-cyan-400',
-      description: 'Earned',
+      bgClass: 'bg-cyan-500/10',
+      colorClass: 'text-cyan-500',
     },
   ];
 
   return (
-    <Row gutter={[16, 16]} className="mb-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       {cardConfigs.map((card, idx) => (
-        <Col key={idx} xs={24} sm={12} lg={6}>
-          <StatCard {...card} />
-        </Col>
+        <StatCard key={idx} {...card} />
       ))}
-    </Row>
+    </div>
   );
 };
 

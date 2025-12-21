@@ -13,15 +13,16 @@ export class StudentService {
   /**
    * Get student dashboard - internship status, report status
    */
-  async getDashboard(studentId: string) {
+  async getDashboard(userId: string) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
 
+    const studentId = student.id;
     const cacheKey = `student:dashboard:${studentId}`;
 
     return this.cache.getOrSet(
@@ -124,9 +125,9 @@ export class StudentService {
   /**
    * Get student profile
    */
-  async getProfile(studentId: string) {
+  async getProfile(userId: string) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
       include: {
         user: {
           select: {
@@ -173,9 +174,9 @@ export class StudentService {
   /**
    * Update student profile
    */
-  async updateProfile(studentId: string, updateProfileDto: Prisma.StudentUpdateInput) {
+  async updateProfile(userId: string, updateProfileDto: Prisma.StudentUpdateInput) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
     });
 
     if (!student) {
@@ -183,7 +184,7 @@ export class StudentService {
     }
 
     const updated = await this.prisma.student.update({
-      where: { id: studentId },
+      where: { userId },
       data: updateProfileDto,
       include: {
         user: true,
@@ -200,9 +201,9 @@ export class StudentService {
   /**
    * Upload profile image
    */
-  async uploadProfileImage(studentId: string, imageUrl: string) {
+  async uploadProfileImage(userId: string, imageUrl: string) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
     });
 
     if (!student) {
@@ -210,13 +211,13 @@ export class StudentService {
     }
 
     const updated = await this.prisma.student.update({
-      where: { id: studentId },
+      where: { userId },
       data: {
         profileImage: imageUrl,
       },
     });
 
-    await this.cache.invalidateByTags(['student', `student:${studentId}`]);
+    await this.cache.invalidateByTags(['student', `student:${student.id}`]);
 
     return {
       success: true,
@@ -228,7 +229,7 @@ export class StudentService {
   /**
    * Get available internships for student
    */
-  async getAvailableInternships(studentId: string, params: {
+  async getAvailableInternships(userId: string, params: {
     page?: number;
     limit?: number;
     search?: string;
@@ -239,8 +240,9 @@ export class StudentService {
     const skip = (page - 1) * limit;
 
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
       select: {
+        id: true,
         branchName: true,
         currentSemester: true,
       },
@@ -351,18 +353,20 @@ export class StudentService {
   /**
    * Apply for internship
    */
-  async applyToInternship(studentId: string, internshipId: string, applicationDto: {
+  async applyToInternship(userId: string, internshipId: string, applicationDto: {
     coverLetter?: string;
     resume?: string;
     additionalInfo?: string;
   }) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
+
+    const studentId = student.id;
 
     // Check if internship exists and is active
     const internship = await this.prisma.internship.findUnique({
@@ -431,14 +435,23 @@ export class StudentService {
    * Get student applications
    */
   async getApplications(
-    studentId: string,
+    userId: string,
     params: { page?: number; limit?: number; status?: string },
   ) {
     const { page = 1, limit = 10, status } = params;
     const skip = (page - 1) * limit;
 
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
     const where: Prisma.InternshipApplicationWhereInput = {
-      studentId,
+      studentId: student.id,
     };
 
     if (status) {
@@ -494,7 +507,16 @@ export class StudentService {
   /**
    * Get internship details + student's application (if any)
    */
-  async getInternshipDetails(studentId: string, internshipId: string) {
+  async getInternshipDetails(userId: string, internshipId: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
     const internship = await this.prisma.internship.findUnique({
       where: { id: internshipId },
       include: {
@@ -508,7 +530,7 @@ export class StudentService {
 
     const application = await this.prisma.internshipApplication.findFirst({
       where: {
-        studentId,
+        studentId: student.id,
         internshipId,
       },
       select: {
@@ -550,7 +572,7 @@ export class StudentService {
   /**
    * Submit self-identified internship
    */
-  async submitSelfIdentified(studentId: string, selfIdentifiedDto: {
+  async submitSelfIdentified(userId: string, selfIdentifiedDto: {
     companyName: string;
     companyAddress: string;
     companyContact?: string;
@@ -568,12 +590,14 @@ export class StudentService {
     coverLetter?: string;
   }) {
     const student = await this.prisma.student.findUnique({
-      where: { id: studentId },
+      where: { userId },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
+
+    const studentId = student.id;
 
     // Check if student already has an active internship
     const activeApplication = await this.prisma.internshipApplication.findFirst({

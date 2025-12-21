@@ -118,7 +118,7 @@ const PrincipalForm = () => {
         variant="borderless"
       >
         <Form form={form} layout="vertical" onFinish={onFinish} style={{ maxWidth: 800 }}>
-          <Divider orientation="left">Personal Information</Divider>
+          <Divider plain>Personal Information</Divider>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
@@ -177,7 +177,7 @@ const PrincipalForm = () => {
             </Col>
           </Row>
 
-          <Divider orientation="left">Professional Information</Divider>
+          <Divider plain>Professional Information</Divider>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
@@ -216,7 +216,7 @@ const PrincipalForm = () => {
 
           {!isEdit && (
             <>
-              <Divider orientation="left">Account Credentials</Divider>
+              <Divider plain>Account Credentials</Divider>
               <Row gutter={16}>
                 <Col xs={24} md={12}>
                   <Form.Item
@@ -235,7 +235,7 @@ const PrincipalForm = () => {
             </>
           )}
 
-          <Divider orientation="left">Account Settings</Divider>
+          <Divider plain>Account Settings</Divider>
 
           <Row gutter={16}>
             <Col xs={24} md={12}>

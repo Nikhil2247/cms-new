@@ -6,6 +6,7 @@ import {
   fetchVisitLogs,
   fetchProfile,
   fetchApplications,
+  fetchMonthlyReports,
   createVisitLog,
   updateVisitLog,
   deleteVisitLog,
@@ -18,6 +19,7 @@ import {
   selectVisitLogs,
   selectProfile,
   selectApplications,
+  selectMonthlyReports,
 } from '../store/facultySlice';
 
 /**
@@ -33,13 +35,15 @@ export const useFacultyDashboard = () => {
   const visitLogs = useSelector(selectVisitLogs);
   const profile = useSelector(selectProfile);
   const applications = useSelector(selectApplications);
+  const monthlyReports = useSelector(selectMonthlyReports);
 
   // Derived loading state
   const isLoading = useMemo(() => (
     dashboard.loading ||
     students.loading ||
-    visitLogs.loading
-  ), [dashboard.loading, students.loading, visitLogs.loading]);
+    visitLogs.loading ||
+    monthlyReports.loading
+  ), [dashboard.loading, students.loading, visitLogs.loading, monthlyReports.loading]);
 
   // Fetch all dashboard data
   const fetchDashboardData = useCallback((forceRefresh = false) => {
@@ -48,6 +52,7 @@ export const useFacultyDashboard = () => {
     dispatch(fetchVisitLogs({ forceRefresh }));
     dispatch(fetchProfile());
     dispatch(fetchApplications({ forceRefresh }));
+    dispatch(fetchMonthlyReports({ forceRefresh }));
   }, [dispatch]);
 
   // Initial fetch on mount
@@ -124,9 +129,14 @@ export const useFacultyDashboard = () => {
   return {
     // State
     isLoading,
-    dashboard: dashboard.stats,
+    dashboard: {
+      ...dashboard.stats,
+      monthlyReports: monthlyReports.list,
+      joiningLetters: [], // Will be populated from backend when available
+    },
     students: students.list,
     visitLogs: visitLogs.list,
+    monthlyReports: monthlyReports.list,
     mentor: profile.data,
     grievances: [], // Deprecated - use feedbackHistory instead
     applications: applications.list,
@@ -149,7 +159,7 @@ export const useFacultyDashboard = () => {
     handleReviewReport,
 
     // Errors
-    error: dashboard.error || students.error || visitLogs.error,
+    error: dashboard.error || students.error || visitLogs.error || monthlyReports.error,
   };
 };
 
