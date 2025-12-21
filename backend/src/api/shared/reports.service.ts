@@ -1,0 +1,272 @@
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { PrismaService } from '../../core/database/prisma.service';
+import { ReportBuilderService } from '../../domain/report/builder/report-builder.service';
+
+interface PaginationParams {
+  page?: number;
+  limit?: number;
+}
+
+interface GenerateReportDto {
+  type: string;
+  filters?: any;
+  format?: string;
+}
+
+@Injectable()
+export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly reportBuilderService: ReportBuilderService,
+  ) {}
+
+  /**
+   * Get report catalog based on user role
+   */
+  async getReportCatalog(userRole: string) {
+    try {
+      const catalog = this.reportBuilderService.getReportCatalog(userRole);
+
+      return {
+        reports: catalog,
+        total: catalog.length,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get report catalog for role ${userRole}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get report configuration by type
+   */
+  async getReportConfig(type: string) {
+    try {
+      const config = this.reportBuilderService.getReportConfig(type);
+
+      if (!config) {
+        throw new NotFoundException(`Report configuration not found for type: ${type}`);
+      }
+
+      return config;
+    } catch (error) {
+      this.logger.error(`Failed to get report config for type ${type}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate a report
+   */
+  async generateReport(userId: string, reportDto: GenerateReportDto) {
+    try {
+      const { type, filters = {}, format = 'pdf' } = reportDto;
+
+      // Queue the report generation
+      const result = await this.reportBuilderService.queueReportGeneration(
+        userId,
+        type,
+        filters,
+        format,
+      );
+
+      this.logger.log(`Report generation queued: ${result.reportId} for user ${userId}`);
+
+      return {
+        success: true,
+        reportId: result.reportId,
+        jobId: result.jobId,
+        message: 'Report generation initiated',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to generate report for user ${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get report status by ID
+   */
+  async getReportStatus(reportId: string, userId: string) {
+    try {
+      const report = await this.prisma.generatedReport.findUnique({
+        where: { id: reportId },
+        select: {
+          id: true,
+          reportType: true,
+          reportName: true,
+          status: true,
+          format: true,
+          fileUrl: true,
+          totalRecords: true,
+          errorMessage: true,
+          generatedAt: true,
+          generatedBy: true,
+        },
+      });
+
+      if (!report) {
+        throw new NotFoundException('Report not found');
+      }
+
+      // Verify user has access to this report
+      if (report.generatedBy !== userId) {
+        throw new NotFoundException('Report not found');
+      }
+
+      return {
+        id: report.id,
+        type: report.reportType,
+        name: report.reportName,
+        status: report.status,
+        format: report.format,
+        downloadUrl: report.fileUrl,
+        totalRecords: report.totalRecords,
+        errorMessage: report.errorMessage,
+        generatedAt: report.generatedAt,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get report status ${reportId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a report by ID (alias for status/details)
+   */
+  async getReport(userId: string, reportId: string) {
+    return this.getReportStatus(reportId, userId);
+  }
+
+  /**
+   * Download a report
+   */
+  async downloadReport(reportId: string, userId: string) {
+    try {
+      const report = await this.prisma.generatedReport.findUnique({
+        where: { id: reportId },
+        select: {
+          id: true,
+          fileUrl: true,
+          status: true,
+          generatedBy: true,
+          expiresAt: true,
+        },
+      });
+
+      if (!report) {
+        throw new NotFoundException('Report not found');
+      }
+
+      // Verify user has access to this report
+      if (report.generatedBy !== userId) {
+        throw new NotFoundException('Report not found');
+      }
+
+      // Check if report is completed
+      if (report.status !== 'completed') {
+        throw new Error('Report is not ready for download');
+      }
+
+      // Check if report has expired
+      if (report.expiresAt && new Date() > new Date(report.expiresAt)) {
+        throw new Error('Report has expired');
+      }
+
+      return {
+        url: report.fileUrl,
+        expiresAt: report.expiresAt,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to download report ${reportId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get report history for a user
+   */
+  async getReportHistory(userId: string, pagination?: PaginationParams) {
+    try {
+      const page = pagination?.page || 1;
+      const limit = pagination?.limit || 10;
+      const skip = (page - 1) * limit;
+
+      const [reports, total] = await Promise.all([
+        this.prisma.generatedReport.findMany({
+          where: { generatedBy: userId },
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: limit,
+          select: {
+            id: true,
+            reportType: true,
+            reportName: true,
+            status: true,
+            format: true,
+            fileUrl: true,
+            totalRecords: true,
+            generatedAt: true,
+            expiresAt: true,
+          },
+        }),
+        this.prisma.generatedReport.count({
+          where: { generatedBy: userId },
+        }),
+      ]);
+
+      return {
+        data: reports,
+        pagination: {
+          total,
+          page,
+          limit,
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get report history for user ${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a report from history
+   */
+  async deleteReport(reportId: string, userId: string) {
+    try {
+      const report = await this.prisma.generatedReport.findUnique({
+        where: { id: reportId },
+        select: {
+          generatedBy: true,
+        },
+      });
+
+      if (!report) {
+        throw new NotFoundException('Report not found');
+      }
+
+      // Verify user has access to this report
+      if (report.generatedBy !== userId) {
+        throw new NotFoundException('Report not found');
+      }
+
+      // Delete the report
+      await this.prisma.generatedReport.delete({
+        where: { id: reportId },
+      });
+
+      this.logger.log(`Report ${reportId} deleted by user ${userId}`);
+
+      return {
+        success: true,
+        message: 'Report deleted successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to delete report ${reportId}`, error.stack);
+      throw error;
+    }
+  }
+}

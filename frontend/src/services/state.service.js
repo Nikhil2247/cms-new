@@ -1,0 +1,240 @@
+import API from './api';
+
+/**
+ * State Service
+ * API methods for state-level operations
+ */
+export const stateService = {
+  // Dashboard
+  async getDashboard() {
+    const response = await API.get('/state/dashboard');
+    return response.data;
+  },
+
+  // Institutions
+  async getInstitutions(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/institutions?${queryParams}` : '/state/institutions';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getInstitutionById(id) {
+    const response = await API.get(`/state/institutions/${id}`);
+    return response.data;
+  },
+
+  async createInstitution(data) {
+    const response = await API.post('/state/institutions', data);
+    return response.data;
+  },
+
+  async updateInstitution(id, data) {
+    const response = await API.put(`/state/institutions/${id}`, data);
+    return response.data;
+  },
+
+  async deleteInstitution(id) {
+    const response = await API.delete(`/state/institutions/${id}`);
+    return response.data;
+  },
+
+  // Institution Details
+  async getInstitutionOverview(id) {
+    const response = await API.get(`/state/institutions/${id}/overview`);
+    return response.data;
+  },
+
+  async getInstitutionStudents(id, params = {}) {
+    // Filter out undefined/null values to prevent "undefined" strings in query
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams
+      ? `/state/institutions/${id}/students?${queryParams}`
+      : `/state/institutions/${id}/students`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getInstitutionCompanies(id, params = {}) {
+    // Filter out undefined/null values to prevent "undefined" strings in query
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams
+      ? `/state/institutions/${id}/companies?${queryParams}`
+      : `/state/institutions/${id}/companies`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Principals
+  async getPrincipals(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/principals?${queryParams}` : '/state/principals';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async createPrincipal(data) {
+    const response = await API.post('/state/principals', data);
+    return response.data;
+  },
+
+  async updatePrincipal(id, data) {
+    const response = await API.put(`/state/principals/${id}`, data);
+    return response.data;
+  },
+
+  async getPrincipalById(id) {
+    const response = await API.get(`/state/principals/${id}`);
+    return response.data;
+  },
+
+  async deletePrincipal(id) {
+    const response = await API.delete(`/state/principals/${id}`);
+    return response.data;
+  },
+
+  async resetPrincipalPassword(id) {
+    const response = await API.post(`/state/principals/${id}/reset-password`);
+    return response.data;
+  },
+
+  // Reports
+  async getReports(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/reports/institutions?${queryParams}` : '/state/reports/institutions';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async getReportById(id) {
+    const response = await API.get(`/state/reports/${id}`);
+    return response.data;
+  },
+
+  // Statistics
+  async getStatistics(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/statistics?${queryParams}` : '/state/statistics';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Top Performers
+  async getTopPerformers(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/analytics/performers?${queryParams}` : '/state/analytics/performers';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Top Industries
+  async getTopIndustries(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/analytics/industries?${queryParams}` : '/state/analytics/industries';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Monthly Stats
+  async getMonthlyAnalytics(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/analytics/monthly?${queryParams}` : '/state/analytics/monthly';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Institution Performance
+  async getInstitutionPerformance(id, params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams
+      ? `/state/analytics/institution/${id}?${queryParams}`
+      : `/state/analytics/institution/${id}`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Monthly Report Stats
+  async getMonthlyReportStats(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/analytics/reports?${queryParams}` : '/state/analytics/reports';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Analytics - Faculty Visit Stats
+  async getFacultyVisitStats(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/analytics/visits?${queryParams}` : '/state/analytics/visits';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Audit Logs
+  async getAuditLogs(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/audit-logs?${queryParams}` : '/state/audit-logs';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Placement Statistics
+  async getPlacementStats() {
+    const response = await API.get('/state/placements/stats');
+    return response.data;
+  },
+
+  async getPlacementTrends(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/placements/trends?${queryParams}` : '/state/placements/trends';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Joining Letter Stats
+  async getJoiningLetterStats() {
+    const response = await API.get('/state/joining-letters/stats');
+    return response.data;
+  },
+
+  // Industry Approvals
+  async getPendingIndustries(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/industries/pending?${queryParams}` : '/state/industries/pending';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  async approveIndustry(id, approvedBy) {
+    const response = await API.post(`/state/industries/${id}/approve`, { approvedBy });
+    return response.data;
+  },
+
+  async rejectIndustry(id, reason) {
+    const response = await API.post(`/state/industries/${id}/reject`, { reason });
+    return response.data;
+  },
+
+  // Export Dashboard Report
+  async exportDashboard(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/state/export/dashboard?${queryParams}` : '/state/export/dashboard';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Export as Blob for download
+  async exportDashboardBlob(params = {}) {
+    const queryParams = new URLSearchParams({ ...params, format: 'csv' }).toString();
+    const url = `/state/export/dashboard?${queryParams}`;
+    const response = await API.get(url, { responseType: 'blob' });
+    return response.data;
+  },
+};
+
+export default stateService;

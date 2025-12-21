@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"D:\\\\Github\\\\New folder\\\\cms\"\" && find . -type f -name \"*.js\" -o -name \"*.json\" -o -name \"*.ts \")",
+      "Bash(dir:*)",
+      "Bash(cd \"D:\\\\Github\\\\New folder\\\\cms\"\")",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(if not exist \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\src\\\\features\\\\state\\\\dashboard\\\\components\" mkdir \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\src\\\\features\\\\state\\\\dashboard\\\\components\")",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(test:*)",
+      "Bash(node -e:*)",
+      "Bash(wc -l \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\src\\\\bulk\"/**/*.ts)",
+      "Bash(find:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"taskkill /PID 24020 /F\")",
+      "Bash(cmd //c \"taskkill /PID 5872 /F\")",
+      "Bash(cmd //c \"taskkill /PID 31268 /F\")",
+      "Bash(cmd //c \"taskkill /PID 19608 /F\")",
+      "Bash(cmd //c \"taskkill /PID 26464 /F\")",
+      "Bash(curl:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run lint)",
+      "Bash(grep:*)"
+    ]
+  }
+}

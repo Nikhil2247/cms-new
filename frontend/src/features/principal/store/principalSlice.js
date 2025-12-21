@@ -1,0 +1,1032 @@
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { apiClient } from '../../../services/api';
+import { API_ENDPOINTS } from '../../../utils/constants';
+import principalService from '../../../services/principal.service';
+
+const initialState = {
+  dashboard: {
+    stats: null,
+    loading: false,
+    error: null,
+  },
+  students: {
+    list: [],
+    selected: null,
+    pagination: null,
+    loading: false,
+    error: null,
+  },
+  staff: {
+    list: [],
+    selected: null,
+    pagination: null,
+    loading: false,
+    error: null,
+  },
+  mentors: {
+    list: [],
+    loading: false,
+    error: null,
+  },
+  batches: {
+    list: [],
+    loading: false,
+    error: null,
+  },
+  departments: {
+    list: [],
+    loading: false,
+    error: null,
+  },
+  mentorAssignments: [],
+  mentorStats: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  lastFetched: {
+    dashboard: null,
+    students: null,
+    studentsKey: null,
+    staff: null,
+    staffKey: null,
+    mentors: null,
+    batches: null,
+    departments: null,
+    mentorAssignments: null,
+    mentorStats: null,
+  },
+};
+
+// Cache duration constant
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+export const fetchPrincipalDashboard = createAsyncThunk(
+  'principal/fetchDashboard',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.dashboard;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await apiClient.get(API_ENDPOINTS.PRINCIPAL_DASHBOARD);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
+    }
+  }
+);
+
+export const fetchStudents = createAsyncThunk(
+  'principal/fetchStudents',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.students;
+
+      // Normalize params into a stable key for param-aware caching
+      const normalizedParams = {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 10,
+        search: params?.search ?? '',
+        batchId: params?.batchId ?? '',
+        branchId: params?.branchId ?? '',
+        department: params?.department ?? '',
+        year: params?.year ?? '',
+        status: params?.status ?? '',
+        isActive: typeof params?.isActive === 'boolean' ? String(params.isActive) : '',
+        hasMentor: params?.hasMentor ?? '',
+      };
+      const requestKey = JSON.stringify(normalizedParams);
+      const lastKey = state.principal.lastFetched.studentsKey;
+
+      if (
+        lastFetched &&
+        !params?.forceRefresh &&
+        lastKey === requestKey &&
+        (Date.now() - lastFetched) < CACHE_DURATION
+      ) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getStudents(params);
+      return { ...response, _cacheKey: requestKey };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch students');
+    }
+  }
+);
+
+export const fetchStaff = createAsyncThunk(
+  'principal/fetchStaff',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.staff;
+
+      // Normalize params into a stable key for param-aware caching
+      const normalizedParams = {
+        page: params?.page ?? 1,
+        limit: params?.limit ?? 10,
+        search: params?.search ?? '',
+        role: params?.role ?? '',
+        department: params?.department ?? '',
+      };
+      const requestKey = JSON.stringify(normalizedParams);
+      const lastKey = state.principal.lastFetched.staffKey;
+
+      if (
+        lastFetched &&
+        !params?.forceRefresh &&
+        lastKey === requestKey &&
+        (Date.now() - lastFetched) < CACHE_DURATION
+      ) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getStaff(params);
+      return { ...response, _cacheKey: requestKey };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch staff');
+    }
+  }
+);
+
+export const fetchMentors = createAsyncThunk(
+  'principal/fetchMentors',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.mentors;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getMentors(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch mentors');
+    }
+  }
+);
+
+export const fetchBatches = createAsyncThunk(
+  'principal/fetchBatches',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.batches;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await apiClient.get('/principal/batches');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch batches');
+    }
+  }
+);
+
+export const fetchDepartments = createAsyncThunk(
+  'principal/fetchDepartments',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.departments;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      // Fetch branches/departments from institution
+      const response = await apiClient.get('/principal/subjects');
+      // Extract unique branches as departments
+      const subjects = response.data?.data || response.data || [];
+      const branches = [...new Set(subjects.map(s => s.branch).filter(Boolean))];
+      return { data: branches.map(b => ({ id: b, name: b })) };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch departments');
+    }
+  }
+);
+
+// Student CRUD
+export const createStudent = createAsyncThunk(
+  'principal/createStudent',
+  async (studentData, { rejectWithValue }) => {
+    try {
+      const response = await principalService.createStudent(studentData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create student');
+    }
+  }
+);
+
+export const updateStudent = createAsyncThunk(
+  'principal/updateStudent',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.updateStudent(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update student');
+    }
+  }
+);
+
+export const deleteStudent = createAsyncThunk(
+  'principal/deleteStudent',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await principalService.deleteStudent(id);
+      return { id, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete student');
+    }
+  }
+);
+
+export const bulkUploadStudents = createAsyncThunk(
+  'principal/bulkUploadStudents',
+  async (file, { rejectWithValue }) => {
+    try {
+      const response = await principalService.bulkUploadStudents(file);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to bulk upload students');
+    }
+  }
+);
+
+export const bulkUploadStaff = createAsyncThunk(
+  'principal/bulkUploadStaff',
+  async (file, { rejectWithValue }) => {
+    try {
+      const response = await principalService.bulkUploadStaff(file);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to bulk upload staff');
+    }
+  }
+);
+
+export const downloadTemplate = createAsyncThunk(
+  'principal/downloadTemplate',
+  async (type, { rejectWithValue }) => {
+    try {
+      const response = await principalService.downloadTemplate(type);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to download template');
+    }
+  }
+);
+
+// Staff CRUD
+export const createStaff = createAsyncThunk(
+  'principal/createStaff',
+  async (staffData, { rejectWithValue }) => {
+    try {
+      const response = await principalService.createStaff(staffData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create staff');
+    }
+  }
+);
+
+export const updateStaff = createAsyncThunk(
+  'principal/updateStaff',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.updateStaff(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update staff');
+    }
+  }
+);
+
+export const deleteStaff = createAsyncThunk(
+  'principal/deleteStaff',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await principalService.deleteStaff(id);
+      return { id, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete staff');
+    }
+  }
+);
+
+// Mentor assignments
+export const assignMentor = createAsyncThunk(
+  'principal/assignMentor',
+  async (data, { rejectWithValue }) => {
+    // data should contain: { mentorId, studentIds, academicYear, semester?, reason?, notes? }
+    try {
+      const response = await principalService.assignMentor(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to assign mentor');
+    }
+  }
+);
+
+export const removeMentorAssignment = createAsyncThunk(
+  'principal/removeMentorAssignment',
+  async ({ studentId }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.delete(`/principal/students/${studentId}/mentor`);
+      return { studentId, ...response.data };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to remove mentor assignment');
+    }
+  }
+);
+
+export const fetchMentorStats = createAsyncThunk(
+  'principal/fetchMentorStats',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.mentorStats;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await apiClient.get('/principal/mentors/stats');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch mentor stats');
+    }
+  }
+);
+
+export const bulkUnassignMentors = createAsyncThunk(
+  'principal/bulkUnassignMentors',
+  async ({ studentIds }, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.post('/principal/mentors/bulk-unassign', { studentIds });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to bulk unassign mentors');
+    }
+  }
+);
+
+export const autoAssignMentors = createAsyncThunk(
+  'principal/autoAssignMentors',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.post('/principal/mentors/auto-assign');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to auto-assign mentors');
+    }
+  }
+);
+
+export const fetchMentorAssignments = createAsyncThunk(
+  'principal/fetchMentorAssignments',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.mentorAssignments;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getMentorAssignments(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch mentor assignments');
+    }
+  }
+);
+
+// Force refresh thunks - bypass cache
+export const forceRefreshDashboard = createAsyncThunk(
+  'principal/forceRefreshDashboard',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await apiClient.get(API_ENDPOINTS.PRINCIPAL_DASHBOARD);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to refresh dashboard');
+    }
+  }
+);
+
+export const forceRefreshStudents = createAsyncThunk(
+  'principal/forceRefreshStudents',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await principalService.getStudents(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to refresh students');
+    }
+  }
+);
+
+export const forceRefreshStaff = createAsyncThunk(
+  'principal/forceRefreshStaff',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await principalService.getStaff(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to refresh staff');
+    }
+  }
+);
+
+const principalSlice = createSlice({
+  name: 'principal',
+  initialState,
+  reducers: {
+    // Selection reducers
+    setSelectedStudent: (state, action) => {
+      state.students.selected = action.payload;
+    },
+    setSelectedStaff: (state, action) => {
+      state.staff.selected = action.payload;
+    },
+    clearSelectedStudent: (state) => {
+      state.students.selected = null;
+    },
+    clearSelectedStaff: (state) => {
+      state.staff.selected = null;
+    },
+
+    // Error clearing
+    clearPrincipalError: (state) => {
+      state.dashboard.error = null;
+      state.students.error = null;
+      state.staff.error = null;
+      state.mentors.error = null;
+      state.batches.error = null;
+      state.departments.error = null;
+    },
+
+    // Cache invalidation
+    markAllDataStale: (state) => {
+      state.lastFetched.dashboard = 0;
+      state.lastFetched.students = 0;
+      state.lastFetched.studentsKey = null;
+      state.lastFetched.staff = 0;
+      state.lastFetched.staffKey = null;
+      state.lastFetched.mentors = 0;
+      state.lastFetched.batches = 0;
+      state.lastFetched.departments = 0;
+      state.lastFetched.mentorAssignments = 0;
+    },
+
+    // Reset slice
+    resetPrincipalSlice: () => initialState,
+
+    // Optimistic update reducers for students
+    optimisticallyAddStudent: (state, action) => {
+      const tempStudent = {
+        ...action.payload,
+        id: `temp_${Date.now()}`,
+        _isOptimistic: true,
+      };
+      state.students.list.unshift(tempStudent);
+    },
+    optimisticallyUpdateStudent: (state, action) => {
+      const { id, data } = action.payload;
+      const index = state.students.list.findIndex(s => s.id === id);
+      if (index !== -1) {
+        state.students.list[index] = {
+          ...state.students.list[index],
+          ...data,
+          _isOptimistic: true,
+        };
+      }
+    },
+    optimisticallyDeleteStudent: (state, action) => {
+      state.students.list = state.students.list.filter(s => s.id !== action.payload);
+    },
+    rollbackStudentOperation: (state, action) => {
+      if (action.payload?.list) {
+        state.students.list = action.payload.list;
+      }
+    },
+
+    // Optimistic update reducers for staff
+    optimisticallyAddStaff: (state, action) => {
+      const tempStaff = {
+        ...action.payload,
+        id: `temp_${Date.now()}`,
+        _isOptimistic: true,
+      };
+      state.staff.list.unshift(tempStaff);
+    },
+    optimisticallyUpdateStaff: (state, action) => {
+      const { id, data } = action.payload;
+      const index = state.staff.list.findIndex(s => s.id === id);
+      if (index !== -1) {
+        state.staff.list[index] = {
+          ...state.staff.list[index],
+          ...data,
+          _isOptimistic: true,
+        };
+      }
+    },
+    optimisticallyDeleteStaff: (state, action) => {
+      state.staff.list = state.staff.list.filter(s => s.id !== action.payload);
+    },
+    rollbackStaffOperation: (state, action) => {
+      if (action.payload?.list) {
+        state.staff.list = action.payload.list;
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Dashboard
+      .addCase(fetchPrincipalDashboard.pending, (state) => {
+        state.dashboard.loading = true;
+        state.dashboard.error = null;
+      })
+      .addCase(fetchPrincipalDashboard.fulfilled, (state, action) => {
+        state.dashboard.loading = false;
+        if (!action.payload.cached) {
+          state.dashboard.stats = action.payload;
+          state.lastFetched.dashboard = Date.now();
+        }
+      })
+      .addCase(fetchPrincipalDashboard.rejected, (state, action) => {
+        state.dashboard.loading = false;
+        state.dashboard.error = action.payload;
+      })
+
+      // Students
+      .addCase(fetchStudents.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(fetchStudents.fulfilled, (state, action) => {
+        state.students.loading = false;
+        if (!action.payload.cached) {
+          state.students.list = action.payload.data || action.payload;
+          // Extract pagination from root level of response
+          state.students.pagination = {
+            total: action.payload.total || 0,
+            page: action.payload.page || 1,
+            limit: action.payload.limit || 10,
+            totalPages: action.payload.totalPages || 1,
+          };
+          state.lastFetched.students = Date.now();
+          state.lastFetched.studentsKey = action.payload._cacheKey ?? null;
+        }
+      })
+      .addCase(fetchStudents.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(createStudent.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(createStudent.fulfilled, (state, action) => {
+        state.students.loading = false;
+        // Remove optimistic entry if exists
+        state.students.list = state.students.list.filter(s => !s._isOptimistic);
+        state.students.list.unshift(action.payload);
+        state.lastFetched.students = Date.now();
+      })
+      .addCase(createStudent.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+        // Remove optimistic entry on failure
+        state.students.list = state.students.list.filter(s => !s._isOptimistic);
+      })
+      .addCase(updateStudent.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(updateStudent.fulfilled, (state, action) => {
+        state.students.loading = false;
+        const index = state.students.list.findIndex(s => s.id === action.payload.id);
+        if (index !== -1) {
+          state.students.list[index] = action.payload;
+        }
+        state.lastFetched.students = Date.now();
+      })
+      .addCase(updateStudent.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(deleteStudent.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(deleteStudent.fulfilled, (state, action) => {
+        state.students.loading = false;
+        state.students.list = state.students.list.filter(s => s.id !== action.payload.id);
+        state.lastFetched.students = Date.now();
+      })
+      .addCase(deleteStudent.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(bulkUploadStudents.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(bulkUploadStudents.fulfilled, (state) => {
+        state.students.loading = false;
+        // Invalidate cache to trigger refresh
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+      })
+      .addCase(bulkUploadStudents.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(bulkUploadStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(bulkUploadStaff.fulfilled, (state) => {
+        state.staff.loading = false;
+        // Invalidate cache to trigger refresh
+        state.lastFetched.staff = null;
+        state.lastFetched.staffKey = null;
+      })
+      .addCase(bulkUploadStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      })
+
+      // Staff
+      .addCase(fetchStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(fetchStaff.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        if (!action.payload.cached) {
+          state.staff.list = action.payload.data || action.payload;
+          // Extract pagination from root level of response
+          state.staff.pagination = {
+            total: action.payload.total || 0,
+            page: action.payload.page || 1,
+            limit: action.payload.limit || 10,
+            totalPages: action.payload.totalPages || 1,
+          };
+          state.lastFetched.staff = Date.now();
+          state.lastFetched.staffKey = action.payload._cacheKey ?? null;
+        }
+      })
+      .addCase(fetchStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      })
+      .addCase(createStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(createStaff.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        // Remove optimistic entry if exists
+        state.staff.list = state.staff.list.filter(s => !s._isOptimistic);
+        state.staff.list.unshift(action.payload);
+        state.lastFetched.staff = Date.now();
+      })
+      .addCase(createStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+        // Remove optimistic entry on failure
+        state.staff.list = state.staff.list.filter(s => !s._isOptimistic);
+      })
+      .addCase(updateStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(updateStaff.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        const index = state.staff.list.findIndex(s => s.id === action.payload.id);
+        if (index !== -1) {
+          state.staff.list[index] = action.payload;
+        }
+        state.lastFetched.staff = Date.now();
+      })
+      .addCase(updateStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      })
+      .addCase(deleteStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(deleteStaff.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        state.staff.list = state.staff.list.filter(s => s.id !== action.payload.id);
+        state.lastFetched.staff = Date.now();
+      })
+      .addCase(deleteStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      })
+
+      // Mentors
+      .addCase(fetchMentors.pending, (state) => {
+        state.mentors.loading = true;
+        state.mentors.error = null;
+      })
+      .addCase(fetchMentors.fulfilled, (state, action) => {
+        state.mentors.loading = false;
+        if (!action.payload.cached) {
+          state.mentors.list = action.payload.data || action.payload;
+          state.lastFetched.mentors = Date.now();
+        }
+      })
+      .addCase(fetchMentors.rejected, (state, action) => {
+        state.mentors.loading = false;
+        state.mentors.error = action.payload;
+      })
+      .addCase(assignMentor.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(assignMentor.fulfilled, (state, action) => {
+        state.students.loading = false;
+        // Invalidate cache to trigger refresh
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+        state.lastFetched.mentorAssignments = null;
+      })
+      .addCase(assignMentor.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(removeMentorAssignment.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(removeMentorAssignment.fulfilled, (state, action) => {
+        state.students.loading = false;
+        // Remove from mentorAssignments
+        state.mentorAssignments = state.mentorAssignments.filter(
+          a => a.studentId !== action.payload.studentId
+        );
+        // Invalidate cache to trigger refresh
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+        state.lastFetched.mentorAssignments = null;
+        state.lastFetched.mentorStats = null;
+      })
+      .addCase(removeMentorAssignment.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+
+      // Mentor Stats
+      .addCase(fetchMentorStats.pending, (state) => {
+        state.mentorStats.loading = true;
+        state.mentorStats.error = null;
+      })
+      .addCase(fetchMentorStats.fulfilled, (state, action) => {
+        state.mentorStats.loading = false;
+        if (!action.payload.cached) {
+          state.mentorStats.data = action.payload;
+          state.lastFetched.mentorStats = Date.now();
+        }
+      })
+      .addCase(fetchMentorStats.rejected, (state, action) => {
+        state.mentorStats.loading = false;
+        state.mentorStats.error = action.payload;
+      })
+
+      // Bulk Unassign Mentors
+      .addCase(bulkUnassignMentors.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(bulkUnassignMentors.fulfilled, (state) => {
+        state.students.loading = false;
+        // Invalidate cache to trigger refresh
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+        state.lastFetched.mentorAssignments = null;
+        state.lastFetched.mentorStats = null;
+      })
+      .addCase(bulkUnassignMentors.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+
+      // Auto Assign Mentors
+      .addCase(autoAssignMentors.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(autoAssignMentors.fulfilled, (state) => {
+        state.students.loading = false;
+        // Invalidate cache to trigger refresh
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+        state.lastFetched.mentorAssignments = null;
+        state.lastFetched.mentorStats = null;
+      })
+      .addCase(autoAssignMentors.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+
+      // Mentor Assignments
+      .addCase(fetchMentorAssignments.pending, (state) => {
+        state.mentors.loading = true;
+        state.mentors.error = null;
+      })
+      .addCase(fetchMentorAssignments.fulfilled, (state, action) => {
+        state.mentors.loading = false;
+        if (!action.payload.cached) {
+          state.mentorAssignments = action.payload.data || action.payload || [];
+          state.lastFetched.mentorAssignments = Date.now();
+        }
+      })
+      .addCase(fetchMentorAssignments.rejected, (state, action) => {
+        state.mentors.loading = false;
+        state.mentors.error = action.payload;
+      })
+
+      // Batches
+      .addCase(fetchBatches.pending, (state) => {
+        state.batches.loading = true;
+        state.batches.error = null;
+      })
+      .addCase(fetchBatches.fulfilled, (state, action) => {
+        state.batches.loading = false;
+        if (!action.payload.cached) {
+          state.batches.list = action.payload.data || action.payload || [];
+          state.lastFetched.batches = Date.now();
+        }
+      })
+      .addCase(fetchBatches.rejected, (state, action) => {
+        state.batches.loading = false;
+        state.batches.error = action.payload;
+      })
+
+      // Departments
+      .addCase(fetchDepartments.pending, (state) => {
+        state.departments.loading = true;
+        state.departments.error = null;
+      })
+      .addCase(fetchDepartments.fulfilled, (state, action) => {
+        state.departments.loading = false;
+        if (!action.payload.cached) {
+          state.departments.list = action.payload.data || action.payload || [];
+          state.lastFetched.departments = Date.now();
+        }
+      })
+      .addCase(fetchDepartments.rejected, (state, action) => {
+        state.departments.loading = false;
+        state.departments.error = action.payload;
+      })
+
+      // Force Refresh thunks
+      .addCase(forceRefreshDashboard.pending, (state) => {
+        state.dashboard.loading = true;
+        state.dashboard.error = null;
+      })
+      .addCase(forceRefreshDashboard.fulfilled, (state, action) => {
+        state.dashboard.loading = false;
+        state.dashboard.stats = action.payload;
+        state.lastFetched.dashboard = Date.now();
+      })
+      .addCase(forceRefreshDashboard.rejected, (state, action) => {
+        state.dashboard.loading = false;
+        state.dashboard.error = action.payload;
+      })
+      .addCase(forceRefreshStudents.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(forceRefreshStudents.fulfilled, (state, action) => {
+        state.students.loading = false;
+        state.students.list = action.payload.data || action.payload;
+        state.students.pagination = {
+          total: action.payload.total || 0,
+          page: action.payload.page || 1,
+          limit: action.payload.limit || 10,
+          totalPages: action.payload.totalPages || 1,
+        };
+        state.lastFetched.students = Date.now();
+      })
+      .addCase(forceRefreshStudents.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+      .addCase(forceRefreshStaff.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(forceRefreshStaff.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        state.staff.list = action.payload.data || action.payload;
+        state.staff.pagination = {
+          total: action.payload.total || 0,
+          page: action.payload.page || 1,
+          limit: action.payload.limit || 10,
+          totalPages: action.payload.totalPages || 1,
+        };
+        state.lastFetched.staff = Date.now();
+      })
+      .addCase(forceRefreshStaff.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      });
+  },
+});
+
+export const {
+  // Selection
+  setSelectedStudent,
+  setSelectedStaff,
+  clearSelectedStudent,
+  clearSelectedStaff,
+  // Error clearing
+  clearPrincipalError,
+  // Cache invalidation
+  markAllDataStale,
+  // Reset
+  resetPrincipalSlice,
+  // Student optimistic updates
+  optimisticallyAddStudent,
+  optimisticallyUpdateStudent,
+  optimisticallyDeleteStudent,
+  rollbackStudentOperation,
+  // Staff optimistic updates
+  optimisticallyAddStaff,
+  optimisticallyUpdateStaff,
+  optimisticallyDeleteStaff,
+  rollbackStaffOperation,
+} = principalSlice.actions;
+
+// ============= SELECTORS =============
+
+// Dashboard selectors
+export const selectDashboardStats = (state) => state.principal.dashboard.stats;
+export const selectDashboardLoading = (state) => state.principal.dashboard.loading;
+export const selectDashboardError = (state) => state.principal.dashboard.error;
+
+// Student selectors
+export const selectStudents = (state) => state.principal.students.list;
+export const selectStudentsPagination = (state) => state.principal.students.pagination;
+export const selectStudentsLoading = (state) => state.principal.students.loading;
+export const selectStudentsError = (state) => state.principal.students.error;
+export const selectSelectedStudent = (state) => state.principal.students.selected;
+
+// Staff selectors
+export const selectStaff = (state) => state.principal.staff.list;
+export const selectStaffPagination = (state) => state.principal.staff.pagination;
+export const selectStaffLoading = (state) => state.principal.staff.loading;
+export const selectStaffError = (state) => state.principal.staff.error;
+export const selectSelectedStaff = (state) => state.principal.staff.selected;
+
+// Mentor selectors
+export const selectMentors = (state) => state.principal.mentors.list;
+export const selectMentorsLoading = (state) => state.principal.mentors.loading;
+export const selectMentorAssignments = (state) => state.principal.mentorAssignments;
+export const selectMentorStats = (state) => state.principal.mentorStats.data;
+export const selectMentorStatsLoading = (state) => state.principal.mentorStats.loading;
+
+// Batch selectors
+export const selectBatches = (state) => state.principal.batches.list;
+export const selectBatchesLoading = (state) => state.principal.batches.loading;
+
+// Department selectors
+export const selectDepartments = (state) => state.principal.departments.list;
+export const selectDepartmentsLoading = (state) => state.principal.departments.loading;
+
+// Last fetched selectors
+export const selectLastFetched = (state) => state.principal.lastFetched;
+export const selectMostRecentFetch = (state) => {
+  const timestamps = Object.values(state.principal.lastFetched).filter(t => typeof t === 'number');
+  return timestamps.length > 0 ? Math.max(...timestamps) : null;
+};
+
+// Combined loading selector
+export const selectAnyLoading = (state) =>
+  state.principal.dashboard.loading ||
+  state.principal.students.loading ||
+  state.principal.staff.loading ||
+  state.principal.mentors.loading ||
+  state.principal.batches.loading ||
+  state.principal.departments.loading;
+
+export default principalSlice.reducer;
