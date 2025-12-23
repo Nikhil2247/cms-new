@@ -6,3 +6,4 @@ export { default as TopPerformers } from './TopPerformers';
 export { default as TopIndustriesList } from './TopIndustriesList';
 export { default as InstituteSidePanel } from './InstituteSidePanel';
 export { default as InstituteDetailView } from './InstituteDetailView';
+export { default as JoiningLetterTracker } from './JoiningLetterTracker';

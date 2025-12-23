@@ -311,27 +311,138 @@ export class StateReportService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
-          // Only count self-identified internships
-          const [total, pending, approved, rejected] = await Promise.all([
-            this.prisma.internshipApplication.count({
-              where: { isSelfIdentified: true, joiningLetterUrl: { not: null } },
+          // Get all self-identified applications - use single query to avoid MongoDB count query issues
+          const applications = await this.prisma.internshipApplication.findMany({
+            where: { isSelfIdentified: true },
+            select: {
+              joiningLetterUrl: true,
+              hasJoined: true,
+              reviewedBy: true,
+              student: {
+                select: {
+                  institutionId: true,
+                  Institution: {
+                    select: { id: true, name: true, code: true },
+                  },
+                },
+              },
+            },
+          });
+
+          // Aggregate by institution
+          const institutionMap = new Map<string, {
+            institutionId: string;
+            institutionName: string;
+            institutionCode: string;
+            total: number;
+            noLetter: number;
+            pendingReview: number;
+            verified: number;
+            rejected: number;
+          }>();
+
+          for (const app of applications) {
+            const instId = app.student.institutionId;
+            const inst = app.student.Institution;
+
+            if (!institutionMap.has(instId)) {
+              institutionMap.set(instId, {
+                institutionId: instId,
+                institutionName: inst?.name || 'Unknown',
+                institutionCode: inst?.code || '',
+                total: 0,
+                noLetter: 0,
+                pendingReview: 0,
+                verified: 0,
+                rejected: 0,
+              });
+            }
+
+            const stats = institutionMap.get(instId)!;
+            stats.total++;
+
+            // Check for no letter: null, undefined, or empty string
+            const hasNoLetter = !app.joiningLetterUrl || app.joiningLetterUrl === '';
+            if (hasNoLetter) {
+              stats.noLetter++;
+            } else if (app.hasJoined) {
+              stats.verified++;
+            } else if (app.reviewedBy) {
+              stats.rejected++;
+            } else {
+              stats.pendingReview++;
+            }
+          }
+
+          const institutionBreakdown = Array.from(institutionMap.values())
+            .sort((a, b) => b.total - a.total);
+
+          // Calculate summary totals from institution breakdown (more reliable than count queries with MongoDB)
+          const summaryTotals = institutionBreakdown.reduce(
+            (acc, inst) => ({
+              total: acc.total + inst.total,
+              noLetter: acc.noLetter + inst.noLetter,
+              pendingReview: acc.pendingReview + inst.pendingReview,
+              verified: acc.verified + inst.verified,
+              rejected: acc.rejected + inst.rejected,
             }),
-            this.prisma.internshipApplication.count({
-              where: { isSelfIdentified: true, joiningLetterUrl: null },
-            }),
-            this.prisma.internshipApplication.count({
-              where: { isSelfIdentified: true, joiningLetterUrl: { not: null } },
-            }),
-            this.prisma.internshipApplication.count({
-              where: { isSelfIdentified: true, joiningLetterUrl: null },
-            }),
-          ]);
+            { total: 0, noLetter: 0, pendingReview: 0, verified: 0, rejected: 0 }
+          );
+
+          // Get recent activity (last 10 verifications/rejections)
+          const recentActivity = await this.prisma.internshipApplication.findMany({
+            where: {
+              isSelfIdentified: true,
+              joiningLetterUrl: { not: null },
+              reviewedAt: { not: null },
+            },
+            select: {
+              id: true,
+              hasJoined: true,
+              reviewedAt: true,
+              reviewedBy: true,
+              reviewRemarks: true,
+              student: {
+                select: {
+                  name: true,
+                  rollNumber: true,
+                  Institution: {
+                    select: { name: true, code: true },
+                  },
+                },
+              },
+              companyName: true,
+            },
+            orderBy: { reviewedAt: 'desc' },
+            take: 10,
+          });
+
+          const { total, noLetter, pendingReview, verified, rejected } = summaryTotals;
+          const uploaded = pendingReview + verified + rejected;
 
           return {
-            total,
-            uploaded: approved,
-            missing: pending,
-            uploadRate: total > 0 ? (approved / total) * 100 : 0,
+            summary: {
+              total,
+              noLetter,
+              pendingReview,
+              verified,
+              rejected,
+              uploaded,
+              verificationRate: uploaded > 0 ? Math.round((verified / uploaded) * 100) : 0,
+              uploadRate: total > 0 ? Math.round((uploaded / total) * 100) : 0,
+            },
+            byInstitution: institutionBreakdown,
+            recentActivity: recentActivity.map(a => ({
+              id: a.id,
+              action: a.hasJoined ? 'VERIFIED' : 'REJECTED',
+              studentName: a.student.name,
+              rollNumber: a.student.rollNumber,
+              institutionName: a.student.Institution?.name,
+              companyName: a.companyName,
+              reviewedAt: a.reviewedAt,
+              reviewedBy: a.reviewedBy,
+              remarks: a.reviewRemarks,
+            })),
           };
         },
         this.CACHE_TTL,

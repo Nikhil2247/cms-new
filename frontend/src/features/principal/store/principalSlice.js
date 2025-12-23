@@ -44,6 +44,41 @@ const initialState = {
     loading: false,
     error: null,
   },
+  mentorCoverage: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  complianceMetrics: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  alertsEnhanced: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  joiningLetters: {
+    stats: null,
+    list: [],
+    activity: [],
+    pagination: null,
+    loading: false,
+    statsLoading: false,
+    activityLoading: false,
+    error: null,
+  },
+  internshipStats: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  facultyWorkload: {
+    list: [],
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     dashboard: null,
     students: null,
@@ -55,6 +90,14 @@ const initialState = {
     departments: null,
     mentorAssignments: null,
     mentorStats: null,
+    mentorCoverage: null,
+    complianceMetrics: null,
+    alertsEnhanced: null,
+    joiningLetterStats: null,
+    joiningLetters: null,
+    joiningLetterActivity: null,
+    internshipStats: null,
+    facultyWorkload: null,
   },
 };
 
@@ -447,6 +490,181 @@ export const forceRefreshStaff = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to refresh staff');
+    }
+  }
+);
+
+// Mentor Coverage thunk
+export const fetchMentorCoverage = createAsyncThunk(
+  'principal/fetchMentorCoverage',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.mentorCoverage;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getMentorCoverage();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch mentor coverage');
+    }
+  }
+);
+
+// Compliance Metrics thunk
+export const fetchComplianceMetrics = createAsyncThunk(
+  'principal/fetchComplianceMetrics',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.complianceMetrics;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getComplianceMetrics();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch compliance metrics');
+    }
+  }
+);
+
+// Alerts Enhanced thunk
+export const fetchAlertsEnhanced = createAsyncThunk(
+  'principal/fetchAlertsEnhanced',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.alertsEnhanced;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getAlertsEnhanced();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch enhanced alerts');
+    }
+  }
+);
+
+// Joining Letter Thunks
+export const fetchJoiningLetterStats = createAsyncThunk(
+  'principal/fetchJoiningLetterStats',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.joiningLetterStats;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getJoiningLetterStats();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch joining letter stats');
+    }
+  }
+);
+
+export const fetchJoiningLetters = createAsyncThunk(
+  'principal/fetchJoiningLetters',
+  async (params = {}, { rejectWithValue }) => {
+    try {
+      const response = await principalService.getJoiningLetters(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch joining letters');
+    }
+  }
+);
+
+export const fetchJoiningLetterActivity = createAsyncThunk(
+  'principal/fetchJoiningLetterActivity',
+  async (limit = 10, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.joiningLetterActivity;
+
+      if (lastFetched && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getJoiningLetterActivity(limit);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch joining letter activity');
+    }
+  }
+);
+
+export const verifyJoiningLetter = createAsyncThunk(
+  'principal/verifyJoiningLetter',
+  async ({ applicationId, data }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.verifyJoiningLetter(applicationId, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to verify joining letter');
+    }
+  }
+);
+
+export const rejectJoiningLetter = createAsyncThunk(
+  'principal/rejectJoiningLetter',
+  async ({ applicationId, remarks }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.rejectJoiningLetter(applicationId, remarks);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reject joining letter');
+    }
+  }
+);
+
+// Internship Stats Thunk (with company details)
+export const fetchInternshipStats = createAsyncThunk(
+  'principal/fetchInternshipStats',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.internshipStats;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getInternshipStats();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch internship stats');
+    }
+  }
+);
+
+// Faculty Workload Thunk
+export const fetchFacultyWorkload = createAsyncThunk(
+  'principal/fetchFacultyWorkload',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.facultyWorkload;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getFacultyProgress(params);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch faculty workload');
     }
   }
 );
@@ -949,6 +1167,155 @@ const principalSlice = createSlice({
       .addCase(forceRefreshStaff.rejected, (state, action) => {
         state.staff.loading = false;
         state.staff.error = action.payload;
+      })
+
+      // Mentor Coverage
+      .addCase(fetchMentorCoverage.pending, (state) => {
+        state.mentorCoverage.loading = true;
+        state.mentorCoverage.error = null;
+      })
+      .addCase(fetchMentorCoverage.fulfilled, (state, action) => {
+        state.mentorCoverage.loading = false;
+        if (!action.payload.cached) {
+          state.mentorCoverage.data = action.payload;
+          state.lastFetched.mentorCoverage = Date.now();
+        }
+      })
+      .addCase(fetchMentorCoverage.rejected, (state, action) => {
+        state.mentorCoverage.loading = false;
+        state.mentorCoverage.error = action.payload;
+      })
+
+      // Compliance Metrics
+      .addCase(fetchComplianceMetrics.pending, (state) => {
+        state.complianceMetrics.loading = true;
+        state.complianceMetrics.error = null;
+      })
+      .addCase(fetchComplianceMetrics.fulfilled, (state, action) => {
+        state.complianceMetrics.loading = false;
+        if (!action.payload.cached) {
+          state.complianceMetrics.data = action.payload;
+          state.lastFetched.complianceMetrics = Date.now();
+        }
+      })
+      .addCase(fetchComplianceMetrics.rejected, (state, action) => {
+        state.complianceMetrics.loading = false;
+        state.complianceMetrics.error = action.payload;
+      })
+
+      // Alerts Enhanced
+      .addCase(fetchAlertsEnhanced.pending, (state) => {
+        state.alertsEnhanced.loading = true;
+        state.alertsEnhanced.error = null;
+      })
+      .addCase(fetchAlertsEnhanced.fulfilled, (state, action) => {
+        state.alertsEnhanced.loading = false;
+        if (!action.payload.cached) {
+          state.alertsEnhanced.data = action.payload;
+          state.lastFetched.alertsEnhanced = Date.now();
+        }
+      })
+      .addCase(fetchAlertsEnhanced.rejected, (state, action) => {
+        state.alertsEnhanced.loading = false;
+        state.alertsEnhanced.error = action.payload;
+      })
+      // Joining Letter Stats
+      .addCase(fetchJoiningLetterStats.pending, (state) => {
+        state.joiningLetters.statsLoading = true;
+        state.joiningLetters.error = null;
+      })
+      .addCase(fetchJoiningLetterStats.fulfilled, (state, action) => {
+        state.joiningLetters.statsLoading = false;
+        if (!action.payload.cached) {
+          state.joiningLetters.stats = action.payload;
+          state.lastFetched.joiningLetterStats = Date.now();
+        }
+      })
+      .addCase(fetchJoiningLetterStats.rejected, (state, action) => {
+        state.joiningLetters.statsLoading = false;
+        state.joiningLetters.error = action.payload;
+      })
+      // Joining Letters List
+      .addCase(fetchJoiningLetters.pending, (state) => {
+        state.joiningLetters.loading = true;
+        state.joiningLetters.error = null;
+      })
+      .addCase(fetchJoiningLetters.fulfilled, (state, action) => {
+        state.joiningLetters.loading = false;
+        state.joiningLetters.list = action.payload.data || [];
+        state.joiningLetters.pagination = action.payload.pagination;
+        state.lastFetched.joiningLetters = Date.now();
+      })
+      .addCase(fetchJoiningLetters.rejected, (state, action) => {
+        state.joiningLetters.loading = false;
+        state.joiningLetters.error = action.payload;
+      })
+      // Joining Letter Activity
+      .addCase(fetchJoiningLetterActivity.pending, (state) => {
+        state.joiningLetters.activityLoading = true;
+      })
+      .addCase(fetchJoiningLetterActivity.fulfilled, (state, action) => {
+        state.joiningLetters.activityLoading = false;
+        if (!action.payload.cached) {
+          state.joiningLetters.activity = action.payload;
+          state.lastFetched.joiningLetterActivity = Date.now();
+        }
+      })
+      .addCase(fetchJoiningLetterActivity.rejected, (state, action) => {
+        state.joiningLetters.activityLoading = false;
+      })
+      // Verify Joining Letter
+      .addCase(verifyJoiningLetter.fulfilled, (state, action) => {
+        // Update the list item if it exists
+        const index = state.joiningLetters.list.findIndex(
+          item => item.applicationId === action.payload.data?.applicationId
+        );
+        if (index !== -1) {
+          state.joiningLetters.list[index].status = 'VERIFIED';
+        }
+        // Invalidate stats cache
+        state.lastFetched.joiningLetterStats = null;
+      })
+      // Reject Joining Letter
+      .addCase(rejectJoiningLetter.fulfilled, (state, action) => {
+        // Remove from list since letter is cleared
+        state.joiningLetters.list = state.joiningLetters.list.filter(
+          item => item.applicationId !== action.payload.data?.applicationId
+        );
+        // Invalidate stats cache
+        state.lastFetched.joiningLetterStats = null;
+      })
+      // Internship Stats (with company details)
+      .addCase(fetchInternshipStats.pending, (state) => {
+        state.internshipStats.loading = true;
+        state.internshipStats.error = null;
+      })
+      .addCase(fetchInternshipStats.fulfilled, (state, action) => {
+        state.internshipStats.loading = false;
+        if (!action.payload.cached) {
+          state.internshipStats.data = action.payload.data || action.payload;
+          state.lastFetched.internshipStats = Date.now();
+        }
+      })
+      .addCase(fetchInternshipStats.rejected, (state, action) => {
+        state.internshipStats.loading = false;
+        state.internshipStats.error = action.payload;
+      })
+      // Faculty Workload
+      .addCase(fetchFacultyWorkload.pending, (state) => {
+        state.facultyWorkload.loading = true;
+        state.facultyWorkload.error = null;
+      })
+      .addCase(fetchFacultyWorkload.fulfilled, (state, action) => {
+        state.facultyWorkload.loading = false;
+        if (!action.payload.cached) {
+          state.facultyWorkload.list = action.payload.faculty || action.payload.data || [];
+          state.lastFetched.facultyWorkload = Date.now();
+        }
+      })
+      .addCase(fetchFacultyWorkload.rejected, (state, action) => {
+        state.facultyWorkload.loading = false;
+        state.facultyWorkload.error = action.payload;
       });
   },
 });
@@ -1028,5 +1395,40 @@ export const selectAnyLoading = (state) =>
   state.principal.mentors.loading ||
   state.principal.batches.loading ||
   state.principal.departments.loading;
+
+// Mentor Coverage selectors
+export const selectMentorCoverage = (state) => state.principal.mentorCoverage.data;
+export const selectMentorCoverageLoading = (state) => state.principal.mentorCoverage.loading;
+export const selectMentorCoverageError = (state) => state.principal.mentorCoverage.error;
+
+// Compliance Metrics selectors
+export const selectComplianceMetrics = (state) => state.principal.complianceMetrics.data;
+export const selectComplianceMetricsLoading = (state) => state.principal.complianceMetrics.loading;
+export const selectComplianceMetricsError = (state) => state.principal.complianceMetrics.error;
+
+// Alerts Enhanced selectors
+export const selectAlertsEnhanced = (state) => state.principal.alertsEnhanced.data;
+export const selectAlertsEnhancedLoading = (state) => state.principal.alertsEnhanced.loading;
+export const selectAlertsEnhancedError = (state) => state.principal.alertsEnhanced.error;
+
+// Joining Letters selectors
+export const selectJoiningLetterStats = (state) => state.principal.joiningLetters.stats;
+export const selectJoiningLetterStatsLoading = (state) => state.principal.joiningLetters.statsLoading;
+export const selectJoiningLetters = (state) => state.principal.joiningLetters.list;
+export const selectJoiningLettersLoading = (state) => state.principal.joiningLetters.loading;
+export const selectJoiningLettersPagination = (state) => state.principal.joiningLetters.pagination;
+export const selectJoiningLetterActivity = (state) => state.principal.joiningLetters.activity;
+export const selectJoiningLetterActivityLoading = (state) => state.principal.joiningLetters.activityLoading;
+export const selectJoiningLettersError = (state) => state.principal.joiningLetters.error;
+
+// Internship Stats selectors (with company details)
+export const selectInternshipStats = (state) => state.principal.internshipStats.data;
+export const selectInternshipStatsLoading = (state) => state.principal.internshipStats.loading;
+export const selectInternshipStatsError = (state) => state.principal.internshipStats.error;
+
+// Faculty Workload selectors
+export const selectFacultyWorkload = (state) => state.principal.facultyWorkload.list;
+export const selectFacultyWorkloadLoading = (state) => state.principal.facultyWorkload.loading;
+export const selectFacultyWorkloadError = (state) => state.principal.facultyWorkload.error;
 
 export default principalSlice.reducer;

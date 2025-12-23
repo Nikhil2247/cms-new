@@ -24,6 +24,8 @@ import {
   DatePicker,
   Descriptions,
   Divider,
+  Form,
+  InputNumber,
 } from 'antd';
 import {
   UserOutlined,
@@ -48,12 +50,16 @@ import {
   FilePdfOutlined,
   DownloadOutlined,
   LinkOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
 import analyticsService from '../../../services/analytics.service';
+import principalService from '../../../services/principal.service';
 import { fetchDepartments, fetchBatches } from '../store/principalSlice';
 
 const { Title, Text } = Typography;
@@ -94,6 +100,12 @@ const StudentProgress = () => {
   const [pendingReportsData, setPendingReportsData] = useState(null);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [activeTab, setActiveTab] = useState('progress');
+
+  // Edit internship state
+  const [editVisible, setEditVisible] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
+  const [editForm] = Form.useForm();
 
   useEffect(() => {
     dispatch(fetchDepartments());
@@ -264,6 +276,54 @@ const StudentProgress = () => {
     toast.info(`Assign mentor to ${student.name}`);
   };
 
+  const handleEditInternship = (student) => {
+    setEditStudent(student);
+    const app = student.application || {};
+    editForm.setFieldsValue({
+      companyName: app.companyName || '',
+      companyAddress: app.companyAddress || '',
+      companyContact: app.companyContact || '',
+      companyEmail: app.companyEmail || '',
+      jobProfile: app.jobProfile || '',
+      stipend: app.stipend ? parseInt(app.stipend) : null,
+      internshipDuration: app.internshipDuration || '',
+      startDate: app.startDate ? dayjs(app.startDate) : null,
+      endDate: app.endDate ? dayjs(app.endDate) : null,
+      facultyMentorName: app.facultyMentorName || '',
+      facultyMentorEmail: app.facultyMentorEmail || '',
+      facultyMentorDesignation: app.facultyMentorDesignation || '',
+      status: app.status || 'APPROVED',
+    });
+    setEditVisible(true);
+  };
+
+  const handleEditSubmit = async (values) => {
+    if (!editStudent?.application?.id) {
+      toast.error('No internship found for this student');
+      return;
+    }
+
+    try {
+      setEditLoading(true);
+      const updateData = {
+        ...values,
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
+      };
+
+      await principalService.updateInternship(editStudent.application.id, updateData);
+      toast.success('Internship updated successfully');
+      setEditVisible(false);
+      editForm.resetFields();
+      fetchStudentProgress(pagination.current, pagination.pageSize);
+    } catch (error) {
+      console.error('Failed to update internship:', error);
+      toast.error(error.message || 'Failed to update internship');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   const showTimeline = (student) => {
     setSelectedStudent(student);
     setTimelineVisible(true);
@@ -362,7 +422,7 @@ const StudentProgress = () => {
       title: 'Actions',
       key: 'actions',
       fixed: 'right',
-      width: 150,
+      width: 180,
       render: (_, record) => (
         <Space size="small">
           <Tooltip title="View Timeline">
@@ -374,12 +434,22 @@ const StudentProgress = () => {
               className="text-primary hover:bg-primary-50"
             />
           </Tooltip>
+          {record.application && (
+            <Tooltip title="Edit Internship">
+              <Button
+                type="text"
+                icon={<EditOutlined />}
+                onClick={() => handleEditInternship(record)}
+                className="text-warning hover:bg-warning-50"
+              />
+            </Tooltip>
+          )}
           <Tooltip title="Send Reminder">
             <Button
               type="text"
               icon={<BellOutlined />}
               onClick={() => handleSendReminder(record)}
-              className="text-warning hover:bg-warning-50"
+              className="text-orange-500 hover:bg-orange-50"
             />
           </Tooltip>
           {!record.mentor && (
@@ -514,18 +584,37 @@ const StudentProgress = () => {
           {/* Internship Header */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center shrink-0">
                 <BankOutlined className="text-xl" />
               </div>
               <div>
-                <Text strong className="block text-xs uppercase tracking-widest text-text-tertiary mb-1">Current Internship</Text>
-                <Text className="text-lg text-text-primary font-semibold">{record.application.internshipTitle || 'N/A'}</Text>
-                {record.application.joiningDate && (
-                  <div className="flex items-center gap-2 mt-1 text-text-secondary text-sm">
-                    <CalendarOutlined className="text-xs" />
-                    <span>Joined on {dayjs(record.application.joiningDate).format("DD MMM YYYY")}</span>
-                  </div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Text strong className="text-xs uppercase tracking-widest text-text-tertiary">Self-Identified Internship</Text>
+                  <Tag color="purple" className="rounded-full text-[10px] uppercase font-bold m-0">Student Sourced</Tag>
+                </div>
+                <Text className="text-lg text-text-primary font-semibold">{record.application.companyName || record.application.internshipTitle || 'N/A'}</Text>
+                {record.application.jobProfile && (
+                  <Text className="text-sm text-text-secondary block">{record.application.jobProfile}</Text>
                 )}
+                <div className="flex items-center gap-4 mt-2 text-text-secondary text-sm flex-wrap">
+                  {record.application.joiningDate && (
+                    <div className="flex items-center gap-1">
+                      <CalendarOutlined className="text-xs" />
+                      <span>Started {dayjs(record.application.joiningDate || record.application.startDate).format("DD MMM YYYY")}</span>
+                    </div>
+                  )}
+                  {record.application.internshipDuration && (
+                    <div className="flex items-center gap-1">
+                      <ClockCircleOutlined className="text-xs" />
+                      <span>{record.application.internshipDuration}</span>
+                    </div>
+                  )}
+                  {record.application.stipend && (
+                    <Tag color="green" className="rounded-full m-0 text-xs">
+                      Stipend: {record.application.stipend}/month
+                    </Tag>
+                  )}
+                </div>
               </div>
             </div>
             <Tag color={getStatusColor(record.internshipStatus)} className="rounded-full px-3">
@@ -580,15 +669,15 @@ const StudentProgress = () => {
             </div>
           </div>
 
-          {/* Company/Industry Details */}
-          {record.application.company && (
+          {/* Company/Industry Details - Self-Identified */}
+          {(record.application.companyName || record.application.company) && (
             <div className="bg-background rounded-xl p-4 border border-border/50">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-500 flex items-center justify-center">
                   <BankOutlined className="text-lg" />
                 </div>
                 <div>
-                  <Text className="block text-xs uppercase tracking-widest text-text-tertiary font-bold">Company / Industry Details</Text>
+                  <Text className="block text-xs uppercase tracking-widest text-text-tertiary font-bold">Company Details</Text>
                 </div>
               </div>
               <Descriptions
@@ -597,42 +686,79 @@ const StudentProgress = () => {
                 className="bg-background-tertiary/30 rounded-lg p-3"
               >
                 <Descriptions.Item label={<span className="text-text-tertiary"><BankOutlined className="mr-1" />Company</span>}>
-                  <Text strong className="text-text-primary">{record.application.company.name || 'N/A'}</Text>
+                  <Text strong className="text-text-primary">{record.application.companyName || record.application.company?.name || 'N/A'}</Text>
                 </Descriptions.Item>
-                {(record.application.company.industryType || record.application.company.type) && (
-                  <Descriptions.Item label={<span className="text-text-tertiary">Industry Type</span>}>
-                    <Tag color="blue" className="rounded-md">{record.application.company.industryType || record.application.company.type}</Tag>
+                {record.application.jobProfile && (
+                  <Descriptions.Item label={<span className="text-text-tertiary">Job Profile</span>}>
+                    <Tag color="purple" className="rounded-md">{record.application.jobProfile}</Tag>
                   </Descriptions.Item>
                 )}
-                {record.application.company.website && (
-                  <Descriptions.Item label={<span className="text-text-tertiary"><GlobalOutlined className="mr-1" />Website</span>}>
-                    <a href={record.application.company.website} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-1">
-                      <LinkOutlined /> Visit
-                    </a>
+                {record.application.stipend && (
+                  <Descriptions.Item label={<span className="text-text-tertiary">Stipend</span>}>
+                    <Tag color="green" className="rounded-md">{record.application.stipend}/month</Tag>
                   </Descriptions.Item>
                 )}
-                {record.application.company.email && (
+                {record.application.companyEmail && (
                   <Descriptions.Item label={<span className="text-text-tertiary"><MailOutlined className="mr-1" />Email</span>}>
-                    <a href={`mailto:${record.application.company.email}`} className="text-primary hover:underline">
-                      {record.application.company.email}
+                    <a href={`mailto:${record.application.companyEmail}`} className="text-primary hover:underline">
+                      {record.application.companyEmail}
                     </a>
                   </Descriptions.Item>
                 )}
-                {record.application.company.phone && (
+                {record.application.companyContact && (
                   <Descriptions.Item label={<span className="text-text-tertiary"><PhoneOutlined className="mr-1" />Phone</span>}>
-                    <Text className="text-text-primary">{record.application.company.phone}</Text>
+                    <Text className="text-text-primary">{record.application.companyContact}</Text>
                   </Descriptions.Item>
                 )}
-                {record.application.company.address && (
+                {record.application.companyAddress && (
                   <Descriptions.Item label={<span className="text-text-tertiary"><EnvironmentOutlined className="mr-1" />Address</span>} span={2}>
+                    <Text className="text-text-primary">{record.application.companyAddress}</Text>
+                  </Descriptions.Item>
+                )}
+                {record.application.startDate && (
+                  <Descriptions.Item label={<span className="text-text-tertiary"><CalendarOutlined className="mr-1" />Duration</span>}>
                     <Text className="text-text-primary">
-                      {record.application.company.address}
-                      {record.application.company.city && `, ${record.application.company.city}`}
-                      {record.application.company.state && `, ${record.application.company.state}`}
+                      {dayjs(record.application.startDate).format("DD MMM YYYY")} - {record.application.endDate ? dayjs(record.application.endDate).format("DD MMM YYYY") : 'Ongoing'}
                     </Text>
                   </Descriptions.Item>
                 )}
               </Descriptions>
+
+              {/* Faculty Mentor Details for Self-Identified */}
+              {record.application.facultyMentorName && (
+                <div className="mt-4 pt-4 border-t border-border/50">
+                  <div className="flex items-center gap-2 mb-3">
+                    <TeamOutlined className="text-text-tertiary" />
+                    <Text className="text-xs uppercase tracking-widest text-text-tertiary font-bold">Faculty Mentor</Text>
+                  </div>
+                  <Descriptions
+                    column={{ xs: 1, sm: 2 }}
+                    size="small"
+                    className="bg-background-tertiary/30 rounded-lg p-3"
+                  >
+                    <Descriptions.Item label="Name">
+                      <Text strong className="text-text-primary">{record.application.facultyMentorName}</Text>
+                    </Descriptions.Item>
+                    {record.application.facultyMentorDesignation && (
+                      <Descriptions.Item label="Designation">
+                        <Text className="text-text-primary">{record.application.facultyMentorDesignation}</Text>
+                      </Descriptions.Item>
+                    )}
+                    {record.application.facultyMentorEmail && (
+                      <Descriptions.Item label="Email">
+                        <a href={`mailto:${record.application.facultyMentorEmail}`} className="text-primary hover:underline">
+                          {record.application.facultyMentorEmail}
+                        </a>
+                      </Descriptions.Item>
+                    )}
+                    {record.application.facultyMentorContact && (
+                      <Descriptions.Item label="Contact">
+                        <Text className="text-text-primary">{record.application.facultyMentorContact}</Text>
+                      </Descriptions.Item>
+                    )}
+                  </Descriptions>
+                </div>
+              )}
             </div>
           )}
 
@@ -1158,11 +1284,11 @@ const StudentProgress = () => {
             )}
             {selectedStudent.timeline && selectedStudent.timeline.length > 0 ? (
               <div className="px-4">
-                <Timeline 
+                <Timeline
                   items={selectedStudent.timeline.map(item => ({
                     ...item,
                     children: <div className="text-text-primary text-sm">{item.children}</div>
-                  }))} 
+                  }))}
                 />
               </div>
             ) : (
@@ -1170,6 +1296,157 @@ const StudentProgress = () => {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Edit Internship Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-text-primary">
+            <EditOutlined className="text-warning" />
+            <span>Edit Internship Details</span>
+          </div>
+        }
+        open={editVisible}
+        onCancel={() => {
+          setEditVisible(false);
+          editForm.resetFields();
+        }}
+        width={700}
+        footer={null}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+          className="mt-4"
+        >
+          {editStudent && (
+            <div className="p-3 rounded-lg bg-primary/5 mb-4">
+              <div className="flex items-center gap-3">
+                <Avatar size={40} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                <div>
+                  <Text className="font-bold text-text-primary block">{editStudent.name}</Text>
+                  <Text className="text-text-secondary text-sm">{editStudent.rollNumber}</Text>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Divider className="my-4">Company Information</Divider>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="companyName"
+                label="Company Name"
+                rules={[{ required: true, message: 'Company name is required' }]}
+              >
+                <Input placeholder="Enter company name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="jobProfile" label="Job Profile / Role">
+                <Input placeholder="Enter job profile" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="companyContact" label="Company Contact">
+                <Input placeholder="Enter contact number" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="companyEmail" label="Company Email">
+                <Input placeholder="Enter email" type="email" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="companyAddress" label="Company Address">
+            <Input.TextArea placeholder="Enter company address" rows={2} />
+          </Form.Item>
+
+          <Divider className="my-4">Internship Details</Divider>
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="stipend" label="Monthly Stipend (₹)">
+                <InputNumber
+                  placeholder="Enter stipend"
+                  className="w-full"
+                  min={0}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="internshipDuration" label="Duration">
+                <Input placeholder="e.g., 6 months" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="status" label="Status">
+                <Select placeholder="Select status">
+                  <Select.Option value="APPROVED">Active</Select.Option>
+                  <Select.Option value="JOINED">Joined</Select.Option>
+                  <Select.Option value="COMPLETED">Completed</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="startDate" label="Start Date">
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="endDate" label="End Date">
+                <DatePicker className="w-full" format="DD/MM/YYYY" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider className="my-4">Faculty Mentor</Divider>
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="facultyMentorName" label="Mentor Name">
+                <Input placeholder="Enter mentor name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="facultyMentorEmail" label="Mentor Email">
+                <Input placeholder="Enter mentor email" type="email" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="facultyMentorDesignation" label="Designation">
+                <Input placeholder="Enter designation" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider className="my-4" />
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                setEditVisible(false);
+                editForm.resetFields();
+              }}
+              icon={<CloseOutlined />}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={editLoading}
+              icon={<SaveOutlined />}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   );

@@ -78,6 +78,9 @@ const initialState = {
     cursor: null,
     hasMore: true,
     total: 0,
+    filters: {
+      branches: [],
+    },
     loading: false,
     loadingMore: false,
     error: null,
@@ -85,6 +88,14 @@ const initialState = {
   instituteCompanies: {
     list: [],
     total: 0,
+    summary: null,
+    loading: false,
+    error: null,
+  },
+  instituteFacultyPrincipal: {
+    principal: null,
+    faculty: [],
+    summary: null,
     loading: false,
     error: null,
   },
@@ -93,6 +104,21 @@ const initialState = {
     pagination: null,
     month: null,
     year: null,
+    loading: false,
+    error: null,
+  },
+  criticalAlerts: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  actionItems: {
+    data: null,
+    loading: false,
+    error: null,
+  },
+  complianceSummary: {
+    data: null,
     loading: false,
     error: null,
   },
@@ -110,6 +136,9 @@ const initialState = {
     analytics: null,
     placements: null,
     joiningLetters: null,
+    criticalAlerts: null,
+    actionItems: null,
+    complianceSummary: null,
   },
 };
 
@@ -724,13 +753,18 @@ export const fetchInstituteOverview = createAsyncThunk(
 
 export const fetchInstituteStudents = createAsyncThunk(
   'state/fetchInstituteStudents',
-  async ({ institutionId, cursor, limit, search, filter, loadMore = false }, { rejectWithValue }) => {
+  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, loadMore = false }, { rejectWithValue }) => {
     try {
       const response = await stateService.getInstitutionStudents(institutionId, {
         cursor,
         limit,
         search,
         filter,
+        branch,
+        companyId,
+        reportStatus,
+        visitStatus,
+        selfIdentified,
       });
       return { ...response, loadMore };
     } catch (error) {
@@ -741,12 +775,24 @@ export const fetchInstituteStudents = createAsyncThunk(
 
 export const fetchInstituteCompanies = createAsyncThunk(
   'state/fetchInstituteCompanies',
-  async ({ institutionId, limit }, { rejectWithValue }) => {
+  async ({ institutionId, limit, search }, { rejectWithValue }) => {
     try {
-      const response = await stateService.getInstitutionCompanies(institutionId, { limit });
+      const response = await stateService.getInstitutionCompanies(institutionId, { limit, search });
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch companies');
+    }
+  }
+);
+
+export const fetchInstituteFacultyPrincipal = createAsyncThunk(
+  'state/fetchInstituteFacultyPrincipal',
+  async (institutionId, { rejectWithValue }) => {
+    try {
+      const response = await stateService.getInstitutionFacultyPrincipal(institutionId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch faculty and principal');
     }
   }
 );
@@ -784,6 +830,66 @@ export const removeMentorFromStudent = createAsyncThunk(
       return { studentId, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to remove mentor');
+    }
+  }
+);
+
+// Critical Alerts thunk
+export const fetchCriticalAlerts = createAsyncThunk(
+  'state/fetchCriticalAlerts',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.criticalAlerts;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await stateService.getCriticalAlerts();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch critical alerts');
+    }
+  }
+);
+
+// Action Items thunk
+export const fetchActionItems = createAsyncThunk(
+  'state/fetchActionItems',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.actionItems;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await stateService.getActionItems();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch action items');
+    }
+  }
+);
+
+// Compliance Summary thunk
+export const fetchComplianceSummary = createAsyncThunk(
+  'state/fetchComplianceSummary',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.complianceSummary;
+
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true };
+      }
+
+      const response = await stateService.getComplianceSummary();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch compliance summary');
     }
   }
 );
@@ -883,12 +989,17 @@ const stateSlice = createSlice({
       state.instituteStudents.cursor = null;
       state.instituteStudents.hasMore = true;
       state.instituteCompanies.list = [];
+      state.instituteCompanies.summary = null;
+      state.instituteFacultyPrincipal.principal = null;
+      state.instituteFacultyPrincipal.faculty = [];
+      state.instituteFacultyPrincipal.summary = null;
     },
     clearSelectedInstitute: (state) => {
       state.selectedInstitute = { id: null, data: null, loading: false, error: null };
       state.instituteOverview = { data: null, loading: false, error: null };
       state.instituteStudents = { list: [], cursor: null, hasMore: true, total: 0, loading: false, loadingMore: false, error: null };
-      state.instituteCompanies = { list: [], total: 0, loading: false, error: null };
+      state.instituteCompanies = { list: [], total: 0, summary: null, loading: false, error: null };
+      state.instituteFacultyPrincipal = { principal: null, faculty: [], summary: null, loading: false, error: null };
     },
   },
   extraReducers: (builder) => {
@@ -1454,6 +1565,10 @@ const stateSlice = createSlice({
         state.instituteStudents.cursor = action.payload.nextCursor;
         state.instituteStudents.hasMore = action.payload.hasMore;
         state.instituteStudents.total = action.payload.total;
+        // Store filters data (branches list for dropdown)
+        if (action.payload.filters) {
+          state.instituteStudents.filters = action.payload.filters;
+        }
       })
       .addCase(fetchInstituteStudents.rejected, (state, action) => {
         state.instituteStudents.loading = false;
@@ -1468,10 +1583,78 @@ const stateSlice = createSlice({
         state.instituteCompanies.loading = false;
         state.instituteCompanies.list = action.payload.companies || action.payload.data || [];
         state.instituteCompanies.total = action.payload.total || 0;
+        state.instituteCompanies.summary = action.payload.summary || null;
       })
       .addCase(fetchInstituteCompanies.rejected, (state, action) => {
         state.instituteCompanies.loading = false;
         state.instituteCompanies.error = action.payload;
+      })
+
+      // Faculty & Principal
+      .addCase(fetchInstituteFacultyPrincipal.pending, (state) => {
+        state.instituteFacultyPrincipal.loading = true;
+        state.instituteFacultyPrincipal.error = null;
+      })
+      .addCase(fetchInstituteFacultyPrincipal.fulfilled, (state, action) => {
+        state.instituteFacultyPrincipal.loading = false;
+        state.instituteFacultyPrincipal.principal = action.payload.principal || null;
+        state.instituteFacultyPrincipal.faculty = action.payload.faculty || [];
+        state.instituteFacultyPrincipal.summary = action.payload.summary || null;
+      })
+      .addCase(fetchInstituteFacultyPrincipal.rejected, (state, action) => {
+        state.instituteFacultyPrincipal.loading = false;
+        state.instituteFacultyPrincipal.error = action.payload;
+      })
+
+      // Critical Alerts
+      .addCase(fetchCriticalAlerts.pending, (state) => {
+        state.criticalAlerts.loading = true;
+        state.criticalAlerts.error = null;
+      })
+      .addCase(fetchCriticalAlerts.fulfilled, (state, action) => {
+        state.criticalAlerts.loading = false;
+        if (!action.payload.cached) {
+          state.criticalAlerts.data = action.payload;
+          state.lastFetched.criticalAlerts = Date.now();
+        }
+      })
+      .addCase(fetchCriticalAlerts.rejected, (state, action) => {
+        state.criticalAlerts.loading = false;
+        state.criticalAlerts.error = action.payload;
+      })
+
+      // Action Items
+      .addCase(fetchActionItems.pending, (state) => {
+        state.actionItems.loading = true;
+        state.actionItems.error = null;
+      })
+      .addCase(fetchActionItems.fulfilled, (state, action) => {
+        state.actionItems.loading = false;
+        if (!action.payload.cached) {
+          state.actionItems.data = action.payload;
+          state.lastFetched.actionItems = Date.now();
+        }
+      })
+      .addCase(fetchActionItems.rejected, (state, action) => {
+        state.actionItems.loading = false;
+        state.actionItems.error = action.payload;
+      })
+
+      // Compliance Summary
+      .addCase(fetchComplianceSummary.pending, (state) => {
+        state.complianceSummary.loading = true;
+        state.complianceSummary.error = null;
+      })
+      .addCase(fetchComplianceSummary.fulfilled, (state, action) => {
+        state.complianceSummary.loading = false;
+        if (!action.payload.cached) {
+          state.complianceSummary.data = action.payload;
+          state.lastFetched.complianceSummary = Date.now();
+        }
+      })
+      .addCase(fetchComplianceSummary.rejected, (state, action) => {
+        state.complianceSummary.loading = false;
+        state.complianceSummary.error = action.payload;
       });
   },
 });
@@ -1579,5 +1762,21 @@ export const selectSelectedInstitute = (state) => state.state.selectedInstitute;
 export const selectInstituteOverview = (state) => state.state.instituteOverview;
 export const selectInstituteStudents = (state) => state.state.instituteStudents;
 export const selectInstituteCompanies = (state) => state.state.instituteCompanies;
+export const selectInstituteFacultyPrincipal = (state) => state.state.instituteFacultyPrincipal;
+
+// Critical Alerts selectors
+export const selectCriticalAlerts = (state) => state.state.criticalAlerts.data;
+export const selectCriticalAlertsLoading = (state) => state.state.criticalAlerts.loading;
+export const selectCriticalAlertsError = (state) => state.state.criticalAlerts.error;
+
+// Action Items selectors
+export const selectActionItems = (state) => state.state.actionItems.data;
+export const selectActionItemsLoading = (state) => state.state.actionItems.loading;
+export const selectActionItemsError = (state) => state.state.actionItems.error;
+
+// Compliance Summary selectors
+export const selectComplianceSummary = (state) => state.state.complianceSummary.data;
+export const selectComplianceSummaryLoading = (state) => state.state.complianceSummary.loading;
+export const selectComplianceSummaryError = (state) => state.state.complianceSummary.error;
 
 export default stateSlice.reducer;

@@ -39,6 +39,24 @@ export class StateController {
     return this.stateService.getDashboard();
   }
 
+  @Get('dashboard/critical-alerts')
+  @ApiOperation({ summary: 'Get critical alerts for state dashboard' })
+  async getCriticalAlerts() {
+    return this.stateService.getCriticalAlerts();
+  }
+
+  @Get('dashboard/actions')
+  @ApiOperation({ summary: 'Get action items for state dashboard' })
+  async getDashboardActions() {
+    return this.stateService.getActionItems();
+  }
+
+  @Get('compliance/summary')
+  @ApiOperation({ summary: 'Get compliance overview for all institutions' })
+  async getComplianceSummary() {
+    return this.stateService.getComplianceSummary();
+  }
+
   @Get('institutions')
   @ApiOperation({ summary: 'Get all institutions under state directorate' })
   async getInstitutions(
@@ -74,31 +92,49 @@ export class StateController {
   }
 
   @Get('institutions/:id/students')
-  @ApiOperation({ summary: 'Get institution students with cursor pagination' })
+  @ApiOperation({ summary: 'Get institution students with cursor pagination and filters' })
   async getInstitutionStudents(
     @Param('id') id: string,
     @Query('cursor') cursor?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
     @Query('filter') filter?: 'assigned' | 'unassigned' | 'all',
+    @Query('branch') branch?: string,
+    @Query('companyId') companyId?: string,
+    @Query('reportStatus') reportStatus?: 'submitted' | 'pending' | 'not_submitted' | 'all',
+    @Query('visitStatus') visitStatus?: 'visited' | 'pending' | 'all',
+    @Query('selfIdentified') selfIdentified?: 'yes' | 'no' | 'all',
   ) {
     return this.stateService.getInstitutionStudents(id, {
       cursor,
       limit: Number(limit) || 20,
       search,
       filter: filter || 'all',
+      branch,
+      companyId,
+      reportStatus,
+      visitStatus,
+      selfIdentified,
     });
   }
 
   @Get('institutions/:id/companies')
-  @ApiOperation({ summary: 'Get institution companies with student counts' })
+  @ApiOperation({ summary: 'Get institution companies with student counts and branch-wise data' })
   async getInstitutionCompanies(
     @Param('id') id: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
     return this.stateService.getInstitutionCompanies(id, {
       limit: Number(limit) || 50,
+      search,
     });
+  }
+
+  @Get('institutions/:id/faculty-principal')
+  @ApiOperation({ summary: 'Get institution faculty and principal with stats' })
+  async getInstitutionFacultyAndPrincipal(@Param('id') id: string) {
+    return this.stateService.getInstitutionFacultyAndPrincipal(id);
   }
 
   // Note: Specific routes must come BEFORE generic :id routes

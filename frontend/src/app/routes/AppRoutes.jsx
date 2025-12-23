@@ -66,6 +66,8 @@ import BulkUpload from '../../features/principal/bulk/BulkUpload';
 import Analytics from '../../features/principal/analytics/Analytics';
 import FacultyReports from '../../features/principal/reports/FacultyReports';
 import FacultyProgress from '../../features/principal/faculty/FacultyProgress';
+import Grievances from '../../features/principal/grievances/Grievances';
+import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
 
 // Faculty
 import FacultyDashboard from '../../features/faculty/dashboard/FacultyDashboard';
@@ -404,6 +406,22 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <FacultyProgress />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="grievances"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <Grievances />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="internships"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <SelfIdentifiedInternships />
             </ProtectedRoute>
           }
         />

@@ -18,6 +18,13 @@ import {
   Skeleton,
   Descriptions,
   Rate,
+  Modal,
+  Form,
+  Select,
+  DatePicker,
+  InputNumber,
+  Divider,
+  Tooltip,
 } from 'antd';
 import {
   UserOutlined,
@@ -34,11 +41,15 @@ import {
   ScheduleOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
+  EditOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
 import analyticsService from '../../../services/analytics.service';
+import principalService from '../../../services/principal.service';
 
 const { Title, Text } = Typography;
 
@@ -51,6 +62,12 @@ const FacultyProgress = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('students');
+
+  // Edit internship state
+  const [editVisible, setEditVisible] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [editStudent, setEditStudent] = useState(null);
+  const [editForm] = Form.useForm();
 
   // Fetch faculty list on mount
   useEffect(() => {
@@ -149,6 +166,43 @@ const FacultyProgress = () => {
     }
   };
 
+  // Handle edit internship
+  const handleEditInternship = (student) => {
+    setEditStudent(student);
+    editForm.setFieldsValue({
+      companyName: student.companyName || '',
+      jobProfile: student.jobProfile || '',
+      stipend: student.stipend ? parseInt(student.stipend) : null,
+      internshipDuration: student.internshipDuration || '',
+      internshipStatus: student.internshipStatus || 'In Progress',
+    });
+    setEditVisible(true);
+  };
+
+  const handleEditSubmit = async (values) => {
+    if (!editStudent?.applicationId) {
+      toast.error('No internship found for this student');
+      return;
+    }
+
+    try {
+      setEditLoading(true);
+      await principalService.updateInternship(editStudent.applicationId, values);
+      toast.success('Internship updated successfully');
+      setEditVisible(false);
+      editForm.resetFields();
+      // Refresh faculty details to get updated data
+      if (selectedFaculty) {
+        fetchFacultyDetails(selectedFaculty.id);
+      }
+    } catch (error) {
+      console.error('Failed to update internship:', error);
+      toast.error(error.message || 'Failed to update internship');
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
   // Student columns for the table
   const studentColumns = [
     {
@@ -176,14 +230,31 @@ const FacultyProgress = () => {
     },
     {
       title: 'Internship',
-      dataIndex: 'internshipTitle',
       key: 'internship',
-      render: (text, record) => (
+      width: 220,
+      render: (_, record) => (
         <div>
-          <Text className="block text-text-primary text-sm">{text || 'N/A'}</Text>
-          {record.companyName && (
-            <Text className="text-xs text-text-tertiary">{record.companyName}</Text>
+          <div className="flex items-center gap-2 mb-1">
+            <Text className="block text-text-primary text-sm font-medium">
+              {record.companyName || record.internshipTitle || 'N/A'}
+            </Text>
+            <Tag color="purple" className="rounded-full text-[9px] uppercase font-bold m-0 px-1.5">
+              Self-ID
+            </Tag>
+          </div>
+          {record.jobProfile && (
+            <Text className="text-xs text-text-secondary block">{record.jobProfile}</Text>
           )}
+          <div className="flex items-center gap-2 mt-1 text-[10px] text-text-tertiary">
+            {record.internshipDuration && (
+              <span>{record.internshipDuration}</span>
+            )}
+            {record.stipend && (
+              <Tag color="green" className="rounded-full text-[9px] m-0 px-1.5">
+                {record.stipend}/mo
+              </Tag>
+            )}
+          </div>
         </div>
       ),
     },
@@ -218,6 +289,21 @@ const FacultyProgress = () => {
         <Text className="text-sm text-text-secondary">{dayjs(date).format('DD MMM YYYY')}</Text>
       ) : (
         <Text className="text-xs text-text-tertiary italic">No visits</Text>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 80,
+      render: (_, record) => (
+        <Tooltip title="Edit Internship">
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => handleEditInternship(record)}
+            className="text-warning hover:bg-warning/10"
+          />
+        </Tooltip>
       ),
     },
   ];
@@ -712,6 +798,106 @@ const FacultyProgress = () => {
           )}
         </Col>
       </Row>
+
+      {/* Edit Internship Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-text-primary">
+            <EditOutlined className="text-warning" />
+            <span>Edit Internship Details</span>
+          </div>
+        }
+        open={editVisible}
+        onCancel={() => {
+          setEditVisible(false);
+          editForm.resetFields();
+        }}
+        width={600}
+        footer={null}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          onFinish={handleEditSubmit}
+          className="mt-4"
+        >
+          {editStudent && (
+            <div className="p-3 rounded-lg bg-primary/5 mb-4">
+              <div className="flex items-center gap-3">
+                <Avatar size={40} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                <div>
+                  <Text className="font-bold text-text-primary block">{editStudent.name}</Text>
+                  <Text className="text-text-secondary text-sm">{editStudent.rollNumber}</Text>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item
+                name="companyName"
+                label="Company Name"
+                rules={[{ required: true, message: 'Company name is required' }]}
+              >
+                <Input placeholder="Enter company name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="jobProfile" label="Job Profile / Role">
+                <Input placeholder="Enter job profile" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={8}>
+              <Form.Item name="stipend" label="Monthly Stipend (₹)">
+                <InputNumber
+                  placeholder="Enter stipend"
+                  className="w-full"
+                  min={0}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="internshipDuration" label="Duration">
+                <Input placeholder="e.g., 6 months" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={8}>
+              <Form.Item name="internshipStatus" label="Status">
+                <Select placeholder="Select status">
+                  <Select.Option value="In Progress">In Progress</Select.Option>
+                  <Select.Option value="Completed">Completed</Select.Option>
+                  <Select.Option value="Pending">Pending</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider className="my-4" />
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                setEditVisible(false);
+                editForm.resetFields();
+              }}
+              icon={<CloseOutlined />}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={editLoading}
+              icon={<SaveOutlined />}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

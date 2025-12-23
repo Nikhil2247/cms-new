@@ -1,11 +1,24 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Row, Col, Spin, Typography, message, Card } from 'antd';
+import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, List } from 'antd';
+import {
+  WarningOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  TeamOutlined,
+  FileTextOutlined,
+  EyeOutlined,
+} from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchDashboardStats,
   fetchInstitutionsWithStats,
   fetchTopPerformers,
   fetchMonthlyAnalytics,
+  fetchCriticalAlerts,
+  fetchActionItems,
+  fetchComplianceSummary,
+  fetchTopIndustries,
   selectDashboardStats,
   selectDashboardLoading,
   selectInstitutionsWithStats,
@@ -16,6 +29,13 @@ import {
   selectBottomPerformers,
   selectAnalyticsLoading,
   selectMonthlyStats,
+  selectCriticalAlerts,
+  selectCriticalAlertsLoading,
+  selectActionItems,
+  selectActionItemsLoading,
+  selectComplianceSummary,
+  selectComplianceSummaryLoading,
+  selectTopIndustries,
 } from '../store/stateSlice';
 import {
   DashboardHeader,
@@ -23,6 +43,8 @@ import {
   PerformanceMetrics,
   InstitutionsTable,
   TopPerformers,
+  JoiningLetterTracker,
+  TopIndustriesList,
 } from './components';
 import { PlacementTrendChart } from '../../../components/charts';
 import stateService from '../../../services/state.service';
@@ -64,6 +86,15 @@ const StateDashboard = () => {
   const bottomPerformersData = useSelector(selectBottomPerformers);
   const analyticsLoading = useSelector(selectAnalyticsLoading);
   const monthlyAnalytics = useSelector(selectMonthlyStats);
+
+  // New dashboard enhancements
+  const criticalAlerts = useSelector(selectCriticalAlerts);
+  const criticalAlertsLoading = useSelector(selectCriticalAlertsLoading);
+  const actionItems = useSelector(selectActionItems);
+  const actionItemsLoading = useSelector(selectActionItemsLoading);
+  const complianceSummary = useSelector(selectComplianceSummary);
+  const complianceSummaryLoading = useSelector(selectComplianceSummaryLoading);
+  const topIndustries = useSelector(selectTopIndustries);
 
   const [userName, setUserName] = useState('Administrator');
   const [selectedMonth, setSelectedMonth] = useState(null);
@@ -123,6 +154,11 @@ const StateDashboard = () => {
     dispatch(fetchInstitutionsWithStats({ limit: 15 }));
     dispatch(fetchTopPerformers());
     dispatch(fetchMonthlyAnalytics());
+    // Fetch new dashboard data
+    dispatch(fetchCriticalAlerts());
+    dispatch(fetchActionItems());
+    dispatch(fetchComplianceSummary());
+    dispatch(fetchTopIndustries({ limit: 10 }));
   }, [dispatch]);
 
   // Refresh handler
@@ -131,6 +167,11 @@ const StateDashboard = () => {
     dispatch(fetchInstitutionsWithStats({ limit: 15, forceRefresh: true }));
     dispatch(fetchTopPerformers({ forceRefresh: true }));
     dispatch(fetchMonthlyAnalytics({ forceRefresh: true }));
+    // Refresh new dashboard data
+    dispatch(fetchCriticalAlerts({ forceRefresh: true }));
+    dispatch(fetchActionItems({ forceRefresh: true }));
+    dispatch(fetchComplianceSummary({ forceRefresh: true }));
+    dispatch(fetchTopIndustries({ limit: 10, forceRefresh: true }));
     message.success('Dashboard refreshed');
   }, [dispatch]);
 
@@ -202,6 +243,205 @@ const StateDashboard = () => {
         <StatisticsCards stats={stats} />
       </div>
 
+      {/* Critical Alerts and Compliance Summary Row */}
+      <Row gutter={[16, 16]} className="mb-6">
+        {/* Critical Alerts */}
+        <Col xs={24} lg={12}>
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <WarningOutlined className="text-red-500" />
+                <span>Critical Alerts</span>
+                {criticalAlerts?.totalAlerts > 0 && (
+                  <Badge count={criticalAlerts.totalAlerts} className="ml-2" />
+                )}
+              </div>
+            }
+            className="shadow-sm border-border rounded-xl h-full"
+            loading={criticalAlertsLoading}
+          >
+            {criticalAlerts ? (
+              <div className="space-y-3">
+                {criticalAlerts.lowComplianceInstitutions?.length > 0 && (
+                  <Alert
+                    type="error"
+                    showIcon
+                    icon={<ExclamationCircleOutlined />}
+                    message={`${criticalAlerts.lowComplianceInstitutions.length} Low Compliance Institutions`}
+                    description={
+                      <div className="mt-2">
+                        {criticalAlerts.lowComplianceInstitutions.slice(0, 3).map((inst, idx) => (
+                          <Tag key={idx} color="red" className="mb-1">
+                            {inst.name} ({inst.complianceScore}%)
+                          </Tag>
+                        ))}
+                        {criticalAlerts.lowComplianceInstitutions.length > 3 && (
+                          <Tag>+{criticalAlerts.lowComplianceInstitutions.length - 3} more</Tag>
+                        )}
+                      </div>
+                    }
+                  />
+                )}
+                {criticalAlerts.studentsWithoutMentors > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<TeamOutlined />}
+                    message={`${criticalAlerts.studentsWithoutMentors} Students Without Mentors`}
+                    description="Students in active internships without assigned mentors"
+                  />
+                )}
+                {criticalAlerts.missingReports > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<FileTextOutlined />}
+                    message={`${criticalAlerts.missingReports} Missing Reports`}
+                    description="Overdue weekly/monthly reports from students"
+                  />
+                )}
+                {criticalAlerts.visitGaps > 0 && (
+                  <Alert
+                    type="info"
+                    showIcon
+                    icon={<EyeOutlined />}
+                    message={`${criticalAlerts.visitGaps} Faculty Visit Gaps`}
+                    description="Students who haven't had a faculty visit in 30+ days"
+                  />
+                )}
+                {!criticalAlerts.totalAlerts && (
+                  <div className="text-center py-8">
+                    <CheckCircleOutlined className="text-4xl text-green-500 mb-2" />
+                    <Text className="block text-text-secondary">No critical alerts</Text>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Text className="text-text-tertiary">No alerts data available</Text>
+              </div>
+            )}
+          </Card>
+        </Col>
+
+        {/* Compliance Summary */}
+        <Col xs={24} lg={12}>
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <CheckCircleOutlined className="text-green-500" />
+                <span>Compliance Summary</span>
+              </div>
+            }
+            className="shadow-sm border-border rounded-xl h-full"
+            loading={complianceSummaryLoading}
+          >
+            {complianceSummary?.stateWide ? (
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Text className="text-text-secondary">Mentor Assignment Rate</Text>
+                    <Text strong>{complianceSummary.stateWide.mentorCoverageRate || 0}%</Text>
+                  </div>
+                  <Progress
+                    percent={complianceSummary.stateWide.mentorCoverageRate || 0}
+                    strokeColor={complianceSummary.stateWide.mentorCoverageRate >= 80 ? '#52c41a' : complianceSummary.stateWide.mentorCoverageRate >= 50 ? '#faad14' : '#ff4d4f'}
+                    showInfo={false}
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Text className="text-text-secondary">Faculty Visit Compliance</Text>
+                    <Text strong>{complianceSummary.stateWide.visitComplianceRate || 0}%</Text>
+                  </div>
+                  <Progress
+                    percent={complianceSummary.stateWide.visitComplianceRate || 0}
+                    strokeColor={complianceSummary.stateWide.visitComplianceRate >= 80 ? '#52c41a' : complianceSummary.stateWide.visitComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
+                    showInfo={false}
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Text className="text-text-secondary">Report Submission Rate</Text>
+                    <Text strong>{complianceSummary.stateWide.reportComplianceRate || 0}%</Text>
+                  </div>
+                  <Progress
+                    percent={complianceSummary.stateWide.reportComplianceRate || 0}
+                    strokeColor={complianceSummary.stateWide.reportComplianceRate >= 80 ? '#52c41a' : complianceSummary.stateWide.reportComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
+                    showInfo={false}
+                  />
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Text className="text-text-secondary">Overall Compliance</Text>
+                    <Text strong className="text-lg">{complianceSummary.stateWide.overallComplianceScore || 0}%</Text>
+                  </div>
+                  <Progress
+                    percent={complianceSummary.stateWide.overallComplianceScore || 0}
+                    strokeColor={complianceSummary.stateWide.overallComplianceScore >= 80 ? '#52c41a' : complianceSummary.stateWide.overallComplianceScore >= 50 ? '#faad14' : '#ff4d4f'}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <Text className="text-text-tertiary">No compliance data available</Text>
+              </div>
+            )}
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Action Items */}
+      {actionItems?.items?.length > 0 && (
+        <div className="mb-6">
+          <Card
+            title={
+              <div className="flex items-center gap-2">
+                <ClockCircleOutlined className="text-blue-500" />
+                <span>Action Items</span>
+                <Badge count={actionItems.items.length} className="ml-2" />
+              </div>
+            }
+            className="shadow-sm border-border rounded-xl"
+            loading={actionItemsLoading}
+          >
+            <List
+              size="small"
+              dataSource={actionItems.items.slice(0, 5)}
+              renderItem={(item) => (
+                <List.Item
+                  className="hover:bg-background-tertiary transition-colors rounded-lg px-2"
+                >
+                  <div className="flex items-center gap-3 w-full">
+                    <Badge
+                      status={
+                        item.priority === 'high' ? 'error' :
+                        item.priority === 'medium' ? 'warning' : 'default'
+                      }
+                    />
+                    <div className="flex-1">
+                      <Text strong className="block">{item.title}</Text>
+                      <Text className="text-text-secondary text-sm">{item.description}</Text>
+                    </div>
+                    <Tag color={
+                      item.priority === 'high' ? 'red' :
+                      item.priority === 'medium' ? 'orange' : 'blue'
+                    }>
+                      {item.priority}
+                    </Tag>
+                  </div>
+                </List.Item>
+              )}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* Joining Letter Tracker - State-wide overview */}
+      <div className="mb-6">
+        <JoiningLetterTracker />
+      </div>
+
       {/* Institution Performance Table - Full width, key focus */}
       <div className="mb-6">
         <InstitutionsTable
@@ -248,14 +488,22 @@ const StateDashboard = () => {
         </Col>
       </Row>
 
-      {/* Top Performers Section */}
-      <div className="mb-6">
-        <TopPerformers
-          topPerformers={topPerformers}
-          bottomPerformers={bottomPerformers}
-          loading={analyticsLoading}
-        />
-      </div>
+      {/* Top Performers and Industry Partners */}
+      <Row gutter={[16, 16]} className="mb-6">
+        <Col xs={24} lg={16}>
+          <TopPerformers
+            topPerformers={topPerformers}
+            bottomPerformers={bottomPerformers}
+            loading={analyticsLoading}
+          />
+        </Col>
+        <Col xs={24} lg={8}>
+          <TopIndustriesList
+            industries={topIndustries}
+            loading={analyticsLoading}
+          />
+        </Col>
+      </Row>
 
       {/* Monthly Summary Section */}
       {monthlyAnalytics?.metrics && (

@@ -45,6 +45,24 @@ export class PrincipalController {
     return this.principalService.getDashboardAlerts(req.user.userId);
   }
 
+  @Get('dashboard/mentor-coverage')
+  @ApiOperation({ summary: 'Get mentor coverage statistics for dashboard' })
+  async getMentorCoverage(@Request() req) {
+    return this.principalService.getMentorCoverage(req.user.userId);
+  }
+
+  @Get('dashboard/compliance')
+  @ApiOperation({ summary: 'Get compliance metrics with 6-month trend' })
+  async getComplianceMetrics(@Request() req) {
+    return this.principalService.getComplianceMetrics(req.user.userId);
+  }
+
+  @Get('dashboard/alerts-enhanced')
+  @ApiOperation({ summary: 'Get enhanced dashboard alerts' })
+  async getDashboardAlertsEnhanced(@Request() req) {
+    return this.principalService.getDashboardAlertsEnhanced(req.user.userId);
+  }
+
   // Institution Management
   @Get('institution')
   @ApiOperation({ summary: 'Get own institution details' })
@@ -268,5 +286,89 @@ export class PrincipalController {
   @ApiOperation({ summary: 'Get detailed faculty progress with students and visits' })
   async getFacultyProgressDetails(@Request() req, @Param('facultyId') facultyId: string) {
     return this.principalService.getFacultyProgressDetails(req.user.userId, facultyId);
+  }
+
+  // ==================== Joining Letters ====================
+
+  @Get('joining-letters/stats')
+  @ApiOperation({ summary: 'Get joining letter statistics for institution' })
+  async getJoiningLetterStats(@Request() req) {
+    return this.principalService.getJoiningLetterStats(req.user.userId);
+  }
+
+  @Get('joining-letters')
+  @ApiOperation({ summary: 'Get list of joining letters with filtering' })
+  async getJoiningLetters(
+    @Request() req,
+    @Query('status') status?: 'all' | 'pending' | 'verified' | 'rejected' | 'noLetter',
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.principalService.getJoiningLetters(req.user.userId, {
+      status,
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      search,
+    });
+  }
+
+  @Get('joining-letters/activity')
+  @ApiOperation({ summary: 'Get recent joining letter activity' })
+  async getJoiningLetterActivity(
+    @Request() req,
+    @Query('limit') limit?: string,
+  ) {
+    return this.principalService.getJoiningLetterActivity(
+      req.user.userId,
+      limit ? Number(limit) : 10,
+    );
+  }
+
+  @Put('joining-letters/:id/verify')
+  @ApiOperation({ summary: 'Verify a joining letter' })
+  async verifyJoiningLetter(
+    @Request() req,
+    @Param('id') applicationId: string,
+    @Body() data: { joiningDate?: Date; remarks?: string },
+  ) {
+    return this.principalService.verifyJoiningLetter(req.user.userId, applicationId, data);
+  }
+
+  @Put('joining-letters/:id/reject')
+  @ApiOperation({ summary: 'Reject a joining letter' })
+  async rejectJoiningLetter(
+    @Request() req,
+    @Param('id') applicationId: string,
+    @Body() data: { remarks: string },
+  ) {
+    return this.principalService.rejectJoiningLetter(req.user.userId, applicationId, data);
+  }
+
+  // ==================== Internship Management ====================
+
+  @Get('internships/:id')
+  @ApiOperation({ summary: 'Get internship details by ID' })
+  async getInternshipById(@Request() req, @Param('id') applicationId: string) {
+    return this.principalService.getInternshipById(req.user.userId, applicationId);
+  }
+
+  @Put('internships/:id')
+  @ApiOperation({ summary: 'Update internship details' })
+  async updateInternship(
+    @Request() req,
+    @Param('id') applicationId: string,
+    @Body() updateData: any,
+  ) {
+    return this.principalService.updateInternship(req.user.userId, applicationId, updateData);
+  }
+
+  @Post('internships/bulk-status')
+  @ApiOperation({ summary: 'Bulk update internship statuses' })
+  async bulkUpdateInternshipStatus(
+    @Request() req,
+    @Body() data: { applicationIds: string[]; status: string; remarks?: string },
+  ) {
+    return this.principalService.bulkUpdateInternshipStatus(req.user.userId, data);
   }
 }

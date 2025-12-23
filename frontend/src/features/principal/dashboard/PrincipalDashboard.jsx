@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
   Col,
@@ -9,7 +10,11 @@ import {
   Badge,
   Avatar,
   Empty,
-  Tooltip
+  Tooltip,
+  Progress,
+  Alert,
+  Tag,
+  Statistic,
 } from 'antd';
 import {
   UserOutlined,
@@ -17,19 +22,42 @@ import {
   BookOutlined,
   ReadOutlined,
   NotificationOutlined,
-  BellOutlined,
   EditOutlined,
   ScheduleOutlined,
   RightOutlined,
   ClockCircleOutlined,
   PlusOutlined,
   BankOutlined,
+  WarningOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+  FileTextOutlined,
+  EyeOutlined,
+  RiseOutlined,
+  SolutionOutlined,
+  AuditOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
-import { toast } from 'react-hot-toast';
 import NoticeFormModal from '../../../components/modals/NoticeFormModal';
 import MixedStudentChart from '../../../components/charts/MixedStudentChart';
 import UserRolesPieChart from '../../../components/charts/UserRolesPieChart';
-import api from '../../../services/api';
+import {
+  fetchPrincipalDashboard,
+  fetchMentorCoverage,
+  fetchComplianceMetrics,
+  fetchAlertsEnhanced,
+  selectDashboardStats,
+  selectDashboardLoading,
+  selectMentorCoverage,
+  selectMentorCoverageLoading,
+  selectComplianceMetrics,
+  selectComplianceMetricsLoading,
+  selectAlertsEnhanced,
+  selectAlertsEnhancedLoading,
+} from '../store/principalSlice';
+import JoiningLetterPanel from './components/JoiningLetterPanel';
+import InternshipCompaniesCard from './components/InternshipCompaniesCard';
+import FacultyWorkloadCard from './components/FacultyWorkloadCard';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -83,101 +111,106 @@ const StatCard = ({ title, total, icon, bgClass, colorClass }) => (
 );
 
 const PrincipalDashboard = () => {
-  const [stats, setStats] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const dispatch = useDispatch();
+
   const [principalName, setPrincipalName] = useState('Principal');
   const [notices, setNotices] = useState([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNotice, setEditingNotice] = useState(null);
   const [instituteName, setInstituteName] = useState('');
 
+  // Redux selectors for dashboard data
+  const dashboardStats = useSelector(selectDashboardStats);
+  const dashboardLoading = useSelector(selectDashboardLoading);
+  const mentorCoverage = useSelector(selectMentorCoverage);
+  const mentorCoverageLoading = useSelector(selectMentorCoverageLoading);
+  const complianceMetrics = useSelector(selectComplianceMetrics);
+  const complianceMetricsLoading = useSelector(selectComplianceMetricsLoading);
+  const alertsEnhanced = useSelector(selectAlertsEnhanced);
+  const alertsEnhancedLoading = useSelector(selectAlertsEnhancedLoading);
+
+  // Memoized stats derived from Redux data
+  const stats = useMemo(() => {
+    if (!dashboardStats) return null;
+
+    const studentsData = dashboardStats.students || {};
+    const staffData = dashboardStats.staff || {};
+    const batchesCount = typeof dashboardStats.batches === 'number'
+      ? dashboardStats.batches
+      : (dashboardStats.batches?.length || 0);
+
+    return {
+      students: {
+        total: studentsData.total || 0,
+        active: studentsData.active || 0,
+        inactive: (studentsData.total || 0) - (studentsData.active || 0),
+      },
+      teachers: {
+        total: staffData.total || 0,
+        active: staffData.active || 0,
+        inactive: (staffData.total || 0) - (staffData.active || 0),
+      },
+      staff: {
+        total: staffData.total || 0,
+        active: staffData.active || 0,
+        inactive: (staffData.total || 0) - (staffData.active || 0),
+      },
+      batches: {
+        total: batchesCount,
+        active: batchesCount,
+        inactive: 0,
+      },
+      internships: dashboardStats.internships || {},
+      pending: dashboardStats.pending || {},
+      assignments: dashboardStats.classAssignments || [],
+    };
+  }, [dashboardStats]);
+
+  // Calculate total pending items
+  const totalPendingItems = useMemo(() => {
+    if (!stats?.pending) return 0;
+    return (stats.pending.selfIdentifiedApprovals || 0) +
+           (stats.pending.monthlyReports || 0) +
+           (stats.pending.grievances || 0);
+  }, [stats?.pending]);
+
   useEffect(() => {
     const currentUser = getCurrentUser();
     setPrincipalName(currentUser?.name || 'Principal');
-    
-    const fetchInstitutionData = async () => {
-      try {
-        const response = await api.get(`/principal/dashboard`);
-        const data = response.data?.data || response.data;
 
-        // Set institution name from the new API response structure
-        setInstituteName(data.institution?.name || data.institutionName || data.shortName || '');
+    // Fetch all dashboard data using Redux
+    dispatch(fetchPrincipalDashboard());
+    dispatch(fetchMentorCoverage());
+    dispatch(fetchComplianceMetrics());
+    dispatch(fetchAlertsEnhanced());
+  }, [dispatch]);
 
-        // Process notices
-        const institutionNotices = data.notices || [];
-        setNotices(institutionNotices);
-
-        // Extract stats from the new API response structure
-        const studentsData = data.students || {};
-        const staffData = data.staff || {};
-        const batchesCount = typeof data.batches === 'number' ? data.batches : (data.batches?.length || 0);
-
-        // Set consolidated stats using the new response format
-        setStats({
-          students: {
-            total: studentsData.total || 0,
-            active: studentsData.active || 0,
-            inactive: (studentsData.total || 0) - (studentsData.active || 0),
-          },
-          teachers: {
-            // Teachers are part of staff in the new API
-            total: staffData.total || 0,
-            active: staffData.active || 0,
-            inactive: (staffData.total || 0) - (staffData.active || 0),
-          },
-          staff: {
-            total: staffData.total || 0,
-            active: staffData.active || 0,
-            inactive: (staffData.total || 0) - (staffData.active || 0),
-          },
-          batches: {
-            total: batchesCount,
-            active: batchesCount,
-            inactive: 0,
-          },
-          // Additional data from new API
-          internships: data.internships || {},
-          pending: data.pending || {},
-          assignments: data.classAssignments || [],
-        });
-      } catch (error) {
-        console.error('Failed to fetch institution data', error);
-        // Set default stats on error
-        setStats({
-          students: { total: 0, active: 0, inactive: 0 },
-          teachers: { total: 0, active: 0, inactive: 0 },
-          staff: { total: 0, active: 0, inactive: 0 },
-          batches: { total: 0, active: 0, inactive: 0 },
-          internships: {},
-          pending: {},
-          assignments: [],
-        });
-      } finally {
-        setLoading(false);
+  // Update institution name and notices from dashboard stats
+  useEffect(() => {
+    if (dashboardStats) {
+      if (dashboardStats.institution?.name) {
+        setInstituteName(dashboardStats.institution.name);
       }
-    };
-
-    fetchInstitutionData();
-  }, []);
+      // Use notices from dashboard if available
+      if (dashboardStats.notices) {
+        setNotices(Array.isArray(dashboardStats.notices) ? dashboardStats.notices : []);
+      }
+    }
+  }, [dashboardStats]);
 
   const handleEdit = (notice) => {
     setEditingNotice(notice);
     setModalVisible(true);
   };
 
-  const refreshData = async () => {
-    try {
-      const response = await api.get(`/principal/dashboard`);
-      const data = response.data?.data || response.data;
+  const refreshData = useCallback(() => {
+    dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
+    dispatch(fetchMentorCoverage({ forceRefresh: true }));
+    dispatch(fetchComplianceMetrics({ forceRefresh: true }));
+    dispatch(fetchAlertsEnhanced({ forceRefresh: true }));
+  }, [dispatch]);
 
-      const institutionNotices = data.notices || [];
-      setNotices(institutionNotices);
-    } catch (error) {
-      console.error('Failed to refresh data', error);
-    }
-  };
-
-  if (loading) {
+  if (dashboardLoading && !stats) {
     return (
       <div className="flex flex-col justify-center items-center h-screen gap-4">
         <Spin size="large" />
@@ -268,6 +301,337 @@ const PrincipalDashboard = () => {
           {summaryCards.map((card, idx) => (
             <StatCard key={idx} {...card} />
           ))}
+        </div>
+
+        {/* Internship Statistics & Pending Items Row */}
+        <Row gutter={[16, 16]} className="mt-6">
+          {/* Internship Statistics */}
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <SolutionOutlined className="text-purple-500" />
+                  <span>Internship Statistics</span>
+                </div>
+              }
+              className="border-border shadow-sm rounded-xl h-full"
+              styles={{ body: { padding: '20px' } }}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">
+                      {stats.internships?.totalApplications || 0}
+                    </div>
+                    <div className="text-xs text-text-secondary uppercase font-semibold">Total</div>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">
+                      {stats.internships?.approvedApplications || 0}
+                    </div>
+                    <div className="text-xs text-text-secondary uppercase font-semibold">Approved</div>
+                  </div>
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">
+                      {stats.internships?.approvalRate || 0}%
+                    </div>
+                    <div className="text-xs text-text-secondary uppercase font-semibold">Rate</div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between mb-1">
+                    <Text className="text-text-secondary">Approval Progress</Text>
+                    <Text strong className="text-green-600">
+                      {stats.internships?.approvedApplications || 0} / {stats.internships?.totalApplications || 0}
+                    </Text>
+                  </div>
+                  <Progress
+                    percent={stats.internships?.approvalRate || 0}
+                    strokeColor={{
+                      '0%': '#9333ea',
+                      '100%': '#22c55e',
+                    }}
+                    showInfo={false}
+                  />
+                </div>
+                {stats.internships?.totalApplications > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <RiseOutlined className="text-green-500" />
+                    <span>Self-identified internships only</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </Col>
+
+          {/* Pending Items */}
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex items-center gap-2">
+                    <AuditOutlined className="text-orange-500" />
+                    <span>Pending Items</span>
+                  </div>
+                  {totalPendingItems > 0 && (
+                    <Badge count={totalPendingItems} style={{ backgroundColor: '#f97316' }} />
+                  )}
+                </div>
+              }
+              className="border-border shadow-sm rounded-xl h-full"
+              styles={{ body: { padding: '20px' } }}
+            >
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  <Tooltip title="Self-identified internship approvals pending">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg cursor-help">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {stats.pending?.selfIdentifiedApprovals || 0}
+                      </div>
+                      <div className="text-xs text-text-secondary uppercase font-semibold">Approvals</div>
+                    </div>
+                  </Tooltip>
+                  <Tooltip title="Monthly reports awaiting review">
+                    <div className="text-center p-3 bg-amber-50 rounded-lg cursor-help">
+                      <div className="text-2xl font-bold text-amber-600">
+                        {stats.pending?.monthlyReports || 0}
+                      </div>
+                      <div className="text-xs text-text-secondary uppercase font-semibold">Reports</div>
+                    </div>
+                  </Tooltip>
+                  <Tooltip title="Student grievances requiring attention">
+                    <div className="text-center p-3 bg-red-50 rounded-lg cursor-help">
+                      <div className="text-2xl font-bold text-red-600">
+                        {stats.pending?.grievances || 0}
+                      </div>
+                      <div className="text-xs text-text-secondary uppercase font-semibold">Grievances</div>
+                    </div>
+                  </Tooltip>
+                </div>
+                {totalPendingItems === 0 ? (
+                  <div className="text-center py-4">
+                    <CheckCircleOutlined className="text-4xl text-green-500 mb-2" />
+                    <div className="text-text-secondary text-sm">All items processed!</div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm">
+                    <AlertOutlined className="text-orange-500" />
+                    <span className="text-text-secondary">
+                      {totalPendingItems} item{totalPendingItems !== 1 ? 's' : ''} require{totalPendingItems === 1 ? 's' : ''} attention
+                    </span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Mentor Coverage and Compliance Row */}
+        <Row gutter={[16, 16]} className="mt-6">
+          {/* Mentor Coverage */}
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <TeamOutlined className="text-blue-500" />
+                  <span>Mentor Coverage</span>
+                </div>
+              }
+              className="border-border shadow-sm rounded-xl h-full"
+              loading={mentorCoverageLoading}
+              styles={{ body: { padding: '20px' } }}
+            >
+              {mentorCoverage ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-3 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {mentorCoverage.totalMentors || 0}
+                      </div>
+                      <div className="text-xs text-text-secondary uppercase font-semibold">Total Mentors</div>
+                    </div>
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">
+                        {mentorCoverage.studentsWithMentors || 0}
+                      </div>
+                      <div className="text-xs text-text-secondary uppercase font-semibold">Students Assigned</div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <Text className="text-text-secondary">Coverage Rate</Text>
+                      <Text strong>{mentorCoverage.coveragePercentage || 0}%</Text>
+                    </div>
+                    <Progress
+                      percent={mentorCoverage.coveragePercentage || 0}
+                      strokeColor={mentorCoverage.coveragePercentage >= 80 ? '#52c41a' : mentorCoverage.coveragePercentage >= 50 ? '#faad14' : '#ff4d4f'}
+                      showInfo={false}
+                    />
+                  </div>
+                  {mentorCoverage.mentorLoadDistribution && mentorCoverage.mentorLoadDistribution.length > 0 && (
+                    <div>
+                      <Text className="text-text-secondary text-sm block mb-2">Load Distribution</Text>
+                      <div className="flex gap-2 flex-wrap">
+                        <Tag color="green">Light: {mentorCoverage.mentorLoadDistribution.filter(m => m.assignedStudents <= 5).length}</Tag>
+                        <Tag color="blue">Optimal: {mentorCoverage.mentorLoadDistribution.filter(m => m.assignedStudents > 5 && m.assignedStudents <= 15).length}</Tag>
+                        <Tag color="orange">Heavy: {mentorCoverage.mentorLoadDistribution.filter(m => m.assignedStudents > 15).length}</Tag>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Text className="text-text-tertiary">No mentor coverage data available</Text>
+                </div>
+              )}
+            </Card>
+          </Col>
+
+          {/* Compliance Metrics */}
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <CheckCircleOutlined className="text-green-500" />
+                  <span>Compliance Metrics</span>
+                </div>
+              }
+              className="border-border shadow-sm rounded-xl h-full"
+              loading={complianceMetricsLoading}
+              styles={{ body: { padding: '20px' } }}
+            >
+              {complianceMetrics ? (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <Text className="text-text-secondary">Report Submission</Text>
+                      <Text strong>{complianceMetrics.currentMonth?.reportComplianceRate || 0}%</Text>
+                    </div>
+                    <Progress
+                      percent={complianceMetrics.currentMonth?.reportComplianceRate || 0}
+                      strokeColor={complianceMetrics.currentMonth?.reportComplianceRate >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.reportComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
+                      showInfo={false}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <Text className="text-text-secondary">Faculty Visits</Text>
+                      <Text strong>{complianceMetrics.currentMonth?.visitComplianceRate || 0}%</Text>
+                    </div>
+                    <Progress
+                      percent={complianceMetrics.currentMonth?.visitComplianceRate || 0}
+                      strokeColor={complianceMetrics.currentMonth?.visitComplianceRate >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.visitComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
+                      showInfo={false}
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between mb-1">
+                      <Text className="text-text-secondary">Overall Compliance</Text>
+                      <Text strong className="text-lg">{complianceMetrics.currentMonth?.overallScore || 0}%</Text>
+                    </div>
+                    <Progress
+                      percent={complianceMetrics.currentMonth?.overallScore || 0}
+                      strokeColor={complianceMetrics.currentMonth?.overallScore >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.overallScore >= 50 ? '#faad14' : '#ff4d4f'}
+                    />
+                  </div>
+                  {complianceMetrics.trend && complianceMetrics.trend.length > 0 && (
+                    <div className="text-sm text-text-secondary">
+                      <Text>6-month trend: </Text>
+                      {complianceMetrics.trend.slice(-3).map((item, idx) => {
+                        // Handle case where monthName might be a number or missing
+                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        const displayMonth = typeof item.monthName === 'string' && item.monthName.length > 0
+                          ? item.monthName
+                          : (typeof item.month === 'number' ? monthNames[item.month - 1] || item.month : 'N/A');
+                        const score = typeof item.overallScore === 'number' ? item.overallScore : 0;
+                        return (
+                          <Tag key={idx} color={score >= 80 ? 'green' : score >= 50 ? 'orange' : 'red'} className="mr-1">
+                            {displayMonth}: {score}%
+                          </Tag>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Text className="text-text-tertiary">No compliance data available</Text>
+                </div>
+              )}
+            </Card>
+          </Col>
+        </Row>
+
+        {/* Internship Companies and Faculty Workload Row */}
+        <Row gutter={[16, 16]} className="mt-6">
+          <Col xs={24} lg={12}>
+            <InternshipCompaniesCard />
+          </Col>
+          <Col xs={24} lg={12}>
+            <FacultyWorkloadCard />
+          </Col>
+        </Row>
+
+        {/* Enhanced Alerts */}
+        {alertsEnhanced?.summary?.totalAlerts > 0 && (
+          <div className="mt-6">
+            <Card
+              title={
+                <div className="flex items-center gap-2">
+                  <WarningOutlined className="text-red-500" />
+                  <span>Alerts & Action Items</span>
+                  <Badge count={alertsEnhanced.summary.totalAlerts} style={{ backgroundColor: '#ff4d4f' }} />
+                </div>
+              }
+              className="border-border shadow-sm rounded-xl"
+              loading={alertsEnhancedLoading}
+              styles={{ body: { padding: '20px' } }}
+            >
+              <div className="space-y-3">
+                {alertsEnhanced.summary.urgentGrievancesCount > 0 && (
+                  <Alert
+                    type="error"
+                    showIcon
+                    icon={<ExclamationCircleOutlined />}
+                    message={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
+                    description="Pending grievances that require immediate attention"
+                  />
+                )}
+                {alertsEnhanced.summary.overdueReportsCount > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<FileTextOutlined />}
+                    message={`${alertsEnhanced.summary.overdueReportsCount} Overdue Reports`}
+                    description="Students with overdue weekly/monthly reports"
+                  />
+                )}
+                {alertsEnhanced.summary.missingVisitsCount > 0 && (
+                  <Alert
+                    type="info"
+                    showIcon
+                    icon={<EyeOutlined />}
+                    message={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
+                    description="Students without recent faculty visits"
+                  />
+                )}
+                {alertsEnhanced.summary.unassignedStudentsCount > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<TeamOutlined />}
+                    message={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
+                    description="Active internship students without assigned mentors"
+                  />
+                )}
+              </div>
+            </Card>
+          </div>
+        )}
+
+        {/* Joining Letter Management Panel */}
+        <div className="mt-6">
+          <JoiningLetterPanel />
         </div>
 
         {/* Two Column Layout */}
