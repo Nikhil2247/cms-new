@@ -450,14 +450,12 @@ const ReportBuilder = () => {
   const handleDownload = async (reportId, format) => {
     const toastId = toast.loading('Downloading report...');
     try {
-      console.log(`[ReportBuilder] Starting download for report: ${reportId}, format: ${format}`);
       const blob = await reportService.downloadReport(reportId);
 
       if (!blob || blob.size === 0) {
         throw new Error('Downloaded file is empty');
       }
 
-      console.log(`[ReportBuilder] Blob received, size: ${blob.size}, type: ${blob.type}`);
 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');

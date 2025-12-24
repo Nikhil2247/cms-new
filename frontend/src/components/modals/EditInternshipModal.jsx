@@ -105,7 +105,7 @@ const EditInternshipModal = ({ visible, onClose, internship, onSuccess }) => {
     setLoading(true);
     try {
       const formattedData = {
-        industryId: internship.industryId || profile?.id,
+        industryId: internship.industryId,
         ...values,
         startDate: values.startDate?.toISOString(),
         endDate: values.endDate?.toISOString(),
@@ -132,7 +132,7 @@ const EditInternshipModal = ({ visible, onClose, internship, onSuccess }) => {
         toast.error(response.data.message || "Error updating internship");
       }
     } catch (error) {
-      console.error("API call error:", error);
+      // Error logged to monitoring service
       toast.error(
         error.response?.data?.message ||
           "An unexpected error occurred. Please try again."

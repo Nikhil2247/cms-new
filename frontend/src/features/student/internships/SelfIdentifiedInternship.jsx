@@ -214,7 +214,6 @@ const SelfIdentifiedInternship = () => {
 
       // Validate joining letter file before upload
       if (joiningLetterFile) {
-        console.log(`Uploading file: ${joiningLetterFile.name}, Size: ${(joiningLetterFile.size / (1024 * 1024)).toFixed(2)}MB`);
         if (joiningLetterFile.size > 5 * 1024 * 1024) {
           toast.error(`File too large (${(joiningLetterFile.size / (1024 * 1024)).toFixed(2)}MB). Maximum size is 5MB. Please compress or use a smaller file.`);
           return;

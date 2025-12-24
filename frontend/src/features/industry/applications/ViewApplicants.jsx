@@ -297,7 +297,6 @@ const ViewApplicants = () => {
   };
 
   const handleStatusChange = async (applicationId, newStatus) => {
-    console.log(
       `Attempting to change status to: ${newStatus} for application: ${applicationId}`
     );
 
@@ -341,7 +340,6 @@ const ViewApplicants = () => {
         payload
       );
 
-      // console.log("API Response:", response.data);
       const updatedStatus = response.data?.status || newStatus;
 
       if (updatedStatus !== newStatus) {

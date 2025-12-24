@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, List } from 'antd';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, List, Button } from 'antd';
 import {
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -8,6 +8,12 @@ import {
   TeamOutlined,
   FileTextOutlined,
   EyeOutlined,
+  ReloadOutlined,
+  BankOutlined,
+  InboxOutlined,
+  FolderOpenOutlined,
+  SolutionOutlined,
+  AlertOutlined,
 } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -50,7 +56,7 @@ import { PlacementTrendChart } from '../../../components/charts';
 import stateService from '../../../services/state.service';
 import { downloadBlob } from '../../../utils/downloadUtils';
 
-const { Text, Title } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 // Helper to get current user from localStorage
 const getCurrentUser = () => {
@@ -67,6 +73,19 @@ const getCurrentUser = () => {
     return null;
   }
   return null;
+};
+
+// Calculate compliance score for sorting (moved outside component for efficiency)
+const calculateComplianceScore = (stats) => {
+  if (!stats) return 0;
+  const { studentsWithInternships, assigned, facultyVisits, reportsSubmitted } = stats;
+  if (studentsWithInternships === 0) return 100;
+
+  const assignmentScore = (assigned / studentsWithInternships) * 100;
+  const visitScore = facultyVisits > 0 ? Math.min((facultyVisits / studentsWithInternships) * 100, 100) : 0;
+  const reportScore = (reportsSubmitted / studentsWithInternships) * 100;
+
+  return Math.round((assignmentScore + visitScore + reportScore) / 3);
 };
 
 const StateDashboard = () => {
@@ -100,50 +119,69 @@ const StateDashboard = () => {
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [exporting, setExporting] = useState(false);
 
-  // Derived performers from institutions as fallback
-  const topPerformers = topPerformersData.length > 0
-    ? topPerformersData
-    : institutionsWithStats?.length > 0
-      ? [...institutionsWithStats]
-          .sort((a, b) => {
-            const scoreA = calculateComplianceScore(a.stats);
-            const scoreB = calculateComplianceScore(b.stats);
-            return scoreB - scoreA;
-          })
-          .slice(0, 5)
-      : [];
+  // Derived performers from institutions as fallback (memoized)
+  const topPerformers = useMemo(() => {
+    if (topPerformersData.length > 0) return topPerformersData;
+    if (!institutionsWithStats?.length) return [];
+    return [...institutionsWithStats]
+      .sort((a, b) => calculateComplianceScore(b.stats) - calculateComplianceScore(a.stats))
+      .slice(0, 5);
+  }, [topPerformersData, institutionsWithStats]);
 
-  const bottomPerformers = bottomPerformersData.length > 0
-    ? bottomPerformersData
-    : institutionsWithStats?.length > 0
-      ? [...institutionsWithStats]
-          .sort((a, b) => {
-            const scoreA = calculateComplianceScore(a.stats);
-            const scoreB = calculateComplianceScore(b.stats);
-            return scoreA - scoreB;
-          })
-          .slice(0, 5)
-      : [];
+  const bottomPerformers = useMemo(() => {
+    if (bottomPerformersData.length > 0) return bottomPerformersData;
+    if (!institutionsWithStats?.length) return [];
+    return [...institutionsWithStats]
+      .sort((a, b) => calculateComplianceScore(a.stats) - calculateComplianceScore(b.stats))
+      .slice(0, 5);
+  }, [bottomPerformersData, institutionsWithStats]);
 
-  // Calculate compliance score for sorting
-  function calculateComplianceScore(stats) {
-    if (!stats) return 0;
-    const { studentsWithInternships, assigned, facultyVisits, reportsSubmitted } = stats;
-    if (studentsWithInternships === 0) return 100;
+  // Prepare trend data for chart (memoized)
+  const trendData = useMemo(() => {
+    return monthlyAnalytics?.trend?.map(item => ({
+      month: item.month,
+      applications: item.applications || 0,
+      approved: item.approved || item.placements || Math.floor((item.applications || 0) * 0.6),
+    })) || [];
+  }, [monthlyAnalytics]);
 
-    const assignmentScore = (assigned / studentsWithInternships) * 100;
-    const visitScore = facultyVisits > 0 ? Math.min((facultyVisits / studentsWithInternships) * 100, 100) : 0;
-    const reportScore = (reportsSubmitted / studentsWithInternships) * 100;
+  // Derive action items list from backend structure (memoized)
+  const actionItemsList = useMemo(() => {
+    if (!actionItems?.actions) return [];
+    const items = [];
 
-    return Math.round((assignmentScore + visitScore + reportScore) / 3);
-  }
+    // Pending industry approvals
+    actionItems.actions.pendingIndustryApprovals?.forEach(approval => {
+      items.push({
+        title: `Approve Industry: ${approval.name || approval.companyName || 'Unknown'}`,
+        description: 'Industry partner awaiting approval',
+        priority: 'high',
+        type: 'approval'
+      });
+    });
 
-  // Prepare trend data for chart
-  const trendData = monthlyAnalytics?.trend?.map(item => ({
-    month: item.month,
-    applications: item.applications || 0,
-    approved: item.approved || item.placements || Math.floor((item.applications || 0) * 0.6),
-  })) || [];
+    // Institutions requiring intervention
+    actionItems.actions.institutionsRequiringIntervention?.forEach(inst => {
+      items.push({
+        title: `Intervention: ${inst.institutionName || inst.name || 'Institution'}`,
+        description: inst.reason || 'Requires administrative intervention',
+        priority: 'high',
+        type: 'intervention'
+      });
+    });
+
+    // Overdue compliance items
+    actionItems.actions.overdueComplianceItems?.forEach(item => {
+      items.push({
+        title: item.title || 'Overdue Compliance',
+        description: item.description || 'Compliance item overdue',
+        priority: 'medium',
+        type: 'compliance'
+      });
+    });
+
+    return items;
+  }, [actionItems]);
 
   // Fetch initial data
   useEffect(() => {
@@ -192,7 +230,6 @@ const StateDashboard = () => {
       downloadBlob(blob, filename);
       message.success('Dashboard report exported successfully');
     } catch (error) {
-      console.error('Export error:', error);
       message.error('Failed to export dashboard report');
     } finally {
       setExporting(false);
@@ -244,80 +281,85 @@ const StateDashboard = () => {
       </div>
 
       {/* Critical Alerts and Compliance Summary Row */}
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[24, 24]} className="mb-6">
         {/* Critical Alerts */}
         <Col xs={24} lg={12}>
           <Card
             title={
-              <div className="flex items-center gap-2">
-                <WarningOutlined className="text-error" />
-                <span>Critical Alerts</span>
-                {criticalAlerts?.totalAlerts > 0 && (
-                  <Badge count={criticalAlerts.totalAlerts} className="ml-2" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
+                  <WarningOutlined className="text-error text-lg" />
+                </div>
+                <span className="font-bold text-text-primary text-lg">Critical Alerts</span>
+                {criticalAlerts?.summary?.totalAlerts > 0 && (
+                  <Badge count={criticalAlerts.summary.totalAlerts} className="ml-auto" />
                 )}
               </div>
             }
-            className="shadow-sm border-border rounded-xl h-full"
+            className="shadow-sm border-border rounded-2xl h-full bg-surface"
             loading={criticalAlertsLoading}
+            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
           >
             {criticalAlerts ? (
-              <div className="space-y-3">
-                {criticalAlerts.lowComplianceInstitutions?.length > 0 && (
+              <div className="space-y-4">
+                {criticalAlerts.alerts?.lowComplianceInstitutions?.length > 0 && (
                   <Alert
                     type="error"
                     showIcon
                     icon={<ExclamationCircleOutlined />}
-                    message={`${criticalAlerts.lowComplianceInstitutions.length} Low Compliance Institutions`}
+                    message={<span className="font-bold">Low Compliance Institutions ({criticalAlerts.alerts?.lowComplianceInstitutions.length})</span>}
                     description={
-                      <div className="mt-2">
-                        {criticalAlerts.lowComplianceInstitutions.slice(0, 3).map((inst, idx) => (
-                          <Tag key={idx} color="red" className="mb-1">
-                            {inst.name} ({inst.complianceScore}%)
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {criticalAlerts.alerts?.lowComplianceInstitutions.slice(0, 3).map((inst, idx) => (
+                          <Tag key={idx} color="red" className="m-0 px-2 py-0.5 rounded-md border-0 font-medium">
+                            {inst.institutionName} ({inst.complianceScore}%)
                           </Tag>
                         ))}
-                        {criticalAlerts.lowComplianceInstitutions.length > 3 && (
-                          <Tag>+{criticalAlerts.lowComplianceInstitutions.length - 3} more</Tag>
+                        {criticalAlerts.alerts?.lowComplianceInstitutions.length > 3 && (
+                          <Tag className="m-0 px-2 py-0.5 rounded-md border-0 bg-background-tertiary text-text-secondary">+{criticalAlerts.alerts?.lowComplianceInstitutions.length - 3} more</Tag>
                         )}
                       </div>
                     }
+                    className="rounded-xl border-error/20 bg-error/5"
                   />
                 )}
-                {criticalAlerts.studentsWithoutMentors > 0 && (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    icon={<TeamOutlined />}
-                    message={`${criticalAlerts.studentsWithoutMentors} Students Without Mentors`}
-                    description="Students in active internships without assigned mentors"
-                  />
+                {criticalAlerts.summary?.studentsWithoutMentorsCount > 0 && (
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-warning/5 border border-warning/20">
+                    <TeamOutlined className="text-warning text-lg mt-0.5" />
+                    <div>
+                      <Text strong className="text-text-primary block">Students Without Mentors</Text>
+                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.studentsWithoutMentorsCount} students in active internships need mentors</Text>
+                    </div>
+                  </div>
                 )}
-                {criticalAlerts.missingReports > 0 && (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    icon={<FileTextOutlined />}
-                    message={`${criticalAlerts.missingReports} Missing Reports`}
-                    description="Overdue weekly/monthly reports from students"
-                  />
+                {criticalAlerts.summary?.missingReportsCount > 0 && (
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-warning/5 border border-warning/20">
+                    <FileTextOutlined className="text-warning text-lg mt-0.5" />
+                    <div>
+                      <Text strong className="text-text-primary block">Missing Reports</Text>
+                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.missingReportsCount} overdue weekly/monthly reports</Text>
+                    </div>
+                  </div>
                 )}
-                {criticalAlerts.visitGaps > 0 && (
-                  <Alert
-                    type="info"
-                    showIcon
-                    icon={<EyeOutlined />}
-                    message={`${criticalAlerts.visitGaps} Faculty Visit Gaps`}
-                    description="Students who haven't had a faculty visit in 30+ days"
-                  />
+                {criticalAlerts.summary?.visitGapsCount > 0 && (
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-info/5 border border-info/20">
+                    <EyeOutlined className="text-info text-lg mt-0.5" />
+                    <div>
+                      <Text strong className="text-text-primary block">Faculty Visit Gaps</Text>
+                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.visitGapsCount} students haven't had a visit in 30+ days</Text>
+                    </div>
+                  </div>
                 )}
-                {!criticalAlerts.totalAlerts && (
-                  <div className="text-center py-8">
-                    <CheckCircleOutlined className="text-4xl text-success mb-2" />
-                    <Text className="block text-text-secondary">No critical alerts</Text>
+                {!criticalAlerts.summary.totalAlerts && (
+                  <div className="text-center py-12 bg-success/5 rounded-xl border border-success/10 border-dashed">
+                    <CheckCircleOutlined className="text-4xl text-success mb-3" />
+                    <Text className="block text-text-primary font-medium">All systems normal</Text>
+                    <Text className="text-text-tertiary text-sm">No critical alerts requiring attention</Text>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="text-center py-8">
+              <div className="text-center py-12">
                 <Text className="text-text-tertiary">No alerts data available</Text>
               </div>
             )}
@@ -328,62 +370,73 @@ const StateDashboard = () => {
         <Col xs={24} lg={12}>
           <Card
             title={
-              <div className="flex items-center gap-2">
-                <CheckCircleOutlined className="text-success" />
-                <span>Compliance Summary</span>
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
+                  <CheckCircleOutlined className="text-success text-lg" />
+                </div>
+                <span className="font-bold text-text-primary text-lg">Compliance Summary</span>
               </div>
             }
-            className="shadow-sm border-border rounded-xl h-full"
+            className="shadow-sm border-border rounded-2xl h-full bg-surface"
             loading={complianceSummaryLoading}
+            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
           >
             {complianceSummary?.stateWide ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <Text className="text-text-secondary">Mentor Assignment Rate</Text>
-                    <Text strong>{complianceSummary.stateWide.mentorCoverageRate || 0}%</Text>
+                  <div className="flex justify-between mb-2">
+                    <Text className="text-text-secondary font-medium">Mentor Assignment Rate</Text>
+                    <Text strong className="text-text-primary">{complianceSummary.stateWide.mentorCoverageRate || 0}%</Text>
                   </div>
                   <Progress
                     percent={complianceSummary.stateWide.mentorCoverageRate || 0}
                     strokeColor={complianceSummary.stateWide.mentorCoverageRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.mentorCoverageRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
                     showInfo={false}
+                    className="!m-0"
+                    size="small"
                   />
                 </div>
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <Text className="text-text-secondary">Faculty Visit Compliance</Text>
-                    <Text strong>{complianceSummary.stateWide.visitComplianceRate || 0}%</Text>
+                  <div className="flex justify-between mb-2">
+                    <Text className="text-text-secondary font-medium">Faculty Visit Compliance</Text>
+                    <Text strong className="text-text-primary">{complianceSummary.stateWide.visitComplianceRate || 0}%</Text>
                   </div>
                   <Progress
                     percent={complianceSummary.stateWide.visitComplianceRate || 0}
                     strokeColor={complianceSummary.stateWide.visitComplianceRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.visitComplianceRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
                     showInfo={false}
+                    className="!m-0"
+                    size="small"
                   />
                 </div>
                 <div>
-                  <div className="flex justify-between mb-1">
-                    <Text className="text-text-secondary">Report Submission Rate</Text>
-                    <Text strong>{complianceSummary.stateWide.reportComplianceRate || 0}%</Text>
+                  <div className="flex justify-between mb-2">
+                    <Text className="text-text-secondary font-medium">Report Submission Rate</Text>
+                    <Text strong className="text-text-primary">{complianceSummary.stateWide.reportComplianceRate || 0}%</Text>
                   </div>
                   <Progress
                     percent={complianceSummary.stateWide.reportComplianceRate || 0}
                     strokeColor={complianceSummary.stateWide.reportComplianceRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.reportComplianceRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
                     showInfo={false}
+                    className="!m-0"
+                    size="small"
                   />
                 </div>
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <Text className="text-text-secondary">Overall Compliance</Text>
-                    <Text strong className="text-lg">{complianceSummary.stateWide.overallComplianceScore || 0}%</Text>
+                <div className="pt-6 border-t border-border mt-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <Text className="text-text-primary font-bold text-lg">Overall Compliance Score</Text>
+                    <Text className="text-2xl font-black text-primary">{complianceSummary.stateWide.overallComplianceScore || 0}%</Text>
                   </div>
                   <Progress
                     percent={complianceSummary.stateWide.overallComplianceScore || 0}
                     strokeColor={complianceSummary.stateWide.overallComplianceScore >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.overallComplianceScore >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
+                    showInfo={false}
+                    className="!m-0"
                   />
                 </div>
               </div>
             ) : (
-              <div className="text-center py-8">
+              <div className="text-center py-12">
                 <Text className="text-text-tertiary">No compliance data available</Text>
               </div>
             )}
@@ -392,38 +445,38 @@ const StateDashboard = () => {
       </Row>
 
       {/* Action Items */}
-      {actionItems?.items?.length > 0 && (
+      {actionItemsList.length > 0 && (
         <div className="mb-6">
           <Card
             title={
-              <div className="flex items-center gap-2">
-                <ClockCircleOutlined className="text-primary" />
-                <span>Action Items</span>
-                <Badge count={actionItems.items.length} className="ml-2" />
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <ClockCircleOutlined className="text-primary text-lg" />
+                </div>
+                <span className="font-bold text-text-primary text-lg">Action Items</span>
+                <Badge count={actionItemsList.length} className="ml-auto" style={{ backgroundColor: 'rgb(var(--color-primary))' }} />
               </div>
             }
-            className="shadow-sm border-border rounded-xl"
+            className="shadow-sm border-border rounded-2xl bg-surface"
             loading={actionItemsLoading}
+            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '0' } }}
           >
             <List
-              size="small"
-              dataSource={actionItems.items.slice(0, 5)}
+              dataSource={actionItemsList.slice(0, 5)}
               renderItem={(item) => (
                 <List.Item
-                  className="hover:bg-background-tertiary transition-colors rounded-lg px-2"
+                  className="hover:bg-background-tertiary transition-colors px-6 py-4 border-b border-border/50 last:border-0"
                 >
-                  <div className="flex items-center gap-3 w-full">
-                    <Badge
-                      status={
-                        item.priority === 'high' ? 'error' :
-                        item.priority === 'medium' ? 'warning' : 'default'
-                      }
-                    />
+                  <div className="flex items-start gap-4 w-full">
+                    <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                      item.priority === 'high' ? 'bg-error' :
+                      item.priority === 'medium' ? 'bg-warning' : 'bg-primary'
+                    }`} />
                     <div className="flex-1">
-                      <Text strong className="block">{item.title}</Text>
-                      <Text className="text-text-secondary text-sm">{item.description}</Text>
+                      <Text strong className="block text-text-primary text-base mb-1">{item.title}</Text>
+                      <Text className="text-text-secondary text-sm block">{item.description}</Text>
                     </div>
-                    <Tag color={
+                    <Tag className="m-0 rounded-md border-0 px-2 py-0.5 font-bold uppercase tracking-wider text-[10px]" color={
                       item.priority === 'high' ? 'red' :
                       item.priority === 'medium' ? 'orange' : 'blue'
                     }>
@@ -453,7 +506,7 @@ const StateDashboard = () => {
       </div>
 
       {/* Two Column Layout - Performance and Trends */}
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[24, 24]} className="mb-6">
         {/* Performance Metrics */}
         <Col xs={24} lg={12}>
           <PerformanceMetrics stats={stats} />
@@ -462,9 +515,17 @@ const StateDashboard = () => {
         {/* Trend Chart */}
         <Col xs={24} lg={12}>
           <Card
-            title="Internship Application Trends"
-            className="shadow-sm border-border rounded-xl h-full"
+            title={
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+                  <TeamOutlined className="text-purple-500 text-lg" />
+                </div>
+                <span className="font-bold text-text-primary text-lg">Application Trends</span>
+              </div>
+            }
+            className="shadow-sm border-border rounded-2xl h-full bg-surface"
             loading={analyticsLoading}
+            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
           >
             {trendData.length > 0 ? (
               <div className="p-2">
@@ -475,13 +536,14 @@ const StateDashboard = () => {
                 />
               </div>
             ) : (
-              <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                  <Text className="text-text-tertiary block">No trend data available</Text>
-                  <Text className="text-text-tertiary text-xs">
-                    Data will appear as applications are processed
-                  </Text>
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="w-16 h-16 rounded-full bg-background-tertiary flex items-center justify-center mb-4">
+                  <TeamOutlined className="text-2xl text-text-tertiary" />
                 </div>
+                <Text className="text-text-secondary font-medium block">No trend data available</Text>
+                <Text className="text-text-tertiary text-xs">
+                  Data will appear as applications are processed
+                </Text>
               </div>
             )}
           </Card>
@@ -489,7 +551,7 @@ const StateDashboard = () => {
       </Row>
 
       {/* Top Performers and Industry Partners */}
-      <Row gutter={[16, 16]} className="mb-6">
+      <Row gutter={[24, 24]} className="mb-6">
         <Col xs={24} lg={16}>
           <TopPerformers
             topPerformers={topPerformers}
@@ -507,54 +569,65 @@ const StateDashboard = () => {
 
       {/* Monthly Summary Section */}
       {monthlyAnalytics?.metrics && (
-        <Card title="Monthly Summary" className="shadow-sm border-border rounded-xl">
-          <Row gutter={[16, 16]}>
+        <Card 
+          title={
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+                <ClockCircleOutlined className="text-indigo-500 text-lg" />
+              </div>
+              <span className="font-bold text-text-primary text-lg">Monthly Summary</span>
+            </div>
+          }
+          className="shadow-sm border-border rounded-2xl bg-surface"
+          styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
+        >
+          <Row gutter={[24, 24]}>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-primary mb-1">
                   {monthlyAnalytics.metrics.newStudents || 0}
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">New Students</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">New Students</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-success">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-success mb-1">
                   {monthlyAnalytics.metrics.newApplications || 0}
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">Applications</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Applications</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-secondary">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-info mb-1">
                   {monthlyAnalytics.metrics.approvedApplications || monthlyAnalytics.metrics.selectedApplications || 0}
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">Approved</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Approved</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-warning">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-warning mb-1">
                   {monthlyAnalytics.metrics.newInternships || 0}
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">New Internships</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">New Internships</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-purple-500 mb-1">
                   {monthlyAnalytics.metrics.facultyVisits || 0}
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">Faculty Visits</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Faculty Visits</div>
               </div>
             </Col>
             <Col xs={12} sm={8} md={4}>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-secondary">
+              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
+                <div className="text-2xl font-black text-text-secondary mb-1">
                   {monthlyAnalytics.metrics.approvalRate || monthlyAnalytics.metrics.placementRate || 0}%
                 </div>
-                <div className="text-xs text-text-secondary uppercase tracking-wider font-semibold mt-1">Approval Rate</div>
+                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Approval Rate</div>
               </div>
             </Col>
           </Row>

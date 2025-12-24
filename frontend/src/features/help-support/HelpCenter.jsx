@@ -180,244 +180,288 @@ const HelpCenter = () => {
   }
 
   return (
-    <div style={{ padding: 24 }}>
-      {/* Header */}
-      <Card style={{ marginBottom: 24, textAlign: 'center', background: 'linear-gradient(135deg, rgb(var(--color-primary)) 0%, rgb(var(--color-primary-900)) 100%)' }}>
-        <CustomerServiceOutlined style={{ fontSize: 48, color: '#fff', marginBottom: 16 }} />
-        <Title level={2} style={{ color: '#fff', marginBottom: 8 }}>Help & Support Center</Title>
-        <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 16 }}>
-          Find answers to common questions or submit a support ticket
-        </Text>
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex items-center">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+              <CustomerServiceOutlined className="text-lg" />
+            </div>
+            <div>
+              <Title level={2} className="mb-0 text-text-primary text-2xl">
+                Help & Support Center
+              </Title>
+              <Paragraph className="text-text-secondary text-sm mb-0">
+                Find answers to common questions or submit a support ticket
+              </Paragraph>
+            </div>
+          </div>
+        </div>
 
-        {/* Search Bar */}
-        <div style={{ maxWidth: 600, margin: '24px auto 0' }}>
+        {/* Search Card */}
+        <Card className="rounded-2xl border-border shadow-sm bg-surface" styles={{ body: { padding: '24px' } }}>
           <Input
             size="large"
             placeholder="Search for help articles..."
-            prefix={<SearchOutlined style={{ color: '#999' }} />}
+            prefix={<SearchOutlined className="text-text-tertiary" />}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             allowClear
-            style={{ borderRadius: 8 }}
+            className="rounded-xl h-12 bg-background border-border"
           />
-        </div>
-      </Card>
+        </Card>
 
-      <Row gutter={[24, 24]}>
-        {/* Categories Sidebar */}
-        <Col xs={24} md={6}>
-          <Card title={<><BookOutlined /> Categories</>} size="small">
-            <Space direction="vertical" style={{ width: '100%' }}>
-              <Button
-                type={selectedCategory === null ? 'primary' : 'text'}
-                block
-                onClick={() => setSelectedCategory(null)}
-              >
-                All Articles ({faqs.length})
-              </Button>
-              {categories.map((cat) => (
-                <Button
-                  key={cat.category}
-                  type={selectedCategory === cat.category ? 'primary' : 'text'}
-                  block
-                  onClick={() => setSelectedCategory(cat.category)}
-                  style={{ textAlign: 'left' }}
-                >
-                  {cat.label} ({cat.count})
-                </Button>
-              ))}
-            </Space>
-          </Card>
-
-          {/* Submit Ticket Card */}
-          <Card style={{ marginTop: 16 }} size="small">
-            <Title level={5} style={{ marginBottom: 12 }}>
-              <QuestionCircleOutlined /> Can't find what you're looking for?
-            </Title>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-              Submit a support ticket and our team will help you.
-            </Text>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              block
-              onClick={() => setTicketModalVisible(true)}
-            >
-              Submit a Ticket
-            </Button>
-          </Card>
-        </Col>
-
-        {/* FAQ Articles */}
-        <Col xs={24} md={18}>
-          {searching ? (
-            <div style={{ textAlign: 'center', padding: 48 }}>
-              <Spin tip="Searching..." />
-            </div>
-          ) : displayFAQs.length === 0 ? (
-            <Empty
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              description={
-                searchQuery
-                  ? `No articles found for "${searchQuery}"`
-                  : 'No articles available'
+        <Row gutter={[24, 24]}>
+          {/* Categories Sidebar */}
+          <Col xs={24} md={6}>
+            <Card 
+              title={
+                <div className="flex items-center gap-2">
+                  <BookOutlined className="text-primary" />
+                  <span className="font-bold text-text-primary">Categories</span>
+                </div>
               }
+              className="rounded-2xl border-border shadow-sm bg-surface"
+              size="small"
             >
-              <Button type="primary" onClick={() => setTicketModalVisible(true)}>
+              <Space direction="vertical" style={{ width: '100%' }}>
+                <Button
+                  type={selectedCategory === null ? 'primary' : 'text'}
+                  block
+                  onClick={() => setSelectedCategory(null)}
+                  className={`rounded-lg h-10 text-left justify-start ${selectedCategory === null ? 'font-bold' : 'text-text-secondary'}`}
+                >
+                  All Articles ({faqs.length})
+                </Button>
+                {categories.map((cat) => (
+                  <Button
+                    key={cat.category}
+                    type={selectedCategory === cat.category ? 'primary' : 'text'}
+                    block
+                    onClick={() => setSelectedCategory(cat.category)}
+                    className={`rounded-lg h-10 text-left justify-start ${selectedCategory === cat.category ? 'font-bold' : 'text-text-secondary'}`}
+                  >
+                    {cat.label} ({cat.count})
+                  </Button>
+                ))}
+              </Space>
+            </Card>
+
+            {/* Submit Ticket Card */}
+            <Card className="mt-4 rounded-2xl border-border shadow-sm bg-surface" size="small">
+              <Title level={5} className="mb-2 text-text-primary flex items-center gap-2">
+                <QuestionCircleOutlined className="text-warning" /> Need more help?
+              </Title>
+              <Text className="text-text-secondary block mb-4 text-sm">
+                Can't find what you're looking for? Submit a ticket and we'll help you out.
+              </Text>
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                block
+                onClick={() => setTicketModalVisible(true)}
+                className="rounded-xl h-10 font-bold shadow-lg shadow-primary/20"
+              >
                 Submit a Ticket
               </Button>
-            </Empty>
-          ) : (
-            <>
-              {searchResults !== null && (
-                <Text type="secondary" style={{ display: 'block', marginBottom: 16 }}>
-                  Found {searchResults.length} results for "{searchQuery}"
-                </Text>
-              )}
+            </Card>
+          </Col>
 
-              <Collapse
-                accordion
-                expandIconPosition="end"
-                style={{ background: '#fff' }}
-              >
-                {displayFAQs.map((faq) => (
-                  <Panel
-                    key={faq.id}
-                    header={
-                      <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                        <Text strong>{faq.title}</Text>
-                        <Space size={8}>
-                          <Tag color={getCategoryInfo(faq.category).color}>
-                            {getCategoryInfo(faq.category).label}
-                          </Tag>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            <EyeOutlined /> {faq.viewCount}
-                          </Text>
-                        </Space>
-                      </Space>
-                    }
+          {/* FAQ Articles */}
+          <Col xs={24} md={18}>
+            {searching ? (
+              <div className="text-center py-12">
+                <Spin tip="Searching..." />
+              </div>
+            ) : displayFAQs.length === 0 ? (
+              <Card className="rounded-2xl border-border shadow-sm bg-surface text-center py-12">
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    <span className="text-text-secondary">
+                      {searchQuery ? `No articles found for "${searchQuery}"` : 'No articles available'}
+                    </span>
+                  }
+                >
+                  <Button type="primary" onClick={() => setTicketModalVisible(true)} className="rounded-xl h-10 font-bold mt-4">
+                    Submit a Ticket
+                  </Button>
+                </Empty>
+              </Card>
+            ) : (
+              <>
+                {searchResults !== null && (
+                  <Text className="text-text-secondary block mb-4 font-medium">
+                    Found {searchResults.length} results for "{searchQuery}"
+                  </Text>
+                )}
+
+                <Card className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden" styles={{ body: { padding: 0 } }}>
+                  <Collapse
+                    accordion
+                    expandIconPosition="end"
+                    ghost
+                    className="custom-collapse"
                   >
-                    <div style={{ marginBottom: 16 }}>
-                      {faq.summary && (
-                        <Paragraph type="secondary" style={{ fontStyle: 'italic' }}>
-                          {faq.summary}
-                        </Paragraph>
-                      )}
-                      <div
-                        dangerouslySetInnerHTML={{ __html: renderMarkdown(faq.content) }}
-                        style={{ lineHeight: 1.8 }}
-                      />
-                    </div>
+                    {displayFAQs.map((faq) => (
+                      <Panel
+                        key={faq.id}
+                        header={
+                          <div className="py-2">
+                            <Text strong className="text-text-primary text-base block mb-1">{faq.title}</Text>
+                            <Space size={8}>
+                              <Tag color={getCategoryInfo(faq.category).color} className="rounded-md border-0 font-bold uppercase tracking-wider text-[10px] m-0">
+                                {getCategoryInfo(faq.category).label}
+                              </Tag>
+                              <Text className="text-text-tertiary text-xs flex items-center gap-1">
+                                <EyeOutlined /> {faq.viewCount}
+                              </Text>
+                            </Space>
+                          </div>
+                        }
+                        className="border-b border-border last:border-0"
+                      >
+                        <div className="pb-4 pl-2 pr-4">
+                          {faq.summary && (
+                            <Paragraph className="text-text-secondary italic mb-4 border-l-2 border-primary/30 pl-3">
+                              {faq.summary}
+                            </Paragraph>
+                          )}
+                          <div
+                            className="text-text-primary leading-relaxed"
+                            dangerouslySetInnerHTML={{ __html: renderMarkdown(faq.content) }}
+                          />
 
-                    {faq.tags && faq.tags.length > 0 && (
-                      <div style={{ marginBottom: 16 }}>
-                        {faq.tags.map((tag) => (
-                          <Tag key={tag}>{tag}</Tag>
-                        ))}
-                      </div>
-                    )}
+                          {faq.tags && faq.tags.length > 0 && (
+                            <div className="mt-4 mb-4">
+                              {faq.tags.map((tag) => (
+                                <Tag key={tag} className="rounded-full bg-background-tertiary border-border text-text-secondary">{tag}</Tag>
+                              ))}
+                            </div>
+                          )}
 
-                    <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
-                      <Space>
-                        <Text type="secondary">Was this helpful?</Text>
-                        <Button
-                          size="small"
-                          icon={<LikeOutlined />}
-                          onClick={() => handleMarkHelpful(faq.id)}
-                        >
-                          Yes ({faq.helpfulCount || 0})
-                        </Button>
-                      </Space>
-                    </div>
-                  </Panel>
-                ))}
-              </Collapse>
-            </>
-          )}
-        </Col>
-      </Row>
+                          <div className="border-t border-border pt-3 mt-4 flex items-center gap-3">
+                            <Text className="text-text-tertiary text-sm">Was this helpful?</Text>
+                            <Button
+                              size="small"
+                              icon={<LikeOutlined />}
+                              onClick={() => handleMarkHelpful(faq.id)}
+                              className="rounded-lg text-text-secondary hover:text-primary hover:border-primary"
+                            >
+                              Yes ({faq.helpfulCount || 0})
+                            </Button>
+                          </div>
+                        </div>
+                      </Panel>
+                    ))}
+                  </Collapse>
+                </Card>
+              </>
+            )}
+          </Col>
+        </Row>
 
-      {/* Submit Ticket Modal */}
-      <Modal
-        title={<><PlusOutlined /> Submit Support Ticket</>}
-        open={ticketModalVisible}
-        onCancel={() => {
-          setTicketModalVisible(false);
-          ticketForm.resetFields();
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form
-          form={ticketForm}
-          layout="vertical"
-          onFinish={handleSubmitTicket}
+        {/* Submit Ticket Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                <PlusOutlined />
+              </div>
+              <span className="text-text-primary font-bold">Submit Support Ticket</span>
+            </div>
+          }
+          open={ticketModalVisible}
+          onCancel={() => {
+            setTicketModalVisible(false);
+            ticketForm.resetFields();
+          }}
+          footer={null}
+          width={600}
+          className="rounded-2xl overflow-hidden"
         >
-          <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[
-              { required: true, message: 'Please enter a subject' },
-              { min: 5, message: 'Subject must be at least 5 characters' },
-            ]}
+          <Form
+            form={ticketForm}
+            layout="vertical"
+            onFinish={handleSubmitTicket}
+            className="pt-4"
           >
-            <Input placeholder="Brief description of your issue" />
-          </Form.Item>
+            <Form.Item
+              name="subject"
+              label={<span className="font-medium text-text-primary">Subject</span>}
+              rules={[
+                { required: true, message: 'Please enter a subject' },
+                { min: 5, message: 'Subject must be at least 5 characters' },
+              ]}
+            >
+              <Input placeholder="Brief description of your issue" className="rounded-lg h-11 bg-background border-border" />
+            </Form.Item>
 
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: 'Please select a category' }]}
-          >
-            <Select placeholder="Select category">
-              {Object.values(SUPPORT_CATEGORIES).map((cat) => (
-                <Select.Option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Row gutter={16}>
+              <Col span={12}>
+                <Form.Item
+                  name="category"
+                  label={<span className="font-medium text-text-primary">Category</span>}
+                  rules={[{ required: true, message: 'Please select a category' }]}
+                >
+                  <Select placeholder="Select category" className="rounded-lg h-11">
+                    {Object.values(SUPPORT_CATEGORIES).map((cat) => (
+                      <Select.Option key={cat.value} value={cat.value}>
+                        {cat.label}
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  name="priority"
+                  label={<span className="font-medium text-text-primary">Priority</span>}
+                  initialValue="MEDIUM"
+                >
+                  <Select className="rounded-lg h-11">
+                    {Object.values(TICKET_PRIORITY).map((p) => (
+                      <Select.Option key={p.value} value={p.value}>
+                        <Tag color={p.color} className="mr-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wider">{p.label}</Tag>
+                      </Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </Col>
+            </Row>
 
-          <Form.Item
-            name="priority"
-            label="Priority"
-            initialValue="MEDIUM"
-          >
-            <Select>
-              {Object.values(TICKET_PRIORITY).map((p) => (
-                <Select.Option key={p.value} value={p.value}>
-                  <Tag color={p.color}>{p.label}</Tag>
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item
+              name="description"
+              label={<span className="font-medium text-text-primary">Description</span>}
+              rules={[
+                { required: true, message: 'Please describe your issue' },
+                { min: 20, message: 'Description must be at least 20 characters' },
+              ]}
+            >
+              <TextArea
+                rows={6}
+                placeholder="Please describe your issue in detail. Include any relevant information that might help us resolve it faster."
+                className="rounded-lg bg-background border-border p-3"
+              />
+            </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[
-              { required: true, message: 'Please describe your issue' },
-              { min: 20, message: 'Description must be at least 20 characters' },
-            ]}
-          >
-            <TextArea
-              rows={6}
-              placeholder="Please describe your issue in detail. Include any relevant information that might help us resolve it faster."
-            />
-          </Form.Item>
-
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setTicketModalVisible(false)}>
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
+              <Button onClick={() => setTicketModalVisible(false)} className="rounded-xl h-10 font-medium">
                 Cancel
               </Button>
-              <Button type="primary" htmlType="submit" loading={submittingTicket}>
+              <Button 
+                type="primary" 
+                htmlType="submit" 
+                loading={submittingTicket}
+                className="rounded-xl h-10 font-bold bg-primary border-0 shadow-lg shadow-primary/20"
+              >
                 Submit Ticket
               </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            </div>
+          </Form>
+        </Modal>
+      </div>
     </div>
   );
 };

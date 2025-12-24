@@ -1,276 +1,164 @@
-import React, { useState } from 'react';
-import { Card, Progress, Row, Col, Statistic, Typography, Tooltip, Segmented, Empty } from 'antd';
+import React from 'react';
+import { Card, Row, Col, Progress, Typography, Divider, Tooltip } from 'antd';
 import {
   CheckCircleOutlined,
-  SyncOutlined,
   ClockCircleOutlined,
-  TrophyOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
-  BarChartOutlined,
-  LineChartOutlined,
-  DotChartOutlined,
+  CloseCircleOutlined,
   UserSwitchOutlined,
   CalendarOutlined,
   FileTextOutlined,
-  BookOutlined,
+  BarChartOutlined,
+  InfoCircleOutlined,
 } from '@ant-design/icons';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  ResponsiveContainer,
-  Cell,
-  RadarChart,
-  Radar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  Legend,
-} from 'recharts';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
-const MetricItem = ({ label, value, color, icon, description }) => (
-  <div className="mb-4">
-    <div className="flex justify-between items-center mb-2">
-      <div className="flex items-center gap-2">
-        {icon}
-        <Text strong className="text-sm">{label}</Text>
+const MetricItem = ({ label, value, total, color, icon, tooltip }) => {
+  const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+
+  return (
+    <div className="mb-4 last:mb-0">
+      <div className="flex justify-between items-center mb-1">
+        <div className="flex items-center gap-2">
+          {icon}
+          <Text className="text-text-secondary font-medium text-sm">
+            {label}
+            {tooltip && (
+              <Tooltip title={tooltip}>
+                <InfoCircleOutlined className="ml-1 text-text-tertiary text-xs" />
+              </Tooltip>
+            )}
+          </Text>
+        </div>
+        <div className="text-right">
+          <Text strong className="text-text-primary mr-1">{value}</Text>
+          <Text type="secondary" className="text-xs">/ {total}</Text>
+        </div>
       </div>
-      <Tooltip title={description}>
-        <Text className="font-semibold">
-          {value}%
-        </Text>
-      </Tooltip>
+      <Progress
+        percent={percent}
+        strokeColor={color}
+        trailColor="rgba(var(--color-border), 0.5)"
+        size="small"
+        className="!m-0"
+      />
     </div>
-    <Progress
-      percent={value}
-      showInfo={false}
-      size="small"
-      strokeColor={color}
-    />
-  </div>
-);
-
-const CustomTooltip = ({ active, payload }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className="bg-surface p-3 shadow-lg rounded-lg border border-border">
-        <p className="font-semibold text-text-primary">{data.label}</p>
-        <p className="text-sm" style={{ color: data.color }}>
-          Value: <span className="font-bold">{data.value}%</span>
-        </p>
-      </div>
-    );
-  }
-  return null;
+  );
 };
 
 const PerformanceMetrics = ({ stats }) => {
-  const [viewMode, setViewMode] = useState('progress');
+  if (!stats) return null;
 
-  // Self-identified internship rate
-  const totalStudents = Number(stats?.students?.total ?? stats?.totalStudents ?? 0) || 0;
-  const activeInternships = Number(stats?.internships?.active ?? stats?.activeInternships ?? 0) || 0;
-  const internshipRate = totalStudents > 0 ? Math.round((activeInternships / totalStudents) * 100) : 0;
+  // Use the detailed stats if available, otherwise fallback
+  const assignments = stats.assignments || {
+    total: stats.students?.active || 0,
+    assigned: 0,
+    unassigned: stats.students?.active || 0
+  };
 
-  // Mentor assignment rate
-  const assignments = stats?.assignments || {};
-  const studentsWithInternships = Number(assignments?.studentsWithInternships ?? activeInternships) || 0;
-  const assignedStudents = Number(assignments?.assigned ?? 0) || 0;
-  const assignmentRate = studentsWithInternships > 0 ? Math.round((assignedStudents / studentsWithInternships) * 100) : 0;
+  const visits = stats.facultyVisits || {
+    expectedThisMonth: 0,
+    completed: 0,
+    pendingThisMonth: 0
+  };
 
-  // Faculty visit rate (this month)
-  const facultyVisits = stats?.facultyVisits || {};
-  const visitsThisMonth = Number(facultyVisits?.thisMonth ?? 0) || 0;
-  const expectedVisits = Number(facultyVisits?.expectedThisMonth ?? studentsWithInternships) || 0;
-  const visitRate = expectedVisits > 0 ? Math.round((visitsThisMonth / expectedVisits) * 100) : 0;
+  const reports = stats.monthlyReports || {
+    expectedThisMonth: 0,
+    thisMonth: 0,
+    missingThisMonth: 0
+  };
 
-  // Monthly report submission rate
-  const monthlyReports = stats?.monthlyReports || {};
-  const reportsSubmitted = Number(monthlyReports?.thisMonth ?? 0) || 0;
-  const expectedReports = Number(monthlyReports?.expectedThisMonth ?? studentsWithInternships) || 0;
-  const reportRate = expectedReports > 0 ? Math.round((reportsSubmitted / expectedReports) * 100) : 0;
+  // Use applications data from backend (not internships)
+  const applications = stats.applications || {
+    total: 0,
+    accepted: 0,
+    approvalRate: 0
+  };
 
-  const metrics = [
-    {
-      label: 'Internship Coverage',
-      value: internshipRate,
-      color: 'rgb(var(--color-secondary))',
-      icon: <BookOutlined className="text-secondary" />,
-      description: 'Percentage of students with active self-identified internships',
-    },
-    {
-      label: 'Mentor Assignment',
-      value: assignmentRate,
-      color: 'rgb(var(--color-primary))',
-      icon: <UserSwitchOutlined className="text-primary" />,
-      description: 'Percentage of interns with assigned mentors',
-    },
-    {
-      label: 'Faculty Visit Compliance',
-      value: visitRate,
-      color: 'rgb(var(--color-info))',
-      icon: <CalendarOutlined className="text-info" />,
-      description: 'Faculty visits completed this month vs expected',
-    },
-    {
-      label: 'Report Submission',
-      value: reportRate,
-      color: 'rgb(var(--color-warning))',
-      icon: <FileTextOutlined className="text-warning" />,
-      description: 'Monthly reports submitted this month vs expected',
-    },
-  ];
-
-  // Data for bar chart
-  const barChartData = metrics.map((m) => ({
-    label: m.label.split(' ')[0],
-    value: m.value,
-    color: m.color,
-  }));
-
-  // Data for radar chart
-  const radarData = metrics.map((m) => ({
-    subject: m.label.split(' ')[0],
-    current: m.value,
-    target: 85,
-  }));
-
-  const renderProgressView = () => (
-    <div className="space-y-2">
-      {metrics.map((metric, index) => (
-        <MetricItem key={index} {...metric} />
-      ))}
-    </div>
-  );
-
-  const renderBarChartView = () => (
-    <div style={{ height: 220 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={barChartData}
-          margin={{ top: 10, right: 10, left: -10, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 10, fill: '#666' }}
-            interval={0}
-            angle={-20}
-            textAnchor="end"
-            height={50}
-          />
-          <YAxis tick={{ fontSize: 10, fill: '#666' }} domain={[0, 100]} />
-          <RechartsTooltip content={<CustomTooltip />} />
-          <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={35}>
-            {barChartData.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={entry.color} />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-
-  const renderRadarChartView = () => (
-    <div style={{ height: 220 }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="65%" data={radarData}>
-          <PolarGrid stroke="#e0e0e0" />
-          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: '#666' }} />
-          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={{ fontSize: 8, fill: '#999' }} />
-          <Radar
-            name="Current"
-            dataKey="current"
-            stroke="rgb(var(--color-primary))"
-            fill="rgb(var(--color-primary))"
-            fillOpacity={0.4}
-            strokeWidth={2}
-          />
-          <Radar
-            name="Target"
-            dataKey="target"
-            stroke="rgb(var(--color-success))"
-            fill="rgb(var(--color-success))"
-            fillOpacity={0.2}
-            strokeWidth={2}
-            strokeDasharray="5 5"
-          />
-          <Legend wrapperStyle={{ fontSize: 10 }} />
-        </RadarChart>
-      </ResponsiveContainer>
-    </div>
-  );
-
-  const hasData = metrics.some((m) => m.value > 0);
-
-  // Calculate overall compliance score
-  const overallScore = Math.round((internshipRate + assignmentRate + visitRate + reportRate) / 4);
+  // Calculate pending as difference (backend doesn't provide rejected count)
+  const internships = {
+    total: applications.total || 0,
+    approved: applications.accepted || 0,
+    pending: (applications.total || 0) - (applications.accepted || 0),
+    rejected: 0  // Backend doesn't track rejected separately
+  };
 
   return (
     <Card
-      title="Compliance Overview"
-      className="shadow-sm h-full"
-      extra={
-        <Segmented
-          size="small"
-          options={[
-            { value: 'progress', icon: <LineChartOutlined /> },
-            { value: 'bar', icon: <BarChartOutlined /> },
-            { value: 'radar', icon: <DotChartOutlined /> },
-          ]}
-          value={viewMode}
-          onChange={setViewMode}
-        />
+      title={
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+            <BarChartOutlined className="text-indigo-500 text-lg" />
+          </div>
+          <span className="font-bold text-text-primary text-lg">Performance Metrics</span>
+        </div>
       }
+      className="shadow-sm border-border rounded-2xl h-full bg-surface"
+      styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
     >
-      {hasData ? (
-        viewMode === 'progress' ? renderProgressView() :
-        viewMode === 'bar' ? renderBarChartView() :
-        renderRadarChartView()
-      ) : (
-        <Empty description="No performance data available" />
-      )}
+      <Row gutter={[32, 24]}>
+        <Col xs={24} md={12}>
+          <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Process Adherence</Title>
+          
+          <MetricItem
+            label="Mentor Assignment"
+            value={assignments.assigned}
+            total={assignments.studentsWithInternships || assignments.total}
+            color="rgb(var(--color-primary))"
+            icon={<UserSwitchOutlined className="text-primary" />}
+            tooltip="Active students with assigned mentors"
+          />
+          
+          <MetricItem
+            label="Faculty Visits"
+            value={visits.completed || visits.thisMonth}
+            total={visits.expectedThisMonth || (visits.completed + visits.pendingThisMonth)}
+            color="rgb(var(--color-info))"
+            icon={<CalendarOutlined className="text-info" />}
+            tooltip="Completed visits vs expected for this month"
+          />
+          
+          <MetricItem
+            label="Monthly Reports"
+            value={reports.thisMonth}
+            total={reports.expectedThisMonth || (reports.thisMonth + reports.missingThisMonth)}
+            color="rgb(var(--color-warning))"
+            icon={<FileTextOutlined className="text-warning" />}
+            tooltip="Submitted reports vs expected for this month"
+          />
+        </Col>
 
-      {/* Summary Stats */}
-      <div className="mt-4 pt-4 border-t border-border">
-        <Row gutter={16}>
-          <Col span={8}>
-            <Statistic
-              title={<span className="text-xs">Overall Score</span>}
-              value={overallScore}
-              suffix="%"
-              valueStyle={{
-                color: overallScore >= 75 ? 'rgb(var(--color-success))' : overallScore >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))',
-                fontSize: '20px'
-              }}
-            />
-          </Col>
-          <Col span={8}>
-            <Statistic
-              title={<span className="text-xs">Active Interns</span>}
-              value={activeInternships}
-              valueStyle={{ fontSize: '20px' }}
-            />
-          </Col>
-          <Col span={8}>
-            <Statistic
-              title={<span className="text-xs">Pending Actions</span>}
-              value={(assignments?.unassigned || 0) + (monthlyReports?.missingThisMonth || 0)}
-              valueStyle={{
-                color: 'rgb(var(--color-error))',
-                fontSize: '20px'
-              }}
-            />
-          </Col>
-        </Row>
-      </div>
+        <Col xs={24} md={12} className="relative md:pl-8">
+          {/* Vertical divider for md screens and up */}
+          <div className="hidden md:block absolute left-0 top-0 bottom-0 w-px bg-border"></div>
+          
+          <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Application Status</Title>
+          
+          <MetricItem
+            label="Approved Applications"
+            value={internships.approved}
+            total={internships.total}
+            color="rgb(var(--color-success))"
+            icon={<CheckCircleOutlined className="text-success" />}
+          />
+          
+          <MetricItem
+            label="Pending Review"
+            value={internships.pending}
+            total={internships.total}
+            color="rgb(var(--color-warning))"
+            icon={<ClockCircleOutlined className="text-warning" />}
+          />
+          
+          <MetricItem
+            label="Rejected Applications"
+            value={internships.rejected}
+            total={internships.total}
+            color="rgb(var(--color-error))"
+            icon={<CloseCircleOutlined className="text-error" />}
+          />
+        </Col>
+      </Row>
     </Card>
   );
 };

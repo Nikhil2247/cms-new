@@ -1,16 +1,22 @@
 import React from 'react';
 import { Typography, Button, DatePicker, Tooltip } from 'antd';
 import {
-  CalendarOutlined,
-  DownloadOutlined,
+  BankOutlined,
   ReloadOutlined,
-  FilterOutlined,
+  DownloadOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
-import dayjs from 'dayjs';
 
-const { Title, Text } = Typography;
+const { Title, Paragraph } = Typography;
 
-const DashboardHeader = ({ userName, onRefresh, onExport, selectedMonth, onMonthChange, exporting = false }) => {
+const DashboardHeader = ({
+  userName,
+  onRefresh,
+  onExport,
+  selectedMonth,
+  onMonthChange,
+  exporting,
+}) => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -19,84 +25,48 @@ const DashboardHeader = ({ userName, onRefresh, onExport, selectedMonth, onMonth
   });
 
   return (
-    <div className="mb-6">
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-        {/* Left Section - Welcome */}
-        <div>
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400 text-sm mb-2">
-            <CalendarOutlined />
-            <span>{currentDate}</span>
-          </div>
-          <Title level={2} className="!mb-1 !text-slate-900 dark:!text-white">
-            Welcome back, <span className="text-primary">{userName || 'Administrator'}</span>
-          </Title>
-          <Text className="text-slate-600 dark:text-slate-400 text-base">
-            State Directorate Dashboard - Monitor all institutions and their performance
-          </Text>
+    <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 mb-6">
+      <div className="flex items-center">
+        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+          <BankOutlined className="text-lg" />
         </div>
+        <div>
+          <Title level={2} className="mb-0 text-text-primary text-2xl">
+            State Dashboard
+          </Title>
+          <Paragraph className="text-text-secondary text-sm mb-0">
+            Welcome back, <span className="font-semibold text-primary">{userName || 'Administrator'}</span> • {currentDate}
+          </Paragraph>
+        </div>
+      </div>
 
-        {/* Right Section - Actions */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Month Filter */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background-tertiary border border-border">
-            <FilterOutlined className="text-slate-600 dark:text-slate-400 text-sm" />
-            <DatePicker
-              picker="month"
-              value={selectedMonth ? dayjs(selectedMonth) : null}
-              onChange={(date) => onMonthChange?.(date?.toDate())}
-              placeholder="Filter by month"
-              allowClear
-              variant="borderless"
-              className="
-                !px-0 !py-0 !bg-transparent
-                [&_.ant-picker-input>input]:!text-sm
-                [&_.ant-picker-input>input]:!text-slate-900
-                [&_.ant-picker-input>input]:dark:!text-white
-                [&_.ant-picker-input>input::placeholder]:!text-slate-500
-                [&_.ant-picker-input>input::placeholder]:dark:!text-slate-500
-              "
-              style={{ width: 140 }}
-            />
-          </div>
-
-          {/* Refresh Button */}
-          {onRefresh && (
-            <Tooltip title="Refresh data">
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={onRefresh}
-                className="
-                  h-10 px-4 rounded-xl
-                  border-border hover:border-primary
-                  text-text-secondary hover:text-primary
-                  transition-all duration-200
-                "
-              >
-                <span className="hidden sm:inline ml-1">Refresh</span>
-              </Button>
-            </Tooltip>
-          )}
-
-          {/* Export Button */}
-          {onExport && (
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full xl:w-auto">
+        <DatePicker.MonthPicker
+          placeholder="Filter by Month"
+          onChange={onMonthChange}
+          value={selectedMonth}
+          className="w-full sm:w-48 h-10 rounded-lg border-border"
+          suffixIcon={<CalendarOutlined className="text-text-tertiary" />}
+        />
+        
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <Tooltip title="Refresh Data">
             <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={onExport}
-              loading={exporting}
-              disabled={exporting}
-              className="
-                h-10 px-5 rounded-xl font-medium
-                shadow-lg shadow-primary/20
-                hover:shadow-xl hover:shadow-primary/30
-                transition-all duration-200
-              "
-            >
-              <span className="hidden sm:inline ml-1">
-                {exporting ? 'Exporting...' : 'Export Report'}
-              </span>
-            </Button>
-          )}
+              icon={<ReloadOutlined />}
+              onClick={onRefresh}
+              className="flex-1 sm:flex-none w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+            />
+          </Tooltip>
+
+          <Button
+            type="primary"
+            icon={<DownloadOutlined />}
+            onClick={onExport}
+            loading={exporting}
+            className="flex-1 sm:flex-none h-10 rounded-xl font-bold shadow-lg shadow-primary/20 bg-primary border-0"
+          >
+            Export Report
+          </Button>
         </div>
       </div>
     </div>

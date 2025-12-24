@@ -56,7 +56,6 @@ const PrincipalList = () => {
   };
 
   const handleResetPassword = (id, name, email) => {
-    console.log('handleResetPassword called with:', { id, name, email });
     modal.confirm({
       title: 'Reset Password',
       content: (
@@ -69,9 +68,7 @@ const PrincipalList = () => {
       okType: 'primary',
       onOk: async () => {
         try {
-          console.log('Dispatching resetPrincipalPassword for id:', id);
           const result = await dispatch(resetPrincipalPassword(id)).unwrap();
-          console.log('Reset password result:', result);
           message.success('Password reset successfully');
           modal.success({
             title: 'Password Reset Successful',
@@ -172,22 +169,17 @@ const PrincipalList = () => {
       align: 'center',
       render: (_, record) => {
         const handleMenuClick = ({ key }) => {
-          console.log('Menu clicked with key:', key, 'for record:', record);
           switch (key) {
             case 'edit':
-              console.log('Navigating to edit page');
               navigate(`/principals/${record.id}/edit`);
               break;
             case 'reset-password':
-              console.log('Calling handleResetPassword');
               handleResetPassword(record.id, record.name, record.email);
               break;
             case 'delete':
-              console.log('Calling handleDelete');
               handleDelete(record.id, record.name);
               break;
             default:
-              console.log('Unknown menu key:', key);
           }
         };
 

@@ -1,417 +1,1454 @@
+http://127.0.0.1:3000/api/state/joining-letters/stats
 {
-    "profile": {
-        "id": "6948e45fc79516c68f963e1e",
-        "name": "Aanya Bansal",
-        "rollNumber": "2025EE018003",
-        "email": "2025ee018003@student.com"
+    "summary": {
+        "total": 1584,
+        "noLetter": 1584,
+        "pendingReview": 0,
+        "verified": 0,
+        "rejected": 0,
+        "uploaded": 0,
+        "verificationRate": 0,
+        "uploadRate": 0
     },
-    "currentInternship": {
-        "id": "6948e8e0c79516c68f9652a3",
-        "studentId": "6948e45fc79516c68f963e1e",
-        "internshipId": null,
-        "applicationDate": "2025-12-22T06:44:48.920Z",
-        "coverLetter": null,
-        "resume": null,
-        "additionalInfo": null,
-        "status": "APPROVED",
-        "appliedDate": "2025-12-22T06:44:48.920Z",
-        "reviewedDate": null,
-        "isSelected": false,
-        "selectionDate": null,
-        "rejectionReason": null,
-        "hasJoined": false,
-        "joiningDate": "2025-12-15T00:00:00.000Z",
-        "completionDate": null,
-        "mentorId": null,
-        "mentorAssignedAt": null,
-        "mentorAssignedBy": null,
-        "isSelfIdentified": true,
-        "companyName": "Schneider Electric India",
-        "companyAddress": "Plot No. 312, Industrial Area Phase I, Mohali, Punjab",
-        "companyContact": null,
-        "companyEmail": null,
-        "hrName": "Mr. Lakshay Chauhan",
-        "hrDesignation": null,
-        "hrContact": "+91-7570752516",
-        "hrEmail": "hr@schneiderelectr.com",
-        "internshipStatus": "ONGOING",
-        "joiningLetterUrl": null,
-        "joiningLetterUploadedAt": null,
-        "facultyMentorName": null,
-        "facultyMentorContact": null,
-        "facultyMentorEmail": null,
-        "facultyMentorDesignation": null,
-        "internshipDuration": null,
-        "stipend": null,
-        "startDate": "2025-12-15T00:00:00.000Z",
-        "endDate": "2026-05-15T00:00:00.000Z",
-        "jobProfile": null,
-        "reviewedBy": null,
-        "reviewedAt": null,
-        "reviewRemarks": null,
-        "notes": null,
-        "proposedFirstVisit": null,
-        "secondVisit": null,
-        "createdAt": "2025-12-22T06:44:48.920Z",
-        "updatedAt": "2025-12-22T06:44:48.920Z",
-        "internship": null,
-        "mentor": null
-    },
-    "upcomingDeadlines": [],
-    "pendingReports": 0,
-    "availableInternships": 0,
-    "totalApplications": 1,
-    "notifications": [],
-    "recentActivities": [
+    "byInstitution": [
         {
-            "id": "6948e8e0c79516c68f9652a3",
-            "studentId": "6948e45fc79516c68f963e1e",
-            "internshipId": null,
-            "applicationDate": "2025-12-22T06:44:48.920Z",
-            "coverLetter": null,
-            "resume": null,
-            "additionalInfo": null,
-            "status": "APPROVED",
-            "appliedDate": "2025-12-22T06:44:48.920Z",
-            "reviewedDate": null,
-            "isSelected": false,
-            "selectionDate": null,
-            "rejectionReason": null,
-            "hasJoined": false,
-            "joiningDate": "2025-12-15T00:00:00.000Z",
-            "completionDate": null,
-            "mentorId": null,
-            "mentorAssignedAt": null,
-            "mentorAssignedBy": null,
-            "isSelfIdentified": true,
-            "companyName": "Schneider Electric India",
-            "companyAddress": "Plot No. 312, Industrial Area Phase I, Mohali, Punjab",
-            "companyContact": null,
-            "companyEmail": null,
-            "hrName": "Mr. Lakshay Chauhan",
-            "hrDesignation": null,
-            "hrContact": "+91-7570752516",
-            "hrEmail": "hr@schneiderelectr.com",
-            "internshipStatus": "ONGOING",
-            "joiningLetterUrl": null,
-            "joiningLetterUploadedAt": null,
-            "facultyMentorName": null,
-            "facultyMentorContact": null,
-            "facultyMentorEmail": null,
-            "facultyMentorDesignation": null,
-            "internshipDuration": null,
-            "stipend": null,
-            "startDate": "2025-12-15T00:00:00.000Z",
-            "endDate": "2026-05-15T00:00:00.000Z",
-            "jobProfile": null,
-            "reviewedBy": null,
-            "reviewedAt": null,
-            "reviewRemarks": null,
-            "notes": null,
-            "proposedFirstVisit": null,
-            "secondVisit": null,
-            "createdAt": "2025-12-22T06:44:48.920Z",
-            "updatedAt": "2025-12-22T06:44:48.920Z",
-            "internship": null
+            "institutionId": "6948e033c79516c68f962b4a",
+            "institutionName": "Government Polytechnic Ludhiana",
+            "institutionCode": "INST001",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e033c79516c68f962b4b",
+            "institutionName": "Government Polytechnic Amritsar",
+            "institutionCode": "INST002",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e033c79516c68f962b4c",
+            "institutionName": "Government Polytechnic Jalandhar",
+            "institutionCode": "INST003",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4d",
+            "institutionName": "Government Polytechnic Patiala",
+            "institutionCode": "INST004",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4e",
+            "institutionName": "Government Polytechnic Bathinda",
+            "institutionCode": "INST005",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4f",
+            "institutionName": "Government Polytechnic Mohali",
+            "institutionCode": "INST006",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b50",
+            "institutionName": "Government Polytechnic Hoshiarpur",
+            "institutionCode": "INST007",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b51",
+            "institutionName": "Government Polytechnic Pathankot",
+            "institutionCode": "INST008",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b52",
+            "institutionName": "Government Polytechnic Moga",
+            "institutionCode": "INST009",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b53",
+            "institutionName": "Government Polytechnic Ferozepur",
+            "institutionCode": "INST010",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b54",
+            "institutionName": "Government Polytechnic Gurdaspur",
+            "institutionCode": "INST011",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b55",
+            "institutionName": "Government Polytechnic Kapurthala",
+            "institutionCode": "INST012",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b56",
+            "institutionName": "Government Polytechnic Sangrur",
+            "institutionCode": "INST013",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b57",
+            "institutionName": "Government Polytechnic Rupnagar",
+            "institutionCode": "INST014",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b58",
+            "institutionName": "Government Polytechnic Muktsar",
+            "institutionCode": "INST015",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b59",
+            "institutionName": "Government Polytechnic Fazilka",
+            "institutionCode": "INST016",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b5a",
+            "institutionName": "Government Polytechnic Faridkot",
+            "institutionCode": "INST017",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b5b",
+            "institutionName": "Government Polytechnic Barnala",
+            "institutionCode": "INST018",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5c",
+            "institutionName": "Government Polytechnic Tarn Taran",
+            "institutionCode": "INST019",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5d",
+            "institutionName": "Government Polytechnic Nawanshahr",
+            "institutionCode": "INST020",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5e",
+            "institutionName": "Government Polytechnic Mansa",
+            "institutionCode": "INST021",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5f",
+            "institutionName": "Government Polytechnic Fatehgarh Sahib",
+            "institutionCode": "INST022",
+            "total": 72,
+            "noLetter": 72,
+            "pendingReview": 0,
+            "verified": 0,
+            "rejected": 0
+        }
+    ],
+    "recentActivity": []
+}
+http://127.0.0.1:3000/api/state/dashboard
+{
+    "institutions": {
+        "total": 22,
+        "active": 22
+    },
+    "students": {
+        "total": 1584,
+        "active": 1584
+    },
+    "faculty": {
+        "total": 440,
+        "active": 440
+    },
+    "totalFaculty": 440,
+    "activeFaculty": 440,
+    "internships": {
+        "total": 1584,
+        "active": 1584
+    },
+    "applications": {
+        "total": 1584,
+        "accepted": 1584,
+        "approvalRate": "100.00"
+    },
+    "industries": {
+        "total": 5,
+        "approved": 0
+    },
+    "assignments": {
+        "total": 1584,
+        "active": 1584,
+        "assigned": 1584,
+        "unassigned": 0,
+        "studentsWithInternships": 1584
+    },
+    "facultyVisits": {
+        "total": 812,
+        "thisMonth": 812,
+        "lastMonth": 0,
+        "expectedThisMonth": 1584,
+        "pendingThisMonth": 772,
+        "completionRate": "51.3"
+    },
+    "monthlyReports": {
+        "total": 1,
+        "thisMonth": 1,
+        "lastMonth": 0,
+        "pendingReview": 1,
+        "approvedThisMonth": 0,
+        "expectedThisMonth": 1584,
+        "missingThisMonth": 1583,
+        "missingLastMonth": 1584,
+        "submissionRate": "0.1"
+    },
+    "compliance": {
+        "totalVisits": 812,
+        "pendingReports": 1
+    },
+    "recentActivity": {
+        "applicationsLastWeek": 1584,
+        "industriesLastMonth": 5
+    }
+}
+http://127.0.0.1:3000/api/state/institutions/dashboard-stats?limit=1
+{
+    "data": [
+        {
+            "id": "6948e033c79516c68f962b4b",
+            "name": "Government Polytechnic Amritsar",
+            "code": "INST002",
+            "city": "Amritsar",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 46,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e036c79516c68f962b5b",
+            "name": "Government Polytechnic Barnala",
+            "code": "INST018",
+            "city": "Barnala",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 40,
+                "reportsSubmitted": 1,
+                "reportsMissing": 71,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e034c79516c68f962b4e",
+            "name": "Government Polytechnic Bathinda",
+            "code": "INST005",
+            "city": "Bathinda",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 44,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e036c79516c68f962b5a",
+            "name": "Government Polytechnic Faridkot",
+            "code": "INST017",
+            "city": "Faridkot",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 36,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e037c79516c68f962b5f",
+            "name": "Government Polytechnic Fatehgarh Sahib",
+            "code": "INST022",
+            "city": "Fatehgarh Sahib",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 33,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e036c79516c68f962b59",
+            "name": "Government Polytechnic Fazilka",
+            "code": "INST016",
+            "city": "Fazilka",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 32,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e035c79516c68f962b53",
+            "name": "Government Polytechnic Ferozepur",
+            "code": "INST010",
+            "city": "Ferozepur",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 39,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e035c79516c68f962b54",
+            "name": "Government Polytechnic Gurdaspur",
+            "code": "INST011",
+            "city": "Gurdaspur",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 36,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e034c79516c68f962b50",
+            "name": "Government Polytechnic Hoshiarpur",
+            "code": "INST007",
+            "city": "Hoshiarpur",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 34,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e033c79516c68f962b4c",
+            "name": "Government Polytechnic Jalandhar",
+            "code": "INST003",
+            "city": "Jalandhar",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 31,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e035c79516c68f962b55",
+            "name": "Government Polytechnic Kapurthala",
+            "code": "INST012",
+            "city": "Kapurthala",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 32,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e033c79516c68f962b4a",
+            "name": "Government Polytechnic Ludhiana",
+            "code": "INST001",
+            "city": "Ludhiana",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 33,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e037c79516c68f962b5e",
+            "name": "Government Polytechnic Mansa",
+            "code": "INST021",
+            "city": "Mansa",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 31,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e035c79516c68f962b52",
+            "name": "Government Polytechnic Moga",
+            "code": "INST009",
+            "city": "Moga",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 38,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        },
+        {
+            "id": "6948e034c79516c68f962b4f",
+            "name": "Government Polytechnic Mohali",
+            "code": "INST006",
+            "city": "Mohali",
+            "isActive": true,
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 40,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72,
+                "totalFaculty": 20
+            }
+        }
+    ],
+    "total": 22,
+    "page": 1,
+    "limit": 15,
+    "totalPages": 2,
+    "month": 12,
+    "year": 2025
+}
+
+http://127.0.0.1:3000/api/state/analytics/performers
+{
+    "topPerformers": [
+        {
+            "id": "6948e033c79516c68f962b4b",
+            "name": "Government Polytechnic Amritsar",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 46,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 55,
+            "placementRate": 55,
+            "approvalRate": 55,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e034c79516c68f962b51",
+            "name": "Government Polytechnic Pathankot",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 47,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 55,
+            "placementRate": 55,
+            "approvalRate": 55,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e034c79516c68f962b4e",
+            "name": "Government Polytechnic Bathinda",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 44,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 54,
+            "placementRate": 54,
+            "approvalRate": 54,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e034c79516c68f962b4d",
+            "name": "Government Polytechnic Patiala",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 41,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 52,
+            "placementRate": 52,
+            "approvalRate": 52,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e034c79516c68f962b4f",
+            "name": "Government Polytechnic Mohali",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 40,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 52,
+            "placementRate": 52,
+            "approvalRate": 52,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        }
+    ],
+    "bottomPerformers": [
+        {
+            "id": "6948e033c79516c68f962b4c",
+            "name": "Government Polytechnic Jalandhar",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 31,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 48,
+            "placementRate": 48,
+            "approvalRate": 48,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e034c79516c68f962b50",
+            "name": "Government Polytechnic Hoshiarpur",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 34,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 49,
+            "placementRate": 49,
+            "approvalRate": 49,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e033c79516c68f962b4a",
+            "name": "Government Polytechnic Ludhiana",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 33,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 49,
+            "placementRate": 49,
+            "approvalRate": 49,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e035c79516c68f962b53",
+            "name": "Government Polytechnic Ferozepur",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 39,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 51,
+            "placementRate": 51,
+            "approvalRate": 51,
+            "studentsCount": 72,
+            "internshipsCount": 72
+        },
+        {
+            "id": "6948e035c79516c68f962b52",
+            "name": "Government Polytechnic Moga",
+            "stats": {
+                "totalStudents": 72,
+                "studentsWithInternships": 72,
+                "assigned": 72,
+                "unassigned": 0,
+                "facultyVisits": 38,
+                "reportsSubmitted": 0,
+                "reportsMissing": 72
+            },
+            "score": 51,
+            "placementRate": 51,
+            "approvalRate": 51,
+            "studentsCount": 72,
+            "internshipsCount": 72
         }
     ]
 }
+http://127.0.0.1:3000/api/state/analytics/monthly
 {
-    "id": "6948e45fc79516c68f963e1e",
-    "profileImage": null,
-    "userId": "6948e45ec79516c68f963e1d",
-    "rollNumber": "2025EE018003",
-    "branchId": "6948e095c79516c68f962d0f",
-    "branchName": "Electrical Engineering",
-    "admissionNumber": "ADM2025EE018003",
-    "name": "Aanya Bansal",
-    "email": "2025ee018003@student.com",
-    "contact": "+91-9624633840",
-    "address": "H.No. 59, Guru Nanak Nagar",
-    "pinCode": null,
-    "tehsil": null,
-    "district": null,
-    "city": "Barnala",
-    "dob": "2003-02-25",
-    "state": "Punjab",
-    "parentName": null,
-    "parentContact": null,
-    "motherName": null,
-    "gender": "Female",
-    "currentYear": null,
-    "currentSemester": 6,
-    "currentSemesterMarks": null,
-    "tenthper": null,
-    "twelthper": null,
-    "diplomaPercentage": null,
-    "totalBacklogs": 0,
-    "clearanceStatus": "CLEARED",
-    "isActive": true,
-    "batchId": "6948e038c79516c68f962b60",
-    "admissionType": "LEET",
-    "category": "GENERAL",
-    "scholarshipId": null,
-    "feeStructureId": null,
-    "institutionId": "6948e036c79516c68f962b5b",
-    "createdAt": "2025-12-22T06:25:35.057Z",
-    "user": {
-        "id": "6948e45ec79516c68f963e1d",
-        "email": "2025ee018003@student.com",
-        "phoneNo": null,
-        "active": true
+    "month": 12,
+    "year": 2025,
+    "metrics": {
+        "newStudents": 1584,
+        "newApplications": 1584,
+        "approvedApplications": 1584,
+        "selectedApplications": 1584,
+        "newInternships": 1584,
+        "newIndustries": 5,
+        "facultyVisits": 812,
+        "monthlyReports": 1,
+        "approvalRate": "100.00",
+        "placementRate": "100.00"
     },
-    "batch": {
-        "id": "6948e038c79516c68f962b60",
-        "name": "2023-2026",
-        "isActive": true,
-        "createdAt": "2025-12-22T06:07:52.065Z",
-        "institutionId": "6948e033c79516c68f962b4a"
-    },
-    "branch": {
-        "id": "6948e095c79516c68f962d0f",
-        "name": "Electrical Engineering",
-        "shortName": "EE",
-        "code": "INST018-EE",
-        "duration": 3,
-        "isActive": true,
-        "institutionId": "6948e036c79516c68f962b5b",
-        "createdAt": "2025-12-22T06:09:25.990Z",
-        "updatedAt": "2025-12-22T06:09:25.990Z"
-    },
-    "mentorAssignments": [
+    "trend": [
         {
-            "id": "6948e8e1c79516c68f9652a4",
-            "studentId": "6948e45fc79516c68f963e1e",
-            "mentorId": "6948e110c79516c68f962f43",
-            "assignedBy": "6948e10dc79516c68f962f35",
-            "assignmentDate": "2025-12-15T00:00:00.000Z",
-            "assignmentReason": null,
-            "isActive": true,
-            "deactivatedAt": null,
-            "deactivatedBy": null,
-            "deactivationReason": null,
-            "academicYear": "2025-26",
-            "semester": "6",
-            "specialInstructions": null,
-            "createdAt": "2025-12-22T06:44:49.130Z",
-            "updatedAt": "2025-12-22T06:44:49.130Z",
-            "userId": null,
-            "mentor": {
-                "id": "6948e110c79516c68f962f43",
-                "name": "Mrs. Zara Chadha",
-                "email": "zara.ce.5@gpbarnala.edu.in",
-                "phoneNo": null,
-                "designation": "Senior Lecturer"
-            }
+            "month": "Jul 2025",
+            "applications": 0,
+            "approved": 0,
+            "placements": 0
+        },
+        {
+            "month": "Aug 2025",
+            "applications": 0,
+            "approved": 0,
+            "placements": 0
+        },
+        {
+            "month": "Sep 2025",
+            "applications": 0,
+            "approved": 0,
+            "placements": 0
+        },
+        {
+            "month": "Oct 2025",
+            "applications": 0,
+            "approved": 0,
+            "placements": 0
+        },
+        {
+            "month": "Nov 2025",
+            "applications": 0,
+            "approved": 0,
+            "placements": 0
+        },
+        {
+            "month": "Dec 2025",
+            "applications": 1584,
+            "approved": 1584,
+            "placements": 1584
         }
-    ],
-    "internshipPreferences": {
-        "id": "6948e60bc79516c68f96459c",
-        "studentId": "6948e45fc79516c68f963e1e",
-        "preferredFields": [
-            "Software Development",
-            "Web Development"
-        ],
-        "preferredLocations": [
-            "Bangalore",
-            "Pune",
-            "Hyderabad"
-        ],
-        "preferredDurations": [
-            "6 Months",
-            "8 Weeks"
-        ],
-        "minimumStipend": 6886,
-        "isRemotePreferred": false,
-        "additionalRequirements": "Looking for hands-on technical work",
-        "createdAt": "2025-12-22T06:32:43.940Z",
-        "updatedAt": "2025-12-22T06:32:43.940Z"
-    },
-    "_count": {
-        "internshipApplications": 1,
-        "monthlyReports": 0,
-        "grievances": 0
-    }
+    ]
 }
 
+http://127.0.0.1:3000/api/state/dashboard/critical-alerts
 {
-    "id": "6948e45fc79516c68f963e1e",
-    "profileImage": null,
-    "userId": "6948e45ec79516c68f963e1d",
-    "rollNumber": "2025EE018003",
-    "branchId": "6948e095c79516c68f962d0f",
-    "branchName": "Electrical Engineering",
-    "admissionNumber": "ADM2025EE018003",
-    "name": "Aanya Bansal",
-    "email": "2025ee018003@student.com",
-    "contact": "+91-9624633840",
-    "address": "H.No. 59, Guru Nanak Nagar",
-    "pinCode": null,
-    "tehsil": null,
-    "district": null,
-    "city": "Barnala",
-    "dob": "2003-02-25",
-    "state": "Punjab",
-    "parentName": null,
-    "parentContact": null,
-    "motherName": null,
-    "gender": "Female",
-    "currentYear": null,
-    "currentSemester": 6,
-    "currentSemesterMarks": null,
-    "tenthper": null,
-    "twelthper": null,
-    "diplomaPercentage": null,
-    "totalBacklogs": 0,
-    "clearanceStatus": "CLEARED",
-    "isActive": true,
-    "batchId": "6948e038c79516c68f962b60",
-    "admissionType": "LEET",
-    "category": "GENERAL",
-    "scholarshipId": null,
-    "feeStructureId": null,
-    "institutionId": "6948e036c79516c68f962b5b",
-    "createdAt": "2025-12-22T06:25:35.057Z",
-    "user": {
-        "id": "6948e45ec79516c68f963e1d",
-        "email": "2025ee018003@student.com",
-        "phoneNo": null,
-        "active": true
+    "timestamp": "2025-12-24T05:43:24.550Z",
+    "summary": {
+        "totalAlerts": 30,
+        "lowComplianceCount": 10,
+        "studentsWithoutMentorsCount": 0,
+        "missingReportsCount": 20,
+        "visitGapsCount": 0
     },
-    "batch": {
-        "id": "6948e038c79516c68f962b60",
-        "name": "2023-2026",
-        "isActive": true,
-        "createdAt": "2025-12-22T06:07:52.065Z",
-        "institutionId": "6948e033c79516c68f962b4a"
-    },
-    "branch": {
-        "id": "6948e095c79516c68f962d0f",
-        "name": "Electrical Engineering",
-        "shortName": "EE",
-        "code": "INST018-EE",
-        "duration": 3,
-        "isActive": true,
-        "institutionId": "6948e036c79516c68f962b5b",
-        "createdAt": "2025-12-22T06:09:25.990Z",
-        "updatedAt": "2025-12-22T06:09:25.990Z"
-    },
-    "mentorAssignments": [
-        {
-            "id": "6948e8e1c79516c68f9652a4",
-            "studentId": "6948e45fc79516c68f963e1e",
-            "mentorId": "6948e110c79516c68f962f43",
-            "assignedBy": "6948e10dc79516c68f962f35",
-            "assignmentDate": "2025-12-15T00:00:00.000Z",
-            "assignmentReason": null,
-            "isActive": true,
-            "deactivatedAt": null,
-            "deactivatedBy": null,
-            "deactivationReason": null,
-            "academicYear": "2025-26",
-            "semester": "6",
-            "specialInstructions": null,
-            "createdAt": "2025-12-22T06:44:49.130Z",
-            "updatedAt": "2025-12-22T06:44:49.130Z",
-            "userId": null,
-            "mentor": {
-                "id": "6948e110c79516c68f962f43",
-                "name": "Mrs. Zara Chadha",
-                "email": "zara.ce.5@gpbarnala.edu.in",
-                "phoneNo": null,
-                "designation": "Senior Lecturer"
+    "alerts": {
+        "lowComplianceInstitutions": [
+            {
+                "institutionId": "6948e037c79516c68f962b5f",
+                "institutionName": "Government Polytechnic Fatehgarh Sahib",
+                "institutionCode": "INST022",
+                "city": "Fatehgarh Sahib",
+                "complianceScore": 49
+            },
+            {
+                "institutionId": "6948e036c79516c68f962b59",
+                "institutionName": "Government Polytechnic Fazilka",
+                "institutionCode": "INST016",
+                "city": "Fazilka",
+                "complianceScore": 48
+            },
+            {
+                "institutionId": "6948e034c79516c68f962b50",
+                "institutionName": "Government Polytechnic Hoshiarpur",
+                "institutionCode": "INST007",
+                "city": "Hoshiarpur",
+                "complianceScore": 49
+            },
+            {
+                "institutionId": "6948e033c79516c68f962b4c",
+                "institutionName": "Government Polytechnic Jalandhar",
+                "institutionCode": "INST003",
+                "city": "Jalandhar",
+                "complianceScore": 48
+            },
+            {
+                "institutionId": "6948e035c79516c68f962b55",
+                "institutionName": "Government Polytechnic Kapurthala",
+                "institutionCode": "INST012",
+                "city": "Kapurthala",
+                "complianceScore": 48
+            },
+            {
+                "institutionId": "6948e033c79516c68f962b4a",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "city": "Ludhiana",
+                "complianceScore": 49
+            },
+            {
+                "institutionId": "6948e037c79516c68f962b5e",
+                "institutionName": "Government Polytechnic Mansa",
+                "institutionCode": "INST021",
+                "city": "Mansa",
+                "complianceScore": 48
+            },
+            {
+                "institutionId": "6948e036c79516c68f962b58",
+                "institutionName": "Government Polytechnic Muktsar",
+                "institutionCode": "INST015",
+                "city": "Muktsar",
+                "complianceScore": 47
+            },
+            {
+                "institutionId": "6948e036c79516c68f962b57",
+                "institutionName": "Government Polytechnic Rupnagar",
+                "institutionCode": "INST014",
+                "city": "Rupnagar",
+                "complianceScore": 49
+            },
+            {
+                "institutionId": "6948e035c79516c68f962b56",
+                "institutionName": "Government Polytechnic Sangrur",
+                "institutionCode": "INST013",
+                "city": "Sangrur",
+                "complianceScore": 49
             }
-        }
-    ],
-    "internshipPreferences": {
-        "id": "6948e60bc79516c68f96459c",
-        "studentId": "6948e45fc79516c68f963e1e",
-        "preferredFields": [
-            "Software Development",
-            "Web Development"
         ],
-        "preferredLocations": [
-            "Bangalore",
-            "Pune",
-            "Hyderabad"
+        "studentsWithoutMentors": [],
+        "missingReports": [
+            {
+                "studentId": "6948e12bc79516c68f962fbd",
+                "studentName": "Ashish Garg",
+                "rollNumber": "2025IT001000",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12bc79516c68f962fc0",
+                "studentName": "Zara Chadha",
+                "rollNumber": "2025IT001001",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12cc79516c68f962fc3",
+                "studentName": "Pranav Gupta",
+                "rollNumber": "2025IT001002",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12dc79516c68f962fc6",
+                "studentName": "Gaurav Kapoor",
+                "rollNumber": "2025IT001003",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12dc79516c68f962fc9",
+                "studentName": "Pankaj Chadha",
+                "rollNumber": "2025IT001004",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12ec79516c68f962fcc",
+                "studentName": "Ankit Patel",
+                "rollNumber": "2025IT001005",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12fc79516c68f962fcf",
+                "studentName": "Ritika Bajwa",
+                "rollNumber": "2025IT001006",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e12fc79516c68f962fd2",
+                "studentName": "Sumit Negi",
+                "rollNumber": "2025IT001007",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e130c79516c68f962fd5",
+                "studentName": "Yogesh Ahuja",
+                "rollNumber": "2025IT001008",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e130c79516c68f962fd8",
+                "studentName": "Amandeep Dhillon",
+                "rollNumber": "2025IT001009",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e131c79516c68f962fdb",
+                "studentName": "Kartik Malhotra",
+                "rollNumber": "2025IT001010",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e132c79516c68f962fde",
+                "studentName": "Sukhpreet Ahuja",
+                "rollNumber": "2025IT001011",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e132c79516c68f962fe1",
+                "studentName": "Sneha Bisht",
+                "rollNumber": "2025IT001012",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e133c79516c68f962fe4",
+                "studentName": "Chirag Sharma",
+                "rollNumber": "2025IT001013",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e134c79516c68f962fe7",
+                "studentName": "Bhavna Kapoor",
+                "rollNumber": "2025IT001014",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e134c79516c68f962fea",
+                "studentName": "Sonali Saini",
+                "rollNumber": "2025IT001015",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e135c79516c68f962fed",
+                "studentName": "Aisha Sharma",
+                "rollNumber": "2025IT001016",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e135c79516c68f962ff0",
+                "studentName": "Ankit Taneja",
+                "rollNumber": "2025IT001017",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e136c79516c68f962ff3",
+                "studentName": "Kunal Brar",
+                "rollNumber": "2025ME001000",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            },
+            {
+                "studentId": "6948e137c79516c68f962ff6",
+                "studentName": "Kirandeep Gupta",
+                "rollNumber": "2025ME001001",
+                "institutionName": "Government Polytechnic Ludhiana",
+                "institutionCode": "INST001",
+                "daysOverdue": 19
+            }
         ],
-        "preferredDurations": [
-            "6 Months",
-            "8 Weeks"
-        ],
-        "minimumStipend": 6886,
-        "isRemotePreferred": false,
-        "additionalRequirements": "Looking for hands-on technical work",
-        "createdAt": "2025-12-22T06:32:43.940Z",
-        "updatedAt": "2025-12-22T06:32:43.940Z"
-    },
-    "_count": {
-        "internshipApplications": 1,
-        "monthlyReports": 0,
-        "grievances": 0
+        "facultyVisitGaps": []
     }
 }
+http://127.0.0.1:3000/api/state/dashboard/actions
 {
-    "applications": [
+    "timestamp": "2025-12-24T05:43:20.349Z",
+    "summary": {
+        "totalActionItems": 0,
+        "pendingApprovalsCount": 0,
+        "interventionRequiredCount": 0,
+        "overdueComplianceCount": 0
+    },
+    "actions": {
+        "pendingIndustryApprovals": [],
+        "institutionsRequiringIntervention": [],
+        "overdueComplianceItems": []
+    }
+}
+http://127.0.0.1:3000/api/state/compliance/summary
+{
+    "timestamp": "2025-12-24T05:43:24.021Z",
+    "month": 12,
+    "year": 2025,
+    "stateWide": {
+        "totalInstitutions": 22,
+        "totalStudentsWithInternships": 1584,
+        "totalMentorAssignments": 1584,
+        "totalVisitsThisMonth": 812,
+        "totalReportsThisMonth": 1,
+        "overallComplianceScore": 50,
+        "mentorCoverageRate": 100,
+        "visitComplianceRate": 51,
+        "reportComplianceRate": 0
+    },
+    "distribution": {
+        "excellent": 0,
+        "good": 0,
+        "needsImprovement": 22,
+        "critical": 0
+    },
+    "institutions": [
         {
-            "id": "6948e8e0c79516c68f9652a3",
-            "studentId": "6948e45fc79516c68f963e1e",
-            "internshipId": null,
-            "applicationDate": "2025-12-22T06:44:48.920Z",
-            "coverLetter": null,
-            "resume": null,
-            "additionalInfo": null,
-            "status": "APPROVED",
-            "appliedDate": "2025-12-22T06:44:48.920Z",
-            "reviewedDate": null,
-            "isSelected": false,
-            "selectionDate": null,
-            "rejectionReason": null,
-            "hasJoined": false,
-            "joiningDate": "2025-12-15T00:00:00.000Z",
-            "completionDate": null,
-            "mentorId": null,
-            "mentorAssignedAt": null,
-            "mentorAssignedBy": null,
-            "isSelfIdentified": true,
-            "companyName": "Schneider Electric India",
-            "companyAddress": "Plot No. 312, Industrial Area Phase I, Mohali, Punjab",
-            "companyContact": null,
-            "companyEmail": null,
-            "hrName": "Mr. Lakshay Chauhan",
-            "hrDesignation": null,
-            "hrContact": "+91-7570752516",
-            "hrEmail": "hr@schneiderelectr.com",
-            "internshipStatus": "ONGOING",
-            "joiningLetterUrl": null,
-            "joiningLetterUploadedAt": null,
-            "facultyMentorName": null,
-            "facultyMentorContact": null,
-            "facultyMentorEmail": null,
-            "facultyMentorDesignation": null,
-            "internshipDuration": null,
-            "stipend": null,
-            "startDate": "2025-12-15T00:00:00.000Z",
-            "endDate": "2026-05-15T00:00:00.000Z",
-            "jobProfile": null,
-            "reviewedBy": null,
-            "reviewedAt": null,
-            "reviewRemarks": null,
-            "notes": null,
-            "proposedFirstVisit": null,
-            "secondVisit": null,
-            "createdAt": "2025-12-22T06:44:48.920Z",
-            "updatedAt": "2025-12-22T06:44:48.920Z",
-            "internship": null,
-            "mentor": null,
-            "_count": {
-                "monthlyReports": 0,
-                "facultyVisitLogs": 0
-            }
+            "institutionId": "6948e036c79516c68f962b58",
+            "institutionName": "Government Polytechnic Muktsar",
+            "institutionCode": "INST015",
+            "city": "Muktsar",
+            "overallScore": 47,
+            "mentorCoverage": 100,
+            "visitCompliance": 40,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 29,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b59",
+            "institutionName": "Government Polytechnic Fazilka",
+            "institutionCode": "INST016",
+            "city": "Fazilka",
+            "overallScore": 48,
+            "mentorCoverage": 100,
+            "visitCompliance": 44,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 32,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e033c79516c68f962b4c",
+            "institutionName": "Government Polytechnic Jalandhar",
+            "institutionCode": "INST003",
+            "city": "Jalandhar",
+            "overallScore": 48,
+            "mentorCoverage": 100,
+            "visitCompliance": 43,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 31,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b55",
+            "institutionName": "Government Polytechnic Kapurthala",
+            "institutionCode": "INST012",
+            "city": "Kapurthala",
+            "overallScore": 48,
+            "mentorCoverage": 100,
+            "visitCompliance": 44,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 32,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5e",
+            "institutionName": "Government Polytechnic Mansa",
+            "institutionCode": "INST021",
+            "city": "Mansa",
+            "overallScore": 48,
+            "mentorCoverage": 100,
+            "visitCompliance": 43,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 31,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5f",
+            "institutionName": "Government Polytechnic Fatehgarh Sahib",
+            "institutionCode": "INST022",
+            "city": "Fatehgarh Sahib",
+            "overallScore": 49,
+            "mentorCoverage": 100,
+            "visitCompliance": 46,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 33,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b50",
+            "institutionName": "Government Polytechnic Hoshiarpur",
+            "institutionCode": "INST007",
+            "city": "Hoshiarpur",
+            "overallScore": 49,
+            "mentorCoverage": 100,
+            "visitCompliance": 47,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 34,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e033c79516c68f962b4a",
+            "institutionName": "Government Polytechnic Ludhiana",
+            "institutionCode": "INST001",
+            "city": "Ludhiana",
+            "overallScore": 49,
+            "mentorCoverage": 100,
+            "visitCompliance": 46,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 33,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b57",
+            "institutionName": "Government Polytechnic Rupnagar",
+            "institutionCode": "INST014",
+            "city": "Rupnagar",
+            "overallScore": 49,
+            "mentorCoverage": 100,
+            "visitCompliance": 47,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 34,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b56",
+            "institutionName": "Government Polytechnic Sangrur",
+            "institutionCode": "INST013",
+            "city": "Sangrur",
+            "overallScore": 49,
+            "mentorCoverage": 100,
+            "visitCompliance": 47,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 34,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b5a",
+            "institutionName": "Government Polytechnic Faridkot",
+            "institutionCode": "INST017",
+            "city": "Faridkot",
+            "overallScore": 50,
+            "mentorCoverage": 100,
+            "visitCompliance": 50,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 36,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b54",
+            "institutionName": "Government Polytechnic Gurdaspur",
+            "institutionCode": "INST011",
+            "city": "Gurdaspur",
+            "overallScore": 50,
+            "mentorCoverage": 100,
+            "visitCompliance": 50,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 36,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b53",
+            "institutionName": "Government Polytechnic Ferozepur",
+            "institutionCode": "INST010",
+            "city": "Ferozepur",
+            "overallScore": 51,
+            "mentorCoverage": 100,
+            "visitCompliance": 54,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 39,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e035c79516c68f962b52",
+            "institutionName": "Government Polytechnic Moga",
+            "institutionCode": "INST009",
+            "city": "Moga",
+            "overallScore": 51,
+            "mentorCoverage": 100,
+            "visitCompliance": 53,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 38,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e036c79516c68f962b5b",
+            "institutionName": "Government Polytechnic Barnala",
+            "institutionCode": "INST018",
+            "city": "Barnala",
+            "overallScore": 52,
+            "mentorCoverage": 100,
+            "visitCompliance": 56,
+            "reportCompliance": 1,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 40,
+            "reportsThisMonth": 1
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4f",
+            "institutionName": "Government Polytechnic Mohali",
+            "institutionCode": "INST006",
+            "city": "Mohali",
+            "overallScore": 52,
+            "mentorCoverage": 100,
+            "visitCompliance": 56,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 40,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5d",
+            "institutionName": "Government Polytechnic Nawanshahr",
+            "institutionCode": "INST020",
+            "city": "Nawanshahr",
+            "overallScore": 52,
+            "mentorCoverage": 100,
+            "visitCompliance": 56,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 40,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4d",
+            "institutionName": "Government Polytechnic Patiala",
+            "institutionCode": "INST004",
+            "city": "Patiala",
+            "overallScore": 52,
+            "mentorCoverage": 100,
+            "visitCompliance": 57,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 41,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e037c79516c68f962b5c",
+            "institutionName": "Government Polytechnic Tarn Taran",
+            "institutionCode": "INST019",
+            "city": "Tarn Taran",
+            "overallScore": 53,
+            "mentorCoverage": 100,
+            "visitCompliance": 58,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 42,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b4e",
+            "institutionName": "Government Polytechnic Bathinda",
+            "institutionCode": "INST005",
+            "city": "Bathinda",
+            "overallScore": 54,
+            "mentorCoverage": 100,
+            "visitCompliance": 61,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 44,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e033c79516c68f962b4b",
+            "institutionName": "Government Polytechnic Amritsar",
+            "institutionCode": "INST002",
+            "city": "Amritsar",
+            "overallScore": 55,
+            "mentorCoverage": 100,
+            "visitCompliance": 64,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 46,
+            "reportsThisMonth": 0
+        },
+        {
+            "institutionId": "6948e034c79516c68f962b51",
+            "institutionName": "Government Polytechnic Pathankot",
+            "institutionCode": "INST008",
+            "city": "Pathankot",
+            "overallScore": 55,
+            "mentorCoverage": 100,
+            "visitCompliance": 65,
+            "reportCompliance": 0,
+            "studentsWithInternships": 72,
+            "studentsWithMentors": 72,
+            "visitsThisMonth": 47,
+            "reportsThisMonth": 0
+        }
+    ]
+}
+
+http://127.0.0.1:3000/api/state/analytics/industries?limit=10
+{
+    "data": [
+        {
+            "id": "6948e127c79516c68f962fae",
+            "name": "TCS",
+            "internsHired": 0,
+            "activePostings": 0,
+            "totalInternships": 0,
+            "rating": null
+        },
+        {
+            "id": "6948e128c79516c68f962fb1",
+            "name": "Infosys",
+            "internsHired": 0,
+            "activePostings": 0,
+            "totalInternships": 0,
+            "rating": null
+        },
+        {
+            "id": "6948e128c79516c68f962fb4",
+            "name": "Maruti Suzuki",
+            "internsHired": 0,
+            "activePostings": 0,
+            "totalInternships": 0,
+            "rating": null
+        },
+        {
+            "id": "6948e129c79516c68f962fb7",
+            "name": "L&T Constructions",
+            "internsHired": 0,
+            "activePostings": 0,
+            "totalInternships": 0,
+            "rating": null
+        },
+        {
+            "id": "6948e12ac79516c68f962fba",
+            "name": "Havells",
+            "internsHired": 0,
+            "activePostings": 0,
+            "totalInternships": 0,
+            "rating": null
         }
     ],
-    "total": 1,
-    "page": 1,
-    "limit": 10,
-    "totalPages": 1
+    "total": 5
 }

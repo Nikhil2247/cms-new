@@ -39,7 +39,7 @@ const PerformerItem = ({ item, rank, type }) => {
   const score = calculateComplianceScore(item);
 
   const getRankClass = (rank) => {
-    if (rank === 0) return 'bg-yellow-400';
+    if (rank === 0) return 'bg-yellow-400 shadow-md shadow-yellow-200';
     if (rank === 1) return 'bg-gray-400';
     if (rank === 2) return 'bg-amber-600';
     return 'bg-gray-500';
@@ -48,57 +48,57 @@ const PerformerItem = ({ item, rank, type }) => {
   const stats = item.stats || {};
 
   return (
-    <List.Item className="!px-0 !py-2">
+    <List.Item className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
       <div className="flex items-center w-full gap-3">
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${getRankClass(rank)}`}
+          className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${getRankClass(rank)}`}
         >
           {rank + 1}
         </div>
         <Avatar
           icon={<BankOutlined />}
-          className={isTop ? 'bg-success' : 'bg-error'}
+          className={`${isTop ? 'bg-success' : 'bg-error'} shrink-0`}
           src={item.logo}
           size="small"
         />
         <div className="flex-1 min-w-0">
           <Tooltip title={item.name}>
-            <Text strong className="block truncate text-sm text-slate-900 dark:text-slate-200">{item.name}</Text>
+            <Text strong className="block truncate text-sm text-text-primary">{item.name}</Text>
           </Tooltip>
           {stats.studentsWithInternships !== undefined ? (
-            <div className="flex gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex gap-2 text-xs text-text-tertiary">
               <Tooltip title="Internships">
                 <span>{stats.studentsWithInternships || 0} interns</span>
               </Tooltip>
               {stats.unassigned > 0 && (
                 <Tooltip title="Unassigned students">
-                  <Tag color="warning" className="text-xs m-0 leading-tight">
-                    <WarningOutlined /> {stats.unassigned}
+                  <Tag color="warning" className="text-[10px] m-0 leading-tight px-1 py-0 border-0 rounded-sm font-bold">
+                    {stats.unassigned} NEED MENTOR
                   </Tag>
                 </Tooltip>
               )}
             </div>
           ) : (
-            <Text className="text-xs text-slate-500 dark:text-slate-400">
+            <Text className="text-xs text-text-tertiary truncate block">
               {item.city || item.shortName || 'Institution'}
             </Text>
           )}
         </div>
-        <div className="text-right">
-          <div className="flex items-center gap-1">
+        <div className="text-right shrink-0">
+          <div className="flex items-center justify-end gap-1">
             {isTop ? (
-              <RiseOutlined className="text-success" />
+              <RiseOutlined className="text-success text-xs" />
             ) : (
-              <FallOutlined className="text-error" />
+              <FallOutlined className="text-error text-xs" />
             )}
             <Text
               strong
-              className={isTop ? 'text-success' : 'text-error'}
+              className={`text-sm ${isTop ? 'text-success' : 'text-error'}`}
             >
               {score}%
             </Text>
           </div>
-          <Text className="text-xs text-slate-500 dark:text-slate-400">
+          <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-wider">
             compliance
           </Text>
         </div>
@@ -109,19 +109,22 @@ const PerformerItem = ({ item, rank, type }) => {
 
 const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* Top Performers */}
       <Card
         title={
-          <div className="flex items-center gap-2">
-            <TrophyOutlined className="text-warning" />
-            <span>Top Performers</span>
-            <Tag color="success" className="ml-2">Best Compliance</Tag>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
+              <TrophyOutlined className="text-warning text-lg" />
+            </div>
+            <span className="font-bold text-text-primary text-lg">Top Performers</span>
           </div>
         }
-        className="shadow-sm border-slate-200 dark:border-slate-800"
+        extra={<Tag color="success" className="rounded-md border-0 font-bold m-0">Best Compliance</Tag>}
+        className="shadow-sm border-border rounded-2xl bg-surface h-full"
         loading={loading}
         size="small"
+        styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
       >
         {topPerformers.length > 0 ? (
           <List
@@ -134,7 +137,8 @@ const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) =
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No data available"
+            description={<span className="text-text-tertiary">No data available</span>}
+            className="py-8"
           />
         )}
       </Card>
@@ -142,15 +146,18 @@ const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) =
       {/* Bottom Performers (Needs Attention) */}
       <Card
         title={
-          <div className="flex items-center gap-2">
-            <WarningOutlined className="text-warning" />
-            <span>Needs Attention</span>
-            <Tag color="warning" className="ml-2">Low Compliance</Tag>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
+              <WarningOutlined className="text-error text-lg" />
+            </div>
+            <span className="font-bold text-text-primary text-lg">Needs Attention</span>
           </div>
         }
-        className="shadow-sm border-slate-200 dark:border-slate-800"
+        extra={<Tag color="warning" className="rounded-md border-0 font-bold m-0">Low Compliance</Tag>}
+        className="shadow-sm border-border rounded-2xl bg-surface h-full"
         loading={loading}
         size="small"
+        styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
       >
         {bottomPerformers.length > 0 ? (
           <List
@@ -163,7 +170,8 @@ const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) =
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="All institutions performing well"
+            description={<span className="text-text-tertiary">All institutions performing well</span>}
+            className="py-8"
           />
         )}
       </Card>

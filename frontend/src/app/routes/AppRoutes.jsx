@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Button } from 'antd';
+import { Button, Spin } from 'antd';
+import { LoadingOutlined } from '@ant-design/icons';
 
 // Layout - Using comprehensive Layout with PlaceIntern branding
 import Layouts from '../../components/Layout';

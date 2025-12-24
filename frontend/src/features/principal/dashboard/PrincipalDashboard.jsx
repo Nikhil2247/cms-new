@@ -828,4 +828,4 @@ const PrincipalDashboard = () => {
   );
 };
 
-export default PrincipalDashboard;
+export default React.memo(PrincipalDashboard);

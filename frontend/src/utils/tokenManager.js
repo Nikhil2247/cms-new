@@ -24,7 +24,6 @@ export const tokenStorage = {
         localStorage.removeItem(TOKEN_KEY);
       }
     } catch (error) {
-      console.error('Failed to set token:', error);
     }
   },
 
@@ -44,7 +43,6 @@ export const tokenStorage = {
         localStorage.removeItem(REFRESH_TOKEN_KEY);
       }
     } catch (error) {
-      console.error('Failed to set refresh token:', error);
     }
   },
 
@@ -71,7 +69,6 @@ export const tokenStorage = {
       localStorage.removeItem('cachedUser');
       localStorage.removeItem('lastActivity');
     } catch (error) {
-      console.error('Failed to clear tokens:', error);
     }
   },
 };

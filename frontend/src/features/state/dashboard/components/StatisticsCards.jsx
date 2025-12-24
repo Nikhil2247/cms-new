@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Col, Row, Progress, Tooltip, theme, Modal, Statistic, Divider, Badge, Space } from 'antd';
+import { Card, Col, Row, Progress, Tooltip, theme, Modal, Statistic, Divider, Badge, Space, Typography, Button } from 'antd';
 import {
   BankOutlined,
   TeamOutlined,
@@ -15,34 +15,27 @@ import {
   RiseOutlined,
 } from '@ant-design/icons';
 
-// Simple stat card for primary metrics
-const StatCard = ({ title, value, subtitle, icon, gradient, badge }) => {
-  const { token: antToken } = theme.useToken();
+const { Text, Title } = Typography;
 
+// Simple stat card for primary metrics
+const StatCard = ({ title, value, subtitle, icon, colorClass, bgClass, badge }) => {
   return (
-    <Card className="overflow-hidden h-full border-slate-200 dark:border-slate-800" styles={{ body: { padding: 0 } }}>
-      <div className="p-4 text-white relative" style={{ background: gradient }}>
-        <div
-          className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-20 bg-white translate-x-1/4 -translate-y-1/4"
-        />
-        <div className="flex justify-between items-center relative z-10">
-          <div>
-            <div className="text-3xl font-bold">{value?.toLocaleString() || 0}</div>
-            <div className="text-xs uppercase tracking-wider opacity-90 font-medium">
-              {title}
-            </div>
-            {subtitle && (
-              <div className="text-xs mt-1 opacity-75">{subtitle}</div>
-            )}
+    <Card className="rounded-xl border-border shadow-sm hover:shadow-md transition-all h-full bg-surface" styles={{ body: { padding: '16px' } }}>
+      <div className="flex items-center gap-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${bgClass} ${colorClass}`}>
+          {React.cloneElement(icon, { style: { fontSize: '24px' } })}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-start">
+            <Text className="text-text-tertiary text-xs font-bold uppercase tracking-wider block mb-0.5">{title}</Text>
+            {badge > 0 && <Badge count={badge} style={{ backgroundColor: 'rgb(var(--color-primary))', boxShadow: 'none' }} />}
           </div>
-          <div className="flex items-center gap-2">
-            {badge !== undefined && badge > 0 && (
-              <Badge count={badge} overflowCount={999} />
-            )}
-            <div className="p-3 rounded-xl backdrop-blur-sm bg-white/20">
-              {React.cloneElement(icon, { style: { fontSize: '28px' } })}
-            </div>
+          <div className="text-2xl font-black text-text-primary leading-tight">
+            {value?.toLocaleString() || 0}
           </div>
+          {subtitle && (
+            <Text className="text-text-secondary text-xs mt-1 block truncate">{subtitle}</Text>
+          )}
         </div>
       </div>
     </Card>
@@ -57,7 +50,8 @@ const DetailedStatCard = ({
   secondaryValue,
   secondaryLabel,
   icon,
-  gradient,
+  colorClass,
+  bgClass,
   details,
   badgeCount,
   badgeStatus = 'warning',
@@ -67,96 +61,88 @@ const DetailedStatCard = ({
 
   return (
     <>
-      <Card className="overflow-hidden h-full border-slate-200 dark:border-slate-800" styles={{ body: { padding: 0 } }}>
-        <div className="p-4 text-white relative" style={{ background: gradient }}>
-          <div className="absolute top-0 right-0 w-20 h-20 rounded-full opacity-20 bg-white translate-x-1/4 -translate-y-1/4" />
-
-          <div className="flex justify-between items-start relative z-10">
-            <div className="flex-1">
-              <div className="text-xs uppercase tracking-wider opacity-90 font-medium mb-2">
-                {title}
-              </div>
-              <div className="flex items-baseline gap-4">
-                <div>
-                  <div className="text-2xl font-bold">{mainValue?.toLocaleString() || 0}</div>
-                  <div className="text-xs opacity-75">{mainLabel}</div>
-                </div>
-                <div className="text-white/40 text-xl">|</div>
-                <div>
-                  <div className="text-2xl font-bold">{secondaryValue?.toLocaleString() || 0}</div>
-                  <div className="text-xs opacity-75">{secondaryLabel}</div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Tooltip title="View Details">
-                <div
-                  className="p-2 rounded-lg backdrop-blur-sm bg-white/20 cursor-pointer hover:bg-white/30 transition-colors"
-                  onClick={() => setModalVisible(true)}
-                >
-                  <EyeOutlined style={{ fontSize: '18px' }} />
-                </div>
-              </Tooltip>
-              <Badge count={badgeCount} status={badgeStatus} offset={[-5, 5]} overflowCount={999}>
-                <div className="p-3 rounded-xl backdrop-blur-sm bg-white/20">
-                  {React.cloneElement(icon, { style: { fontSize: '28px' } })}
-                </div>
-              </Badge>
-            </div>
+      <Card className="rounded-xl border-border shadow-sm hover:shadow-md transition-all h-full bg-surface" styles={{ body: { padding: '16px' } }}>
+        <div className="flex items-start gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${bgClass} ${colorClass}`}>
+            {React.cloneElement(icon, { style: { fontSize: '24px' } })}
           </div>
-        </div>
-        <div className="p-3 bg-background-tertiary">
-          {alertMessage ? (
-            <div className="flex items-center gap-2 text-xs text-warning">
-              <WarningOutlined />
-              <span>{alertMessage}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start mb-2">
+              <Text className="text-text-tertiary text-xs font-bold uppercase tracking-wider">{title}</Text>
+              <Tooltip title="View Details">
+                <Button 
+                  type="text" 
+                  size="small" 
+                  icon={<EyeOutlined className="text-text-tertiary hover:text-primary" />} 
+                  onClick={() => setModalVisible(true)} 
+                  className="rounded-lg w-6 h-6 flex items-center justify-center"
+                />
+              </Tooltip>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {details?.slice(0, 2).map((detail, idx) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <span className="text-text-tertiary">{detail.label}:</span>
-                  <span className={`font-semibold ${detail.highlight ? 'text-warning' : 'text-text-secondary'}`}>
-                    {detail.value}
-                  </span>
-                </div>
-              ))}
+            
+            <div className="flex items-end gap-4 mb-3">
+              <div>
+                <div className="text-2xl font-black text-text-primary leading-none">{mainValue?.toLocaleString() || 0}</div>
+                <div className="text-text-tertiary text-[10px] uppercase font-bold mt-1">{mainLabel}</div>
+              </div>
+              <div className="h-8 w-px bg-border mx-2"></div>
+              <div>
+                <div className="text-xl font-bold text-text-secondary leading-none">{secondaryValue?.toLocaleString() || 0}</div>
+                <div className="text-text-tertiary text-[10px] uppercase font-bold mt-1">{secondaryLabel}</div>
+              </div>
             </div>
-          )}
+
+            {alertMessage && (
+              <div className="flex items-center gap-2 text-xs bg-warning/10 text-warning-700 px-2 py-1 rounded-md border border-warning/20">
+                <WarningOutlined className="text-warning" />
+                <span className="font-medium truncate">{alertMessage}</span>
+              </div>
+            )}
+            
+            {!alertMessage && details && (
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                {details.slice(0, 2).map((detail, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-xs">
+                    <span className="text-text-tertiary truncate">{detail.label}:</span>
+                    <span className={`font-semibold ${detail.highlight ? 'text-warning' : 'text-text-primary'}`}>
+                      {detail.value}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </Card>
 
       <Modal
         title={
-          <div className="flex items-center gap-2">
-            {React.cloneElement(icon, { style: { fontSize: '20px', color: 'rgb(var(--color-primary))' } })}
-            <span>{title} - Detailed View</span>
+          <div className="flex items-center gap-3 py-2">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${bgClass} ${colorClass}`}>
+              {React.cloneElement(icon, { style: { fontSize: '16px' } })}
+            </div>
+            <span className="text-text-primary font-bold text-lg">{title} Details</span>
           </div>
         }
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={500}
+        width={600}
+        className="rounded-2xl overflow-hidden"
       >
         <div className="py-4">
           <Row gutter={[16, 16]}>
             {details?.map((detail, idx) => (
               <Col span={12} key={idx}>
-                <Card size="small" className={detail.highlight ? 'border-orange-300 bg-orange-50 dark:bg-orange-900/20' : ''}>
-                  <Statistic
-                    title={
-                      <span className="flex items-center gap-1">
-                        {detail.icon && React.cloneElement(detail.icon, { style: { fontSize: '14px' } })}
-                        {detail.label}
-                      </span>
-                    }
-                    value={detail.value}
-                    valueStyle={{
-                      color: detail.highlight ? 'rgb(var(--color-warning))' : undefined,
-                      fontSize: '20px'
-                    }}
-                  />
-                </Card>
+                <div className={`p-4 rounded-xl border ${detail.highlight ? 'bg-warning-50 border-warning-200' : 'bg-background-tertiary/30 border-border'}`}>
+                  <div className="flex items-center gap-2 mb-2 text-text-tertiary text-xs font-bold uppercase tracking-wider">
+                    {detail.icon && React.cloneElement(detail.icon, { className: detail.highlight ? 'text-warning' : 'text-text-secondary' })}
+                    {detail.label}
+                  </div>
+                  <div className={`text-2xl font-black ${detail.highlight ? 'text-warning-700' : 'text-text-primary'}`}>
+                    {detail.value}
+                  </div>
+                </div>
               </Col>
             ))}
           </Row>
@@ -193,21 +179,24 @@ const StatisticsCards = ({ stats }) => {
       value: totalInstitutions,
       subtitle: `${activeInstitutions} active`,
       icon: <BankOutlined />,
-      gradient: 'linear-gradient(135deg, #3b82f6 0%, #4f46e5 100%)',
+      bgClass: 'bg-blue-500/10',
+      colorClass: 'text-blue-500',
     },
     {
       title: 'Students',
       value: totalStudents,
       subtitle: `${activeStudents} active`,
       icon: <TeamOutlined />,
-      gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+      bgClass: 'bg-emerald-500/10',
+      colorClass: 'text-emerald-500',
     },
     {
       title: 'Active Internships',
       value: activeInternships,
       subtitle: `${totalInternships} total self-identified`,
       icon: <BookOutlined />,
-      gradient: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)',
+      bgClass: 'bg-pink-500/10',
+      colorClass: 'text-pink-500',
       badge: activeInternships,
     },
     {
@@ -215,7 +204,8 @@ const StatisticsCards = ({ stats }) => {
       value: totalFaculty,
       subtitle: `${activeFaculty} active mentors`,
       icon: <UserOutlined />,
-      gradient: 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)',
+      bgClass: 'bg-amber-500/10',
+      colorClass: 'text-amber-500',
     },
   ];
 
@@ -228,7 +218,8 @@ const StatisticsCards = ({ stats }) => {
       secondaryValue: assignments?.unassigned || 0,
       secondaryLabel: 'Unassigned',
       icon: <UserSwitchOutlined />,
-      gradient: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+      bgClass: 'bg-purple-500/10',
+      colorClass: 'text-purple-500',
       badgeCount: assignments?.unassigned || 0,
       badgeStatus: 'warning',
       alertMessage: assignments?.unassigned > 0 ? `${assignments.unassigned} students need mentor assignment` : null,
@@ -246,7 +237,8 @@ const StatisticsCards = ({ stats }) => {
       secondaryValue: facultyVisits?.pendingThisMonth || 0,
       secondaryLabel: 'Pending',
       icon: <CalendarOutlined />,
-      gradient: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)',
+      bgClass: 'bg-cyan-500/10',
+      colorClass: 'text-cyan-500',
       badgeCount: facultyVisits?.pendingThisMonth || 0,
       badgeStatus: 'processing',
       alertMessage: facultyVisits?.pendingThisMonth > 0 ? `${facultyVisits.pendingThisMonth} visits pending this month` : null,
@@ -266,7 +258,8 @@ const StatisticsCards = ({ stats }) => {
       secondaryValue: monthlyReports?.missingThisMonth || 0,
       secondaryLabel: 'Missing',
       icon: <FileTextOutlined />,
-      gradient: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+      bgClass: 'bg-orange-500/10',
+      colorClass: 'text-orange-500',
       badgeCount: monthlyReports?.missingThisMonth || 0,
       badgeStatus: 'error',
       alertMessage: monthlyReports?.missingThisMonth > 0 ? `${monthlyReports.missingThisMonth} reports missing this month` : null,

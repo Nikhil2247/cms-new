@@ -59,7 +59,7 @@ const NotificationDropdown = () => {
         const payload = JSON.parse(atob(token.split('.')[1]));
         setUser(payload);
       } catch (error) {
-        console.error('Failed to parse token:', error);
+        // Token parse error handled silently
       }
     }
   }, []);
@@ -80,7 +80,7 @@ const NotificationDropdown = () => {
         setNotifications(response.data.data || []);
       }
     } catch (error) {
-      console.error('Failed to load notifications:', error);
+      // Notification load error handled
     } finally {
       setLoading(false);
     }
@@ -118,7 +118,7 @@ const NotificationDropdown = () => {
         prev.map((n) => (n.id === id ? { ...n, read: true } : n))
       );
     } catch (error) {
-      console.error('Failed to mark as read:', error);
+      // Mark read error handled
     }
   };
 
@@ -128,7 +128,7 @@ const NotificationDropdown = () => {
       setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       message.success('All notifications marked as read');
     } catch (error) {
-      console.error('Failed to mark all as read:', error);
+      // Mark all read error handled
     }
   };
 
@@ -138,7 +138,7 @@ const NotificationDropdown = () => {
       setNotifications((prev) => prev.filter((n) => n.id !== id));
       message.success('Notification deleted');
     } catch (error) {
-      console.error('Failed to delete notification:', error);
+      // Delete error handled
     }
   };
 
@@ -151,7 +151,7 @@ const NotificationDropdown = () => {
       setNotifications([]);
       message.success('All notifications cleared');
     } catch (error) {
-      console.error('Failed to clear notifications:', error);
+      // Clear error handled
     }
   };
 

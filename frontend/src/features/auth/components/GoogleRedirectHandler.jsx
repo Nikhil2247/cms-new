@@ -13,7 +13,6 @@ const GoogleRedirectHandler = () => {
     const email = urlParams.get("email");
 
     if (token && name && email) {
-      console.log("✅ Google login success:", { token, id, name, email });
 
       const loginResponse = {
         access_token: token,

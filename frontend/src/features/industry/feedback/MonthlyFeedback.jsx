@@ -243,9 +243,7 @@ export default function MonthlyFeedbackPage() {
             title="Delete Feedback"
             description="Are you sure you want to delete this feedback?"
             onConfirm={() => {
-              console.log("Record data:", record); // Debug log
               const industryId = record.industry?.id || record.industryId;
-              console.log("Industry ID:", industryId); // Debug log
               handleDelete(record.id, industryId);
             }}
             okText="Delete"

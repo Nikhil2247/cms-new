@@ -260,298 +260,334 @@ const MyQueries = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      {/* Header */}
-      <Card style={{ marginBottom: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-          <div>
-            <Title level={3} style={{ margin: 0 }}>
-              <MessageOutlined /> My Support Tickets
-            </Title>
-            <Text type="secondary">Track and manage your support requests</Text>
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          <div className="flex items-center">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+              <MessageOutlined className="text-lg" />
+            </div>
+            <div>
+              <Title level={2} className="mb-0 text-text-primary text-2xl">
+                My Support Tickets
+              </Title>
+              <Paragraph className="text-text-secondary text-sm mb-0">
+                Track and manage your support requests
+              </Paragraph>
+            </div>
           </div>
-          <Space>
-            <Button icon={<ReloadOutlined />} onClick={fetchTickets}>
+
+          <div className="flex items-center gap-3">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={fetchTickets}
+              className="rounded-xl h-10 border-border text-text-secondary hover:text-text-primary hover:border-primary"
+            >
               Refresh
             </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => setNewTicketVisible(true)}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setNewTicketVisible(true)}
+              className="rounded-xl h-10 font-bold shadow-lg shadow-primary/20"
+            >
               New Ticket
             </Button>
-          </Space>
+          </div>
         </div>
-      </Card>
 
-      {/* Filters */}
-      <Card style={{ marginBottom: 24 }}>
-        <Space wrap style={{ width: '100%' }}>
-          <Input
-            placeholder="Search tickets..."
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 250 }}
-            allowClear
-          />
-          <Select
-            placeholder="Filter by Status"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            style={{ width: 150 }}
-            allowClear
-          >
-            {Object.values(TICKET_STATUS).map((status) => (
-              <Select.Option key={status.value} value={status.value}>
-                {status.label}
-              </Select.Option>
-            ))}
-          </Select>
-          <Select
-            placeholder="Filter by Category"
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            style={{ width: 180 }}
-            allowClear
-          >
-            {Object.values(SUPPORT_CATEGORIES).map((cat) => (
-              <Select.Option key={cat.value} value={cat.value}>
-                {cat.label}
-              </Select.Option>
-            ))}
-          </Select>
-        </Space>
-      </Card>
-
-      {/* Tickets Table */}
-      <Card>
-        <Table
-          columns={columns}
-          dataSource={filteredTickets}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} tickets`,
-          }}
-          locale={{
-            emptyText: (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No tickets found"
-              >
-                <Button type="primary" onClick={() => setNewTicketVisible(true)}>
-                  Submit Your First Ticket
-                </Button>
-              </Empty>
-            ),
-          }}
-        />
-      </Card>
-
-      {/* Ticket Detail Drawer */}
-      <Drawer
-        title={
-          selectedTicket ? (
-            <Space>
-              <Text strong>{selectedTicket.ticketNumber}</Text>
-              {getStatusTag(selectedTicket.status)}
-            </Space>
-          ) : 'Ticket Details'
-        }
-        width={600}
-        open={drawerVisible}
-        onClose={() => {
-          setDrawerVisible(false);
-          setSelectedTicket(null);
-          replyForm.resetFields();
-        }}
-      >
-        {loadingTicket ? (
-          <div style={{ textAlign: 'center', padding: 48 }}>
-            <Spin tip="Loading ticket..." />
-          </div>
-        ) : selectedTicket ? (
-          <div>
-            {/* Ticket Info */}
-            <Card size="small" style={{ marginBottom: 16 }}>
-              <Title level={5}>{selectedTicket.subject}</Title>
-              <Space wrap style={{ marginBottom: 12 }}>
-                <Tag color={getCategoryInfo(selectedTicket.category).color}>
-                  {getCategoryInfo(selectedTicket.category).label}
-                </Tag>
-                {getPriorityTag(selectedTicket.priority)}
-                <Text type="secondary">
-                  <ClockCircleOutlined /> {dayjs(selectedTicket.createdAt).format('DD MMM YYYY, HH:mm')}
-                </Text>
-              </Space>
-              <Paragraph>{selectedTicket.description}</Paragraph>
-              {selectedTicket.assignedTo && (
-                <Text type="secondary">
-                  Assigned to: <strong>{selectedTicket.assignedTo.name}</strong>
-                </Text>
-              )}
-            </Card>
-
-            {/* Resolution (if resolved) */}
-            {selectedTicket.resolution && (
-              <Card size="small" style={{ marginBottom: 16, background: '#f6ffed', borderColor: '#b7eb8f' }}>
-                <Title level={5} style={{ color: '#52c41a' }}>
-                  <CheckCircleOutlined /> Resolution
-                </Title>
-                <Paragraph>{selectedTicket.resolution}</Paragraph>
-              </Card>
-            )}
-
-            <Divider>Conversation</Divider>
-
-            {/* Responses Timeline */}
-            {selectedTicket.responses && selectedTicket.responses.length > 0 ? (
-              <Timeline style={{ marginTop: 16 }}>
-                {selectedTicket.responses
-                  .filter(r => !r.isInternal)
-                  .map((response) => (
-                    <Timeline.Item
-                      key={response.id}
-                      dot={
-                        <Avatar size="small" style={{ backgroundColor: response.responder?.id === user?.userId ? '#1890ff' : '#87d068' }}>
-                          <UserOutlined />
-                        </Avatar>
-                      }
-                    >
-                      <Card size="small" style={{ marginBottom: 8 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                          <Text strong>
-                            {response.responderName}
-                            {response.responder?.id === user?.userId && <Tag style={{ marginLeft: 8 }}>You</Tag>}
-                          </Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            {dayjs(response.createdAt).fromNow()}
-                          </Text>
-                        </div>
-                        <Paragraph style={{ marginBottom: 0 }}>{response.message}</Paragraph>
-                      </Card>
-                    </Timeline.Item>
-                  ))}
-              </Timeline>
-            ) : (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description="No responses yet"
-              />
-            )}
-
-            {/* Reply Form (only for open tickets) */}
-            {!['RESOLVED', 'CLOSED'].includes(selectedTicket.status) && (
-              <>
-                <Divider>Reply</Divider>
-                <Form form={replyForm} onFinish={handleSubmitReply}>
-                  <Form.Item
-                    name="message"
-                    rules={[{ required: true, message: 'Please enter your reply' }]}
-                  >
-                    <TextArea
-                      rows={4}
-                      placeholder="Type your reply here..."
-                    />
-                  </Form.Item>
-                  <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      icon={<SendOutlined />}
-                      loading={submittingReply}
-                    >
-                      Send Reply
-                    </Button>
-                  </Form.Item>
-                </Form>
-              </>
-            )}
-          </div>
-        ) : null}
-      </Drawer>
-
-      {/* New Ticket Modal */}
-      <Modal
-        title={<><PlusOutlined /> Submit New Ticket</>}
-        open={newTicketVisible}
-        onCancel={() => {
-          setNewTicketVisible(false);
-          ticketForm.resetFields();
-        }}
-        footer={null}
-        width={600}
-      >
-        <Form
-          form={ticketForm}
-          layout="vertical"
-          onFinish={handleSubmitTicket}
-        >
-          <Form.Item
-            name="subject"
-            label="Subject"
-            rules={[
-              { required: true, message: 'Please enter a subject' },
-              { min: 5, message: 'Subject must be at least 5 characters' },
-            ]}
-          >
-            <Input placeholder="Brief description of your issue" />
-          </Form.Item>
-
-          <Form.Item
-            name="category"
-            label="Category"
-            rules={[{ required: true, message: 'Please select a category' }]}
-          >
-            <Select placeholder="Select category">
+        {/* Filters */}
+        <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: '16px' } }}>
+          <Space wrap className="w-full">
+            <Input
+              placeholder="Search tickets..."
+              prefix={<SearchOutlined className="text-text-tertiary" />}
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-64 rounded-xl h-10 bg-background border-border"
+              allowClear
+            />
+            <Select
+              placeholder="Filter by Status"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              className="w-40 rounded-xl h-10"
+              allowClear
+            >
+              {Object.values(TICKET_STATUS).map((status) => (
+                <Select.Option key={status.value} value={status.value}>
+                  {status.label}
+                </Select.Option>
+              ))}
+            </Select>
+            <Select
+              placeholder="Filter by Category"
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              className="w-48 rounded-xl h-10"
+              allowClear
+            >
               {Object.values(SUPPORT_CATEGORIES).map((cat) => (
                 <Select.Option key={cat.value} value={cat.value}>
                   {cat.label}
                 </Select.Option>
               ))}
             </Select>
-          </Form.Item>
+          </Space>
+        </Card>
 
-          <Form.Item
-            name="priority"
-            label="Priority"
-            initialValue="MEDIUM"
+        {/* Tickets Table */}
+        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
+          <Table
+            columns={columns}
+            dataSource={filteredTickets}
+            rowKey="id"
+            loading={loading}
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: true,
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} tickets`,
+              className: "px-6 py-4",
+            }}
+            size="middle"
+            locale={{
+              emptyText: (
+                <div className="py-12 flex flex-col items-center justify-center">
+                  <Empty
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
+                    description={<span className="text-text-secondary">No tickets found</span>}
+                  />
+                  <Button type="primary" onClick={() => setNewTicketVisible(true)} className="mt-4 rounded-xl h-10 font-bold">
+                    Submit Your First Ticket
+                  </Button>
+                </div>
+              ),
+            }}
+            className="custom-table"
+          />
+        </Card>
+
+        {/* Ticket Detail Drawer */}
+        <Drawer
+          title={
+            selectedTicket ? (
+              <div className="flex items-center gap-3">
+                <Text strong className="text-lg text-text-primary">{selectedTicket.ticketNumber}</Text>
+                {getStatusTag(selectedTicket.status)}
+              </div>
+            ) : 'Ticket Details'
+          }
+          width={600}
+          open={drawerVisible}
+          onClose={() => {
+            setDrawerVisible(false);
+            setSelectedTicket(null);
+            replyForm.resetFields();
+          }}
+          className="rounded-l-2xl"
+          styles={{ header: { borderBottom: '1px solid var(--color-border)' } }}
+        >
+          {loadingTicket ? (
+            <div className="flex justify-center items-center h-full">
+              <Spin tip="Loading ticket..." />
+            </div>
+          ) : selectedTicket ? (
+            <div className="space-y-6">
+              {/* Ticket Info */}
+              <Card size="small" className="rounded-xl border-border bg-surface shadow-sm">
+                <Title level={5} className="!mb-3 text-text-primary">{selectedTicket.subject}</Title>
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <Tag color={getCategoryInfo(selectedTicket.category).color} className="rounded-md border-0 m-0 font-medium">
+                    {getCategoryInfo(selectedTicket.category).label}
+                  </Tag>
+                  {getPriorityTag(selectedTicket.priority)}
+                  <div className="flex items-center text-text-tertiary text-xs ml-auto">
+                    <ClockCircleOutlined className="mr-1" />
+                    {dayjs(selectedTicket.createdAt).format('DD MMM YYYY, HH:mm')}
+                  </div>
+                </div>
+                <Paragraph className="text-text-secondary leading-relaxed mb-0 bg-background-tertiary/30 p-3 rounded-lg border border-border/50">
+                  {selectedTicket.description}
+                </Paragraph>
+                {selectedTicket.assignedTo && (
+                  <div className="mt-3 flex items-center gap-2 text-xs text-text-tertiary border-t border-border pt-2">
+                    <UserOutlined /> Assigned to: <strong className="text-text-secondary">{selectedTicket.assignedTo.name}</strong>
+                  </div>
+                )}
+              </Card>
+
+              {/* Resolution (if resolved) */}
+              {selectedTicket.resolution && (
+                <Card size="small" className="rounded-xl border-success-border bg-success-50">
+                  <Title level={5} className="!mb-2 flex items-center gap-2 text-success-700">
+                    <CheckCircleOutlined /> Resolution
+                  </Title>
+                  <Paragraph className="mb-0 text-text-primary">{selectedTicket.resolution}</Paragraph>
+                </Card>
+              )}
+
+              <Divider className="border-border">Conversation</Divider>
+
+              {/* Responses Timeline */}
+              {selectedTicket.responses && selectedTicket.responses.length > 0 ? (
+                <Timeline className="mt-4 px-2">
+                  {selectedTicket.responses
+                    .filter(r => !r.isInternal)
+                    .map((response) => (
+                      <Timeline.Item
+                        key={response.id}
+                        dot={
+                          <Avatar size="small" className={response.responder?.id === user?.userId ? 'bg-primary' : 'bg-success'}>
+                            <UserOutlined />
+                          </Avatar>
+                        }
+                      >
+                        <Card size="small" className={`rounded-xl border-border mb-2 ${response.responder?.id === user?.userId ? 'bg-primary-50/30' : 'bg-surface'}`}>
+                          <div className="flex justify-between items-center mb-2">
+                            <Text strong className="text-text-primary">
+                              {response.responderName}
+                              {response.responder?.id === user?.userId && <Tag className="ml-2 rounded-md border-0 bg-primary/10 text-primary text-[10px] font-bold">YOU</Tag>}
+                            </Text>
+                            <Text type="secondary" className="text-xs">
+                              {dayjs(response.createdAt).fromNow()}
+                            </Text>
+                          </div>
+                          <Paragraph className="mb-0 text-text-secondary">{response.message}</Paragraph>
+                        </Card>
+                      </Timeline.Item>
+                    ))}
+                </Timeline>
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={<span className="text-text-tertiary">No responses yet</span>}
+                />
+              )}
+
+              {/* Reply Form (only for open tickets) */}
+              {!['RESOLVED', 'CLOSED'].includes(selectedTicket.status) && (
+                <div className="pt-4 border-t border-border mt-4">
+                  <Text strong className="block mb-3 text-text-primary">Reply</Text>
+                  <Form form={replyForm} onFinish={handleSubmitReply}>
+                    <Form.Item
+                      name="message"
+                      rules={[{ required: true, message: 'Please enter your reply' }]}
+                    >
+                      <TextArea
+                        rows={4}
+                        placeholder="Type your reply here..."
+                        className="rounded-xl border-border bg-background p-3"
+                      />
+                    </Form.Item>
+                    <div className="flex justify-end">
+                      <Button
+                        type="primary"
+                        htmlType="submit"
+                        icon={<SendOutlined />}
+                        loading={submittingReply}
+                        className="rounded-xl h-10 font-bold px-6 shadow-md"
+                      >
+                        Send Reply
+                      </Button>
+                    </div>
+                  </Form>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </Drawer>
+
+        {/* New Ticket Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2 text-primary">
+              <PlusOutlined />
+              <span className="font-bold">Submit New Ticket</span>
+            </div>
+          }
+          open={newTicketVisible}
+          onCancel={() => {
+            setNewTicketVisible(false);
+            ticketForm.resetFields();
+          }}
+          footer={null}
+          width={600}
+          className="rounded-2xl overflow-hidden"
+        >
+          <Form
+            form={ticketForm}
+            layout="vertical"
+            onFinish={handleSubmitTicket}
+            className="pt-4"
           >
-            <Select>
-              {Object.values(TICKET_PRIORITY).map((p) => (
-                <Select.Option key={p.value} value={p.value}>
-                  <Tag color={p.color}>{p.label}</Tag>
-                </Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
+            <Form.Item
+              name="subject"
+              label={<span className="font-medium text-text-primary">Subject</span>}
+              rules={[
+                { required: true, message: 'Please enter a subject' },
+                { min: 5, message: 'Subject must be at least 5 characters' },
+              ]}
+            >
+              <Input placeholder="Brief description of your issue" className="rounded-lg h-11 bg-background border-border" />
+            </Form.Item>
 
-          <Form.Item
-            name="description"
-            label="Description"
-            rules={[
-              { required: true, message: 'Please describe your issue' },
-              { min: 20, message: 'Description must be at least 20 characters' },
-            ]}
-          >
-            <TextArea
-              rows={6}
-              placeholder="Please describe your issue in detail..."
-            />
-          </Form.Item>
+            <div className="grid grid-cols-2 gap-4">
+              <Form.Item
+                name="category"
+                label={<span className="font-medium text-text-primary">Category</span>}
+                rules={[{ required: true, message: 'Please select a category' }]}
+              >
+                <Select placeholder="Select category" className="rounded-lg h-11">
+                  {Object.values(SUPPORT_CATEGORIES).map((cat) => (
+                    <Select.Option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
 
-          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-            <Space>
-              <Button onClick={() => setNewTicketVisible(false)}>
+              <Form.Item
+                name="priority"
+                label={<span className="font-medium text-text-primary">Priority</span>}
+                initialValue="MEDIUM"
+              >
+                <Select className="rounded-lg h-11">
+                  {Object.values(TICKET_PRIORITY).map((p) => (
+                    <Select.Option key={p.value} value={p.value}>
+                      <Tag color={p.color} className="mr-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wider">{p.label}</Tag>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </div>
+
+            <Form.Item
+              name="description"
+              label={<span className="font-medium text-text-primary">Description</span>}
+              rules={[
+                { required: true, message: 'Please describe your issue' },
+                { min: 20, message: 'Description must be at least 20 characters' },
+              ]}
+            >
+              <TextArea
+                rows={6}
+                placeholder="Please describe your issue in detail..."
+                className="rounded-lg bg-background border-border p-3"
+              />
+            </Form.Item>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+              <Button onClick={() => setNewTicketVisible(false)} className="rounded-xl h-10 font-medium">
                 Cancel
               </Button>
-              <Button type="primary" htmlType="submit" loading={submittingTicket}>
+              <Button type="primary" htmlType="submit" loading={submittingTicket} className="rounded-xl h-10 font-bold px-6 shadow-lg shadow-primary/20">
                 Submit Ticket
               </Button>
-            </Space>
-          </Form.Item>
-        </Form>
-      </Modal>
+            </div>
+          </Form>
+        </Modal>
+      </div>
     </div>
   );
 };

@@ -13,7 +13,6 @@ import {
   Badge,
   Timeline,
   Typography,
-  Statistic,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -21,8 +20,8 @@ import {
   ClockCircleOutlined,
   CloseCircleOutlined,
   BankOutlined,
-  WarningOutlined,
   HistoryOutlined,
+  InboxOutlined,
 } from '@ant-design/icons';
 import {
   fetchJoiningLetterStats,
@@ -36,7 +35,6 @@ const JoiningLetterTracker = () => {
   const dispatch = useDispatch();
   const stats = useSelector(selectJoiningLetterStats);
   const loading = useSelector(selectJoiningLettersLoading);
-  const [activeTab, setActiveTab] = useState('summary');
 
   useEffect(() => {
     dispatch(fetchJoiningLetterStats());
@@ -44,7 +42,7 @@ const JoiningLetterTracker = () => {
 
   if (loading) {
     return (
-      <Card className="h-full">
+      <Card className="h-full rounded-2xl border-border shadow-sm bg-surface">
         <div className="flex justify-center items-center h-48">
           <Spin size="large" />
         </div>
@@ -54,7 +52,7 @@ const JoiningLetterTracker = () => {
 
   if (!stats) {
     return (
-      <Card className="h-full">
+      <Card className="h-full rounded-2xl border-border shadow-sm bg-surface">
         <Empty description="No joining letter data available" />
       </Card>
     );
@@ -77,11 +75,13 @@ const JoiningLetterTracker = () => {
       dataIndex: 'institutionName',
       key: 'institutionName',
       ellipsis: true,
-      render: (text, record) => (
+      render: (text) => (
         <Tooltip title={text}>
           <div className="flex items-center gap-2">
-            <BankOutlined className="text-blue-500" />
-            <span className="truncate max-w-[150px]">{text}</span>
+            <div className="w-6 h-6 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
+              <BankOutlined className="text-blue-500 text-xs" />
+            </div>
+            <span className="truncate max-w-[150px] font-medium text-text-primary">{text}</span>
           </div>
         </Tooltip>
       ),
@@ -92,6 +92,7 @@ const JoiningLetterTracker = () => {
       key: 'total',
       width: 70,
       align: 'center',
+      render: (text) => <Text className="font-medium text-text-secondary">{text}</Text>,
     },
     {
       title: 'Pending',
@@ -100,7 +101,7 @@ const JoiningLetterTracker = () => {
       width: 80,
       align: 'center',
       render: (val) => (
-        <Badge count={val} style={{ backgroundColor: statusColors.pendingReview }} showZero />
+        val > 0 ? <Badge count={val} style={{ backgroundColor: statusColors.pendingReview, boxShadow: 'none' }} /> : <span className="text-text-tertiary">-</span>
       ),
     },
     {
@@ -110,7 +111,7 @@ const JoiningLetterTracker = () => {
       width: 80,
       align: 'center',
       render: (val) => (
-        <Badge count={val} style={{ backgroundColor: statusColors.verified }} showZero />
+        val > 0 ? <Badge count={val} style={{ backgroundColor: statusColors.verified, boxShadow: 'none' }} /> : <span className="text-text-tertiary">-</span>
       ),
     },
     {
@@ -120,7 +121,7 @@ const JoiningLetterTracker = () => {
       width: 80,
       align: 'center',
       render: (val) => (
-        <Badge count={val} style={{ backgroundColor: statusColors.rejected }} showZero />
+        val > 0 ? <Badge count={val} style={{ backgroundColor: statusColors.rejected, boxShadow: 'none' }} /> : <span className="text-text-tertiary">-</span>
       ),
     },
   ];
@@ -128,132 +129,132 @@ const JoiningLetterTracker = () => {
   return (
     <Card
       title={
-        <div className="flex items-center gap-2">
-          <FileTextOutlined className="text-blue-500" />
-          <span>Joining Letter Tracker</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+            <FileTextOutlined className="text-blue-500 text-lg" />
+          </div>
+          <span className="font-bold text-text-primary text-lg">Joining Letter Tracker</span>
         </div>
       }
-      className="h-full"
-      styles={{ body: { padding: '16px' } }}
+      className="h-full rounded-2xl border-border shadow-sm bg-surface"
+      styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
     >
       {/* Summary Stats Row */}
-      <Row gutter={[16, 16]} className="mb-4">
+      <Row gutter={[16, 16]} className="mb-6">
         <Col span={6}>
-          <Card size="small" className="text-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 border-blue-200">
-            <Statistic
-              title={<span className="text-xs">Total Letters</span>}
-              value={summary?.uploaded || 0}
-              suffix={<span className="text-sm text-gray-500">/ {summary?.total || 0}</span>}
-              valueStyle={{ fontSize: '20px', color: '#1890ff' }}
-            />
-          </Card>
+          <div className="text-center p-3 rounded-xl bg-background-tertiary/30 border border-border/50">
+            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest mb-1">Total Letters</div>
+            <div className="text-xl font-black text-blue-500 leading-none">
+              {summary?.uploaded || 0} <span className="text-sm font-medium text-text-tertiary">of {summary?.total || 0}</span>
+            </div>
+          </div>
         </Col>
         <Col span={6}>
-          <Card size="small" className="text-center bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 border-yellow-200">
-            <Statistic
-              title={<span className="text-xs">Pending Review</span>}
-              value={summary?.pendingReview || 0}
-              prefix={<ClockCircleOutlined />}
-              valueStyle={{ fontSize: '20px', color: '#faad14' }}
-            />
-          </Card>
+          <div className="text-center p-3 rounded-xl bg-background-tertiary/30 border border-border/50">
+            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest mb-1">Pending</div>
+            <div className="text-xl font-black text-warning leading-none flex items-center justify-center gap-1">
+              <ClockCircleOutlined className="text-sm" /> {summary?.pendingReview || 0}
+            </div>
+          </div>
         </Col>
         <Col span={6}>
-          <Card size="small" className="text-center bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 border-green-200">
-            <Statistic
-              title={<span className="text-xs">Verified</span>}
-              value={summary?.verified || 0}
-              prefix={<CheckCircleOutlined />}
-              valueStyle={{ fontSize: '20px', color: '#52c41a' }}
-            />
-          </Card>
+          <div className="text-center p-3 rounded-xl bg-background-tertiary/30 border border-border/50">
+            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest mb-1">Verified</div>
+            <div className="text-xl font-black text-success leading-none flex items-center justify-center gap-1">
+              <CheckCircleOutlined className="text-sm" /> {summary?.verified || 0}
+            </div>
+          </div>
         </Col>
         <Col span={6}>
-          <Card size="small" className="text-center bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-red-200">
-            <Statistic
-              title={<span className="text-xs">Rejected</span>}
-              value={summary?.rejected || 0}
-              prefix={<CloseCircleOutlined />}
-              valueStyle={{ fontSize: '20px', color: '#ff4d4f' }}
-            />
-          </Card>
+          <div className="text-center p-3 rounded-xl bg-background-tertiary/30 border border-border/50">
+            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest mb-1">Rejected</div>
+            <div className="text-xl font-black text-error leading-none flex items-center justify-center gap-1">
+              <CloseCircleOutlined className="text-sm" /> {summary?.rejected || 0}
+            </div>
+          </div>
         </Col>
       </Row>
 
       {/* Verification Rate */}
-      <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+      <div className="mb-6 p-4 bg-background-tertiary/20 rounded-xl border border-border/50">
         <div className="flex justify-between items-center mb-2">
-          <Text strong>Verification Rate</Text>
-          <Text type="secondary">{summary?.verificationRate || 0}%</Text>
+          <Text className="text-xs font-bold text-text-secondary uppercase tracking-wide">Verification Progress</Text>
+          <Text strong className="text-text-primary">{summary?.verificationRate || 0}%</Text>
         </div>
         <Progress
           percent={summary?.verificationRate || 0}
           strokeColor={{
-            '0%': '#52c41a',
-            '100%': '#87d068',
+            '0%': 'rgb(var(--color-info))',
+            '100%': 'rgb(var(--color-success))',
           }}
-          trailColor="#f0f0f0"
+          trailColor="rgba(var(--color-border), 0.3)"
           size="small"
+          showInfo={false}
+          className="!m-0"
         />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
+        <div className="flex justify-between text-[10px] font-medium text-text-tertiary mt-2">
           <span>Upload Rate: {summary?.uploadRate || 0}%</span>
           <span>No Letter: {summary?.noLetter || 0}</span>
         </div>
       </div>
 
       {/* Two Column Layout: Institution Table & Recent Activity */}
-      <Row gutter={16}>
+      <Row gutter={24}>
         <Col span={14}>
-          <div className="mb-2">
-            <Text strong className="flex items-center gap-1">
-              <BankOutlined /> Institution Breakdown
-            </Text>
+          <div className="mb-3 flex items-center gap-2">
+            <BankOutlined className="text-text-tertiary" />
+            <Text strong className="text-sm text-text-secondary">Institution Breakdown</Text>
           </div>
-          <Table
-            dataSource={byInstitution.slice(0, 5)}
-            columns={institutionColumns}
-            rowKey="institutionId"
-            size="small"
-            pagination={false}
-            scroll={{ y: 180 }}
-            locale={{ emptyText: 'No institution data' }}
-          />
+          <div className="rounded-xl border border-border overflow-hidden">
+            <Table
+              dataSource={byInstitution.slice(0, 5)}
+              columns={institutionColumns}
+              rowKey="institutionId"
+              size="small"
+              pagination={false}
+              scroll={{ y: 180 }}
+              locale={{ emptyText: 'No institution data' }}
+              className="custom-table"
+            />
+          </div>
         </Col>
         <Col span={10}>
-          <div className="mb-2">
-            <Text strong className="flex items-center gap-1">
-              <HistoryOutlined /> Recent Activity
-            </Text>
+          <div className="mb-3 flex items-center gap-2">
+            <HistoryOutlined className="text-text-tertiary" />
+            <Text strong className="text-sm text-text-secondary">Recent Activity</Text>
           </div>
-          <div className="max-h-[200px] overflow-y-auto">
+          <div className="max-h-[220px] overflow-y-auto px-2">
             {recentActivity.length > 0 ? (
               <Timeline
                 items={recentActivity.slice(0, 5).map((activity) => ({
                   color: activity.action === 'VERIFIED' ? 'green' : 'red',
                   children: (
-                    <div className="text-xs">
-                      <div className="font-medium">
-                        {activity.studentName}
+                    <div className="pb-2">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <Text className="font-bold text-xs text-text-primary">{activity.studentName}</Text>
                         <Tag
-                          size="small"
+                          className="m-0 border-0 text-[9px] font-bold uppercase"
                           color={activity.action === 'VERIFIED' ? 'success' : 'error'}
-                          className="ml-1"
                         >
                           {activity.action}
                         </Tag>
                       </div>
-                      <div className="text-gray-500">
+                      <Text className="text-xs text-text-secondary block truncate" title={activity.companyName}>
                         {activity.companyName}
-                      </div>
-                      <div className="text-gray-400">
+                      </Text>
+                      <Text className="text-[10px] text-text-tertiary block truncate" title={activity.institutionName}>
                         {activity.institutionName}
-                      </div>
+                      </Text>
                     </div>
                   ),
                 }))}
+                className="mt-1"
               />
             ) : (
-              <Empty description="No recent activity" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              <div className="text-center py-8">
+                <InboxOutlined className="text-2xl text-text-tertiary mb-2" />
+                <Text className="text-xs text-text-tertiary block">No recent activity</Text>
+              </div>
             )}
           </div>
         </Col>

@@ -19,30 +19,3 @@ export const getImageUrl = (relativePath) => {
   // Otherwise, prepend the API base URL with /uploads/
   return `${API_BASE_URL}/uploads/${relativePath}`;
 };
-
-/**
- * Get full document URL
- * @param {string} relativePath - Relative path from database
- * @returns {string|null} - Full URL or null
- */
-export const getDocumentUrl = (relativePath) => {
-  return getImageUrl(relativePath);
-};
-
-/**
- * Get profile image URL with fallback to default avatar
- * @param {string} relativePath - Relative path from database
- * @param {string} fallback - Optional fallback URL
- * @returns {string|null} - Full URL or fallback
- */
-export const getProfileImageUrl = (relativePath, fallback = null) => {
-  return getImageUrl(relativePath) || fallback;
-};
-
-/**
- * Get API base URL for custom use cases
- * @returns {string} - API base URL
- */
-export const getApiBaseUrl = () => {
-  return API_BASE_URL;
-};

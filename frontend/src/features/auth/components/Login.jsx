@@ -126,7 +126,6 @@ function Login() {
     const needsPasswordChange = urlParams.get("needsPasswordChange");
 
     if (token && id && name && email) {
-      console.log("✅ Google login success:", { token, id, name, email });
 
       const loginResponse = {
         access_token: token,

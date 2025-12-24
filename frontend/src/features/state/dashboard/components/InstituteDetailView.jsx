@@ -82,162 +82,231 @@ const STATUS_COLORS = {
 
 const getStatusColor = (status) => STATUS_COLORS[status] || 'default';
 
-// Memoized Overview Tab Component
+// Memoized Overview Tab Component - Refactored for Clean UI
 const OverviewTab = memo(({ data, loading, error }) => {
-  if (loading) return <Spin className="flex justify-center py-12" />;
-  if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon />;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
+  if (error) return <Alert type="error" message="Failed to load overview" description={error} showIcon className="rounded-xl border-error/20 bg-error/5" />;
   if (!data) return <Empty description="No data available" />;
 
   return (
-    <div className="space-y-4">
-      {/* Compliance Score */}
-      <Card size="small" className="bg-gradient-to-r from-primary/10 to-secondary/10 dark:from-slate-800 dark:to-slate-700">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={8}>
-            <div className="text-center">
-              <Progress
-                type="circle"
-                percent={data.complianceScore || 0}
-                size={100}
-                strokeColor={{ '0%': 'rgb(var(--color-info))', '100%': 'rgb(var(--color-success))' }}
-                format={(p) => <span className="text-lg font-bold">{p}%</span>}
-              />
-              <div className="mt-2 text-sm font-medium text-text-secondary">
-                Compliance Score
-              </div>
+    <div className="space-y-6 p-4">
+      {/* Compliance Score & Key Stats */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden">
+          <div className="flex flex-col items-center justify-center h-full py-4">
+            <Progress
+              type="circle"
+              percent={data.complianceScore || 0}
+              size={120}
+              strokeColor={{ '0%': 'rgb(var(--color-info))', '100%': 'rgb(var(--color-success))' }}
+              format={(p) => (
+                <div className="flex flex-col items-center">
+                  <span className="text-3xl font-black text-text-primary">{p}%</span>
+                  <span className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest mt-1">Score</span>
+                </div>
+              )}
+            />
+            <div className="mt-4 text-center">
+              <Text className="text-lg font-bold text-text-primary block">Compliance Status</Text>
+              <Text className="text-text-secondary text-sm">Overall performance rating</Text>
             </div>
-          </Col>
-          <Col xs={24} sm={16}>
-            <Row gutter={[8, 8]}>
-              <Col span={8}>
-                <Statistic
-                  title="Total Students"
-                  value={data.totalStudents || 0}
-                  prefix={<TeamOutlined />}
-                  className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400"
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Companies"
-                  value={data.companiesCount || 0}
-                  prefix={<BankOutlined />}
-                  className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400"
-                />
-              </Col>
-              <Col span={8}>
-                <Statistic
-                  title="Faculty"
-                  value={data.facultyCount || 0}
-                  prefix={<UserOutlined />}
-                  className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400"
-                />
-              </Col>
-            </Row>
-          </Col>
-        </Row>
-      </Card>
+          </div>
+        </Card>
+
+        <Card className="lg:col-span-2 rounded-2xl border-border shadow-sm bg-surface">
+          <Title level={5} className="mb-4 text-text-primary flex items-center gap-2">
+            <BankOutlined className="text-primary" /> Key Metrics
+          </Title>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-background-tertiary/30 border border-border/50 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center mb-2">
+                <TeamOutlined className="text-lg" />
+              </div>
+              <div className="text-2xl font-black text-text-primary">{data.totalStudents || 0}</div>
+              <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Total Students</div>
+            </div>
+            <div className="p-4 rounded-xl bg-background-tertiary/30 border border-border/50 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-success/10 text-success flex items-center justify-center mb-2">
+                <BankOutlined className="text-lg" />
+              </div>
+              <div className="text-2xl font-black text-text-primary">{data.companiesCount || 0}</div>
+              <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Companies</div>
+            </div>
+            <div className="p-4 rounded-xl bg-background-tertiary/30 border border-border/50 flex flex-col items-center justify-center text-center">
+              <div className="w-10 h-10 rounded-xl bg-warning/10 text-warning flex items-center justify-center mb-2">
+                <UserOutlined className="text-lg" />
+              </div>
+              <div className="text-2xl font-black text-text-primary">{data.facultyCount || 0}</div>
+              <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Faculty</div>
+            </div>
+          </div>
+        </Card>
+      </div>
 
       {/* Self-Identified Internships */}
       <Card
-        title={<><SafetyCertificateOutlined className="mr-2" />Self-Identified Internships</>}
-        size="small"
-        extra={<Tag color="blue">{data.selfIdentifiedInternships?.rate || 0}% of students</Tag>}
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center shrink-0">
+              <SafetyCertificateOutlined className="text-purple-500" />
+            </div>
+            <span className="font-bold text-text-primary">Self-Identified Internships</span>
+          </div>
+        }
+        className="rounded-2xl border-border shadow-sm bg-surface"
+        extra={<Tag color="blue" className="rounded-md font-bold px-2">{data.selfIdentifiedInternships?.rate || 0}% of students</Tag>}
       >
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={6}>
-            <Statistic title="Total" value={data.selfIdentifiedInternships?.total || 0} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400" />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="Approved" value={data.selfIdentifiedInternships?.approved || 0} valueStyle={{ color: 'rgb(var(--color-success))' }} prefix={<CheckCircleOutlined />} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="Pending" value={data.selfIdentifiedInternships?.pending || 0} valueStyle={{ color: 'rgb(var(--color-warning))' }} prefix={<ClockCircleOutlined />} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" />
-          </Col>
-          <Col xs={12} sm={6}>
-            <Statistic title="Rejected" value={data.selfIdentifiedInternships?.rejected || 0} valueStyle={{ color: 'rgb(var(--color-error))' }} prefix={<CloseCircleOutlined />} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" />
-          </Col>
-        </Row>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="text-center p-3">
+            <div className="text-2xl font-bold text-text-primary">{data.selfIdentifiedInternships?.total || 0}</div>
+            <div className="text-xs text-text-tertiary uppercase tracking-wider font-semibold">Total</div>
+          </div>
+          <div className="text-center p-3 border-l border-border/50">
+            <div className="text-2xl font-bold text-success">{data.selfIdentifiedInternships?.approved || 0}</div>
+            <div className="text-xs text-text-tertiary uppercase tracking-wider font-semibold">Approved</div>
+          </div>
+          <div className="text-center p-3 border-l border-border/50">
+            <div className="text-2xl font-bold text-warning">{data.selfIdentifiedInternships?.pending || 0}</div>
+            <div className="text-xs text-text-tertiary uppercase tracking-wider font-semibold">Pending</div>
+          </div>
+          <div className="text-center p-3 border-l border-border/50">
+            <div className="text-2xl font-bold text-error">{data.selfIdentifiedInternships?.rejected || 0}</div>
+            <div className="text-xs text-text-tertiary uppercase tracking-wider font-semibold">Rejected</div>
+          </div>
+        </div>
       </Card>
 
       {/* Mentor Assignment */}
-      <Card title={<><TeamOutlined className="mr-2" />Mentor Assignment</>} size="small">
-        <Row gutter={[16, 16]} align="middle">
-          <Col xs={24} sm={16}>
-            <Row gutter={[16, 16]}>
-              <Col span={12}>
-                <Statistic title="Assigned" value={data.mentorAssignment?.assigned || 0} valueStyle={{ color: '#3f8600' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" />
-              </Col>
-              <Col span={12}>
-                <Statistic title="Unassigned" value={data.mentorAssignment?.unassigned || 0} valueStyle={{ color: '#cf1322' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" />
-              </Col>
-            </Row>
-          </Col>
-          <Col xs={24} sm={8} className="text-center">
-            <Progress type="circle" percent={Math.round(data.mentorAssignment?.rate || 0)} size={80} format={(p) => `${p}%`} />
-            <div className="text-xs text-gray-500 mt-1">Assignment Rate</div>
-          </Col>
-        </Row>
+      <Card 
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
+              <TeamOutlined className="text-indigo-500" />
+            </div>
+            <span className="font-bold text-text-primary">Mentor Assignment</span>
+          </div>
+        }
+        className="rounded-2xl border-border shadow-sm bg-surface"
+      >
+        <div className="flex flex-col md:flex-row items-center gap-8">
+          <div className="flex-1 w-full">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 rounded-xl bg-success/5 border border-success/20">
+                <div className="text-2xl font-bold text-success">{data.mentorAssignment?.assigned || 0}</div>
+                <div className="text-xs font-bold text-success-700 uppercase tracking-wider">Assigned</div>
+              </div>
+              <div className="p-4 rounded-xl bg-error/5 border border-error/20">
+                <div className="text-2xl font-bold text-error">{data.mentorAssignment?.unassigned || 0}</div>
+                <div className="text-xs font-bold text-error-700 uppercase tracking-wider">Unassigned</div>
+              </div>
+            </div>
+          </div>
+          <div className="text-center shrink-0">
+            <Progress 
+              type="circle" 
+              percent={Math.round(data.mentorAssignment?.rate || 0)} 
+              size={80} 
+              strokeColor="rgb(var(--color-primary))"
+              format={(p) => <span className="text-sm font-bold text-text-primary">{p}%</span>}
+            />
+            <div className="text-[10px] uppercase font-bold text-text-tertiary mt-2 tracking-wide">Coverage</div>
+          </div>
+        </div>
       </Card>
 
       {/* Joining Letters & Monthly Reports */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={12}>
-          <Card
-            title={<><FileProtectOutlined className="mr-2" />Joining Letters</>}
-            size="small"
-            extra={<Tag color={data.joiningLetterStatus?.rate >= 80 ? 'green' : 'orange'}>{data.joiningLetterStatus?.rate || 0}%</Tag>}
-          >
-            <Row gutter={[8, 8]}>
-              <Col span={6}><Statistic title="Submitted" value={data.joiningLetterStatus?.submitted || 0} valueStyle={{ fontSize: '16px' }} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Pending" value={data.joiningLetterStatus?.pending || 0} valueStyle={{ fontSize: '16px', color: '#faad14' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Approved" value={data.joiningLetterStatus?.approved || 0} valueStyle={{ fontSize: '16px', color: '#3f8600' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Rejected" value={data.joiningLetterStatus?.rejected || 0} valueStyle={{ fontSize: '16px', color: '#cf1322' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-            </Row>
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={<><CalendarOutlined className="mr-2" />Monthly Reports ({data.monthlyReportStatus?.currentMonth}/{data.monthlyReportStatus?.currentYear})</>}
-            size="small"
-            extra={<Tag color={data.monthlyReportStatus?.rate >= 80 ? 'green' : 'orange'}>{data.monthlyReportStatus?.rate || 0}%</Tag>}
-          >
-            <Row gutter={[8, 8]}>
-              <Col span={6}><Statistic title="Submitted" value={data.monthlyReportStatus?.submitted || 0} valueStyle={{ fontSize: '16px' }} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Pending" value={data.monthlyReportStatus?.pending || 0} valueStyle={{ fontSize: '16px', color: '#faad14' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Approved" value={data.monthlyReportStatus?.approved || 0} valueStyle={{ fontSize: '16px', color: '#3f8600' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-              <Col span={6}><Statistic title="Not Submitted" value={data.monthlyReportStatus?.notSubmitted || 0} valueStyle={{ fontSize: '16px', color: '#cf1322' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400 [&_.ant-statistic-title]:text-xs" /></Col>
-            </Row>
-          </Card>
-        </Col>
-      </Row>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card
+          title={
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center shrink-0">
+                <FileProtectOutlined className="text-blue-500" />
+              </div>
+              <span className="font-bold text-text-primary">Joining Letters</span>
+            </div>
+          }
+          className="rounded-2xl border-border shadow-sm bg-surface"
+          extra={<Tag color={data.joiningLetterStatus?.rate >= 80 ? 'green' : 'orange'} className="rounded-md font-bold">{data.joiningLetterStatus?.rate || 0}%</Tag>}
+        >
+          <div className="grid grid-cols-2 gap-y-4">
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Submitted</span>} value={data.joiningLetterStatus?.submitted || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Pending</span>} value={data.joiningLetterStatus?.pending || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Approved</span>} value={data.joiningLetterStatus?.approved || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Rejected</span>} value={data.joiningLetterStatus?.rejected || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#ff4d4f' }} />
+          </div>
+        </Card>
+
+        <Card
+          title={
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center shrink-0">
+                <CalendarOutlined className="text-orange-500" />
+              </div>
+              <span className="font-bold text-text-primary">Monthly Reports</span>
+            </div>
+          }
+          className="rounded-2xl border-border shadow-sm bg-surface"
+          extra={<Tag color={data.monthlyReportStatus?.rate >= 80 ? 'green' : 'orange'} className="rounded-md font-bold">{data.monthlyReportStatus?.rate || 0}%</Tag>}
+        >
+          <div className="grid grid-cols-2 gap-y-4">
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Submitted</span>} value={data.monthlyReportStatus?.submitted || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Pending</span>} value={data.monthlyReportStatus?.pending || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#faad14' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Approved</span>} value={data.monthlyReportStatus?.approved || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#52c41a' }} />
+            <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Missing</span>} value={data.monthlyReportStatus?.notSubmitted || 0} valueStyle={{ fontSize: '18px', fontWeight: 'bold', color: '#ff4d4f' }} />
+          </div>
+        </Card>
+      </div>
 
       {/* Faculty Visits */}
       <Card
-        title={<><EnvironmentOutlined className="mr-2" />Faculty Visits This Month</>}
-        size="small"
-        extra={<Tag color={data.facultyVisits?.completionRate >= 80 ? 'green' : 'orange'}>{data.facultyVisits?.completionRate || 0}% Complete</Tag>}
+        title={
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-teal-500/10 flex items-center justify-center shrink-0">
+              <EnvironmentOutlined className="text-teal-500" />
+            </div>
+            <span className="font-bold text-text-primary">Faculty Visits (This Month)</span>
+          </div>
+        }
+        className="rounded-2xl border-border shadow-sm bg-surface"
+        extra={<Tag color={data.facultyVisits?.completionRate >= 80 ? 'green' : 'orange'} className="rounded-md font-bold">{data.facultyVisits?.completionRate || 0}% Complete</Tag>}
       >
-        <Row gutter={[16, 16]}>
-          <Col xs={8}><Statistic title="Scheduled" value={data.facultyVisits?.scheduled || 0} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-          <Col xs={8}><Statistic title="Completed" value={data.facultyVisits?.completed || 0} valueStyle={{ color: '#3f8600' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-          <Col xs={8}><Statistic title="To Be Done" value={data.facultyVisits?.toBeDone || 0} valueStyle={{ color: '#faad14' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-        </Row>
+        <div className="grid grid-cols-3 gap-4 text-center">
+          <div className="p-3 bg-background-tertiary/30 rounded-xl">
+            <div className="text-2xl font-bold text-text-primary">{data.facultyVisits?.scheduled || 0}</div>
+            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Scheduled</div>
+          </div>
+          <div className="p-3 bg-success/5 border border-success/20 rounded-xl">
+            <div className="text-2xl font-bold text-success">{data.facultyVisits?.completed || 0}</div>
+            <div className="text-[10px] uppercase font-bold text-success-700 tracking-widest">Completed</div>
+          </div>
+          <div className="p-3 bg-warning/5 border border-warning/20 rounded-xl">
+            <div className="text-2xl font-bold text-warning">{data.facultyVisits?.toBeDone || 0}</div>
+            <div className="text-[10px] uppercase font-bold text-warning-700 tracking-widest">Pending</div>
+          </div>
+        </div>
       </Card>
 
       {/* Branch-wise Distribution */}
       {data.branchWiseData?.length > 0 && (
-        <Card title={<><AuditOutlined className="mr-2" />Branch-wise Distribution</>} size="small">
-          <Row gutter={[8, 8]}>
+        <Card 
+          title={
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <AuditOutlined className="text-primary" />
+              </div>
+              <span className="font-bold text-text-primary">Branch Distribution</span>
+            </div>
+          }
+          className="rounded-2xl border-border shadow-sm bg-surface"
+        >
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
             {data.branchWiseData.map((branch, index) => (
-              <Col xs={12} sm={8} md={6} key={index}>
-                <div className="p-2 rounded bg-gray-50 dark:bg-slate-700 text-center">
-                  <div className="text-lg font-bold text-blue-600">{branch.count}</div>
-                  <div className="text-xs text-gray-500 dark:text-slate-400 truncate" title={branch.branch}>{branch.branch}</div>
-                </div>
-              </Col>
+              <div key={index} className="p-3 rounded-xl bg-background-tertiary border border-border text-center">
+                <div className="text-lg font-bold text-primary">{branch.count}</div>
+                <div className="text-[10px] text-text-secondary truncate font-medium uppercase tracking-wide" title={branch.branch}>{branch.branch}</div>
+              </div>
             ))}
-          </Row>
+          </div>
         </Card>
       )}
     </div>
@@ -246,48 +315,63 @@ const OverviewTab = memo(({ data, loading, error }) => {
 
 OverviewTab.displayName = 'OverviewTab';
 
-// Memoized Faculty Tab Component
+// Memoized Faculty Tab Component - Refactored
 const FacultyTab = memo(({ principal, faculty, summary, loading, error }) => {
-  if (loading) return <Spin className="flex justify-center py-12" />;
-  if (error) return <Alert type="error" message="Failed to load faculty data" description={error} showIcon />;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" /></div>;
+  if (error) return <Alert type="error" message="Failed to load faculty data" description={error} showIcon className="rounded-xl border-error/20 bg-error/5" />;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6 p-4">
       {/* Summary */}
       {summary && (
-        <Card size="small" className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700">
-          <Row gutter={[16, 16]}>
-            <Col xs={12} sm={6}><Statistic title="Total Faculty" value={summary.totalFaculty || 0} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-            <Col xs={12} sm={6}><Statistic title="Students Assigned" value={summary.totalStudentsAssigned || 0} className="dark:text-slate-200 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-            <Col xs={12} sm={6}><Statistic title="Visits Completed" value={summary.totalVisitsCompleted || 0} valueStyle={{ color: '#3f8600' }} className="[&_.ant-statistic-title]:text-slate-600 [&_.ant-statistic-title]:dark:text-slate-400" /></Col>
-            <Col xs={12} sm={6}>
-              <div className="text-center">
-                <Progress type="circle" percent={summary.overallVisitCompletionRate || 0} size={60} format={(p) => `${p}%`} />
-                <div className="text-xs text-gray-500 mt-1">Visit Rate</div>
+        <Card className="rounded-2xl border-border shadow-sm bg-surface">
+          <div className="flex flex-col md:flex-row items-center gap-8">
+            <div className="grid grid-cols-3 gap-8 flex-1 w-full text-center">
+              <div>
+                <div className="text-3xl font-black text-text-primary">{summary.totalFaculty || 0}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-widest">Total Faculty</div>
               </div>
-            </Col>
-          </Row>
+              <div>
+                <div className="text-3xl font-black text-primary">{summary.totalStudentsAssigned || 0}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-widest">Students Assigned</div>
+              </div>
+              <div>
+                <div className="text-3xl font-black text-success">{summary.totalVisitsCompleted || 0}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-widest">Visits Done</div>
+              </div>
+            </div>
+            <div className="text-center shrink-0 pl-8 border-l border-border/50">
+              <Progress type="circle" percent={summary.overallVisitCompletionRate || 0} size={70} strokeColor="rgb(var(--color-primary))" />
+              <div className="text-[10px] uppercase font-bold text-text-tertiary mt-2">Visit Rate</div>
+            </div>
+          </div>
         </Card>
       )}
 
       {/* Principal */}
       {principal && (
-        <Card title={<><IdcardOutlined className="mr-2" />Principal</>} size="small">
+        <Card 
+          title={
+            <div className="flex items-center gap-2">
+              <IdcardOutlined className="text-primary" />
+              <span className="font-bold text-text-primary">Principal</span>
+            </div>
+          }
+          className="rounded-2xl border-border shadow-sm bg-surface"
+        >
           <div className="flex items-start gap-4">
-            <Avatar size={64} icon={<UserOutlined />} className="bg-indigo-500" />
+            <Avatar size={64} icon={<UserOutlined />} className="bg-indigo-500 rounded-2xl" />
             <div className="flex-1">
-              <Title level={5} className="!mb-1">{principal.name}</Title>
-              <Space direction="vertical" size={0}>
-                <Text type="secondary"><MailOutlined className="mr-2" />{principal.email}</Text>
-                {principal.phoneNo && <Text type="secondary"><PhoneOutlined className="mr-2" />{principal.phoneNo}</Text>}
+              <Title level={5} className="!mb-1 text-text-primary">{principal.name}</Title>
+              <Space direction="vertical" size={0} className="mb-3">
+                <Text className="text-text-secondary text-sm"><MailOutlined className="mr-2 text-text-tertiary" />{principal.email}</Text>
+                {principal.phoneNo && <Text className="text-text-secondary text-sm"><PhoneOutlined className="mr-2 text-text-tertiary" />{principal.phoneNo}</Text>}
               </Space>
               {principal.stats && (
-                <div className="mt-3">
-                  <Space>
-                    <Tag color="blue">Students: {principal.stats.totalStudents}</Tag>
-                    <Tag color="green">Faculty: {principal.stats.totalFaculty}</Tag>
-                    <Tag color="orange">Pending: {principal.stats.pendingApprovals}</Tag>
-                  </Space>
+                <div className="flex gap-2">
+                  <Tag color="blue" className="rounded-md border-0">Students: {principal.stats.totalStudents}</Tag>
+                  <Tag color="green" className="rounded-md border-0">Faculty: {principal.stats.totalFaculty}</Tag>
+                  <Tag color="orange" className="rounded-md border-0">Pending: {principal.stats.pendingApprovals}</Tag>
                 </div>
               )}
             </div>
@@ -296,30 +380,51 @@ const FacultyTab = memo(({ principal, faculty, summary, loading, error }) => {
       )}
 
       {/* Faculty List */}
-      <Card title={<><TeamOutlined className="mr-2" />Faculty Members</>} size="small">
+      <Card 
+        title={
+          <div className="flex items-center gap-2">
+            <TeamOutlined className="text-primary" />
+            <span className="font-bold text-text-primary">Faculty Members</span>
+          </div>
+        }
+        className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden"
+        styles={{ body: { padding: 0 } }}
+      >
         {(!faculty || faculty.length === 0) ? (
-          <Empty description="No faculty members found" />
+          <Empty description="No faculty members found" className="py-12" />
         ) : (
           <List
             dataSource={faculty}
+            className="w-full"
             renderItem={(item) => (
-              <List.Item actions={[<Tag key="role" color={item.role === 'HOD' ? 'purple' : 'blue'}>{item.role}</Tag>]}>
+              <List.Item 
+                className="px-6 py-4 hover:bg-background-tertiary transition-colors border-b border-border last:border-0"
+                actions={[<Tag key="role" color={item.role === 'HOD' ? 'purple' : 'blue'} className="rounded-md m-0 font-bold border-0">{item.role}</Tag>]}
+              >
                 <List.Item.Meta
-                  avatar={<Avatar icon={<UserOutlined />} />}
-                  title={<Space>{item.name}{item.branchName && <Tag size="small">{item.branchName}</Tag>}</Space>}
+                  avatar={<Avatar icon={<UserOutlined />} className="bg-background-tertiary text-text-secondary rounded-lg" />}
+                  title={<Space className="text-text-primary font-semibold">{item.name}{item.branchName && <Tag className="text-[10px] rounded-sm m-0">{item.branchName}</Tag>}</Space>}
                   description={
-                    <Space direction="vertical" size={0}>
-                      <Text type="secondary" className="text-xs">{item.email}</Text>
-                      <Space className="mt-1">
-                        <Tooltip title="Students Assigned"><Tag icon={<TeamOutlined />}>{item.stats?.assignedStudents || 0}</Tag></Tooltip>
+                    <div className="space-y-2 mt-1">
+                      <Text className="text-xs text-text-tertiary block">{item.email}</Text>
+                      <div className="flex gap-2 flex-wrap">
+                        <Tooltip title="Students Assigned">
+                          <Tag icon={<TeamOutlined />} className="rounded-md bg-background border-border text-text-secondary m-0">
+                            {item.stats?.assignedStudents || 0}
+                          </Tag>
+                        </Tooltip>
                         <Tooltip title="Visits Done/Scheduled">
-                          <Tag icon={<EnvironmentOutlined />} color={item.stats?.visitCompletionRate >= 80 ? 'green' : 'orange'}>
+                          <Tag icon={<EnvironmentOutlined />} color={item.stats?.visitCompletionRate >= 80 ? 'green' : 'orange'} className="rounded-md border-0 m-0">
                             {item.stats?.visitsCompleted || 0}/{item.stats?.visitsScheduled || 0}
                           </Tag>
                         </Tooltip>
-                        <Tooltip title="Reports Reviewed"><Tag icon={<FileTextOutlined />}>{item.stats?.reportsReviewed || 0}</Tag></Tooltip>
-                      </Space>
-                    </Space>
+                        <Tooltip title="Reports Reviewed">
+                          <Tag icon={<FileTextOutlined />} className="rounded-md bg-background border-border text-text-secondary m-0">
+                            {item.stats?.reportsReviewed || 0}
+                          </Tag>
+                        </Tooltip>
+                      </div>
+                    </div>
                   }
                 />
               </List.Item>
@@ -342,10 +447,10 @@ const StudentDetailModal = memo(({ visible, student, onClose }) => {
   const selfId = student.selfIdentifiedData;
 
   return (
-    <Modal title="Student Details" open={visible} onCancel={onClose} footer={null} width={800} destroyOnClose>
-      <div className="space-y-4">
-        <Descriptions bordered column={2} size="small" title="Basic Information">
-          <Descriptions.Item label="Name">{student.name}</Descriptions.Item>
+    <Modal title="Student Details" open={visible} onCancel={onClose} footer={null} width={800} destroyOnClose className="rounded-2xl overflow-hidden">
+      <div className="space-y-4 pt-2">
+        <Descriptions bordered column={2} size="small" title={<Text className="text-xs uppercase font-bold text-text-tertiary">Basic Information</Text>} className="rounded-xl overflow-hidden">
+          <Descriptions.Item label="Name"><Text strong>{student.name}</Text></Descriptions.Item>
           <Descriptions.Item label="Roll Number">{student.rollNumber}</Descriptions.Item>
           <Descriptions.Item label="Email">{student.email}</Descriptions.Item>
           <Descriptions.Item label="Branch">{student.branchName}</Descriptions.Item>
@@ -354,7 +459,7 @@ const StudentDetailModal = memo(({ visible, student, onClose }) => {
         </Descriptions>
 
         {student.hasSelfIdentifiedInternship && selfId && (
-          <Descriptions bordered column={2} size="small" title="Self-Identified Internship">
+          <Descriptions bordered column={2} size="small" title={<Text className="text-xs uppercase font-bold text-text-tertiary">Self-Identified Internship</Text>} className="rounded-xl overflow-hidden">
             <Descriptions.Item label="Company Name">{selfId.companyName || '-'}</Descriptions.Item>
             <Descriptions.Item label="Status"><Tag color={getStatusColor(selfId.status)}>{selfId.status}</Tag></Descriptions.Item>
             <Descriptions.Item label="Company Address" span={2}>{selfId.companyAddress || '-'}</Descriptions.Item>
@@ -372,16 +477,13 @@ const StudentDetailModal = memo(({ visible, student, onClose }) => {
           </Descriptions>
         )}
 
-        <Descriptions bordered column={2} size="small" title="Monthly Report (Current Month)">
-          <Descriptions.Item label="Status">
+        <Descriptions bordered column={2} size="small" title={<Text className="text-xs uppercase font-bold text-text-tertiary">Current Status</Text>} className="rounded-xl overflow-hidden">
+          <Descriptions.Item label="Report Status">
             {student.currentMonthReport ? <Tag color={getStatusColor(student.currentMonthReport.status)}>{student.currentMonthReport.status}</Tag> : <Tag color="red">Not Submitted</Tag>}
           </Descriptions.Item>
           <Descriptions.Item label="Submitted At">{student.currentMonthReport?.submittedAt ? new Date(student.currentMonthReport.submittedAt).toLocaleString() : '-'}</Descriptions.Item>
-        </Descriptions>
-
-        <Descriptions bordered column={2} size="small" title="Last Faculty Visit">
-          <Descriptions.Item label="Date">{student.lastFacultyVisit?.date ? new Date(student.lastFacultyVisit.date).toLocaleDateString() : 'No visits yet'}</Descriptions.Item>
-          <Descriptions.Item label="Status">{student.lastFacultyVisit ? <Tag color={getStatusColor(student.lastFacultyVisit.status)}>{student.lastFacultyVisit.status}</Tag> : '-'}</Descriptions.Item>
+          <Descriptions.Item label="Last Faculty Visit">{student.lastFacultyVisit?.date ? new Date(student.lastFacultyVisit.date).toLocaleDateString() : 'No visits yet'}</Descriptions.Item>
+          <Descriptions.Item label="Visit Status">{student.lastFacultyVisit ? <Tag color={getStatusColor(student.lastFacultyVisit.status)}>{student.lastFacultyVisit.status}</Tag> : '-'}</Descriptions.Item>
         </Descriptions>
       </div>
     </Modal>
@@ -827,217 +929,259 @@ const InstituteDetailView = () => {
   // No institute selected
   if (!selectedInstitute?.id) {
     return (
-      <Result
-        icon={<BankOutlined className="text-gray-300" />}
-        title="Select an Institution"
-        subTitle="Choose an institution from the side panel to view details"
-      />
+      <div className="h-full flex items-center justify-center p-8">
+        <Result
+          icon={<BankOutlined className="text-text-tertiary text-6xl" />}
+          title={<span className="text-text-primary">Select an Institution</span>}
+          subTitle={<span className="text-text-secondary">Choose an institution from the side panel to view detailed information</span>}
+        />
+      </div>
     );
   }
 
   return (
-    <div className="p-4">
+    <div className="p-4 md:p-6 h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between shrink-0">
         <div>
-          <Title level={4} className="!mb-1">{overview.data?.institution?.name || 'Loading...'}</Title>
-          <Text type="secondary">
-            {overview.data?.institution?.code} • {overview.data?.institution?.city}
+          <Title level={4} className="!mb-1 !text-text-primary text-xl font-bold">{overview.data?.institution?.name || 'Loading...'}</Title>
+          <Text className="text-text-secondary flex items-center gap-2 text-sm">
+            <EnvironmentOutlined /> {overview.data?.institution?.city}
             {overview.data?.institution?.district && `, ${overview.data?.institution?.district}`}
+            <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-50" />
+            <span className="font-mono text-xs bg-background-tertiary px-1.5 py-0.5 rounded border border-border">{overview.data?.institution?.code}</span>
           </Text>
         </div>
-        <Button icon={<ReloadOutlined />} onClick={() => dispatch(fetchInstituteOverview(selectedInstitute.id))} loading={overview.loading}>Refresh</Button>
+        <Button 
+          icon={<ReloadOutlined />} 
+          onClick={() => dispatch(fetchInstituteOverview(selectedInstitute.id))} 
+          loading={overview.loading}
+          className="rounded-xl h-10 font-bold border-border hover:border-primary hover:text-primary"
+        >
+          Refresh Data
+        </Button>
       </div>
 
       {/* Tabs */}
-      <Tabs activeKey={activeTab} onChange={setActiveTab} items={[
-        {
-          key: 'overview',
-          label: <><TeamOutlined /> Overview</>,
-          children: <OverviewTab data={overview.data} loading={overview.loading} error={overview.error} />,
-        },
-        {
-          key: 'students',
-          label: <><UserOutlined /> Students ({students.total})</>,
-          children: (
-            <>
-              <div className="mb-4 space-y-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input.Search
-                    placeholder="Search students..."
-                    value={studentSearchInput}
-                    onChange={(e) => setStudentSearchInput(e.target.value)}
-                    style={{ width: 250 }}
-                    allowClear
-                  />
-                  <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)} type={showFilters ? 'primary' : 'default'}>Filters</Button>
-                  <Button icon={<ReloadOutlined />} onClick={resetFilters}>Reset</Button>
-                </div>
-                {showFilters && (
-                  <Card size="small" className="bg-gray-50 dark:bg-slate-800">
-                    <Row gutter={[16, 16]}>
-                      <Col xs={24} sm={12} md={6}>
-                        <div className="text-xs text-gray-500 mb-1">Mentor Status</div>
-                        <Select value={studentFilter} onChange={setStudentFilter} style={{ width: '100%' }} size="small">
-                          <Select.Option value="all">All</Select.Option>
-                          <Select.Option value="assigned">Assigned</Select.Option>
-                          <Select.Option value="unassigned">Unassigned</Select.Option>
-                        </Select>
-                      </Col>
-                      <Col xs={24} sm={12} md={6}>
-                        <div className="text-xs text-gray-500 mb-1">Branch</div>
-                        <Select value={branchFilter} onChange={setBranchFilter} style={{ width: '100%' }} size="small">
-                          <Select.Option value="all">All Branches</Select.Option>
-                          {availableBranches.map((b) => <Select.Option key={b} value={b}>{b}</Select.Option>)}
-                        </Select>
-                      </Col>
-                      <Col xs={24} sm={12} md={6}>
-                        <div className="text-xs text-gray-500 mb-1">Report Status</div>
-                        <Select value={reportStatusFilter} onChange={setReportStatusFilter} style={{ width: '100%' }} size="small">
-                          <Select.Option value="all">All</Select.Option>
-                          <Select.Option value="submitted">Submitted</Select.Option>
-                          <Select.Option value="pending">Pending</Select.Option>
-                          <Select.Option value="not_submitted">Not Submitted</Select.Option>
-                        </Select>
-                      </Col>
-                      <Col xs={24} sm={12} md={6}>
-                        <div className="text-xs text-gray-500 mb-1">Self-Identified</div>
-                        <Select value={selfIdentifiedFilter} onChange={setSelfIdentifiedFilter} style={{ width: '100%' }} size="small">
-                          <Select.Option value="all">All</Select.Option>
-                          <Select.Option value="yes">Yes</Select.Option>
-                          <Select.Option value="no">No</Select.Option>
-                        </Select>
-                      </Col>
-                      <Col xs={24}><Button type="primary" size="small" onClick={applyFilters}>Apply Filters</Button></Col>
-                    </Row>
-                  </Card>
-                )}
-              </div>
-              {students.error && <Alert type="error" message={students.error} className="mb-4" showIcon closable />}
-              <Table columns={studentColumns} dataSource={students.list} rowKey="id" loading={students.loading} pagination={false} scroll={{ x: 1200 }} size="small" />
-              {students.hasMore && (
-                <div className="text-center mt-4">
-                  <Button onClick={handleLoadMore} loading={students.loadingMore}>Load More</Button>
-                </div>
-              )}
-            </>
-          ),
-        },
-        {
-          key: 'companies',
-          label: <><BankOutlined /> Companies ({companies.total})</>,
-          children: (
-            <div className="space-y-4">
-              {/* Summary Cards */}
-              <Row gutter={[16, 16]}>
-                <Col xs={24} sm={8}>
-                  <Card size="small" className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-700 border-blue-200 dark:border-slate-600">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
-                        <BankOutlined className="text-white text-xl" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-blue-600">{companies.total || 0}</div>
-                        <div className="text-xs text-gray-500">Total Companies</div>
-                      </div>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <Tabs 
+          activeKey={activeTab} 
+          onChange={setActiveTab} 
+          className="h-full flex flex-col custom-tabs"
+          tabBarStyle={{
+            marginBottom: 0,
+            flexShrink: 0,
+            overflowX: 'auto',
+            scrollbarWidth: 'none',
+          }}
+          tabBarGutter={24}
+          items={[
+            {
+              key: 'overview',
+              label: <><TeamOutlined /> Overview</>,
+              children: <div className="h-full overflow-y-auto hide-scrollbar"><OverviewTab data={overview.data} loading={overview.loading} error={overview.error} /></div>,
+            },
+            {
+              key: 'students',
+              label: <><UserOutlined /> Students ({students.total})</>,
+              children: (
+                <div className="h-full flex flex-col p-4 space-y-4 overflow-hidden">
+                  <Card className="rounded-2xl border-border shadow-sm shrink-0" styles={{ body: { padding: '16px' } }}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Input.Search
+                        placeholder="Search students..."
+                        value={studentSearchInput}
+                        onChange={(e) => setStudentSearchInput(e.target.value)}
+                        className="w-64 rounded-xl h-10 bg-background border-border"
+                        allowClear
+                      />
+                      <Button icon={<FilterOutlined />} onClick={() => setShowFilters(!showFilters)} type={showFilters ? 'primary' : 'default'} className="rounded-xl h-10 font-bold">Filters</Button>
+                      <Button icon={<ReloadOutlined />} onClick={resetFilters} className="rounded-xl h-10">Reset</Button>
                     </div>
-                  </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <Card size="small" className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-800 dark:to-slate-700 border-green-200 dark:border-slate-600">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
-                        <TeamOutlined className="text-white text-xl" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-green-600">{companies.summary?.totalStudents || 0}</div>
-                        <div className="text-xs text-gray-500">Students Placed</div>
-                      </div>
-                    </div>
-                  </Card>
-                </Col>
-                <Col xs={24} sm={8}>
-                  <Card size="small" className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 border-purple-200 dark:border-slate-600">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full bg-purple-500 flex items-center justify-center">
-                        <SafetyCertificateOutlined className="text-white text-xl" />
-                      </div>
-                      <div>
-                        <div className="text-2xl font-bold text-purple-600">
-                          {companies.summary?.totalSelfIdentified || 0}
-                          <span className="text-sm font-normal text-gray-400 ml-1">
-                            ({companies.summary?.selfIdentifiedRate || 0}%)
-                          </span>
+                    {showFilters && (
+                      <div className="mt-4 pt-4 border-t border-border grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Mentor Status</div>
+                          <Select value={studentFilter} onChange={setStudentFilter} className="w-full h-10 rounded-lg">
+                            <Select.Option value="all">All</Select.Option>
+                            <Select.Option value="assigned">Assigned</Select.Option>
+                            <Select.Option value="unassigned">Unassigned</Select.Option>
+                          </Select>
                         </div>
-                        <div className="text-xs text-gray-500">Self-Identified</div>
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Branch</div>
+                          <Select value={branchFilter} onChange={setBranchFilter} className="w-full h-10 rounded-lg">
+                            <Select.Option value="all">All Branches</Select.Option>
+                            {availableBranches.map((b) => <Select.Option key={b} value={b}>{b}</Select.Option>)}
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Report Status</div>
+                          <Select value={reportStatusFilter} onChange={setReportStatusFilter} className="w-full h-10 rounded-lg">
+                            <Select.Option value="all">All</Select.Option>
+                            <Select.Option value="submitted">Submitted</Select.Option>
+                            <Select.Option value="pending">Pending</Select.Option>
+                            <Select.Option value="not_submitted">Not Submitted</Select.Option>
+                          </Select>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Self-Identified</div>
+                          <Select value={selfIdentifiedFilter} onChange={setSelfIdentifiedFilter} className="w-full h-10 rounded-lg">
+                            <Select.Option value="all">All</Select.Option>
+                            <Select.Option value="yes">Yes</Select.Option>
+                            <Select.Option value="no">No</Select.Option>
+                          </Select>
+                        </div>
+                        <div className="sm:col-span-2 md:col-span-4 flex justify-end">
+                          <Button type="primary" onClick={applyFilters} className="rounded-xl h-10 font-bold px-6">Apply Filters</Button>
+                        </div>
                       </div>
+                    )}
+                  </Card>
+                  
+                  {students.error && <Alert type="error" message={students.error} className="rounded-xl" showIcon closable />}
+                  
+                  <Card className="rounded-2xl border-border shadow-sm flex-1 overflow-hidden" styles={{ body: { padding: 0 } }}>
+                    <div className="h-full flex flex-col">
+                      <Table 
+                        columns={studentColumns} 
+                        dataSource={students.list} 
+                        rowKey="id" 
+                        loading={students.loading} 
+                        pagination={false} 
+                        scroll={{ x: 1200, y: 'calc(100vh - 400px)' }} 
+                        size="middle" 
+                        className="custom-table flex-1 overflow-hidden"
+                      />
+                      {students.hasMore && (
+                        <div className="text-center p-4 border-t border-border bg-background-tertiary/30">
+                          <Button onClick={handleLoadMore} loading={students.loadingMore} className="rounded-xl font-bold">Load More Students</Button>
+                        </div>
+                      )}
                     </div>
                   </Card>
-                </Col>
-              </Row>
-
-              {/* Search and Filters */}
-              <div className="flex items-center justify-between gap-4 flex-wrap">
-                <Input.Search
-                  placeholder="Search companies by name..."
-                  value={companySearchInput}
-                  onChange={(e) => setCompanySearchInput(e.target.value)}
-                  style={{ width: 300 }}
-                  allowClear
-                  enterButton
-                />
-                <div className="flex items-center gap-2">
-                  <Text type="secondary" className="text-xs">
-                    {companies.list?.filter(c => c.isSelfIdentifiedCompany).length || 0} self-identified companies
-                  </Text>
                 </div>
-              </div>
+              ),
+            },
+            {
+              key: 'companies',
+              label: <><BankOutlined /> Companies ({companies.total})</>,
+              children: (
+                <div className="h-full p-4 overflow-y-auto hide-scrollbar space-y-4">
+                  {/* Summary Cards */}
+                  <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={8}>
+                      <Card size="small" className="rounded-xl border-border shadow-sm bg-surface">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <BankOutlined className="text-primary text-xl" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-black text-text-primary">{companies.total || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Total Companies</div>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Card size="small" className="rounded-xl border-border shadow-sm bg-surface">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center">
+                            <TeamOutlined className="text-success text-xl" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-black text-text-primary">{companies.summary?.totalStudents || 0}</div>
+                            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Students Placed</div>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                    <Col xs={24} sm={8}>
+                      <Card size="small" className="rounded-xl border-border shadow-sm bg-surface">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center">
+                            <SafetyCertificateOutlined className="text-purple-500 text-xl" />
+                          </div>
+                          <div>
+                            <div className="text-2xl font-black text-text-primary">
+                              {companies.summary?.totalSelfIdentified || 0}
+                              <span className="text-sm font-normal text-text-tertiary ml-1">
+                                ({companies.summary?.selfIdentifiedRate || 0}%)
+                              </span>
+                            </div>
+                            <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Self-Identified</div>
+                          </div>
+                        </div>
+                      </Card>
+                    </Col>
+                  </Row>
 
-              {/* Error Alert */}
-              {companies.error && <Alert type="error" message={companies.error} showIcon closable />}
-
-              {/* Empty State */}
-              {!companies.loading && companies.list?.length === 0 && (
-                <Empty
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  description={
-                    <div className="text-center">
-                      <Text type="secondary">No companies found</Text>
-                      <div className="text-xs text-gray-400 mt-1">
-                        Companies with placed students will appear here
-                      </div>
+                  {/* Search and Filters */}
+                  <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: '16px' } }}>
+                    <div className="flex items-center justify-between gap-4 flex-wrap">
+                      <Input.Search
+                        placeholder="Search companies by name..."
+                        value={companySearchInput}
+                        onChange={(e) => setCompanySearchInput(e.target.value)}
+                        className="max-w-md rounded-xl h-10 bg-background border-border"
+                        allowClear
+                        enterButton={<Button type="primary" className="rounded-r-xl h-10 font-bold">Search</Button>}
+                      />
+                      <Tag className="rounded-full px-3 py-1 bg-purple-500/10 text-purple-600 border-purple-500/20 font-bold">
+                        {companies.list?.filter(c => c.isSelfIdentifiedCompany).length || 0} Self-Identified Companies
+                      </Tag>
                     </div>
-                  }
-                />
-              )}
+                  </Card>
 
-              {/* Companies Table */}
-              {(companies.loading || companies.list?.length > 0) && (
-                <Table
-                  columns={companyColumns}
-                  dataSource={companies.list}
-                  rowKey="id"
-                  loading={companies.loading}
-                  pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} companies`,
-                  }}
-                  size="middle"
-                  scroll={{ x: 1100 }}
-                  className="[&_.ant-table-thead>tr>th]:bg-gray-50 dark:[&_.ant-table-thead>tr>th]:bg-slate-800"
-                  rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''}
-                />
-              )}
-            </div>
-          ),
-        },
-        {
-          key: 'faculty',
-          label: <><IdcardOutlined /> Faculty & Principal</>,
-          children: <FacultyTab principal={facultyPrincipal.principal} faculty={facultyPrincipal.faculty} summary={facultyPrincipal.summary} loading={facultyPrincipal.loading} error={facultyPrincipal.error} />,
-        },
-      ]} />
+                  {/* Error Alert */}
+                  {companies.error && <Alert type="error" message={companies.error} className="rounded-xl" showIcon closable />}
+
+                  {/* Companies Table */}
+                  <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
+                    {(companies.loading || companies.list?.length > 0) ? (
+                      <Table
+                        columns={companyColumns}
+                        dataSource={companies.list}
+                        rowKey="id"
+                        loading={companies.loading}
+                        pagination={{
+                          pageSize: 10,
+                          showSizeChanger: true,
+                          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} companies`,
+                          className: "px-6 py-4",
+                        }}
+                        size="middle"
+                        scroll={{ x: 1100 }}
+                        className="custom-table"
+                        rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/10 hover:bg-purple-50/20' : ''}
+                      />
+                    ) : (
+                      <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description={
+                          <div className="text-center py-12">
+                            <Text type="secondary" className="block mb-1">No companies found</Text>
+                            <Text className="text-xs text-text-tertiary">Companies with placed students will appear here</Text>
+                          </div>
+                        }
+                      />
+                    )}
+                  </Card>
+                </div>
+              ),
+            },
+            {
+              key: 'faculty',
+              label: <><IdcardOutlined /> Faculty & Principal</>,
+              children: (
+                <div className="h-full overflow-y-auto hide-scrollbar">
+                  <FacultyTab principal={facultyPrincipal.principal} faculty={facultyPrincipal.faculty} summary={facultyPrincipal.summary} loading={facultyPrincipal.loading} error={facultyPrincipal.error} />
+                </div>
+              ),
+            },
+          ]} 
+        />
+      </div>
 
       {/* Student Detail Modal */}
       <StudentDetailModal visible={studentModalVisible} student={selectedStudent} onClose={() => setStudentModalVisible(false)} />
@@ -1046,21 +1190,17 @@ const InstituteDetailView = () => {
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <Avatar
-              icon={<BankOutlined />}
-              className={selectedCompany?.isSelfIdentifiedCompany
-                ? 'bg-gradient-to-br from-purple-500 to-pink-500'
-                : 'bg-gradient-to-br from-blue-500 to-cyan-500'}
-              size={40}
-            />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+              <BankOutlined className="text-primary text-lg" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{selectedCompany?.companyName || 'Company Details'}</span>
+                <span className="font-bold text-lg text-text-primary">{selectedCompany?.companyName || 'Company Details'}</span>
                 {selectedCompany?.isSelfIdentifiedCompany && (
-                  <Tag color="purple" className="text-xs">Self-Identified</Tag>
+                  <Tag color="purple" className="text-[10px] font-bold uppercase tracking-wider rounded-md border-0 m-0">Self-ID</Tag>
                 )}
               </div>
-              <Text type="secondary" className="text-xs font-normal">
+              <Text className="text-text-tertiary text-xs uppercase font-bold tracking-wider">
                 {selectedCompany?.studentCount || 0} students placed
               </Text>
             </div>
@@ -1071,66 +1211,59 @@ const InstituteDetailView = () => {
         footer={null}
         width={900}
         destroyOnClose
+        className="rounded-2xl overflow-hidden"
       >
         {selectedCompany && (
-          <div className="space-y-4 mt-4">
+          <div className="space-y-6 pt-4">
             {/* Company Info Card */}
             <Card
               size="small"
-              className={selectedCompany.isSelfIdentifiedCompany
-                ? 'border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20'
-                : 'border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/20 dark:to-cyan-900/20'}
+              className={`rounded-xl border shadow-sm ${selectedCompany.isSelfIdentifiedCompany
+                ? 'border-purple-200 bg-purple-50/30'
+                : 'border-border bg-surface'}`}
             >
               <Row gutter={[24, 16]}>
                 <Col xs={24} sm={8}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <AuditOutlined className="text-gray-400" />
-                    <Text type="secondary" className="text-xs">Industry Type</Text>
-                  </div>
-                  <Tag color={selectedCompany.isSelfIdentifiedCompany ? 'purple' : 'cyan'} className="font-medium">
+                  <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Industry Type</div>
+                  <Tag className="m-0 rounded-md font-medium text-text-primary bg-background border-border">
                     {selectedCompany.industryType || 'General'}
                   </Tag>
                 </Col>
                 <Col xs={24} sm={8}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <EnvironmentOutlined className="text-gray-400" />
-                    <Text type="secondary" className="text-xs">Location</Text>
-                  </div>
-                  <Text>
+                  <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Location</div>
+                  <Text className="text-text-primary font-medium">
                     {selectedCompany.isSelfIdentifiedCompany
                       ? (selectedCompany.companyAddress || 'Not specified')
                       : `${selectedCompany.city || 'N/A'}${selectedCompany.state ? `, ${selectedCompany.state}` : ''}`}
                   </Text>
                 </Col>
                 <Col xs={24} sm={8}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <SafetyCertificateOutlined className="text-gray-400" />
-                    <Text type="secondary" className="text-xs">Status</Text>
-                  </div>
+                  <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Status</div>
                   {selectedCompany.isSelfIdentifiedCompany ? (
-                    <Tag icon={<CheckCircleOutlined />} color="success">Auto-Approved</Tag>
+                    <Tag icon={<CheckCircleOutlined />} color="success" className="m-0 rounded-md font-bold border-0">Auto-Approved</Tag>
                   ) : (
                     <Space>
-                      {selectedCompany.isApproved && <Tag icon={<CheckCircleOutlined />} color="success">Approved</Tag>}
-                      {selectedCompany.isVerified && <Tag icon={<SafetyCertificateOutlined />} color="processing">Verified</Tag>}
-                      {!selectedCompany.isApproved && !selectedCompany.isVerified && <Tag color="warning">Pending</Tag>}
+                      {selectedCompany.isApproved && <Tag icon={<CheckCircleOutlined />} color="success" className="m-0 rounded-md border-0">Approved</Tag>}
+                      {selectedCompany.isVerified && <Tag icon={<SafetyCertificateOutlined />} color="processing" className="m-0 rounded-md border-0">Verified</Tag>}
+                      {!selectedCompany.isApproved && !selectedCompany.isVerified && <Tag color="warning" className="m-0 rounded-md border-0">Pending</Tag>}
                     </Space>
                   )}
                 </Col>
                 {(selectedCompany.email || selectedCompany.companyEmail || selectedCompany.phoneNo || selectedCompany.companyContact) && (
                   <>
                     <Col xs={24} sm={12}>
-                  <div className="flex items-center gap-2 mb-1">
-                    <MailOutlined className="text-text-tertiary text-[10px]" />
-                    <Text type="secondary" className="text-xs">Email</Text>
-                  </div>
-                      <Text>{selectedCompany.email || selectedCompany.companyEmail || 'N/A'}</Text>
+                      <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Email</div>
+                      <div className="flex items-center gap-2">
+                        <MailOutlined className="text-text-tertiary text-xs" />
+                        <Text className="text-text-primary font-medium">{selectedCompany.email || selectedCompany.companyEmail || 'N/A'}</Text>
+                      </div>
                     </Col>
                     <Col xs={24} sm={12}>
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <PhoneOutlined className="text-text-tertiary text-[10px]" />
-                                          <Text type="secondary" className="text-xs">Phone</Text>
-                                        </div>                      <Text>{selectedCompany.phoneNo || selectedCompany.companyContact || 'N/A'}</Text>
+                      <div className="text-[10px] uppercase font-bold text-text-tertiary mb-1">Phone</div>
+                      <div className="flex items-center gap-2">
+                        <PhoneOutlined className="text-text-tertiary text-xs" />
+                        <Text className="text-text-primary font-medium">{selectedCompany.phoneNo || selectedCompany.companyContact || 'N/A'}</Text>
+                      </div>
                     </Col>
                   </>
                 )}
@@ -1139,121 +1272,143 @@ const InstituteDetailView = () => {
 
             {/* Branch-wise Distribution */}
             {selectedCompany.branchWiseData?.length > 0 && (
-              <Card size="small" title={<><TeamOutlined className="mr-2" />Branch-wise Distribution</>}>
-                <Row gutter={[12, 12]}>
+              <div>
+                <Title level={5} className="!mb-3 text-xs uppercase tracking-widest text-text-tertiary font-bold">Branch Distribution</Title>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {selectedCompany.branchWiseData.map((b, i) => (
-                    <Col xs={12} sm={8} md={6} key={i}>
-                      <div className="p-3 rounded-lg bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-700 dark:to-slate-600 text-center border border-gray-200 dark:border-slate-500">
-                        <div className="text-xl font-bold text-blue-600">{b.total}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-300 font-medium">{b.branch}</div>
-                        {b.selfIdentified > 0 && (
-                          <div className="text-[10px] text-purple-600 mt-1">
-                            {b.selfIdentified} self-identified
-                          </div>
-                        )}
-                      </div>
-                    </Col>
+                    <div key={i} className="p-3 rounded-xl bg-background-tertiary/30 border border-border text-center">
+                      <div className="text-xl font-black text-primary">{b.total}</div>
+                      <div className="text-[10px] text-text-secondary truncate font-bold uppercase tracking-wide" title={b.branch}>{b.branch}</div>
+                      {b.selfIdentified > 0 && (
+                        <div className="text-[9px] text-purple-600 font-bold mt-1">
+                          {b.selfIdentified} Self-ID
+                        </div>
+                      )}
+                    </div>
                   ))}
-                </Row>
-              </Card>
+                </div>
+              </div>
             )}
 
             {/* Students Table */}
-            <Card size="small" title={<><UserOutlined className="mr-2" />Placed Students ({selectedCompany.students?.length || 0})</>}>
-              <Table
-                dataSource={selectedCompany.students || []}
-                columns={[
-                  {
-                    title: 'Student', key: 'student', width: 200,
-                    render: (_, record) => (
-                      <div className="flex items-center gap-2">
-                        <Avatar size="small" icon={<UserOutlined />} className="bg-blue-500" />
-                        <div>
-                          <div className="font-medium text-sm">{record.name}</div>
-                          <div className="text-xs text-gray-500">{record.email}</div>
+            <div>
+              <Title level={5} className="!mb-3 text-xs uppercase tracking-widest text-text-tertiary font-bold">Placed Students ({selectedCompany.students?.length || 0})</Title>
+              <div className="rounded-xl border border-border overflow-hidden">
+                <Table
+                  dataSource={selectedCompany.students || []}
+                  columns={[
+                    {
+                      title: 'Student', key: 'student', width: 200,
+                      render: (_, record) => (
+                        <div className="flex items-center gap-3">
+                          <Avatar size="small" icon={<UserOutlined />} className="bg-primary/10 text-primary border border-primary/20" />
+                          <div>
+                            <div className="font-bold text-sm text-text-primary">{record.name}</div>
+                            <div className="text-xs text-text-tertiary">{record.email}</div>
+                          </div>
                         </div>
-                      </div>
-                    ),
-                  },
-                  { title: 'Roll No.', dataIndex: 'rollNumber', key: 'rollNumber', width: 100 },
-                  {
-                    title: 'Branch', dataIndex: 'branch', key: 'branch', width: 120,
-                    render: (text) => <Tag color="blue">{text || 'N/A'}</Tag>,
-                  },
-                  ...(selectedCompany.isSelfIdentifiedCompany ? [
-                    {
-                      title: 'Job Profile', dataIndex: 'jobProfile', key: 'jobProfile', width: 150,
-                      render: (text) => text ? <Text className="text-sm">{text}</Text> : <Text type="secondary">-</Text>,
-                    },
-                    {
-                      title: 'Stipend', dataIndex: 'stipend', key: 'stipend', width: 100,
-                      render: (val) => val ? (
-                        <Text className="font-medium text-green-600">₹{Number(val).toLocaleString()}/mo</Text>
-                      ) : <Text type="secondary">-</Text>,
-                    },
-                  ] : [
-                    {
-                      title: 'Type', dataIndex: 'isSelfIdentified', key: 'isSelfIdentified', width: 100,
-                      render: (val) => val ? (
-                        <Tag color="purple" icon={<CheckCircleOutlined />}>Self-ID</Tag>
-                      ) : (
-                        <Tag color="blue">College</Tag>
                       ),
                     },
-                  ]),
-                  {
-                    title: 'Joining Letter', dataIndex: 'joiningLetterStatus', key: 'joiningLetterStatus', width: 120,
-                    render: (status) => status ? (
-                      <Tag
-                        icon={status === 'APPROVED' ? <CheckCircleOutlined /> : status === 'PENDING' ? <ClockCircleOutlined /> : <CloseCircleOutlined />}
-                        color={getStatusColor(status)}
-                      >
-                        {status}
-                      </Tag>
-                    ) : <Text type="secondary">Not uploaded</Text>,
-                  },
-                ]}
-                rowKey="id"
-                pagination={{ pageSize: 8, showSizeChanger: false }}
-                size="small"
-                scroll={{ x: 700 }}
-              />
-            </Card>
+                    { title: 'Roll No.', dataIndex: 'rollNumber', key: 'rollNumber', width: 100, render: (t) => <span className="font-mono text-xs">{t}</span> },
+                    {
+                      title: 'Branch', dataIndex: 'branch', key: 'branch', width: 120,
+                      render: (text) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{text || 'N/A'}</Tag>,
+                    },
+                    ...(selectedCompany.isSelfIdentifiedCompany ? [
+                      {
+                        title: 'Job Profile', dataIndex: 'jobProfile', key: 'jobProfile', width: 150,
+                        render: (text) => text ? <Text className="text-sm font-medium">{text}</Text> : <Text type="secondary">-</Text>,
+                      },
+                      {
+                        title: 'Stipend', dataIndex: 'stipend', key: 'stipend', width: 100,
+                        render: (val) => val ? (
+                          <Text className="font-bold text-success">₹{Number(val).toLocaleString()}/mo</Text>
+                        ) : <Text type="secondary">-</Text>,
+                      },
+                    ] : [
+                      {
+                        title: 'Type', dataIndex: 'isSelfIdentified', key: 'isSelfIdentified', width: 100,
+                        render: (val) => val ? (
+                          <Tag color="purple" icon={<CheckCircleOutlined />} className="rounded-md border-0 m-0">Self-ID</Tag>
+                        ) : (
+                          <Tag color="blue" className="rounded-md border-0 m-0">College</Tag>
+                        ),
+                      },
+                    ]),
+                    {
+                      title: 'Joining Letter', dataIndex: 'joiningLetterStatus', key: 'joiningLetterStatus', width: 120,
+                      render: (status) => status ? (
+                        <Tag
+                          icon={status === 'APPROVED' ? <CheckCircleOutlined /> : status === 'PENDING' ? <ClockCircleOutlined /> : <CloseCircleOutlined />}
+                          color={getStatusColor(status)}
+                          className="rounded-md border-0 m-0 font-medium"
+                        >
+                          {status}
+                        </Tag>
+                      ) : <Text type="secondary" className="text-xs italic">Not uploaded</Text>,
+                    },
+                  ]}
+                  rowKey="id"
+                  pagination={{ pageSize: 5, showSizeChanger: false }}
+                  size="small"
+                  scroll={{ x: 700 }}
+                  className="custom-table"
+                />
+              </div>
+            </div>
           </div>
         )}
       </Modal>
 
       {/* Mentor Assignment Modal */}
       <Modal
-        title={`${mentorStudent?.mentorAssignments?.some(ma => ma.isActive) ? 'Change' : 'Assign'} Mentor for ${mentorStudent?.name || 'Student'}`}
+        title={
+          <div className="flex items-center gap-2 text-primary">
+            <TeamOutlined /> 
+            <span className="font-bold">{mentorStudent?.mentorAssignments?.some(ma => ma.isActive) ? 'Change' : 'Assign'} Mentor</span>
+          </div>
+        }
         open={mentorModalVisible}
         onCancel={() => { setMentorModalVisible(false); setMentorStudent(null); setSelectedMentorId(null); }}
         onOk={handleAssignMentor}
-        okText="Save"
+        okText="Save Assignment"
         confirmLoading={assigningMentor}
-        okButtonProps={{ disabled: !selectedMentorId }}
+        okButtonProps={{ disabled: !selectedMentorId, className: "rounded-xl font-bold h-10" }}
+        cancelButtonProps={{ className: "rounded-xl h-10 font-medium" }}
         destroyOnClose
+        className="rounded-2xl overflow-hidden"
       >
-        <div className="py-4">
-          <Text className="block mb-2">Select a mentor from this institution:</Text>
+        <div className="py-6">
+          <div className="bg-background-tertiary/30 p-4 rounded-xl border border-border mb-6">
+            <Text className="text-text-secondary text-sm block mb-1">Student:</Text>
+            <Text className="text-text-primary font-bold text-lg">{mentorStudent?.name || 'Student'}</Text>
+            {mentorStudent?.mentorAssignments?.find(ma => ma.isActive)?.mentor && (
+              <div className="mt-2 pt-2 border-t border-border/50 flex items-center gap-2">
+                <Text type="secondary" className="text-xs">Current Mentor:</Text>
+                <Tag color="blue" className="m-0 rounded-md border-0 font-medium">{mentorStudent.mentorAssignments.find(ma => ma.isActive).mentor.name}</Tag>
+              </div>
+            )}
+          </div>
+
+          <Text className="block mb-2 font-bold text-text-primary text-sm uppercase tracking-wide">Select New Mentor</Text>
           <Select
-            placeholder="Select Mentor"
+            placeholder="Select a mentor from this institution"
             loading={mentorsLoading}
             value={selectedMentorId}
             onChange={setSelectedMentorId}
             style={{ width: '100%' }}
+            size="large"
+            className="rounded-xl"
             showSearch
             optionFilterProp="children"
             filterOption={(input, option) => option.children.toLowerCase().includes(input.toLowerCase())}
           >
-            {mentors.map((mentor) => <Select.Option key={mentor.id} value={mentor.id}>{mentor.name} ({mentor.activeAssignments} students)</Select.Option>)}
+            {mentors.map((mentor) => (
+              <Select.Option key={mentor.id} value={mentor.id}>
+                {mentor.name} • <span className="text-text-tertiary text-xs">{mentor.activeAssignments} active students</span>
+              </Select.Option>
+            ))}
           </Select>
-          {mentorStudent?.mentorAssignments?.find(ma => ma.isActive)?.mentor && (
-            <div className="mt-4 p-3 bg-gray-50 dark:bg-slate-800 rounded">
-              <Text type="secondary" className="block text-sm">Current Mentor:</Text>
-              <Tag color="blue" className="mt-1">{mentorStudent.mentorAssignments.find(ma => ma.isActive).mentor.name}</Tag>
-            </div>
-          )}
         </div>
       </Modal>
     </div>

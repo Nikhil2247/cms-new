@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import { Row, Col, Spin, Alert, Modal, Form, Input, Select, DatePicker, message, FloatButton } from 'antd';
 import { SyncOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
@@ -382,4 +382,4 @@ const FacultyDashboard = () => {
   );
 };
 
-export default FacultyDashboard;
+export default memo(FacultyDashboard);

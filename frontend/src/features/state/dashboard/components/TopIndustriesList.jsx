@@ -19,41 +19,42 @@ const IndustryItem = ({ item, rank }) => {
   };
 
   return (
-    <List.Item className="!px-0">
+    <List.Item className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
       <div className="flex items-center w-full gap-3">
         <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs ${getRankClass(rank)}`}
+          className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${getRankClass(rank)}`}
         >
           {rank + 1}
         </div>
         <Avatar
           icon={<ShopOutlined />}
-          className="bg-primary"
+          className="bg-primary shrink-0"
           src={item.logo}
+          size="small"
         />
         <div className="flex-1 min-w-0">
           <Tooltip title={item.name}>
-            <Text strong className="block truncate text-slate-900 dark:text-slate-200">{item.name}</Text>
+            <Text strong className="block truncate text-text-primary text-sm">{item.name}</Text>
           </Tooltip>
           <div className="flex items-center gap-2">
-            <TeamOutlined className="text-slate-400 dark:text-slate-500 text-xs" />
-            <Text className="text-xs text-slate-500 dark:text-slate-400">
+            <TeamOutlined className="text-text-tertiary text-xs" />
+            <Text className="text-xs text-text-tertiary">
               {item.internsHired || 0} interns
             </Text>
             {item.rating && (
               <>
-                <span className="text-slate-300 dark:text-slate-600">|</span>
-                <StarFilled className="text-warning-400 text-xs" />
-                <Text className="text-xs text-slate-500 dark:text-slate-400">
+                <span className="text-border">|</span>
+                <StarFilled className="text-warning text-xs" />
+                <Text className="text-xs text-text-tertiary">
                   {item.rating}
                 </Text>
               </>
             )}
           </div>
         </div>
-        <div className="text-right">
-          <Tag color={item.activePostings > 0 ? 'green' : 'default'}>
-            {item.activePostings || 0} Active
+        <div className="text-right shrink-0">
+          <Tag color={item.activePostings > 0 ? 'green' : 'default'} className="m-0 rounded-md border-0 text-[10px] font-bold">
+            {item.activePostings || 0} ACTIVE
           </Tag>
         </div>
       </div>
@@ -67,20 +68,23 @@ const TopIndustriesList = ({ industries = [], loading, onViewAll }) => {
   return (
     <Card
       title={
-        <div className="flex items-center gap-2">
-          <ShopOutlined className="text-primary" />
-          <span>Top Industry Partners</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <ShopOutlined className="text-primary text-lg" />
+          </div>
+          <span className="font-bold text-text-primary text-lg">Top Partners</span>
         </div>
       }
       extra={
         onViewAll && (
-          <a onClick={onViewAll} className="flex items-center gap-1">
-            View All <RightOutlined className="text-xs" />
+          <a onClick={onViewAll} className="flex items-center gap-1 font-bold text-xs text-primary hover:text-primary-600">
+            View All <RightOutlined className="text-[10px]" />
           </a>
         )
       }
-      className="shadow-sm border-slate-200 dark:border-slate-800"
+      className="shadow-sm border-border rounded-2xl bg-surface h-full"
       loading={loading}
+      styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
     >
       {industries.length > 0 ? (
         <List
@@ -93,7 +97,8 @@ const TopIndustriesList = ({ industries = [], loading, onViewAll }) => {
       ) : (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}
-          description="No industry partners yet"
+          description={<span className="text-text-tertiary">No industry partners yet</span>}
+          className="py-8"
         />
       )}
     </Card>

@@ -47,14 +47,12 @@ export const reportService = {
 
   async downloadReport(id) {
     try {
-      console.log(`[ReportService] Downloading report: ${id}`);
 
       const response = await API.get(`${API_PATH}/${id}/download`, {
         responseType: 'blob',
         timeout: 60000, // 60 second timeout for large files
       });
 
-      console.log(`[ReportService] Response received, type: ${response.data.type}, size: ${response.data.size}`);
 
       // Check if the response is an error (JSON instead of file)
       if (response.data.type === 'application/json') {

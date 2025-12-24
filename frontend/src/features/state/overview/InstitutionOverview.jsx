@@ -37,12 +37,12 @@ const InstitutionOverview = () => {
   }, [dispatch]);
 
   return (
-    <div className="institution-overview flex h-[calc(100vh-120px)] bg-background-secondary rounded-xl overflow-hidden shadow-sm border border-slate-200 dark:border-slate-800">
+    <div className="institution-overview flex h-[calc(100vh-120px)] bg-background-secondary rounded-xl overflow-hidden shadow-sm border border-border">
       {/* Side Panel */}
       <div
-        className={`transition-all duration-300 border-r border-slate-200 dark:border-slate-800 ${
+        className={`transition-all duration-300 border-r border-border ${
           sidePanelOpen ? 'w-80' : 'w-0 overflow-hidden'
-        } flex-shrink-0`}
+        } flex-shrink-0 bg-surface`}
       >
         {sidePanelOpen && (
           <div className="h-full">
@@ -52,33 +52,33 @@ const InstitutionOverview = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden bg-background">
         {/* Header with toggle and back button */}
-        <div className="flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 px-4 py-3 bg-surface border-b border-border">
           <Button
             type="text"
             icon={sidePanelOpen ? <CloseOutlined /> : <MenuOutlined />}
             onClick={() => setSidePanelOpen(!sidePanelOpen)}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 text-text-secondary hover:text-text-primary"
           >
             {sidePanelOpen ? 'Hide Panel' : 'Show Panel'}
           </Button>
 
           {hasSelection && (
-            <Button onClick={handleClearSelection} size="small">
+            <Button onClick={handleClearSelection} size="small" className="text-text-primary border-border">
               ← Clear Selection
             </Button>
           )}
 
           <div className="flex-1" />
 
-          <Text className="text-sm text-slate-800 dark:text-slate-400">
+          <Text className="text-sm text-text-secondary">
             {institutions.length} institutions loaded
           </Text>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-hidden">
           <InstituteDetailView />
         </div>
       </div>

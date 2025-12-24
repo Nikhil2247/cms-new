@@ -1,226 +1,267 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, Button, Card, Row, Col, message, Switch } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createInstitution, updateInstitution } from '../store/stateSlice';
+import {
+  Card,
+  Form,
+  Input,
+  Button,
+  Select,
+  Switch,
+  message,
+  Typography,
+  Space,
+  Row,
+  Col,
+  Divider,
+} from 'antd';
+import {
+  ArrowLeftOutlined,
+  SaveOutlined,
+  BankOutlined,
+  EnvironmentOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  GlobalOutlined,
+  InfoCircleOutlined,
+} from '@ant-design/icons';
+import {
+  createInstitution,
+  updateInstitution,
+  fetchInstitutions,
+  selectInstitutions,
+  selectInstitutionsLoading,
+} from '../store/stateSlice';
+
+const { Title, Text } = Typography;
+const { Option } = Select;
 
 const InstitutionForm = () => {
-  const { id } = useParams();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { id } = useParams();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+  const institutions = useSelector(selectInstitutions);
+  const loading = useSelector(selectInstitutionsLoading);
+  const [submitting, setSubmitting] = useState(false);
 
-  const { institutions, principals } = useSelector(state => state.state);
-  const institution = id ? institutions.list?.find(i => i.id === id) : null;
+  const isEditMode = !!id;
 
   useEffect(() => {
-    if (institution) {
-      form.setFieldsValue(institution);
+    if (isEditMode) {
+      const institution = institutions.find((i) => i.id === id);
+      if (institution) {
+        form.setFieldsValue(institution);
+      } else {
+        dispatch(fetchInstitutions({ id }));
+      }
     }
-  }, [institution, form]);
+  }, [dispatch, id, institutions, isEditMode, form]);
 
   const onFinish = async (values) => {
-    setLoading(true);
+    setSubmitting(true);
     try {
-      if (id) {
+      if (isEditMode) {
         await dispatch(updateInstitution({ id, data: values })).unwrap();
         message.success('Institution updated successfully');
       } else {
         await dispatch(createInstitution(values)).unwrap();
         message.success('Institution created successfully');
       }
-      if (window.history.length > 1) {
-        navigate(-1);
-      } else {
-        navigate('/institutions');
-      }
+      navigate('/institutions');
     } catch (error) {
-      message.error(error?.message || 'Operation failed');
+      message.error(error.message || 'Failed to save institution');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
-  };
-
-  const handleCancel = () => {
-    // Go back to where the user came from (list/dashboard/etc.)
-    // Fallback for direct-entry (no meaningful browser history)
-    if (window.history.length > 1) {
-      navigate(-1);
-      return;
-    }
-    navigate('/institutions');
   };
 
   return (
-    <Card title={id ? 'Edit Institution' : 'Add New Institution'} className="shadow-sm border-slate-200">
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        initialValues={{ isActive: true }}
+    <div className="max-w-4xl mx-auto p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex items-center">
+          <Button 
+            icon={<ArrowLeftOutlined />} 
+            onClick={() => navigate('/institutions')} 
+            className="mr-4 w-10 h-10 flex items-center justify-center rounded-xl border-border hover:border-primary hover:text-primary transition-all"
+          />
+          <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+            <BankOutlined className="text-lg" />
+          </div>
+          <div>
+            <Title level={2} className="mb-0 text-text-primary text-2xl">
+              {isEditMode ? 'Edit Institution' : 'Add Institution'}
+            </Title>
+            <Text className="text-text-secondary text-sm">
+              {isEditMode ? 'Update institution details and settings' : 'Register a new institution in the system'}
+            </Text>
+          </div>
+        </div>
+      </div>
+
+      <Card 
+        className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden"
+        styles={{ body: { padding: '32px' } }}
       >
-        <Row gutter={16}>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="name"
-              label="Institution Name"
-              rules={[{ required: true, message: 'Please enter institution name' }]}
-            >
-              <Input aria-label="Institution name" placeholder="Enter institution name" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="code"
-              label="Institution Code"
-              rules={[{ required: true, message: 'Please enter institution code' }]}
-            >
-              <Input aria-label="Institution code" placeholder="Enter unique institution code" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="type"
-              label="Institution Type"
-              rules={[{ required: true, message: 'Please select institution type' }]}
-            >
-              <Select placeholder="Select institution type">
-                <Select.Option value="ENGINEERING">Engineering College</Select.Option>
-                <Select.Option value="ARTS">Arts & Science College</Select.Option>
-                <Select.Option value="MEDICAL">Medical College</Select.Option>
-                <Select.Option value="POLYTECHNIC">Polytechnic</Select.Option>
-                <Select.Option value="UNIVERSITY">University</Select.Option>
-                <Select.Option value="OTHER">Other</Select.Option>
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="affiliatedTo"
-              label="Affiliated To"
-            >
-              <Input aria-label="Affiliated to" placeholder="Enter university/board affiliation" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="email"
-              label="Official Email"
-              rules={[
-                { required: true, message: 'Please enter email' },
-                { type: 'email', message: 'Please enter valid email' }
-              ]}
-            >
-              <Input aria-label="Official email" placeholder="Enter official email" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="phone"
-              label="Contact Phone"
-              rules={[
-                { required: true, message: 'Please enter phone number' },
-                { pattern: /^[0-9]{10}$/, message: 'Please enter valid 10-digit phone number' }
-              ]}
-            >
-              <Input aria-label="Contact phone" placeholder="Enter contact phone" maxLength={10} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item name="website" label="Website">
-              <Input aria-label="Website" placeholder="Enter website URL" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item
-              name="principalId"
-              label="Principal"
-              rules={[{ required: true, message: 'Please select principal' }]}
-            >
-              <Select placeholder="Select principal" showSearch optionFilterProp="children">
-                {principals?.list?.map(principal => (
-                  <Select.Option key={principal.id} value={principal.id}>
-                    {principal.name} - {principal.email}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Col>
-          <Col xs={24}>
-            <Form.Item
-              name="address"
-              label="Address"
-              rules={[{ required: true, message: 'Please enter address' }]}
-            >
-              <Input.TextArea rows={2} placeholder="Enter street address" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item
-              name="city"
-              label="City"
-              rules={[{ required: true, message: 'Please enter city' }]}
-            >
-              <Input aria-label="City" placeholder="Enter city" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item
-              name="state"
-              label="State"
-              rules={[{ required: true, message: 'Please enter state' }]}
-            >
-              <Input aria-label="State" placeholder="Enter state" />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Form.Item
-              name="pincode"
-              label="Pincode"
-              rules={[
-                { required: true, message: 'Please enter pincode' },
-                { pattern: /^[0-9]{6}$/, message: 'Please enter valid 6-digit pincode' }
-              ]}
-            >
-              <Input aria-label="Pincode" placeholder="Enter pincode" maxLength={6} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item name="establishedYear" label="Established Year">
-              <Input aria-label="Established year" type="number" placeholder="Enter year of establishment" min={1800} max={new Date().getFullYear()} />
-            </Form.Item>
-          </Col>
-          <Col xs={24} sm={12}>
-            <Form.Item name="studentCapacity" label="Student Capacity">
-              <Input aria-label="Student capacity" type="number" placeholder="Enter total student capacity" min={0} />
-            </Form.Item>
-          </Col>
-          <Col xs={24}>
-            <Form.Item name="description" label="Description">
-              <Input.TextArea rows={3} placeholder="Enter institution description and facilities" />
-            </Form.Item>
-          </Col>
-          <Col xs={24}>
-            <Form.Item
-              name="isActive"
-              label="Active Status"
-              valuePropName="checked"
-            >
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={onFinish}
+          requiredMark="optional"
+          initialValues={{ isActive: true }}
+        >
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6 text-text-primary">
+              <InfoCircleOutlined className="text-primary" />
+              <span className="font-bold text-sm uppercase tracking-widest">Basic Information</span>
+            </div>
+            
+            <Row gutter={24}>
+              <Col xs={24} md={16}>
+                <Form.Item
+                  name="name"
+                  label={<span className="font-medium text-text-primary">Institution Name</span>}
+                  rules={[{ required: true, message: 'Please enter institution name' }]}
+                >
+                  <Input prefix={<BankOutlined className="text-text-tertiary" />} placeholder="e.g. Government Polytechnic College" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="code"
+                  label={<span className="font-medium text-text-primary">Institution Code</span>}
+                  rules={[{ required: true, message: 'Please enter institution code' }]}
+                >
+                  <Input placeholder="e.g. GPC-001" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="type"
+                  label={<span className="font-medium text-text-primary">Institution Type</span>}
+                  rules={[{ required: true, message: 'Please select institution type' }]}
+                >
+                  <Select placeholder="Select type" className="rounded-lg h-11">
+                    <Option value="GOVERNMENT">Government</Option>
+                    <Option value="AIDED">Aided</Option>
+                    <Option value="PRIVATE">Private</Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="website"
+                  label={<span className="font-medium text-text-primary">Website</span>}
+                >
+                  <Input prefix={<GlobalOutlined className="text-text-tertiary" />} placeholder="https://example.com" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
+
+          <Divider className="border-border" />
+
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-6 text-text-primary">
+              <EnvironmentOutlined className="text-success" />
+              <span className="font-bold text-sm uppercase tracking-widest">Location & Contact</span>
+            </div>
+
+            <Row gutter={24}>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="email"
+                  label={<span className="font-medium text-text-primary">Official Email</span>}
+                  rules={[
+                    { required: true, message: 'Please enter email' },
+                    { type: 'email', message: 'Please enter a valid email' },
+                  ]}
+                >
+                  <Input prefix={<MailOutlined className="text-text-tertiary" />} placeholder="admin@college.edu" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={12}>
+                <Form.Item
+                  name="contactNumber"
+                  label={<span className="font-medium text-text-primary">Contact Number</span>}
+                  rules={[{ required: true, message: 'Please enter contact number' }]}
+                >
+                  <Input prefix={<PhoneOutlined className="text-text-tertiary" />} placeholder="+91 XXXXX XXXXX" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24}>
+                <Form.Item
+                  name="address"
+                  label={<span className="font-medium text-text-primary">Address</span>}
+                  rules={[{ required: true, message: 'Please enter address' }]}
+                >
+                  <Input.TextArea rows={3} placeholder="Full address" className="rounded-lg bg-background border-border p-3" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="city"
+                  label={<span className="font-medium text-text-primary">City</span>}
+                  rules={[{ required: true, message: 'Please enter city' }]}
+                >
+                  <Input placeholder="City" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="state"
+                  label={<span className="font-medium text-text-primary">State</span>}
+                  rules={[{ required: true, message: 'Please enter state' }]}
+                >
+                  <Input placeholder="State" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+              <Col xs={24} md={8}>
+                <Form.Item
+                  name="pincode"
+                  label={<span className="font-medium text-text-primary">Pincode</span>}
+                  rules={[{ required: true, message: 'Please enter pincode' }]}
+                >
+                  <Input placeholder="Pincode" className="rounded-lg h-11 bg-background border-border" />
+                </Form.Item>
+              </Col>
+            </Row>
+          </div>
+
+          <Divider className="border-border" />
+
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2 text-text-primary">
+              <span className="font-bold text-sm uppercase tracking-widest">Settings</span>
+            </div>
+            <Form.Item name="isActive" valuePropName="checked" className="mb-0">
               <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
             </Form.Item>
-          </Col>
-        </Row>
-        <Form.Item>
-          <Button type="primary" htmlType="submit" loading={loading} size="large">
-            {id ? 'Update Institution' : 'Create Institution'}
-          </Button>
-          <Button style={{ marginLeft: 8 }} onClick={handleCancel} size="large">
-            Cancel
-          </Button>
-        </Form.Item>
-      </Form>
-    </Card>
+          </div>
+
+          <div className="flex justify-end gap-4 pt-6 border-t border-border">
+            <Button 
+              size="large"
+              onClick={() => navigate('/institutions')}
+              className="rounded-xl h-12 px-8 font-medium"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={submitting}
+              icon={<SaveOutlined />}
+              size="large"
+              className="rounded-xl h-12 px-8 font-bold shadow-lg shadow-primary/20 bg-primary border-0"
+            >
+              Save Institution
+            </Button>
+          </div>
+        </Form>
+      </Card>
+    </div>
   );
 };
 

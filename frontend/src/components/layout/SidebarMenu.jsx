@@ -63,7 +63,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               className: 'text-lg',
             }),
             label: (
-              <span className="font-semibold text-sm tracking-wide">
+              <span className="font-semibold text-sm tracking-wide text-text-primary">
                 {section.title}
               </span>
             ),
@@ -75,7 +75,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               label: (
                 <Link
                   to={item.path}
-                  className="text-sm font-medium transition-colors duration-200"
+                  className="text-sm font-medium transition-colors duration-200 text-text-primary"
                   onClick={handleLinkClick}
                 >
                   {item.label}
@@ -91,7 +91,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
         className={`
           px-3 py-4
           border-t border-border
-          bg-background-tertiary/50
+          bg-background-tertiary
         `}
       >
         {!collapsed ? (
@@ -102,7 +102,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               icon={<BugOutlined className="text-sm" />}
               className="
                 h-10 rounded-xl
-                bg-surface hover:bg-surface-hover
+                bg-surface hover:bg-background-secondary
                 border border-border
                 text-text-primary
                 font-medium text-[13px]
@@ -124,7 +124,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
                   icon={<BugOutlined className="text-sm" />}
                   className="
                     w-10 h-10
-                    bg-surface hover:bg-surface-hover
+                    bg-surface hover:bg-background-secondary
                     border border-border
                     text-text-primary
                     transition-all duration-200

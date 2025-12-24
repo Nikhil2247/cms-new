@@ -48,7 +48,6 @@ const UserProfile = ({ visible, onClose }) => {
           return;
         }
       } catch (error) {
-        console.error('Failed to parse login data:', error);
       }
     }
 
@@ -63,7 +62,6 @@ const UserProfile = ({ visible, onClose }) => {
           id: payload.sub || payload.userId,
         });
       } catch (error) {
-        console.error('Failed to parse token:', error);
       }
     }
 

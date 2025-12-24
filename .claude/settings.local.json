@@ -37,7 +37,9 @@
       "Bash(npx ts-node prisma/seed-faqs.ts)",
       "Bash(npx prisma db push)",
       "Bash(npm run lint:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(rm:*)",
+      "Bash(python3:*)"
     ]
   }
 }

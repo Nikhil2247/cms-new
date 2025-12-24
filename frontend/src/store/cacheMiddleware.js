@@ -19,7 +19,6 @@ export const cacheMiddleware = (store) => (next) => (action) => {
 
     // If we have cached data and it's not stale, skip the fetch
     if (state?.lastFetched && !isStale(state.lastFetched) && !action.meta?.arg?.force) {
-      console.log(`[Cache] Skipping fetch for ${action.type} - data is fresh`);
       return;
     }
   }

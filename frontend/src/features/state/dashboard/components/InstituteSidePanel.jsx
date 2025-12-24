@@ -62,33 +62,33 @@ const InstituteSidePanel = ({ onSelectInstitute }) => {
         onClick={() => handleSelect(institution)}
         className={`cursor-pointer transition-all duration-200 rounded-lg mb-1 px-3 py-2 ${
           isSelected
-            ? 'bg-blue-50 dark:bg-blue-900/20'
-            : 'hover:bg-slate-50 dark:hover:bg-slate-800'
-        }`}
+            ? 'bg-primary/10 border-primary/20'
+            : 'hover:bg-background-tertiary border-transparent'
+        } border`}
       >
         <List.Item.Meta
           avatar={
             <Avatar
               icon={<BankOutlined />}
-              className={isSelected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-400'}
+              className={isSelected ? 'bg-primary text-white' : 'bg-background-tertiary text-text-secondary'}
             />
           }
           title={
-            <Text strong className={isSelected ? 'text-blue-800 dark:text-blue-300' : 'text-slate-950 dark:text-slate-200'}>
+            <Text strong className={`block truncate ${isSelected ? 'text-primary' : 'text-text-primary'}`}>
               {institution.name}
             </Text>
           }
           description={
             <div className="flex flex-col">
-              <Text className={`text-xs ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-400'}`}>{institution.code}</Text>
-              <Text className={`text-xs ${isSelected ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-400'}`}>{institution.city}</Text>
+              <Text className={`text-xs ${isSelected ? 'text-primary/80' : 'text-text-tertiary'}`}>{institution.code}</Text>
+              <Text className={`text-xs ${isSelected ? 'text-primary/80' : 'text-text-tertiary'}`}>{institution.city}</Text>
             </div>
           }
         />
         {institution._count?.Student > 0 && (
           <Badge
             count={institution._count.Student}
-            className={isSelected ? '[&_.ant-badge-count]:!bg-blue-600' : '[&_.ant-badge-count]:!bg-slate-500 dark:[&_.ant-badge-count]:!bg-slate-600'}
+            className={isSelected ? '[&_.ant-badge-count]:!bg-primary' : '[&_.ant-badge-count]:!bg-text-tertiary'}
             overflowCount={999}
           />
         )}
@@ -97,22 +97,22 @@ const InstituteSidePanel = ({ onSelectInstitute }) => {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800">
+    <div className="h-full flex flex-col bg-surface border-r border-border">
       {/* Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-        <Title level={5} className="!mb-3 !text-slate-950 dark:!text-white">Institutions</Title>
+      <div className="p-4 border-b border-border">
+        <Title level={5} className="!mb-3 !text-text-primary">Institutions</Title>
         <Search
           placeholder="Search institutions..."
-          prefix={<SearchOutlined className="text-slate-600 dark:text-slate-400" />}
+          prefix={<SearchOutlined className="text-text-tertiary" />}
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           allowClear
-          className="rounded-lg"
+          className="rounded-lg bg-background border-border"
         />
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto p-2">
+      <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
         {loading ? (
           <div className="flex justify-center items-center h-32">
             <Spin size="small" />
@@ -121,6 +121,7 @@ const InstituteSidePanel = ({ onSelectInstitute }) => {
           <Empty
             description={debouncedSearch ? "No matching institutions" : "No institutions found"}
             image={Empty.PRESENTED_IMAGE_SIMPLE}
+            className="mt-10"
           />
         ) : (
           <List
@@ -132,8 +133,8 @@ const InstituteSidePanel = ({ onSelectInstitute }) => {
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
-        <Text className="text-xs text-slate-800 dark:text-slate-400">
+      <div className="p-3 border-t border-border bg-background-tertiary">
+        <Text className="text-xs text-text-tertiary">
           Showing {filteredInstitutions.length} of {institutions.length} institutions
         </Text>
       </div>

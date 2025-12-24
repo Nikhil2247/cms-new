@@ -1,5 +1,5 @@
 // src/pages/industry/IndustryDashboard.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import {
   Card,
   Row,
@@ -362,4 +362,4 @@ const IndustryDashboard = () => {
   );
 };
 
-export default IndustryDashboard;
+export default memo(IndustryDashboard);

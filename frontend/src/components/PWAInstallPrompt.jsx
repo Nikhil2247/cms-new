@@ -61,10 +61,10 @@ const PWAInstallPrompt = () => {
     const { outcome } = await deferredPrompt.userChoice;
 
     if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
+      // Install accepted
       Cookies.set('pwa-install-prompted', 'true', { expires: 365 }); // 1 year
     } else {
-      console.log('User dismissed the install prompt');
+      // Install dismissed
       Cookies.set('pwa-install-prompted', 'true', { expires: 30 }); // 30 days for dismissal
     }
 
