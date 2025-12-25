@@ -156,7 +156,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
       ),
       dataIndex: ['stats', 'facultyVisits'],
       key: 'facultyVisits',
-      width: 90,
+      width: 100,
       align: 'center',
       render: (value, record) => {
         const expected = record.stats?.studentsWithInternships || 0;
@@ -166,8 +166,9 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
             <Badge
               count={value || 0}
               showZero
-              color={isLow ? '#faad14' : '#52c41a'}
+              color={isLow ? 'var(--ant-warning-color)' : 'var(--ant-success-color)'}
               overflowCount={999}
+              className="font-bold"
             />
           </Tooltip>
         );

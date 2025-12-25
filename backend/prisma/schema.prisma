@@ -2470,3 +2470,50 @@ model UserSession {
   @@index([expiresAt])
   @@map("user_sessions")
 }
+
+// =============================================
+// SYSTEM ADMIN - BACKUP & CONFIGURATION
+// =============================================
+
+model BackupRecord {
+  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  filename         String
+  description      String?
+  size             Int          // Size in bytes
+  storageLocations String[]     // ['minio', 'local']
+  minioKey         String?      // Key in MinIO bucket
+  localPath        String?      // Path on local filesystem
+  status           BackupStatus @default(COMPLETED)
+
+  // Creator tracking
+  createdById      String       @db.ObjectId
+  createdAt        DateTime     @default(now())
+
+  // Restore tracking
+  restoredAt       DateTime?
+  restoredById     String?      @db.ObjectId
+
+  @@index([createdAt])
+  @@index([status])
+  @@map("backup_records")
+}
+
+enum BackupStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  RESTORED
+}
+
+model SystemConfig {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     Json
+  category  String   // 'general', 'security', 'features', 'notifications', 'maintenance'
+  updatedBy String?  @db.ObjectId
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([category])
+  @@map("system_configs")
+}

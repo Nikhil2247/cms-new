@@ -36,22 +36,42 @@ export class ReportCleanupScheduler {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-      const staleReports = await this.prisma.generatedReport.updateMany({
+      // Find stale reports first
+      const staleReports = await this.prisma.generatedReport.findMany({
         where: {
           status: 'processing',
           createdAt: { lt: oneHourAgo },
         },
-        data: {
-          status: 'failed',
-          errorMessage: 'Report processing timed out after 1 hour',
-        },
+        select: { id: true },
       });
 
-      if (staleReports.count > 0) {
-        this.logger.warn(`Marked ${staleReports.count} stale reports as failed`);
+      // Update each one individually (avoids MongoDB replica set requirement)
+      let updatedCount = 0;
+      for (const report of staleReports) {
+        try {
+          await this.prisma.generatedReport.update({
+            where: { id: report.id },
+            data: {
+              status: 'failed',
+              errorMessage: 'Report processing timed out after 1 hour',
+            },
+          });
+          updatedCount++;
+        } catch (updateError) {
+          this.logger.warn(`Failed to update stale report ${report.id}: ${updateError.message}`);
+        }
+      }
+
+      if (updatedCount > 0) {
+        this.logger.warn(`Marked ${updatedCount} stale reports as failed`);
       }
     } catch (error) {
-      this.logger.error('Failed to cleanup stale reports', error.stack);
+      // Handle MongoDB replica set limitation gracefully
+      if (error.code === 'P2031') {
+        this.logger.warn('Stale report cleanup skipped: MongoDB replica set not configured');
+      } else {
+        this.logger.error('Failed to cleanup stale reports', error.stack);
+      }
     }
   }
 
@@ -65,18 +85,38 @@ export class ReportCleanupScheduler {
     try {
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-      const result = await this.prisma.generatedReport.deleteMany({
+      // Find old reports first
+      const oldReports = await this.prisma.generatedReport.findMany({
         where: {
           status: { in: ['failed', 'cancelled'] },
           createdAt: { lt: thirtyDaysAgo },
         },
+        select: { id: true },
       });
 
-      if (result.count > 0) {
-        this.logger.log(`Deleted ${result.count} old failed/cancelled reports`);
+      // Delete each one individually (avoids MongoDB replica set requirement)
+      let deletedCount = 0;
+      for (const report of oldReports) {
+        try {
+          await this.prisma.generatedReport.delete({
+            where: { id: report.id },
+          });
+          deletedCount++;
+        } catch (deleteError) {
+          this.logger.warn(`Failed to delete old report ${report.id}: ${deleteError.message}`);
+        }
+      }
+
+      if (deletedCount > 0) {
+        this.logger.log(`Deleted ${deletedCount} old failed/cancelled reports`);
       }
     } catch (error) {
-      this.logger.error('Failed to cleanup old failed reports', error.stack);
+      // Handle MongoDB replica set limitation gracefully
+      if (error.code === 'P2031') {
+        this.logger.warn('Old report cleanup skipped: MongoDB replica set not configured');
+      } else {
+        this.logger.error('Failed to cleanup old failed reports', error.stack);
+      }
     }
   }
 }

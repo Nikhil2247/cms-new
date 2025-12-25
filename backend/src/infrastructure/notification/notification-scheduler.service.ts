@@ -471,6 +471,45 @@ export class NotificationSchedulerService {
     }
   }
 
+  // ============ NOTIFICATION CLEANUP ============
+  /**
+   * Cleanup old read notifications (older than 30 days)
+   * Runs every day at midnight
+   */
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async cleanupOldNotifications(): Promise<void> {
+    this.logger.log('Running notification cleanup...');
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Delete read notifications older than 30 days
+      const readResult = await this.prisma.notification.deleteMany({
+        where: {
+          read: true,
+          createdAt: { lt: thirtyDaysAgo },
+        },
+      });
+
+      // Delete unread notifications older than 90 days (even if not read)
+      const ninetyDaysAgo = new Date();
+      ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+
+      const unreadResult = await this.prisma.notification.deleteMany({
+        where: {
+          read: false,
+          createdAt: { lt: ninetyDaysAgo },
+        },
+      });
+
+      this.logger.log(
+        `Notification cleanup complete: ${readResult.count} read (30+ days), ${unreadResult.count} unread (90+ days) deleted`
+      );
+    } catch (error) {
+      this.logger.error('Failed to cleanup old notifications', error.stack);
+    }
+  }
+
   // ============ UTILITY METHODS ============
   /**
    * Schedule a notification for a specific user

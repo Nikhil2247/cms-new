@@ -1,6 +1,10 @@
 /**
  * PM2 Ecosystem Configuration
  * Handles clustering and process management for NestJS backend
+ *
+ * Memory Allocation: 1.5GB container
+ * - 2 instances x ~500MB each = ~1GB for Node processes
+ * - Remaining ~500MB for OS, buffers, and overhead
  */
 module.exports = {
   apps: [
@@ -11,14 +15,14 @@ module.exports = {
       // Entry point (compiled JS)
       script: 'dist/src/main.js',
 
-      // Cluster mode settings
-      instances: process.env.PM2_INSTANCES || 'max', // 'max' uses all CPU cores
+      // Cluster mode settings - 2 instances for 1.5GB container
+      instances: process.env.PM2_INSTANCES || 2,
       exec_mode: 'cluster',
 
       // Auto-restart settings
       autorestart: true,
       watch: false,
-      max_memory_restart: '1G',
+      max_memory_restart: '600M', // Restart if single instance exceeds 600MB
 
       // Environment variables
       env: {
@@ -55,10 +59,12 @@ module.exports = {
       // Source maps for debugging
       source_map_support: true,
 
-      // Node.js arguments
+      // Node.js arguments - optimized for 1.5GB container with 2 instances
+      // Each instance gets ~500MB heap (1200MB / 2 instances = 600MB, leaving headroom)
       node_args: [
-        '--max-old-space-size=1024',
+        '--max-old-space-size=500',
         '--optimize-for-size',
+        '--gc-interval=100',
       ],
     },
   ],

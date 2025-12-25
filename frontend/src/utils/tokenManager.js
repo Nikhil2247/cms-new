@@ -48,27 +48,39 @@ export const tokenStorage = {
 
   clear: () => {
     try {
-      // Clear primary token keys
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(REFRESH_TOKEN_KEY);
+      // Keys to preserve (theme settings)
+      const preserveKeys = ['theme', 'app_theme', 'darkMode', 'themeMode'];
+      const preserved = {};
 
-      // Clean up all possible legacy/alternative keys
-      localStorage.removeItem('token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('loginResponse');
-      localStorage.removeItem('user_data');
-      localStorage.removeItem('user');
-      localStorage.removeItem('userInfo');
-      localStorage.removeItem('authState');
+      // Save theme-related values
+      preserveKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          preserved[key] = value;
+        }
+      });
 
-      // Clear Redux persist
-      localStorage.removeItem('persist:root');
-      localStorage.removeItem('persist:auth');
+      // Clear all localStorage
+      localStorage.clear();
 
-      // Clear any cached data
-      localStorage.removeItem('cachedUser');
-      localStorage.removeItem('lastActivity');
+      // Restore theme values
+      Object.entries(preserved).forEach(([key, value]) => {
+        localStorage.setItem(key, value);
+      });
+
+      // Clear sessionStorage completely
+      sessionStorage.clear();
+
+      // Clear all cookies except theme
+      document.cookie.split(';').forEach(cookie => {
+        const [name] = cookie.split('=');
+        const trimmedName = name.trim();
+        if (!preserveKeys.includes(trimmedName)) {
+          document.cookie = `${trimmedName}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+        }
+      });
     } catch (error) {
+      console.error('Error clearing storage:', error);
     }
   },
 };

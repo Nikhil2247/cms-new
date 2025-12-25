@@ -1,8 +1,8 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NotificationService } from './notification.service';
 import { NotificationSchedulerService } from './notification-scheduler.service';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationSenderService } from './notification-sender.service';
 import { PrismaModule } from '../../core/database/prisma.module';
 import { MailModule } from '../mail/mail.module';
 
@@ -11,12 +11,12 @@ import { MailModule } from '../mail/mail.module';
   providers: [
     NotificationService,
     NotificationSchedulerService,
-    NotificationGateway,
+    NotificationSenderService,
   ],
   exports: [
     NotificationService,
     NotificationSchedulerService,
-    NotificationGateway,
+    NotificationSenderService,
   ],
 })
 export class NotificationModule {}

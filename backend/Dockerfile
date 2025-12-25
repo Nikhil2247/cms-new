@@ -26,9 +26,9 @@ RUN npm run build
 # Production stage
 FROM node:20.18-alpine AS production
 
-# Install PM2 globally and required tools
+# Install PM2 globally and required tools including MongoDB tools for backup/restore
 RUN npm install -g pm2 && \
-    apk add --no-cache wget curl libc6-compat
+    apk add --no-cache wget curl libc6-compat mongodb-tools
 
 WORKDIR /app
 
@@ -49,8 +49,8 @@ COPY --from=builder /app/dist ./dist
 COPY ecosystem.config.js ./
 
 # Create directories with proper permissions
-RUN mkdir -p /app/uploads /app/logs && \
-    chmod 755 /app/uploads /app/logs
+RUN mkdir -p /app/uploads /app/logs /app/backups && \
+    chmod 755 /app/uploads /app/logs /app/backups
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S appgroup && \

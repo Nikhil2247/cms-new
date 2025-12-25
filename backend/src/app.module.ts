@@ -22,9 +22,11 @@ import { FacultyModule } from './api/faculty/faculty.module';
 import { StudentPortalModule } from './api/student-portal/student-portal.module';
 import { IndustryPortalModule } from './api/industry-portal/industry.module';
 import { SharedModule } from './api/shared/shared.module';
+import { SystemAdminModule } from './api/system-admin/system-admin.module';
 
 // Infrastructure modules
 import { MailModule } from './infrastructure/mail/mail.module';
+import { WebSocketModule } from './infrastructure/websocket/websocket.module';
 import { NotificationModule } from './infrastructure/notification/notification.module';
 import { FileStorageModule } from './infrastructure/file-storage/file-storage.module';
 import { CloudinaryModule } from './infrastructure/cloudinary/cloudinary.module';
@@ -68,6 +70,7 @@ import { BulkModule } from './bulk/bulk.module';
     QueueModule,
 
     // ===== INFRASTRUCTURE MODULES =====
+    WebSocketModule,
     MailModule,
     NotificationModule,
     FileStorageModule,
@@ -82,6 +85,7 @@ import { BulkModule } from './bulk/bulk.module';
     StudentPortalModule,
     IndustryPortalModule,
     SharedModule,
+    SystemAdminModule,
 
     // ===== DOMAIN MODULES =====
     InternshipModule,

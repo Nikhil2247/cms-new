@@ -75,7 +75,7 @@ export class NotificationsService {
   /**
    * Mark a notification as read
    */
-  async markAsRead(notificationId: string, userId: string) {
+  async markAsRead(userId: string, notificationId: string) {
     try {
       // Verify the notification belongs to the user
       const notification = await this.prisma.notification.findFirst({
@@ -142,7 +142,7 @@ export class NotificationsService {
   /**
    * Delete a notification
    */
-  async deleteNotification(notificationId: string, userId: string) {
+  async deleteNotification(userId: string, notificationId: string) {
     try {
       // Verify the notification belongs to the user
       const notification = await this.prisma.notification.findFirst({
@@ -169,6 +169,139 @@ export class NotificationsService {
       };
     } catch (error) {
       this.logger.error(`Failed to delete notification ${notificationId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a notification by ID
+   */
+  async getNotificationById(userId: string, notificationId: string) {
+    try {
+      const notification = await this.prisma.notification.findFirst({
+        where: {
+          id: notificationId,
+          userId,
+        },
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          type: true,
+          data: true,
+          read: true,
+          createdAt: true,
+        },
+      });
+
+      if (!notification) {
+        throw new NotFoundException('Notification not found');
+      }
+
+      return notification;
+    } catch (error) {
+      this.logger.error(`Failed to get notification ${notificationId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Mark multiple notifications as read
+   */
+  async markMultipleAsRead(userId: string, notificationIds: string[]) {
+    try {
+      const result = await this.prisma.notification.updateMany({
+        where: {
+          id: { in: notificationIds },
+          userId,
+          read: false,
+        },
+        data: {
+          read: true,
+        },
+      });
+
+      this.logger.log(`Marked ${result.count} notifications as read for user ${userId}`);
+
+      return {
+        success: true,
+        message: `${result.count} notifications marked as read`,
+        count: result.count,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to mark multiple notifications as read for user ${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all notifications for a user
+   */
+  async clearAllNotifications(userId: string) {
+    try {
+      const result = await this.prisma.notification.deleteMany({
+        where: { userId },
+      });
+
+      this.logger.log(`Cleared ${result.count} notifications for user ${userId}`);
+
+      return {
+        success: true,
+        message: `${result.count} notifications cleared`,
+        count: result.count,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to clear all notifications for user ${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear all read notifications for a user
+   */
+  async clearReadNotifications(userId: string) {
+    try {
+      const result = await this.prisma.notification.deleteMany({
+        where: {
+          userId,
+          read: true,
+        },
+      });
+
+      this.logger.log(`Cleared ${result.count} read notifications for user ${userId}`);
+
+      return {
+        success: true,
+        message: `${result.count} read notifications cleared`,
+        count: result.count,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to clear read notifications for user ${userId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete multiple notifications
+   */
+  async deleteMultipleNotifications(userId: string, notificationIds: string[]) {
+    try {
+      const result = await this.prisma.notification.deleteMany({
+        where: {
+          id: { in: notificationIds },
+          userId,
+        },
+      });
+
+      this.logger.log(`Deleted ${result.count} notifications for user ${userId}`);
+
+      return {
+        success: true,
+        message: `${result.count} notifications deleted`,
+        count: result.count,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to delete multiple notifications for user ${userId}`, error.stack);
       throw error;
     }
   }

@@ -1,0 +1,463 @@
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
+import { PrismaService } from '../../../core/database/prisma.service';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { TokenBlacklistService } from '../../../core/auth/services/token-blacklist.service';
+import {
+  AuditAction,
+  AuditCategory,
+  AuditSeverity,
+  Role,
+  Prisma,
+} from '@prisma/client';
+import {
+  CreateUserDto,
+  UpdateUserDto,
+  UserQueryDto,
+  BulkUserActionDto,
+} from '../dto/user-management.dto';
+import * as bcrypt from 'bcryptjs';
+
+@Injectable()
+export class UserManagementService {
+  private readonly logger = new Logger(UserManagementService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auditService: AuditService,
+    private readonly tokenBlacklistService: TokenBlacklistService,
+  ) {}
+
+  async getUsers(query: UserQueryDto) {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      role,
+      institutionId,
+      isActive,
+      sortBy = 'createdAt',
+      sortOrder = 'desc',
+    } = query;
+
+    const where: Prisma.UserWhereInput = {};
+
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phoneNo: { contains: search } },
+      ];
+    }
+
+    if (role) {
+      where.role = role;
+    }
+
+    if (institutionId) {
+      where.institutionId = institutionId;
+    }
+
+    if (isActive !== undefined) {
+      where.active = isActive;
+    }
+
+    const [users, total, roleStats] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          active: true,
+          institutionId: true,
+          phoneNo: true,
+          lastLoginAt: true,
+          loginCount: true,
+          createdAt: true,
+          Institution: {
+            select: { name: true, code: true },
+          },
+        },
+        orderBy: { [sortBy]: sortOrder },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.user.count({ where }),
+      this.prisma.user.groupBy({
+        by: ['role'],
+        _count: { role: true },
+      }),
+    ]);
+
+    // Transform role stats to object
+    const roleStatsMap = roleStats.reduce((acc, stat) => {
+      if (stat.role) {
+        acc[stat.role] = stat._count.role;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      users: users.map((user) => ({
+        ...user,
+        institutionName: user.Institution?.name,
+        institutionCode: user.Institution?.code,
+        Institution: undefined,
+      })),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      roleStats: roleStatsMap,
+    };
+  }
+
+  async getUserById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        institutionId: true,
+        phoneNo: true,
+        designation: true,
+        branchName: true,
+        lastLoginAt: true,
+        loginCount: true,
+        createdAt: true,
+        hasChangedDefaultPassword: true,
+        Institution: {
+          select: { id: true, name: true, code: true },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
+  async createUser(dto: CreateUserDto, adminUserId: string, adminRole: Role) {
+    // Check if email already exists
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException('Email already exists');
+    }
+
+    // Generate random password if not provided
+    const password = dto.password || this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const user = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        password: hashedPassword,
+        role: dto.role,
+        phoneNo: dto.phoneNo,
+        institutionId: dto.institutionId,
+        branchName: dto.branchName,
+        designation: dto.designation,
+        active: true,
+        hasChangedDefaultPassword: false,
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        institutionId: true,
+        createdAt: true,
+      },
+    });
+
+    // Audit log
+    await this.auditService.log({
+      action: AuditAction.USER_REGISTRATION,
+      entityType: 'User',
+      entityId: user.id,
+      userId: adminUserId,
+      userRole: adminRole,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      description: `User created by admin: ${user.email} (${user.role})`,
+      newValues: { email: user.email, role: user.role },
+    });
+
+    return {
+      user,
+      temporaryPassword: dto.password ? undefined : password,
+      message: 'User created successfully',
+    };
+  }
+
+  async updateUser(
+    userId: string,
+    dto: UpdateUserDto,
+    adminUserId: string,
+    adminRole: Role,
+  ) {
+    const existingUser = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check email uniqueness if changing email
+    if (dto.email && dto.email !== existingUser.email) {
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (emailExists) {
+        throw new ConflictException('Email already exists');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(dto.name && { name: dto.name }),
+        ...(dto.email && { email: dto.email }),
+        ...(dto.role && { role: dto.role }),
+        ...(dto.phoneNo !== undefined && { phoneNo: dto.phoneNo }),
+        ...(dto.institutionId !== undefined && { institutionId: dto.institutionId }),
+        ...(dto.active !== undefined && { active: dto.active }),
+        ...(dto.branchName !== undefined && { branchName: dto.branchName }),
+        ...(dto.designation !== undefined && { designation: dto.designation }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        active: true,
+        institutionId: true,
+        createdAt: true,
+      },
+    });
+
+    // If user was deactivated, invalidate all tokens
+    if (dto.active === false && existingUser.active === true) {
+      await this.tokenBlacklistService.invalidateUserTokens(userId);
+    }
+
+    // Audit log
+    await this.auditService.log({
+      action: AuditAction.USER_PROFILE_UPDATE,
+      entityType: 'User',
+      entityId: userId,
+      userId: adminUserId,
+      userRole: adminRole,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      description: `User updated by admin: ${updatedUser.email}`,
+      oldValues: {
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role,
+        active: existingUser.active,
+      },
+      newValues: dto,
+    });
+
+    return { user: updatedUser, message: 'User updated successfully' };
+  }
+
+  async deleteUser(
+    userId: string,
+    permanent: boolean,
+    adminUserId: string,
+    adminRole: Role,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Prevent self-deletion
+    if (userId === adminUserId) {
+      throw new BadRequestException('Cannot delete your own account');
+    }
+
+    // Invalidate all tokens
+    await this.tokenBlacklistService.invalidateUserTokens(userId);
+
+    if (permanent) {
+      // Hard delete - cascade will handle related records
+      await this.prisma.user.delete({
+        where: { id: userId },
+      });
+    } else {
+      // Soft delete - just deactivate
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { active: false },
+      });
+    }
+
+    // Audit log
+    await this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'User',
+      entityId: userId,
+      userId: adminUserId,
+      userRole: adminRole,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      description: `User ${permanent ? 'permanently deleted' : 'deactivated'}: ${user.email}`,
+      oldValues: { email: user.email, role: user.role },
+    });
+
+    return {
+      success: true,
+      permanent,
+      message: permanent ? 'User permanently deleted' : 'User deactivated',
+    };
+  }
+
+  async bulkAction(
+    dto: BulkUserActionDto,
+    adminUserId: string,
+    adminRole: Role,
+  ) {
+    const { action, userIds } = dto;
+    const results = { processed: 0, failed: 0, errors: [] as any[] };
+
+    // Prevent actions on own account
+    const filteredUserIds = userIds.filter((id) => id !== adminUserId);
+
+    for (const userId of filteredUserIds) {
+      try {
+        switch (action) {
+          case 'activate':
+            await this.prisma.user.update({
+              where: { id: userId },
+              data: { active: true },
+            });
+            break;
+          case 'deactivate':
+            await this.prisma.user.update({
+              where: { id: userId },
+              data: { active: false },
+            });
+            await this.tokenBlacklistService.invalidateUserTokens(userId);
+            break;
+          case 'delete':
+            await this.prisma.user.update({
+              where: { id: userId },
+              data: { active: false },
+            });
+            await this.tokenBlacklistService.invalidateUserTokens(userId);
+            break;
+          case 'resetPassword':
+            const newPassword = this.generateRandomPassword();
+            const hashedPassword = await bcrypt.hash(newPassword, 10);
+            await this.prisma.user.update({
+              where: { id: userId },
+              data: {
+                password: hashedPassword,
+                hasChangedDefaultPassword: false,
+              },
+            });
+            await this.tokenBlacklistService.invalidateUserTokens(userId);
+            break;
+        }
+        results.processed++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ userId, error: error.message });
+      }
+    }
+
+    // Audit log
+    await this.auditService.log({
+      action: AuditAction.BULK_OPERATION,
+      entityType: 'User',
+      userId: adminUserId,
+      userRole: adminRole,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      description: `Bulk ${action} on ${results.processed} users`,
+      newValues: { action, userCount: results.processed, failed: results.failed },
+    });
+
+    return results;
+  }
+
+  async resetPassword(
+    userId: string,
+    adminUserId: string,
+    adminRole: Role,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const newPassword = this.generateRandomPassword();
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: hashedPassword,
+        hasChangedDefaultPassword: false,
+        passwordChangedAt: new Date(),
+      },
+    });
+
+    // Invalidate all existing tokens
+    await this.tokenBlacklistService.invalidateUserTokens(userId);
+
+    // Audit log
+    await this.auditService.log({
+      action: AuditAction.PASSWORD_RESET,
+      entityType: 'User',
+      entityId: userId,
+      userId: adminUserId,
+      userRole: adminRole,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      description: `Password reset by admin for user: ${user.email}`,
+    });
+
+    return {
+      success: true,
+      temporaryPassword: newPassword,
+      message: 'Password reset successfully. User must change password on next login.',
+    };
+  }
+
+  private generateRandomPassword(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let password = '';
+    for (let i = 0; i < 10; i++) {
+      password += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return password;
+  }
+}

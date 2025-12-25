@@ -26,8 +26,14 @@ import companyReducer from '../../store/slices/companySlice';
 import { cacheMiddleware } from '../../store/cacheMiddleware';
 import { optimisticMiddleware } from '../../store/optimisticMiddleware';
 
-// Root reducer with nested structure
-const rootReducer = combineReducers({
+// Import action types
+import { RESET_STORE } from './actions';
+
+// Re-export for backward compatibility
+export { RESET_STORE };
+
+// App reducer with nested structure
+const appReducer = combineReducers({
   auth: authReducer,
   state: stateReducer,
   principal: principalReducer,
@@ -38,6 +44,18 @@ const rootReducer = combineReducers({
   institute: instituteReducer,
   company: companyReducer,
 });
+
+// Root reducer that handles store reset
+const rootReducer = (state, action) => {
+  // Reset all state when RESET_STORE action is dispatched
+  if (action.type === RESET_STORE) {
+    // Clear persisted state from storage
+    storage.removeItem('persist:root');
+    // Return undefined to reset all reducers to their initial state
+    return appReducer(undefined, action);
+  }
+  return appReducer(state, action);
+};
 
 // Persist configuration
 const persistConfig = {

@@ -1,9 +1,11 @@
 # Docker Compose for CMS - Production
 # All images pinned to stable versions
+# Total Memory Allocation: ~5GB
+# - Backend: 1.5GB | Frontend: 0.5GB | MongoDB: 2GB | Dragonfly: 0.5GB | MinIO: 0.5GB
 
 services:
   # ===========================================
-  # Frontend - React/Vite with Nginx
+  # Frontend - React/Vite with Nginx (512MB)
   # ===========================================
   frontend:
     build:
@@ -23,6 +25,12 @@ services:
     networks:
       - cms-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/health"]
       interval: 30s
@@ -31,7 +39,7 @@ services:
       start_period: 15s
 
   # ===========================================
-  # Backend - NestJS with PM2 Cluster
+  # Backend - NestJS with PM2 Cluster (1.5GB)
   # ===========================================
   backend:
     build:
@@ -56,9 +64,9 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
       - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-24h}
       # CORS Settings
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:80,http://localhost:5173}
-      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:80}
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:80}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:80,http://127.0.0.1,http://127.0.0.1:80,http://localhost:5173}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost}
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost,http://127.0.0.1}
       # Rate Limiting
       - THROTTLE_TTL=${THROTTLE_TTL:-60}
       - THROTTLE_LIMIT=${THROTTLE_LIMIT:-100}
@@ -67,13 +75,12 @@ services:
       # File Upload
       - MAX_FILE_SIZE=${MAX_FILE_SIZE:-10485760}
       - UPLOAD_PATH=/app/uploads
-      # MinIO/S3 Configuration
-      - AWS_S3_ENDPOINT=${AWS_S3_ENDPOINT:-http://minio:9000}
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-cms-uploads}
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER:-minioadmin}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - AWS_S3_FORCE_PATH_STYLE=true
+      # MinIO/S3 Configuration (FileStorageService expects MINIO_* variables)
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://minio:9000}
+      - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
       # Mail Configuration (optional)
       - MAIL_USER=${MAIL_USER:-}
       - MAIL_PASS=${MAIL_PASS:-}
@@ -90,8 +97,9 @@ services:
       - CLOUDINARY_CLOUD_NAME=${CLOUDINARY_CLOUD_NAME:-}
       - CLOUDINARY_API_KEY=${CLOUDINARY_API_KEY:-}
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
-      # PM2 Settings
-      - PM2_INSTANCES=${PM2_INSTANCES:-max}
+      # PM2 Settings - optimized for 1.5GB container
+      - PM2_INSTANCES=${PM2_INSTANCES:-2}
+      - NODE_OPTIONS=--max-old-space-size=1200
     volumes:
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs
@@ -105,6 +113,12 @@ services:
     networks:
       - cms-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+        reservations:
+          memory: 512M
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:5000/health"]
       interval: 30s
@@ -113,7 +127,7 @@ services:
       start_period: 60s
 
   # ===========================================
-  # MongoDB 7.0 (LTS) - Primary Database
+  # MongoDB 7.0 (LTS) - Primary Database (2GB)
   # ===========================================
   mongodb:
     image: mongo:7.0
@@ -131,6 +145,12 @@ services:
     networks:
       - cms-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
     healthcheck:
       test: |
         mongosh --quiet --eval "
@@ -147,14 +167,17 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    command: ["mongod", "--bind_ip_all"]
+    command:
+      - mongod
+      - --bind_ip_all
+      - --wiredTigerCacheSizeGB=1
 
   # ===========================================
-  # DragonflyDB 1.x - Redis-compatible Cache
+  # DragonflyDB 1.x - Redis-compatible Cache (512MB)
   # High-performance, memory-efficient
   # ===========================================
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.24.0
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: cms-dragonfly
     ports:
       - "${DRAGONFLY_PORT:-6379}:6379"
@@ -163,13 +186,20 @@ services:
     networks:
       - cms-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     ulimits:
       memlock: -1
     command: >
       --logtostderr
       --cache_mode=true
-      --maxmemory=512mb
+      --maxmemory=400mb
       --keys_output_limit=12288
+      --proactor_threads=2
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 15s
@@ -178,10 +208,10 @@ services:
       start_period: 10s
 
   # ===========================================
-  # MinIO - S3-compatible Object Storage
+  # MinIO - S3-compatible Object Storage (512MB)
   # ===========================================
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    image: minio/minio:latest
     container_name: cms-minio
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
@@ -189,11 +219,23 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+      # Memory optimization
+      MINIO_CACHE: "on"
+      MINIO_CACHE_QUOTA: 80
+      MINIO_CACHE_AFTER: 1
+      MINIO_CACHE_WATERMARK_LOW: 70
+      MINIO_CACHE_WATERMARK_HIGH: 90
     volumes:
       - minio-data:/data
     networks:
       - cms-network
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -206,7 +248,7 @@ services:
   # MinIO Init - Create buckets on startup
   # ===========================================
   minio-init:
-    image: minio/mc:RELEASE.2024-12-18T02-01-23Z
+    image: minio/mc:latest
     container_name: cms-minio-init
     depends_on:
       minio:
@@ -214,6 +256,10 @@ services:
     networks:
       - cms-network
     restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
     entrypoint: /bin/sh
     command:
       - -c

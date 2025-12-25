@@ -16,10 +16,12 @@ A comprehensive guide to deploy the College Management System locally and on pro
 8. [Environment Configuration](#8-environment-configuration)
 9. [CI/CD with GitHub Actions](#9-cicd-with-github-actions)
 10. [Maintenance & Operations](#10-maintenance--operations)
-11. [Backup & Restore](#11-backup--restore)
-12. [Monitoring & Health Checks](#12-monitoring--health-checks)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Security Checklist](#14-security-checklist)
+11. [Database Seeding](#11-database-seeding)
+12. [Backup & Restore](#12-backup--restore)
+13. [Monitoring & Health Checks](#13-monitoring--health-checks)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Security Checklist](#15-security-checklist)
+16. [Known Issues & Workarounds](#16-known-issues--workarounds)
 
 ---
 
@@ -158,8 +160,18 @@ cms/
 ├── docker-compose.dev.yml      # Development (infrastructure only)
 ├── docker-compose.prod.yml     # Production with reverse proxy
 │
-├── .env.docker                 # Environment template (local)
-├── .env.production             # Environment template (production)
+├── .env.docker                 # Docker deployment template (copy to .env)
+├── .env.production             # Production deployment template
+├── .env                        # Docker deployment config (gitignored)
+│
+├── backend/
+│   ├── .env                    # Development config (gitignored)
+│   └── .env.example            # Development template
+│
+├── frontend/
+│   ├── .env                    # Development config (gitignored)
+│   └── .env.example            # Development template
+│
 └── DEPLOYMENT_GUIDE.md         # This file
 ```
 
@@ -167,7 +179,24 @@ cms/
 
 ## 4. Local Development Setup
 
-Use this setup when you want to run frontend and backend locally with hot-reloading, but use Docker for databases and services.
+Use this setup when you want to run frontend and backend locally with hot-reloading. This configuration uses:
+- **MongoDB Atlas** (cloud) - No local MongoDB container needed
+- **Docker MinIO** - For file storage
+- **Docker DragonflyDB** - For caching
+
+### Environment Files Structure
+
+```
+cms/
+├── .env.docker          # Template for Docker deployment (copy to .env)
+├── .env                  # Docker deployment config (gitignored)
+├── backend/
+│   ├── .env              # Development config (gitignored)
+│   └── .env.example      # Template for development
+└── frontend/
+    ├── .env              # Development config (gitignored)
+    └── .env.example      # Template for development
+```
 
 ### Step 1: Clone the Repository
 
@@ -176,68 +205,68 @@ git clone https://github.com/your-org/cms.git
 cd cms
 ```
 
-### Step 2: Start Infrastructure Services
+### Step 2: Start Development Infrastructure Services
+
+Start only MinIO and DragonflyDB (MongoDB is on Atlas):
 
 **Windows (PowerShell):**
 ```powershell
-.\scripts\deploy.ps1 dev
+docker-compose up -d dragonfly minio minio-init
 ```
 
 **Linux/macOS:**
 ```bash
-chmod +x scripts/deploy.sh
-./scripts/deploy.sh dev
+docker-compose up -d dragonfly minio minio-init
 ```
 
 This starts:
-- MongoDB on `localhost:27017`
 - DragonflyDB (Redis) on `localhost:6379`
 - MinIO on `localhost:9000` (API) and `localhost:9001` (Console)
 
 ### Step 3: Configure Backend Environment
 
-Create `backend/.env`:
+Copy the example and configure `backend/.env`:
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+The development `.env` uses:
+- **MongoDB Atlas** for database
+- **Docker MinIO** for file storage (localhost:9000)
+- **Docker DragonflyDB** for cache (localhost:6379)
+
+Key settings in `backend/.env`:
 
 ```env
-# Database
-DATABASE_URL=mongodb://cmsuser:cmspassword123@localhost:27017/cms?authSource=cms
+# Database - MongoDB Atlas (Development)
+DATABASE_URL="mongodb+srv://username:password@cluster.mongodb.net/database"
 
-# Cache
+# Cache - Docker DragonflyDB
 REDIS_URL=redis://localhost:6379
-REDIS_HOST=localhost
-REDIS_PORT=6379
 
-# JWT
-JWT_SECRET=development-secret-key-change-in-production
-JWT_EXPIRES_IN=24h
-
-# Server
-PORT=5000
-NODE_ENV=development
-
-# CORS
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
-FRONTEND_URL=http://localhost:5173
-
-# MinIO/S3
+# File Storage - Docker MinIO
 AWS_S3_ENDPOINT=http://localhost:9000
-AWS_S3_BUCKET=cms-uploads
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin123
-AWS_REGION=us-east-1
-AWS_S3_FORCE_PATH_STYLE=true
 
-# File Upload
-MAX_FILE_SIZE=10485760
-UPLOAD_PATH=./uploads
+# CORS - Development Origins (Vite dev server)
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173
+FRONTEND_URL=http://localhost:5173
 ```
 
 ### Step 4: Configure Frontend Environment
 
-Create `frontend/.env`:
+Copy the example and configure `frontend/.env`:
+
+```bash
+cd frontend
+cp .env.example .env
+```
+
+The frontend `.env` for development:
 
 ```env
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=http://127.0.0.1:5000/api
 VITE_APP_NAME=CMS Portal
 VITE_APP_ENV=development
 ```
@@ -268,30 +297,45 @@ npm run dev
 | API Health | http://localhost:5000/health |
 | MinIO Console | http://localhost:9001 |
 
-### Step 7: Stop Infrastructure
+### Step 7: Stop Development Infrastructure
 
-```powershell
-# Windows
-.\scripts\deploy.ps1 dev-stop
-
-# Linux/macOS
-./scripts/deploy.sh dev-stop
+```bash
+docker-compose down dragonfly minio
 ```
 
 ---
 
-## 5. Local Full Stack Deployment
+## 5. Docker Deployment (Full Stack)
 
-Use this setup to test the complete Docker deployment locally.
+Use this setup for Docker deployment where ALL services run in containers:
+- **Docker MongoDB** - Database in container
+- **Docker DragonflyDB** - Cache in container
+- **Docker MinIO** - File storage in container
+- **Docker Backend** - NestJS with PM2 cluster
+- **Docker Frontend** - React with Nginx
+
+### Key Differences from Development
+
+| Aspect | Development | Docker Deployment |
+|--------|-------------|-------------------|
+| Database | MongoDB Atlas (cloud) | Docker MongoDB container |
+| Cache | Docker DragonflyDB | Docker DragonflyDB |
+| Storage | Docker MinIO | Docker MinIO |
+| Backend | Local npm run start:dev | PM2 cluster in container |
+| Frontend | Local Vite dev server | Nginx in container |
+| CORS | localhost:5173 | localhost:80 |
+| Environment | backend/.env | root .env |
 
 ### Step 1: Create Environment File
 
 ```bash
-# Copy template
+# Copy Docker template to root .env
 cp .env.docker .env
 
-# Edit if needed (defaults work for local testing)
+# Edit if needed (defaults work for local Docker testing)
 ```
+
+**Important:** The root `.env` file is used by docker-compose.yml for all container configurations.
 
 ### Step 2: Start All Services
 
@@ -665,6 +709,29 @@ docker compose -f docker-compose.prod.yml run --rm certbot certificates
 
 ## 8. Environment Configuration
 
+### Environment Files Overview
+
+The project uses separate environment files for development and Docker deployment:
+
+| File | Purpose | Used By |
+|------|---------|---------|
+| `backend/.env` | Local development | Backend when running `npm run start:dev` |
+| `backend/.env.example` | Template for development | Copy to `.env` for dev setup |
+| `frontend/.env` | Local development | Frontend when running `npm run dev` |
+| `frontend/.env.example` | Template for development | Copy to `.env` for dev setup |
+| `.env.docker` | Template for Docker deployment | Copy to `.env` for Docker |
+| `.env` (root) | Docker deployment | `docker-compose.yml` |
+
+### Development vs Docker Deployment
+
+| Setting | Development (`backend/.env`) | Docker (`.env` root) |
+|---------|------------------------------|----------------------|
+| DATABASE_URL | MongoDB Atlas connection | `mongodb://...@mongodb:27017/...` |
+| REDIS_URL | `redis://localhost:6379` | `redis://dragonfly:6379` |
+| AWS_S3_ENDPOINT | `http://localhost:9000` | `http://minio:9000` |
+| CORS Origins | `localhost:5173` | `localhost,localhost:80` |
+| NODE_ENV | `development` | `production` |
+
 ### Environment Variables Reference
 
 #### Required Variables
@@ -890,7 +957,74 @@ keys *
 
 ---
 
-## 11. Backup & Restore
+## 11. Database Seeding
+
+> **IMPORTANT:** Database seeding is for **DEVELOPMENT and TESTING purposes only**.
+> Do NOT seed production databases with test data.
+
+### Seed Test Data
+
+The project includes a comprehensive seed script that populates the database with test data including users, institutions, students, and more. Use this during development to have sample data for testing.
+
+#### Step 1: Run Seed Script
+
+```bash
+# From project root, run the seed script against MongoDB
+docker compose exec -T mongodb mongosh -u admin -p admin123 --authenticationDatabase admin < docker/seed-data.js
+```
+
+#### Step 2: Verify Seeding
+
+```bash
+# Check user count
+docker compose exec -T mongodb mongosh -u admin -p admin123 --authenticationDatabase admin --eval "
+db = db.getSiblingDB('cms');
+print('Total users: ' + db.User.countDocuments());
+print('Total students: ' + db.Student.countDocuments());
+print('Total institutions: ' + db.Institution.countDocuments());
+"
+```
+
+### Seed Data Summary
+
+| Entity | Count | Description |
+|--------|-------|-------------|
+| Users | 2,146 | All user roles |
+| Students | 1,584 | Students across institutions |
+| Institutions | 22 | Government Polytechnics |
+| Branches | 88 | 4 branches per institution |
+| Industries | 8 | Sample industries |
+| Internship Applications | 1,584 | Sample applications |
+
+### Test Login Credentials
+
+After seeding, use these credentials to test the application:
+
+| Role | Email | Password |
+|------|-------|----------|
+| **System Admin** | `nikhil97798@gmail.com` | `@Nikhil123kumar` |
+| **State Directorate** | `dtepunjab.internship@gmail.com` | `Dtepunjab@directorate` |
+| **Principal** | `principal@gpludhiana.edu.in` | `password@1234` |
+| **TPO** | `tpo@gpludhiana.edu.in` | `password@1234` |
+| **Teacher** | `amanpreet.cse.1@gpludhiana.edu.in` | `password@1234` |
+| **Student** | Any roll number + `@student.com` | `password@1234` |
+
+### Collection Naming Convention
+
+Prisma uses PascalCase for MongoDB collections. When working with MongoDB directly, use:
+
+| Prisma Model | MongoDB Collection |
+|--------------|-------------------|
+| User | `User` |
+| Student | `Student` |
+| Institution | `Institution` |
+| Branch | `Branch` |
+| Batch | `Batch` |
+| Semester | `Semester` |
+
+---
+
+## 12. Backup & Restore
 
 ### Automated Backups
 
@@ -972,7 +1106,7 @@ docker run --rm -it \
 
 ---
 
-## 12. Monitoring & Health Checks
+## 13. Monitoring & Health Checks
 
 ### Health Check Endpoints
 
@@ -1032,7 +1166,7 @@ docker compose -f docker-compose.prod.yml logs 2>&1 | grep -i error
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### Container Won't Start
 
@@ -1156,7 +1290,7 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 ---
 
-## 14. Security Checklist
+## 15. Security Checklist
 
 ### Before Going Live
 
@@ -1250,6 +1384,83 @@ docker compose -f docker-compose.prod.yml ps
 
 # SSL Renew
 /opt/cms/scripts/setup-ssl.sh your-domain.com your@email.com
+```
+
+---
+
+## 16. Known Issues & Workarounds
+
+### MongoDB Replica Set Not Configured
+
+**Issue:** Prisma with MongoDB requires a replica set for transactions. Without it, certain operations that use Prisma transactions will fail with:
+```
+Prisma needs to perform transactions, which requires your MongoDB server to be run as a replica set
+```
+
+**Workaround:** The application has been modified to handle this gracefully:
+- Login tracking is non-blocking and won't fail the login if the update fails
+- Most operations work without transactions
+
+**Full Fix:** Configure MongoDB as a replica set (requires additional setup):
+```bash
+# This requires keyFile authentication which is more complex
+# For development, the workaround above is sufficient
+```
+
+### Collection Naming Mismatch
+
+**Issue:** MongoDB collections must match Prisma's expected naming (PascalCase).
+
+**Affected Collections:**
+- `User` (not `users`)
+- `Student` (not `students`)
+- `Institution` (not `institutions`)
+- `Branch` (not `branches`)
+
+**Solution:** The seed script has been updated to use correct collection names. If you have old data, rename collections:
+```bash
+docker compose exec -T mongodb mongosh -u admin -p admin123 --authenticationDatabase admin --eval "
+db = db.getSiblingDB('cms');
+if (db.users.countDocuments() > 0) { db.users.renameCollection('User'); }
+if (db.students.countDocuments() > 0) { db.students.renameCollection('Student'); }
+if (db.institutions.countDocuments() > 0) { db.institutions.renameCollection('Institution'); }
+if (db.branches.countDocuments() > 0) { db.branches.renameCollection('Branch'); }
+"
+```
+
+### Password Hashes Must Use bcryptjs
+
+**Issue:** Seed scripts must use bcryptjs-compatible password hashes (starts with `$2b$`).
+
+**Solution:** Generate hashes in the backend container:
+```bash
+docker compose exec -T backend node -e "
+const bcrypt = require('bcryptjs');
+const hash = bcrypt.hashSync('your-password', 10);
+console.log(hash);
+"
+```
+
+### CORS Issues in Development
+
+**Issue:** Frontend can't reach backend due to CORS.
+
+**Solution:** Ensure `ALLOWED_ORIGINS` includes your frontend URL:
+```env
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:80,http://127.0.0.1
+```
+
+### Health Check Failures During Startup
+
+**Issue:** Services show unhealthy during initial startup.
+
+**Solution:** Wait 60-90 seconds after startup. If still unhealthy:
+```bash
+# Check specific service logs
+docker compose logs backend --tail=50
+
+# Restart the unhealthy service
+docker compose restart backend
 ```
 
 ---

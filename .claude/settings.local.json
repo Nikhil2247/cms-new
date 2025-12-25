@@ -52,7 +52,30 @@
       "Bash(cmd //c \"tasklist | findstr node\")",
       "Bash(cmd //c \"cd /d \"\"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\"\" && rmdir /s /q node_modules\\\\.prisma\")",
       "Bash(python:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell:*)",
+      "Bash(docker:*)",
+      "Bash(docker compose:*)",
+      "WebSearch",
+      "Bash(docker-compose down:*)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose restart:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2OTQ4ZTAzMmM3OTUxNmM2OGY5NjJiNDgiLCJlbWFpbCI6Im5pa2hpbDk3Nzk4QGdtYWlsLmNvbSIsInJvbGVzIjpbIlNZU1RFTV9BRE1JTiJdLCJpYXQiOjE3NjY2NzIzMDUsImV4cCI6MTc2NjY3MzIwNX0.fhEvsX3-_CS_7aG4BH7CEUvHWYmMC6leFDymfTEQlT0\")",
+      "Bash(winget install:*)",
+      "Bash(powershell.exe -Command \"winget install MongoDB.DatabaseTools --accept-package-agreements --accept-source-agreements\")",
+      "Bash(cmd.exe /c \"winget install MongoDB.DatabaseTools --accept-package-agreements --accept-source-agreements\")",
+      "Bash(cmd.exe /c \"where mongodump 2>nul || echo NOT_FOUND\")",
+      "Bash(ls -la \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\public\"\" 2>/dev/null || dir \"D:GithubNew foldercms-newfrontendpublic \")",
+      "Bash(cmd.exe /c \"mongodump --version\")",
+      "Bash(cmd.exe /c \"where mongodump\")",
+      "Bash(cmd.exe /c \"echo %PATH%\")",
+      "Bash(tr:*)",
+      "Bash(cmd.exe /c \"dir /s /b \"\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\*mongodump.exe\"\" 2>nul\")",
+      "Bash(cmd.exe /c \"dir /s /b \"\"C:\\\\Program Files\\\\MongoDB\"\" 2>nul\")",
+      "Bash(cmd.exe /c \"setx PATH \"\"%PATH%;C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\"\" /M\")"
     ]
   }
 }

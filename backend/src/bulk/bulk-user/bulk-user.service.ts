@@ -43,10 +43,28 @@ export class BulkUserService {
 
   /**
    * Validate user data before processing
+   * OPTIMIZED: Uses batch queries instead of N+1, O(n) duplicate detection with Maps
    */
   async validateUsers(users: BulkUserRowDto[], institutionId: string): Promise<BulkUserValidationResultDto> {
     const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
     const validRoles = ['FACULTY', 'MENTOR', 'PRINCIPAL'];
+
+    // OPTIMIZATION: Extract all emails for batch query
+    const allEmails = users
+      .map((u) => u.email?.toLowerCase())
+      .filter((email): email is string => !!email);
+
+    // OPTIMIZATION: Batch query to check existing emails
+    const existingUsers = await this.prisma.user.findMany({
+      where: {
+        email: { in: allEmails },
+      },
+      select: { email: true },
+    });
+    const existingEmailSet = new Set(existingUsers.map((u) => u.email.toLowerCase()));
+
+    // OPTIMIZATION: O(n) duplicate detection using Map instead of O(n²) findIndex
+    const emailFirstOccurrence = new Map<string, number>();
 
     for (let i = 0; i < users.length; i++) {
       const user = users[i];
@@ -94,26 +112,23 @@ export class BulkUserService {
         });
       }
 
-      // Check for duplicate email in the file
-      const duplicateInFile = users.findIndex(
-        (u, idx) => idx !== i && u.email?.toLowerCase() === user.email?.toLowerCase(),
-      );
-      if (duplicateInFile !== -1) {
-        errors.push({
-          row: rowNumber,
-          field: 'email',
-          value: user.email,
-          error: `Duplicate email in file (also found in row ${duplicateInFile + 2})`,
-        });
-      }
-
-      // Check if email already exists in database
+      // OPTIMIZATION: O(1) duplicate email check in file using Map
       if (user.email) {
-        const existingUser = await this.prisma.user.findUnique({
-          where: { email: user.email },
-        });
+        const emailLower = user.email.toLowerCase();
+        const firstRow = emailFirstOccurrence.get(emailLower);
+        if (firstRow !== undefined) {
+          errors.push({
+            row: rowNumber,
+            field: 'email',
+            value: user.email,
+            error: `Duplicate email in file (also found in row ${firstRow})`,
+          });
+        } else {
+          emailFirstOccurrence.set(emailLower, rowNumber);
+        }
 
-        if (existingUser) {
+        // OPTIMIZATION: O(1) check against pre-fetched existing emails
+        if (existingEmailSet.has(emailLower)) {
           errors.push({
             row: rowNumber,
             field: 'email',
@@ -124,11 +139,13 @@ export class BulkUserService {
       }
     }
 
+    const uniqueErrorRows = new Set(errors.map((e) => e.row)).size;
+
     return {
       isValid: errors.length === 0,
       totalRows: users.length,
-      validRows: users.length - errors.filter((e, i, arr) => arr.findIndex(err => err.row === e.row) === i).length,
-      invalidRows: errors.filter((e, i, arr) => arr.findIndex(err => err.row === e.row) === i).length,
+      validRows: users.length - uniqueErrorRows,
+      invalidRows: uniqueErrorRows,
       errors,
     };
   }

@@ -24,17 +24,12 @@ export const useAuth = () => {
       console.error('Logout API error:', error);
     }
 
-    // Dispatch Redux logout action (clears state and tokens via tokenStorage)
-    dispatch(logoutAction());
-
-    // Clear all localStorage items
+    // Clear all storage (localStorage, sessionStorage, cookies) except theme
+    // tokenStorage.clear() now handles everything comprehensively
     tokenStorage.clear();
-    localStorage.removeItem('persist:root');
-    localStorage.removeItem('loginResponse');
-    localStorage.removeItem('user_data');
 
-    // Clear sessionStorage
-    sessionStorage.clear();
+    // Dispatch Redux logout action
+    dispatch(logoutAction());
 
     // Hard redirect to fully reset React state
     window.location.href = '/login';

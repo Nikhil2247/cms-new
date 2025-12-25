@@ -12,7 +12,6 @@ import {
   Space,
   Row,
   Col,
-  Tag,
   Statistic,
 } from 'antd';
 import {
@@ -22,6 +21,7 @@ import {
   CloseCircleOutlined,
   WarningOutlined,
   UploadOutlined,
+  FileExcelOutlined
 } from '@ant-design/icons';
 import { bulkService } from '../../../services/bulk.service';
 
@@ -123,7 +123,7 @@ const BulkUpload = () => {
       message.success('Upload completed');
     } catch (error) {
       message.error(error.response?.data?.message || 'Upload failed');
-      setCurrentStep(1);
+      setCurrentStep(1); // Go back to review step on error
     } finally {
       setLoading(false);
     }
@@ -189,15 +189,15 @@ const BulkUpload = () => {
         if (fieldError) {
           return (
             <Space orientation="vertical" size={0}>
-              <Text type="danger">{text}</Text>
-              <Text type="danger" style={{ fontSize: '12px' }}>
+              <Text type="danger" className="font-medium">{text}</Text>
+              <Text type="danger" className="text-xs">
                 {fieldError.message}
               </Text>
             </Space>
           );
         }
 
-        return text;
+        return <Text className="text-text-secondary">{text}</Text>;
       },
     }));
   };
@@ -230,28 +230,41 @@ const BulkUpload = () => {
   ];
 
   return (
-    <div className="p-6">
-      <Card className="shadow-sm border-slate-200">
-        <Title level={2} className="!text-slate-900">Bulk Institution Upload</Title>
-        <Paragraph className="text-slate-600">
-          Upload multiple institutions at once using Excel or CSV files. Follow the steps below to validate and import
-          your data.
-        </Paragraph>
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+      <Card className="max-w-[1200px] mx-auto rounded-3xl border-border shadow-soft" bordered={false}>
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-primary/10 p-2 rounded-lg text-primary">
+              <FileExcelOutlined className="text-xl" />
+            </div>
+            <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
+              Bulk Institution Upload
+            </Title>
+          </div>
+          <Paragraph className="text-text-secondary">
+            Upload multiple institutions at once using Excel or CSV files. Follow the steps below to validate and import your data.
+          </Paragraph>
+        </div>
 
-        <Button
-          type="primary"
-          icon={<DownloadOutlined />}
-          onClick={handleDownloadTemplate}
-          style={{ marginBottom: '24px' }}
-        >
-          Download Template
-        </Button>
+        <div className="flex justify-end mb-8">
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={handleDownloadTemplate}
+            className="rounded-lg h-9 border-border hover:border-primary hover:text-primary"
+          >
+            Download Template
+          </Button>
+        </div>
 
-        <Steps current={currentStep} items={steps} style={{ marginBottom: '32px' }} />
+        <Steps 
+          current={currentStep} 
+          items={steps} 
+          className="mb-10 max-w-4xl mx-auto" 
+        />
 
         {/* Step 0: Upload File */}
         {currentStep === 0 && (
-          <Card>
+          <div className="max-w-2xl mx-auto animate-fade-in">
             <Dragger
               name="file"
               multiple={false}
@@ -259,60 +272,73 @@ const BulkUpload = () => {
               onChange={handleFileChange}
               accept=".csv,.xlsx,.xls"
               maxCount={1}
+              className="bg-surface hover:bg-surface-hover border-2 border-dashed border-border rounded-2xl p-8"
             >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined />
+              <p className="ant-upload-drag-icon text-primary mb-4">
+                <InboxOutlined className="text-5xl" />
               </p>
-              <p className="ant-upload-text">Click or drag file to this area to upload</p>
-              <p className="ant-upload-hint">
+              <p className="ant-upload-text text-lg font-medium text-text-primary mb-2">
+                Click or drag file to this area to upload
+              </p>
+              <p className="ant-upload-hint text-text-tertiary">
                 Support for CSV and Excel files only. Maximum file size is 10MB.
               </p>
             </Dragger>
 
             {file && (
               <Alert
-                title="File Selected"
+                message="File Selected"
                 description={`${file.name} (${(file.size / 1024).toFixed(2)} KB)`}
                 type="success"
                 showIcon
-                style={{ marginTop: '16px' }}
+                className="mt-6 rounded-xl border-success/20 bg-success/5"
               />
             )}
 
-            <div style={{ marginTop: '24px', textAlign: 'right' }}>
-              <Button type="primary" onClick={handleNext} disabled={!file} loading={loading}>
+            <div className="mt-8 text-right">
+              <Button 
+                type="primary" 
+                onClick={handleNext} 
+                disabled={!file} 
+                loading={loading}
+                size="large"
+                className="rounded-xl px-8 font-bold shadow-lg shadow-primary/20"
+              >
                 Validate File
               </Button>
             </div>
-          </Card>
+          </div>
         )}
 
         {/* Step 1: Validate Results */}
         {currentStep === 1 && validationResult && (
-          <Card>
-            <Row gutter={16} style={{ marginBottom: '24px' }}>
-              <Col span={8}>
-                <Card>
+          <div className="animate-fade-in">
+            <Row gutter={[16, 16]} className="mb-8">
+              <Col xs={24} md={8}>
+                <Card className="rounded-xl border-border bg-surface shadow-sm">
                   <Statistic
-                    title="Total Rows"
+                    title={<span className="text-text-tertiary font-medium">Total Rows</span>}
                     value={validationResult.total || 0}
+                    valueStyle={{ fontWeight: 'bold', color: 'var(--color-text-primary)' }}
                   />
                 </Card>
               </Col>
-              <Col span={8}>
-                <Card>
+              <Col xs={24} md={8}>
+                <Card className="rounded-xl border-border bg-surface shadow-sm">
                   <Statistic
-                    title="Valid Rows"
+                    title={<span className="text-text-tertiary font-medium">Valid Rows</span>}
                     value={validationResult.valid || 0}
+                    valueStyle={{ fontWeight: 'bold', color: 'var(--ant-success-color)' }}
                     prefix={<CheckCircleOutlined />}
                   />
                 </Card>
               </Col>
-              <Col span={8}>
-                <Card>
+              <Col xs={24} md={8}>
+                <Card className="rounded-xl border-border bg-surface shadow-sm">
                   <Statistic
-                    title="Error Rows"
+                    title={<span className="text-text-tertiary font-medium">Error Rows</span>}
                     value={validationResult.errors?.length || 0}
+                    valueStyle={{ fontWeight: 'bold', color: 'var(--ant-error-color)' }}
                     prefix={<CloseCircleOutlined />}
                   />
                 </Card>
@@ -321,84 +347,95 @@ const BulkUpload = () => {
 
             {validationResult.errors && validationResult.errors.length > 0 && (
               <Alert
-                title="Validation Errors Found"
-                description={`${validationResult.errors.length} error(s) found in the uploaded file. Please review the errors below.`}
+                message="Validation Errors Found"
+                description={`${validationResult.errors.length} error(s) found. Please fix these issues in your file and re-upload, or download the error report.`}
                 type="error"
                 showIcon
                 action={
-                  <Button size="small" danger onClick={handleDownloadErrors}>
+                  <Button size="small" danger ghost onClick={handleDownloadErrors} className="font-medium">
                     Download Errors
                   </Button>
                 }
-                style={{ marginBottom: '16px' }}
+                className="mb-6 rounded-xl border-error/20 bg-error/5"
               />
             )}
 
-            <Title level={4}>Data Preview</Title>
-            <Table
-              columns={getPreviewColumns()}
-              dataSource={getPreviewData()}
-              scroll={{ x: true }}
-              pagination={{ pageSize: 10 }}
-            />
-
-            <div style={{ marginTop: '24px', textAlign: 'right' }}>
-              <Space>
-                <Button onClick={handleBack}>Back</Button>
-                <Button
-                  type="primary"
-                  onClick={handleNext}
-                  disabled={validationResult.errors && validationResult.errors.length > 0}
-                >
-                  Continue to Upload
-                </Button>
-              </Space>
+            <div className="mb-4">
+              <Title level={4} className="!text-lg text-text-primary">Data Preview</Title>
             </div>
-          </Card>
+            
+            <div className="border border-border rounded-xl overflow-hidden mb-8">
+              <Table
+                columns={getPreviewColumns()}
+                dataSource={getPreviewData()}
+                scroll={{ x: true }}
+                pagination={{ pageSize: 5 }}
+                size="small"
+              />
+            </div>
+
+            <div className="flex justify-between">
+              <Button onClick={handleBack} className="rounded-xl h-10 px-6">Back</Button>
+              <Button
+                type="primary"
+                onClick={handleNext}
+                disabled={validationResult.errors && validationResult.errors.length > 0}
+                className="rounded-xl h-10 px-6 font-bold shadow-lg shadow-primary/20"
+              >
+                Continue to Upload
+              </Button>
+            </div>
+          </div>
         )}
 
         {/* Step 2: Upload Progress */}
         {currentStep === 2 && (
-          <Card>
-            <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-              <Title level={3}>Uploading Institutions...</Title>
-              <Progress
-                percent={uploadProgress}
-                status={uploadProgress === 100 ? 'success' : 'active'}
-                style={{ marginTop: '24px' }}
-              />
-              <Paragraph type="secondary" style={{ marginTop: '16px' }}>
-                Please wait while we process your file. Do not close this window.
-              </Paragraph>
-            </div>
-          </Card>
+          <div className="text-center py-12 animate-fade-in max-w-xl mx-auto">
+            <Title level={3} className="text-text-primary mb-8">Uploading Institutions...</Title>
+            <Progress
+              percent={uploadProgress}
+              status={uploadProgress === 100 ? 'success' : 'active'}
+              strokeColor={{ '0%': 'var(--color-primary)', '100%': 'var(--color-secondary)' }}
+              strokeWidth={12}
+            />
+            <Paragraph className="text-text-secondary mt-6 text-lg">
+              Please wait while we process your file. Do not close this window.
+            </Paragraph>
+          </div>
         )}
 
         {/* Step 3: Complete */}
         {currentStep === 3 && uploadResult && (
-          <Card>
-            <div style={{ textAlign: 'center', padding: '24px' }}>
-              <CheckCircleOutlined className="text-green-500" style={{ fontSize: '64px' }} />
-              <Title level={2} style={{ marginTop: '16px' }}>
+          <div className="animate-fade-in">
+            <div className="text-center py-8">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/10 text-success mb-6">
+                <CheckCircleOutlined className="text-5xl" />
+              </div>
+              <Title level={2} className="!mb-2 text-text-primary">
                 Upload Complete!
               </Title>
+              <Paragraph className="text-text-secondary text-lg">
+                Your data has been successfully processed.
+              </Paragraph>
             </div>
 
-            <Row gutter={16} style={{ marginTop: '24px' }}>
+            <Row gutter={[16, 16]} className="mt-6 mb-8 max-w-2xl mx-auto">
               <Col span={12}>
-                <Card>
+                <Card className="rounded-xl border-border bg-surface shadow-sm text-center">
                   <Statistic
-                    title="Successfully Created"
+                    title={<span className="text-text-tertiary">Successfully Created</span>}
                     value={uploadResult.success || 0}
+                    valueStyle={{ color: 'var(--ant-success-color)', fontWeight: 'bold' }}
                     prefix={<CheckCircleOutlined />}
                   />
                 </Card>
               </Col>
               <Col span={12}>
-                <Card>
+                <Card className="rounded-xl border-border bg-surface shadow-sm text-center">
                   <Statistic
-                    title="Failed"
+                    title={<span className="text-text-tertiary">Failed</span>}
                     value={uploadResult.failed || 0}
+                    valueStyle={{ color: 'var(--ant-error-color)', fontWeight: 'bold' }}
                     prefix={<CloseCircleOutlined />}
                   />
                 </Card>
@@ -407,11 +444,10 @@ const BulkUpload = () => {
 
             {uploadResult.errors && uploadResult.errors.length > 0 && (
               <Alert
-                title="Some institutions failed to upload"
+                message="Some institutions failed to upload"
                 description={
-                  <div>
-                    <Paragraph>The following errors occurred:</Paragraph>
-                    <ul>
+                  <div className="mt-2">
+                    <ul className="list-disc pl-4 space-y-1 text-sm">
                       {uploadResult.errors.slice(0, 5).map((err, idx) => (
                         <li key={idx}>
                           Row {err.row}: {err.message}
@@ -419,22 +455,29 @@ const BulkUpload = () => {
                       ))}
                     </ul>
                     {uploadResult.errors.length > 5 && (
-                      <Text type="secondary">...and {uploadResult.errors.length - 5} more errors</Text>
+                      <Text className="text-text-tertiary text-xs mt-2 block">
+                        ...and {uploadResult.errors.length - 5} more errors
+                      </Text>
                     )}
                   </div>
                 }
                 type="warning"
                 showIcon
-                style={{ marginTop: '24px' }}
+                className="mb-8 rounded-xl border-warning/20 bg-warning/5 max-w-3xl mx-auto"
               />
             )}
 
-            <div style={{ marginTop: '24px', textAlign: 'center' }}>
-              <Button type="primary" size="large" onClick={handleReset}>
+            <div className="text-center">
+              <Button 
+                type="primary" 
+                size="large" 
+                onClick={handleReset}
+                className="rounded-xl px-8 font-bold shadow-lg shadow-primary/20"
+              >
                 Upload Another File
               </Button>
             </div>
-          </Card>
+          </div>
         )}
       </Card>
     </div>

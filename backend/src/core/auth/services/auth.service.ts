@@ -55,8 +55,10 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Update login tracking
-    await this.updateLoginTracking(user.id);
+    // Update login tracking (non-blocking - don't fail login if this fails)
+    this.updateLoginTracking(user.id).catch((err) => {
+      this.logger.warn(`Failed to update login tracking for user ${user.id}: ${err.message}`);
+    });
 
     // Flatten institution data for easier frontend access
     const { password: _, Institution, ...result } = user;

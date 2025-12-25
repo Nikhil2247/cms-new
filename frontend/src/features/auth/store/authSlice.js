@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../services/auth.service';
 import { tokenStorage } from '../../../utils/tokenManager';
+import { RESET_STORE } from '../../../app/store/actions';
 
 const extractToken = (resp) => resp?.access_token || resp?.accessToken || resp?.token || null;
 const extractRefreshToken = (resp) => resp?.refresh_token || resp?.refreshToken || null;
@@ -85,6 +86,30 @@ export const getCurrentUser = createAsyncThunk(
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch user');
     }
+  }
+);
+
+// Logout thunk - clears everything and redirects to login
+export const logoutUser = createAsyncThunk(
+  'auth/logoutUser',
+  async (_, { dispatch }) => {
+    try {
+      // Try to call backend logout (optional - may fail if token expired)
+      await authService.logout();
+    } catch (error) {
+      // Ignore logout API errors - we still want to clear local state
+    }
+
+    // Clear all storage (preserves theme)
+    tokenStorage.clear();
+
+    // Dispatch reset store action to clear all Redux state
+    dispatch({ type: RESET_STORE });
+
+    // Redirect to login page
+    window.location.href = '/login';
+
+    return null;
   }
 );
 

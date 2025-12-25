@@ -6,6 +6,7 @@ import { API_ENDPOINTS } from '../utils/constants';
 import toast from 'react-hot-toast';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const WS_NAMESPACE = '/ws'; // Unified WebSocket namespace
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState([]);
@@ -43,8 +44,8 @@ export const useNotifications = () => {
       return;
     }
 
-    // Create socket connection with JWT authentication
-    const socket = io(`${SOCKET_URL}/notifications`, {
+    // Create socket connection with JWT authentication to unified WebSocket
+    const socket = io(`${SOCKET_URL}${WS_NAMESPACE}`, {
       auth: { token },
       query: { token },
       transports: ['websocket', 'polling'],
@@ -127,7 +128,7 @@ export const useNotifications = () => {
   // Mark notification as read
   const markAsRead = useCallback(async (notificationId) => {
     try {
-      await apiClient.patch(`${API_ENDPOINTS.NOTIFICATIONS}/${notificationId}/read`);
+      await apiClient.put(`${API_ENDPOINTS.NOTIFICATIONS}/${notificationId}/read`);
       setNotifications((prev) =>
         prev.map((notif) =>
           notif.id === notificationId ? { ...notif, read: true } : notif
@@ -147,7 +148,7 @@ export const useNotifications = () => {
   // Mark all as read
   const markAllAsRead = useCallback(async () => {
     try {
-      await apiClient.patch(`${API_ENDPOINTS.NOTIFICATIONS}/read-all`);
+      await apiClient.put(`${API_ENDPOINTS.NOTIFICATIONS}/read-all`);
       setNotifications((prev) =>
         prev.map((notif) => ({ ...notif, read: true }))
       );
@@ -174,11 +175,12 @@ export const useNotifications = () => {
   // Clear all notifications
   const clearAll = useCallback(async () => {
     try {
-      await apiClient.delete(`${API_ENDPOINTS.NOTIFICATIONS}/clear-all`);
+      const response = await apiClient.delete(`${API_ENDPOINTS.NOTIFICATIONS}/clear-all`);
       setNotifications([]);
       setUnreadCount(0);
-      toast.success('All notifications cleared');
+      toast.success(response.message || 'All notifications cleared');
     } catch (error) {
+      console.error('Error clearing notifications:', error);
       toast.error('Failed to clear notifications');
     }
   }, []);

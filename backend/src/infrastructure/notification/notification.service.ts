@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Notification as PrismaNotification, Prisma, NotificationSettings } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
-import { NotificationGateway } from './notification.gateway';
+import { WebSocketService } from '../websocket/websocket.service';
+import { WebSocketEvent, NotificationPayload } from '../websocket/dto';
 
 interface NotificationOptions {
   page?: number;
@@ -60,8 +61,7 @@ export class NotificationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Inject(forwardRef(() => NotificationGateway))
-    private readonly gateway: NotificationGateway,
+    private readonly wsService: WebSocketService,
   ) {}
 
   /**
@@ -124,21 +124,21 @@ export class NotificationService {
       this.logger.log(`Notification created for user ${userId}`);
 
       // Emit notification via WebSocket for real-time delivery
-      if (this.gateway) {
-        this.gateway.emitToUser(userId, 'notification', {
-          id: savedNotification.id,
-          title: savedNotification.title,
-          body: savedNotification.body,
-          type: savedNotification.type,
-          data: savedNotification.data,
-          read: savedNotification.read,
-          createdAt: savedNotification.createdAt,
-        });
+      const payload: NotificationPayload = {
+        id: savedNotification.id,
+        title: savedNotification.title,
+        body: savedNotification.body,
+        type: savedNotification.type,
+        data: savedNotification.data,
+        read: savedNotification.read,
+        createdAt: savedNotification.createdAt,
+      };
 
-        // Also emit updated unread count
-        const unreadCount = await this.getUnreadCount(userId);
-        this.gateway.emitToUser(userId, 'unreadCount', { count: unreadCount });
-      }
+      this.wsService.sendNotificationToUser(userId, payload);
+
+      // Also emit updated unread count
+      const unreadCount = await this.getUnreadCount(userId);
+      this.wsService.sendUnreadCount(userId, unreadCount);
 
       return savedNotification;
     } catch (error) {
@@ -171,20 +171,20 @@ export class NotificationService {
       this.logger.log(`Forced notification created for user ${userId}`);
 
       // Emit notification via WebSocket for real-time delivery
-      if (this.gateway) {
-        this.gateway.emitToUser(userId, 'notification', {
-          id: savedNotification.id,
-          title: savedNotification.title,
-          body: savedNotification.body,
-          type: savedNotification.type,
-          data: savedNotification.data,
-          read: savedNotification.read,
-          createdAt: savedNotification.createdAt,
-        });
+      const payload: NotificationPayload = {
+        id: savedNotification.id,
+        title: savedNotification.title,
+        body: savedNotification.body,
+        type: savedNotification.type,
+        data: savedNotification.data,
+        read: savedNotification.read,
+        createdAt: savedNotification.createdAt,
+      };
 
-        const unreadCount = await this.getUnreadCount(userId);
-        this.gateway.emitToUser(userId, 'unreadCount', { count: unreadCount });
-      }
+      this.wsService.sendNotificationToUser(userId, payload);
+
+      const unreadCount = await this.getUnreadCount(userId);
+      this.wsService.sendUnreadCount(userId, unreadCount);
 
       return savedNotification;
     } catch (error) {
@@ -279,10 +279,20 @@ export class NotificationService {
   }
 
   /**
-   * Delete a notification
+   * Delete a notification (with optional user verification)
    */
-  async deleteNotification(id: string): Promise<void> {
+  async deleteNotification(id: string, userId?: string): Promise<void> {
     try {
+      // If userId provided, verify ownership
+      if (userId) {
+        const notification = await this.prisma.notification.findFirst({
+          where: { id, userId },
+        });
+        if (!notification) {
+          throw new NotFoundException(`Notification with ID ${id} not found or access denied`);
+        }
+      }
+
       await this.prisma.notification.delete({ where: { id } });
 
       this.logger.log(`Notification ${id} deleted`);

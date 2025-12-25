@@ -69,20 +69,9 @@ export const useTokenMonitor = (options = {}) => {
       console.error('Logout API error:', error);
     }
 
-    // Clear all auth tokens
+    // Clear all storage (localStorage, sessionStorage, cookies) except theme
+    // tokenStorage.clear() now handles everything comprehensively
     tokenStorage.clear();
-
-    // Clear all localStorage items related to auth/session
-    localStorage.removeItem('loginResponse');
-    localStorage.removeItem('persist:root');
-    localStorage.removeItem('user_data');
-    localStorage.removeItem('token');
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    localStorage.removeItem('auth_token');
-
-    // Clear sessionStorage
-    sessionStorage.clear();
 
     // Hard redirect to login - this fully resets React state and cache
     window.location.href = '/login';

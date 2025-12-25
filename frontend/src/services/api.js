@@ -15,7 +15,8 @@ const getBaseURL = () => {
   const baseUrl = raw
     .replace('http://localhost', 'http://127.0.0.1')
     .replace('https://localhost', 'https://127.0.0.1');
-  return `${baseUrl}/api`;
+  // Don't add /api if it's already in the URL (e.g., from Docker config)
+  return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
 };
 
 const API = axios.create({
@@ -60,11 +61,8 @@ const refreshAuthToken = async () => {
 
 // Logout and redirect - comprehensive cleanup
 const handleLogout = (message) => {
-  // Clear all tokens (also clears persist:root)
+  // Clear all storage (localStorage, sessionStorage, cookies) except theme
   tokenStorage.clear();
-
-  // Clear sessionStorage
-  sessionStorage.clear();
 
   if (message) {
     toast.error(message);
@@ -128,6 +126,12 @@ const unwrapResponse = (data) => {
   return data;
 };
 
+// Check if request is for auth endpoints (login, refresh, etc.)
+const isAuthEndpoint = (url) => {
+  const authPaths = ['/auth/login', '/auth/refresh', '/auth/student-login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+  return authPaths.some(path => url?.includes(path));
+};
+
 // Response interceptor
 API.interceptors.response.use(
   (response) => {
@@ -137,6 +141,11 @@ API.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
+
+    // Skip token refresh logic for auth endpoints - let them handle their own errors
+    if (isAuthEndpoint(originalRequest?.url)) {
+      return Promise.reject(error);
+    }
 
     // Handle 401 - attempt token refresh once
     if (error.response?.status === 401 && !originalRequest._retry) {

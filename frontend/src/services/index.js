@@ -12,6 +12,7 @@ export { default as FacultyService } from './faculty.service';
 export { default as PrincipalService } from './principal.service';
 export { default as IndustryService } from './industry.service';
 export { default as StateService } from './state.service';
+export { default as AdminService, adminService } from './admin.service';
 
 // Shared Services
 export { default as NotificationService } from './notification.service';

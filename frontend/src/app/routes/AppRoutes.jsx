@@ -14,6 +14,7 @@ const ROLES = {
   FACULTY: ['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR'],
   STUDENT: 'STUDENT',
   INDUSTRY: ['INDUSTRY', 'INDUSTRY_PARTNER', 'INDUSTRY_SUPERVISOR'],
+  SYSTEM_ADMIN: 'SYSTEM_ADMIN',
 };
 
 // All dashboard-accessible roles
@@ -23,6 +24,7 @@ const ALL_ROLES = [
   ...ROLES.FACULTY,
   ROLES.STUDENT,
   ...ROLES.INDUSTRY,
+  ROLES.SYSTEM_ADMIN,
 ];
 
 // Auth
@@ -36,7 +38,7 @@ import StudentLogin from '../../features/auth/components/StudentLogin';
 
 // State
 import StateDashboard from '../../features/state/dashboard/StateDashboard';
-import InstitutionList from '../../features/state/institutions/InstitutionList';
+import InstituteManagement from '../../features/state/institutions/InstituteManagement';
 import InstitutionBulkUpload from '../../features/state/institutions/BulkUpload';
 import { InstitutionOverview } from '../../features/state/overview';
 import PrincipalList from '../../features/state/principals/PrincipalList';
@@ -94,6 +96,9 @@ import IndustryDashboard from '../../features/industry/dashboard/IndustryDashboa
 import InternshipPostingList from '../../features/industry/postings/InternshipPostingList';
 import ApplicationsList from '../../features/industry/applications/ApplicationsList';
 import IndustryProfile from '../../features/industry/profile/IndustryProfile';
+
+// Admin
+import { AdminDashboard } from '../../features/admin';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -168,7 +173,7 @@ const AppRoutes = () => {
           path="institutions"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
-              <InstitutionList />
+              <InstituteManagement />
             </ProtectedRoute>
           }
         />
@@ -508,6 +513,16 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         />
+
+        {/* System Admin Routes */}
+        <Route
+          path="admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.SYSTEM_ADMIN]}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
       </Route>
 
       {/* Unauthorized Page */}
@@ -537,6 +552,10 @@ const DashboardRouter = () => {
   const { user } = useSelector((state) => state.auth);
   const role = user?.role;
 
+  // System Admin
+  if (role === ROLES.SYSTEM_ADMIN) {
+    return <AdminDashboard />;
+  }
   // State Directorate
   if (role === ROLES.STATE) {
     return <StateDashboard />;

@@ -1,1078 +1,420 @@
-import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
   Table,
   Button,
-  Modal,
-  Form,
   Input,
-  Select,
-  Space,
-  Popconfirm,
-  message,
-  Tag,
   Typography,
-  Row,
-  Col,
-  Statistic,
+  Tag,
+  Space,
+  Modal,
+  message,
   Tooltip,
-  Spin,
-  Badge,
-  Divider,
-  Checkbox,
-  Alert,
-} from "antd";
+  Alert
+} from 'antd';
 import {
+  BankOutlined,
+  SearchOutlined,
+  ReloadOutlined,
   PlusOutlined,
   EditOutlined,
   DeleteOutlined,
-  BankOutlined,
-  EnvironmentOutlined,
-  PhoneOutlined,
-  MailOutlined,
-  GlobalOutlined,
-  CalendarOutlined,
-  TeamOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
-  SearchOutlined,
-  ReloadOutlined,
-  UploadOutlined,
-  EyeOutlined,
-} from "@ant-design/icons";
-import { toast } from "react-hot-toast";
+  GlobalOutlined,
+  TeamOutlined,
+  SafetyCertificateOutlined
+} from '@ant-design/icons';
+import { useDebounce } from 'use-debounce';
+import dayjs from 'dayjs';
+
+import InstitutionModal from './InstitutionModal';
 import {
-  fetchInstitutionAsync,
-  createInstitutionAsync,
-  updateInstitutionAsync,
-  deleteInstitutionAsync,
-  createPrincipalAsync,
+  fetchInstitutions,
+  deleteInstitution,
   selectInstitutions,
   selectInstitutionsLoading,
-  selectInstitutionsCreating,
-  selectInstitutionsUpdating,
-  selectInstitutionsDeleting,
-  markInstitutionDataStale,
-  optimisticallyAddInstitution,
-  optimisticallyUpdateInstitution,
-  optimisticallyDeleteInstitution,
-  rollbackInstitutionOperation,
-} from "../../../store/slices/institutionSlice";
-import { useDebounce } from "../../../hooks/useDebounce";
+  selectInstitutionsPagination,
+  fetchDashboardStats,
+  selectDashboardStats
+} from '../store/stateSlice';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-const { TextArea } = Input;
+const { Title, Paragraph, Text } = Typography;
 
 const InstituteManagement = () => {
   const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const institutes = useSelector(selectInstitutions);
-  const loadingFromRedux = useSelector(selectInstitutionsLoading);
-  const creating = useSelector(selectInstitutionsCreating);
-  const updating = useSelector(selectInstitutionsUpdating);
-  const deleting = useSelector(selectInstitutionsDeleting);
+  
+  // Redux State
+  const institutions = useSelector(selectInstitutions);
+  const loading = useSelector(selectInstitutionsLoading);
+  const pagination = useSelector(selectInstitutionsPagination);
+  const dashboardStats = useSelector(selectDashboardStats);
 
+  // Local State
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearch] = useDebounce(searchText, 500);
   const [modalVisible, setModalVisible] = useState(false);
-  const [editingInstitute, setEditingInstitute] = useState(null);
-  const [form] = Form.useForm();
-  const [searchText, setSearchText] = useState("");
-  const debouncedSearchText = useDebounce(searchText, 300);
-  const [filteredInstitutes, setFilteredInstitutes] = useState([]);
-  const [stats, setStats] = useState({
-    total: 0,
-    active: 0,
-    inactive: 0,
-    autonomous: 0,
-  });
-  const [createPrincipal, setCreatePrincipal] = useState(false);
+  const [editingInstituteId, setEditingInstituteId] = useState(null);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [instituteToDelete, setInstituteToDelete] = useState(null);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  // Pagination state
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pageSize: 10,
-    total: 0,
-  });
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
-  // Institution types
-  const institutionTypes = [
-    "POLYTECHNIC",
-    "ENGINEERING_COLLEGE",
-    "UNIVERSITY",
-    "DEGREE_COLLEGE",
-    "ITI",
-    "SKILL_CENTER",
-  ];
+  // Initial Fetch
+  useEffect(() => {
+    fetchData();
+    dispatch(fetchDashboardStats());
+  }, [dispatch, currentPage, pageSize, debouncedSearch]);
 
-  // Fetch institutes using Redux with cache invalidation
-  const fetchInstitutes = async () => {
-    try {
-      // Mark data as stale to force refetch
-      dispatch(markInstitutionDataStale());
-      await dispatch(fetchInstitutionAsync()).unwrap();
-      toast.success("Institutes loaded successfully");
-    } catch (error) {
-      console.error("Error fetching institutes:", error);
-      toast.error("Failed to load institutes");
-    }
+  const fetchData = (force = false) => {
+    dispatch(fetchInstitutions({
+      page: currentPage,
+      limit: pageSize,
+      search: debouncedSearch,
+      forceRefresh: force
+    }));
   };
 
-  // Refresh institutes - mark cache as stale and refetch
-  const handleRefresh = async () => {
-    try {
-      dispatch(markInstitutionDataStale());
-      await dispatch(fetchInstitutionAsync()).unwrap();
-      toast.success("Institutes refreshed successfully");
-    } catch (error) {
-      console.error("Error refreshing institutes:", error);
-      toast.error("Failed to refresh institutes");
-    }
+  const handleRefresh = () => {
+    fetchData(true);
+    dispatch(fetchDashboardStats({ forceRefresh: true }));
   };
 
-  useEffect(() => {
-    dispatch(fetchInstitutionAsync());
-  }, [dispatch]);
-
-  // Update filtered institutes and stats when institutes or debounced search changes
-  useEffect(() => {
-    if (institutes && institutes.length > 0) {
-      // Apply global filter to exclude 'SD' institutes
-      let filteredData = institutes.filter(inst => inst.shortName !== 'SD');
-
-      // Apply search filter with debounced value
-      if (debouncedSearchText) {
-        filteredData = filteredData.filter(
-          (inst) =>
-            inst.name?.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
-            inst.code?.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
-            inst.city?.toLowerCase().includes(debouncedSearchText.toLowerCase()) ||
-            inst.state?.toLowerCase().includes(debouncedSearchText.toLowerCase())
-        );
-      }
-
-      setFilteredInstitutes(filteredData);
-
-      // Update pagination total
-      setPagination(prev => ({
-        ...prev,
-        total: filteredData.length,
-        current: 1, // Reset to first page when filter changes
-      }));
-
-      // Calculate stats using the filtered data
-      setStats({
-        total: filteredData.length,
-        active: filteredData.filter((inst) => inst.isActive).length,
-        inactive: filteredData.filter((inst) => !inst.isActive).length,
-        autonomous: filteredData.filter((inst) => inst.autonomousStatus).length,
-      });
-    }
-  }, [institutes, debouncedSearchText]);
-
-  // Handle create/edit modal
-  const showModal = (institute = null) => {
-    setEditingInstitute(institute);
-    setCreatePrincipal(false); // Reset principal creation checkbox
-    if (institute) {
-      form.setFieldsValue({
-        ...institute,
-        autonomousStatus: institute.autonomousStatus ? "true" : "false",
-        isActive: institute.isActive ? "true" : "false",
-      });
-    } else {
-      form.resetFields();
-    }
+  // Modal Handlers
+  const openCreateModal = () => {
+    setEditingInstituteId(null);
     setModalVisible(true);
   };
 
-  // Handle form submission with optimistic updates
-  const handleSubmit = async (values) => {
-    const formattedData = {
-      ...values,
-      autonomousStatus: values.autonomousStatus === "true",
-      isActive: values.isActive === "true",
-      establishedYear: values.establishedYear
-        ? parseInt(values.establishedYear)
-        : null,
-      totalStudentSeats: values.totalStudentSeats
-        ? parseInt(values.totalStudentSeats)
-        : null,
-      totalStaffSeats: values.totalStaffSeats
-        ? parseInt(values.totalStaffSeats)
-        : null,
-    };
-
-    let institutionData;
-    let principalName, principalEmail, principalPhone, principalDesignation;
-
-    // Only remove principal fields if we're creating a new institute with principal
-    if (!editingInstitute && createPrincipal) {
-      const {
-        principalName: pName,
-        principalPhone: pPhone,
-        principalDesignation: pDesignation,
-        ...restData
-      } = formattedData;
-
-      principalName = pName;
-      principalEmail = formattedData.contactEmail; // Use college email for principal
-      principalPhone = pPhone;
-      principalDesignation = pDesignation;
-      institutionData = restData;
-    } else {
-      // When editing or creating without principal, use all data
-      institutionData = formattedData;
-    }
-
-    // Save snapshot for rollback
-    const snapshot = { list: [...institutes] };
-
-    try {
-      let institutionId;
-
-      if (editingInstitute) {
-        // Optimistic update for edit
-        dispatch(optimisticallyUpdateInstitution({ id: editingInstitute.id, data: institutionData }));
-
-        // Make actual API call through Redux
-        await dispatch(updateInstitutionAsync({ id: editingInstitute.id, data: institutionData })).unwrap();
-        toast.success("Institute updated successfully!");
-        institutionId = editingInstitute.id;
-      } else {
-        // Optimistic add for create
-        dispatch(optimisticallyAddInstitution(institutionData));
-
-        // Make actual API call through Redux
-        const response = await dispatch(createInstitutionAsync(institutionData)).unwrap();
-        toast.success("Institute created successfully!");
-        institutionId = response.id;
-      }
-
-      // Create principal if checkbox is checked and we have the required fields
-      if (createPrincipal && principalName && principalEmail && principalPhone) {
-        try {
-          const principalData = {
-            name: principalName,
-            email: principalEmail,
-            phoneNo: principalPhone,
-            designation: principalDesignation || "Principal",
-            institutionId: institutionId,
-          };
-
-          const principalResponse = await dispatch(createPrincipalAsync(principalData)).unwrap();
-
-          if (principalResponse.success) {
-            toast.success(
-              `Principal created successfully! Password: ${principalResponse.data.password}`,
-              {
-                duration: 8000,
-              }
-            );
-
-            toast.success(
-              `Credentials sent to ${principalEmail}`,
-              {
-                duration: 5000,
-              }
-            );
-          }
-        } catch (principalError) {
-          console.error("Error creating principal:", principalError);
-          toast.error(
-            principalError || "Failed to create principal, but institute was created successfully"
-          );
-        }
-      }
-
-      setModalVisible(false);
-      form.resetFields();
-      setCreatePrincipal(false);
-    } catch (error) {
-      // Rollback on error
-      dispatch(rollbackInstitutionOperation({ snapshot }));
-      console.error("Error saving institute:", error);
-      toast.error(error || "Failed to save institute");
-    }
+  const openEditModal = (id) => {
+    setEditingInstituteId(id);
+    setModalVisible(true);
   };
 
-  // Show delete confirmation modal
-  const showDeleteModal = (institute) => {
-    setInstituteToDelete(institute);
-    setDeleteConfirmText("");
+  const handleDeleteClick = (record) => {
+    setInstituteToDelete(record);
+    setDeleteConfirmText('');
     setDeleteModalVisible(true);
   };
 
-  // Handle delete after confirmation with optimistic updates
-  const handleDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!instituteToDelete) return;
-
-    // Save snapshot for rollback
-    const snapshot = { list: [...institutes] };
-
-    // Optimistic delete
-    dispatch(optimisticallyDeleteInstitution(instituteToDelete.id));
-
+    
+    setDeleting(true);
     try {
-      await dispatch(deleteInstitutionAsync(instituteToDelete.id)).unwrap();
-      toast.success("Institute deleted successfully!");
+      await dispatch(deleteInstitution(instituteToDelete.id)).unwrap();
+      message.success('Institution deleted successfully');
       setDeleteModalVisible(false);
       setInstituteToDelete(null);
-      setDeleteConfirmText("");
+      // Refresh list if needed (handled by redux optimistic update usually, but safe to fetch)
+      if (institutions.length === 1 && currentPage > 1) {
+        setCurrentPage(currentPage - 1);
+      }
     } catch (error) {
-      // Rollback on error
-      dispatch(rollbackInstitutionOperation({ snapshot }));
-      console.error("Error deleting institute:", error);
-      toast.error(error || "Failed to delete institute");
+      message.error(error.message || 'Failed to delete institution');
+    } finally {
+      setDeleting(false);
     }
   };
 
-  // Handle view details - navigate to progress page with selected institute
-  const handleViewDetails = (institute) => {
-    navigate("/institutions", {
-      state: { selectedInstitute: institute }
-    });
-  };
-
-  // Handle table pagination change
-  const handleTableChange = (newPagination) => {
-    setPagination({
-      current: newPagination.current,
-      pageSize: newPagination.pageSize,
-      total: pagination.total,
-    });
-  };
-
-  // Table columns
+  // Table Columns
   const columns = [
-    // {
-    //   title: "Code",
-    //   dataIndex: "code",
-    //   key: "code",
-    //   width: 100,
-    //   fixed: "left",
-    //   render: (code) => (
-    //     <Tag color="blue" style={{ fontWeight: 600 }}>
-    //       {code}
-    //     </Tag>
-    //   ),
-    // },
     {
-      title: "Institution Name",
-      dataIndex: "name",
-      key: "name",
-      width: 250,
-      render: (name, record) => (
-        <div>
-          <Text strong className="text-slate-800">{name || record.shortName || "N/A"}</Text>
-          <br />
-          <Text className="text-slate-600" style={{ fontSize: "12px" }}>
-            {record.type?.replace("_", " ")}
-          </Text>
+      title: 'Institution Details',
+      dataIndex: 'name',
+      key: 'name',
+      render: (text, record) => (
+        <div className="flex items-start gap-3">
+          <div className="mt-1 p-2 rounded-lg bg-surface border border-border text-primary">
+            <BankOutlined />
+          </div>
+          <div>
+            <Text strong className="text-text-primary block">{text}</Text>
+            <Space size={4} className="text-xs text-text-tertiary">
+              <Tag bordered={false} className="m-0 bg-surface text-text-secondary text-[10px]">{record.code}</Tag>
+              <span>•</span>
+              <span>{record.city}, {record.state}</span>
+            </Space>
+          </div>
         </div>
       ),
     },
     {
-      title: "Location",
-      key: "location",
-      width: 200,
-      render: (_, record) => (
-        <Space orientation="vertical" size={0}>
-          <Text style={{ fontSize: "13px" }} className="text-slate-700">
-            <EnvironmentOutlined className="text-slate-500" /> {record.city}, {record.state}
-          </Text>
-          <Text className="text-slate-600" style={{ fontSize: "12px" }}>
-            PIN: {record.pinCode}
-          </Text>
-        </Space>
-      ),
-    },
-    {
-      title: "Contact",
-      key: "contact",
-      width: 220,
-      render: (_, record) => (
-        <Space orientation="vertical" size={0}>
-          <Text style={{ fontSize: "12px" }} className="text-slate-700">
-            <PhoneOutlined className="text-slate-500" /> {record.contactPhone}
-          </Text>
-          <Text style={{ fontSize: "12px" }} className="text-slate-700">
-            <MailOutlined className="text-slate-500" /> {record.contactEmail}
-          </Text>
-        </Space>
-      ),
-    },
-    {
-      title: "Established",
-      dataIndex: "establishedYear",
-      key: "establishedYear",
-      width: 100,
-      align: "center",
-      render: (year) => <Text className="text-slate-700">{year || "N/A"}</Text>,
-    },
-    {
-      title: "Status",
-      key: "status",
-      width: 150,
-      align: "center",
-      render: (_, record) => (
-        <Space orientation="vertical" size={4}>
-          <Tag
-            color={record.isActive ? "success" : "error"}
-            icon={
-              record.isActive ? (
-                <CheckCircleOutlined />
-              ) : (
-                <CloseCircleOutlined />
-              )
-            }
-          >
-            {record.isActive ? "Active" : "Inactive"}
-          </Tag>
-          {record.autonomousStatus && <Tag color="purple">Autonomous</Tag>}
-        </Space>
-      ),
-    },
-    {
-      title: "Capacity",
-      key: "capacity",
+      title: 'Type',
+      dataIndex: 'type',
+      key: 'type',
       width: 120,
-      align: "center",
+      render: (type) => (
+        <Tag color="blue" className="rounded-md font-medium">
+          {type?.replace('_', ' ') || 'N/A'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Contact',
+      key: 'contact',
+      width: 250,
       render: (_, record) => (
-        <Space orientation="vertical" size={0}>
-          {record.totalStudentSeats && (
-            <Text style={{ fontSize: "12px" }} className="text-slate-700">
-              <TeamOutlined className="text-slate-500" /> {record.totalStudentSeats} Students
-            </Text>
+        <div className="space-y-1 text-sm">
+          {record.contactEmail && (
+            <div className="flex items-center gap-2 text-text-secondary">
+              <div className="w-4 h-4 flex items-center justify-center rounded-full bg-surface text-primary">@</div>
+              <span className="truncate max-w-[180px]">{record.contactEmail}</span>
+            </div>
           )}
-          {record.totalStaffSeats && (
-            <Text style={{ fontSize: "12px" }} className="text-slate-700">
-              Staff: {record.totalStaffSeats}
-            </Text>
+          {record.contactPhone && (
+            <div className="flex items-center gap-2 text-text-secondary">
+              <div className="w-4 h-4 flex items-center justify-center rounded-full bg-surface text-success">#</div>
+              <span>{record.contactPhone}</span>
+            </div>
           )}
+        </div>
+      ),
+    },
+    {
+      title: 'Stats',
+      key: 'stats',
+      width: 150,
+      render: (_, record) => (
+        <Space size={16}>
+          <Tooltip title="Students">
+            <div className="flex items-center gap-1.5 text-text-secondary">
+              <TeamOutlined />
+              <span>{record._count?.Student ?? record.studentCount ?? 0}</span>
+            </div>
+          </Tooltip>
+          <Tooltip title="Staff">
+            <div className="flex items-center gap-1.5 text-text-secondary">
+              <SafetyCertificateOutlined />
+              <span>{record._count?.users ?? record.facultyCount ?? 0}</span>
+            </div>
+          </Tooltip>
         </Space>
       ),
     },
     {
-      title: "Actions",
-      key: "actions",
-      fixed: "right",
-      width: 180,
-      align: "center",
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
+      width: 100,
+      render: (isActive) => (
+        <Tag 
+          color={isActive ? 'success' : 'error'} 
+          icon={isActive ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+          className="rounded-full px-2"
+        >
+          {isActive ? 'Active' : 'Inactive'}
+        </Tag>
+      ),
+    },
+    {
+      title: 'Actions',
+      key: 'actions',
+      width: 100,
+      fixed: 'right',
       render: (_, record) => (
         <Space>
-          <Tooltip title="View Details">
-            <Button
-              type="default"
-              icon={<EyeOutlined />}
-              size="small"
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Edit">
-            <Button
-              type="primary"
-              icon={<EditOutlined />}
-              size="small"
-              onClick={() => showModal(record)}
-            />
-          </Tooltip>
-          <Tooltip title="Delete">
-            <Button
-              danger
-              icon={<DeleteOutlined />}
-              size="small"
-              onClick={() => showDeleteModal(record)}
-            />
-          </Tooltip>
+          <Button
+            type="text"
+            icon={<EditOutlined />}
+            onClick={() => openEditModal(record.id)}
+            className="text-primary hover:text-primary-600 hover:bg-primary-50"
+          />
+          <Button
+            type="text"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteClick(record)}
+            className="hover:bg-error-50"
+          />
         </Space>
       ),
     },
   ];
 
-  return (
-    <div className="animate-fade-in min-h-screen flex bg-white dark:bg-slate-900">
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <Title level={2} className="!text-slate-800">
-          <BankOutlined className="mr-2" /> Institution Management
-        </Title>
-        <Text className="text-slate-600">
-          Manage all educational institutions in the state
-        </Text>
-      </div>
+  // Calculated stats (fallback if dashboardStats is missing or needs augmentation)
+  const stats = useMemo(() => {
+    // If we have dashboard stats, use those (mapping fields as best guess based on typical API)
+    if (dashboardStats) {
+      return {
+        total: dashboardStats.totalInstitutions || dashboardStats.institutions?.total || 0,
+        active: dashboardStats.activeInstitutions || dashboardStats.institutions?.active || 0,
+        inactive: (dashboardStats.institutions?.total || 0) - (dashboardStats.institutions?.active || 0),
+        autonomous: dashboardStats.autonomousInstitutions || 0
+      };
+    }
+    // Fallback to current list stats (incomplete but better than nothing)
+    return {
+      total: pagination?.total || institutions.length,
+      active: institutions.filter(i => i.isActive).length,
+      inactive: institutions.filter(i => !i.isActive).length,
+      autonomous: institutions.filter(i => i.autonomousStatus).length
+    };
+  }, [dashboardStats, institutions, pagination]);
 
-      {/* Statistics Cards */}
-              <Row gutter={[16, 16]} style={{ marginBottom: "24px" }}>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card className="shadow-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800">
-                    <Statistic
-                      title={<span className="text-slate-600 dark:text-slate-400">Total Institutes</span>}
-                      value={stats.total}
-                      prefix={<BankOutlined className="text-blue-500" />}
-                      styles={{ content: { fontWeight: 'bold' } }}
-                      className="text-slate-900 dark:text-slate-100"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card className="shadow-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800">
-                    <Statistic
-                      title={<span className="text-slate-600 dark:text-slate-400">Active Institutes</span>}
-                      value={stats.active}
-                      prefix={<CheckCircleOutlined className="text-green-500" />}
-                      styles={{ content: { fontWeight: 'bold' } }}
-                      className="text-slate-900 dark:text-slate-100"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card className="shadow-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800">
-                    <Statistic
-                      title={<span className="text-slate-600 dark:text-slate-400">Inactive Institutes</span>}
-                      value={stats.inactive}
-                      prefix={<CloseCircleOutlined className="text-red-500" />}
-                      styles={{ content: { fontWeight: 'bold' } }}
-                      className="text-slate-900 dark:text-slate-100"
-                    />
-                  </Card>
-                </Col>
-                <Col xs={24} sm={12} lg={6}>
-                  <Card className="shadow-sm border-slate-200 dark:border-slate-700 dark:bg-slate-800">
-                    <Statistic
-                      title={<span className="text-slate-600 dark:text-slate-400">Autonomous Institutes</span>}
-                      value={stats.autonomous}
-                      prefix={<CheckCircleOutlined className="text-purple-500" />}
-                      styles={{ content: { fontWeight: 'bold' } }}
-                      className="text-slate-900 dark:text-slate-100"
-                    />
-                  </Card>
-                </Col>
-              </Row>
-      {/* Main Content Card */}
-      <Card className="shadow-sm border-slate-200">
-        {/* Toolbar */}
-        <Row gutter={16} style={{ marginBottom: "16px" }} align="middle">
-          <Col xs={24} sm={12} md={8}>
+  return (
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+      <div className="max-w-[1600px] mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+          <div className="flex items-center">
+            <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-surface border border-border text-primary shadow-soft mr-4">
+              <BankOutlined className="text-xl" />
+            </div>
+            <div>
+              <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
+                Institution Management
+              </Title>
+              <Paragraph className="!mb-0 text-text-secondary text-sm">
+                Manage educational institutions, track performance, and oversee administrative details.
+              </Paragraph>
+            </div>
+          </div>
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center gap-4 p-2">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
+                <BankOutlined className="text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-text-primary">{stats.total}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Total Institutes</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center gap-4 p-2">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-success/10 text-success">
+                <CheckCircleOutlined className="text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-text-primary">{stats.active}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Active</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center gap-4 p-2">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-error/10 text-error">
+                <CloseCircleOutlined className="text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-text-primary">{stats.inactive}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Inactive</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+            <div className="flex items-center gap-4 p-2">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-secondary/10 text-secondary-600">
+                <GlobalOutlined className="text-xl" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-text-primary">{stats.autonomous}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Autonomous</div>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Main Content Card */}
+        <Card 
+          className="rounded-3xl border-border shadow-soft overflow-hidden" 
+          styles={{ body: { padding: '24px' } }}
+        >
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <Input
-              placeholder="Search by name, code, city, or state"
-              prefix={<SearchOutlined className="text-slate-400" />}
+              placeholder="Search by name, code, or city..."
+              prefix={<SearchOutlined className="text-text-tertiary" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
+              className="max-w-md h-10 rounded-xl bg-background border-border hover:border-primary focus:border-primary"
               allowClear
-              className="rounded-md"
             />
-          </Col>
-          <Col xs={24} sm={12} md={16} style={{ textAlign: "right" }}>
-            <Space wrap>
+            <div className="flex items-center gap-3 w-full md:w-auto">
               <Button
                 icon={<ReloadOutlined />}
                 onClick={handleRefresh}
-                loading={loadingFromRedux}
+                loading={loading}
+                className="h-10 rounded-xl border-border hover:text-primary hover:border-primary"
               >
                 Refresh
               </Button>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
-                onClick={() => showModal()}
-                style={{
-                  border: "none",
-                }}
+                onClick={openCreateModal}
+                className="h-10 rounded-xl font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40"
               >
-                Add New Institute
+                Add Institute
               </Button>
-            </Space>
-          </Col>
-        </Row>
+            </div>
+          </div>
 
-        <Divider style={{ margin: "16px 0" }} />
-
-        {/* Table */}
-        <Table
-          columns={columns}
-          dataSource={filteredInstitutes}
-          rowKey="id"
-          loading={loadingFromRedux}
-          scroll={{ x: "max-content" }}
-          pagination={{
-            current: pagination.current,
-            pageSize: pagination.pageSize,
-            total: pagination.total,
-            showSizeChanger: true,
-            showQuickJumper: true,
-            pageSizeOptions: ['10', '20', '50', '100'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} institutes`,
-          }}
-          onChange={handleTableChange}
-        />
-      </Card>
-
+          <div className="rounded-xl border border-border overflow-hidden bg-surface">
+            <Table
+              columns={columns}
+              dataSource={institutions}
+              rowKey="id"
+              loading={loading}
+              scroll={{ x: 1000 }}
+              pagination={{
+                current: currentPage,
+                pageSize: pageSize,
+                total: pagination?.total || 0,
+                onChange: (page, size) => {
+                  setCurrentPage(page);
+                  setPageSize(size);
+                },
+                showSizeChanger: true,
+                showTotal: (total, range) => (
+                  <span className="text-text-tertiary">
+                    Showing {range[0]}-{range[1]} of {total} institutes
+                  </span>
+                ),
+                className: "px-4 py-4"
+              }}
+            />
+          </div>
+        </Card>
 
         {/* Create/Edit Modal */}
-        <Modal
-          title={
-            <Space>
-              <BankOutlined />
-              <span>
-                {editingInstitute ? "Edit Institute" : "Add New Institute"}
-              </span>
-            </Space>
-          }
+        <InstitutionModal
           open={modalVisible}
-          onCancel={() => {
-            setModalVisible(false);
-            form.resetFields();
-            setEditingInstitute(null);
-          }}
-          footer={null}
-          width={900}
-          destroyOnHidden
-          styles={{
-            body: {
-              maxHeight: "calc(100vh - 200px)",
-              overflowY: "auto",
-              scrollBehavior: "smooth",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-            },
-          }}
-        >
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            initialValues={{
-              country: "India",
-              state: "Punjab",
-              autonomousStatus: "false",
-              isActive: "true",
-              type: "POLYTECHNIC",
-            }}
-          >
-            <Row gutter={16}>
-              {/* Basic Information */}
-              <Col span={24}>
-                <Title level={5}>Basic Information</Title>
-              </Col>
-
-              {/* <Col xs={24} md={12}>
-                <Form.Item
-                  name="code"
-                  label="Institution Code"
-                  // rules={[
-                  //   {
-                  //     required: true,
-                  //     message: "Please enter institution code",
-                  //   },
-                  //   {
-                  //     pattern: /^[A-Z0-9]+$/,
-                  //     message: "Only uppercase letters and numbers allowed",
-                  //   },
-                  // ]}
-                >
-                  <Input
-                    placeholder="e.g., INST001"
-                    disabled={!!editingInstitute}
-                  />
-                </Form.Item>
-              </Col> */}
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="type"
-                  label="Institution Type"
-                  rules={[
-                    {
-                      required: true,
-                      message: "Please select institution type",
-                    },
-                  ]}
-                >
-                  <Select placeholder="Select type">
-                    {institutionTypes.map((type) => (
-                      <Option key={type} value={type}>
-                        {type.replace("_", " ")}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item name="name" label="Full Name">
-                  <Input placeholder="Full institution name" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item name="shortName" label="Short Name">
-                  <Input placeholder="Abbreviated name" />
-                </Form.Item>
-              </Col>
-
-              {/* Location Details */}
-              <Col span={24}>
-                <Divider />
-                <Title level={5}>Location Details</Title>
-              </Col>
-
-              <Col xs={24}>
-                <Form.Item
-                  name="address"
-                  label="Address"
-                  rules={[{ required: true, message: "Please enter address" }]}
-                >
-                  <TextArea rows={2} placeholder="Full address" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item
-                  name="city"
-                  label="City"
-                  // rules={[{ required: true, message: "Please enter city" }]}
-                >
-                  <Input placeholder="City" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item
-                  name="district"
-                  label="District"
-                >
-                  <Input placeholder="District" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item
-                  name="state"
-                  label="State"
-                  rules={[{ required: true, message: "Please enter state" }]}
-                >
-                  <Input placeholder="State" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item
-                  name="pinCode"
-                  label="PIN Code"
-                  // rules={[
-                  //   { required: true, message: "Please enter PIN code" },
-                  //   {
-                  //     pattern: /^[0-9]{6}$/,
-                  //     message: "PIN code must be 6 digits",
-                  //   },
-                  // ]}
-                >
-                  <Input placeholder="6-digit PIN code" maxLength={6} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="country"
-                  label="Country"
-                  rules={[{ required: true, message: "Please enter country" }]}
-                >
-                  <Input placeholder="Country" />
-                </Form.Item>
-              </Col>
-
-              {/* Contact Information */}
-              <Col span={24}>
-                <Divider />
-                <Title level={5}>Contact Information</Title>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="contactEmail"
-                  label="Email"
-                  rules={[
-                    { required: true, message: "Please enter email" },
-                    { type: "email", message: "Please enter valid email" },
-                  ]}
-                >
-                  <Input
-                    prefix={<MailOutlined />}
-                    placeholder="contact@institution.edu"
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="contactPhone"
-                  label="Phone"
-                  rules={[
-                    { required: true, message: "Please enter phone number" },
-                    {
-                      pattern: /^[0-9]{10}$/,
-                      message: "Phone must be 10 digits",
-                    },
-                  ]}
-                >
-                  <Input
-                    prefix={<PhoneOutlined />}
-                    placeholder="10-digit phone"
-                    maxLength={10}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item
-                  name="alternatePhone"
-                  label="Alternate Phone"
-                  rules={[
-                    {
-                      pattern: /^[0-9]{10}$/,
-                      message: "Phone must be 10 digits",
-                    },
-                  ]}
-                >
-                  <Input
-                    prefix={<PhoneOutlined />}
-                    placeholder="10-digit phone (optional)"
-                    maxLength={10}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item name="website" label="Website">
-                  <Input
-                    prefix={<GlobalOutlined />}
-                    placeholder="https://www.institution.edu"
-                  />
-                </Form.Item>
-              </Col>
-
-              {/* Additional Details */}
-              <Col span={24}>
-                <Divider />
-                <Title level={5}>Additional Details</Title>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item name="establishedYear" label="Established Year">
-                  <Input
-                    type="number"
-                    placeholder="e.g., 1990"
-                    min={1800}
-                    max={new Date().getFullYear()}
-                  />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item name="totalStudentSeats" label="Student Capacity">
-                  <Input type="number" placeholder="Total seats" min={0} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={8}>
-                <Form.Item name="totalStaffSeats" label="Staff Capacity">
-                  <Input type="number" placeholder="Total staff" min={0} />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item name="affiliatedTo" label="Affiliated To">
-                  <Input placeholder="University/Board name" />
-                </Form.Item>
-              </Col>
-
-              <Col xs={24} md={12}>
-                <Form.Item name="recognizedBy" label="Recognized By">
-                  <Input placeholder="e.g., AICTE, UGC" />
-                </Form.Item>
-              </Col>
-
-              {/* <Col xs={24} md={8}>
-                <Form.Item name="naacGrade" label="NAAC Grade">
-                  <Select placeholder="Select grade" allowClear>
-                    <Option value="A++">A++</Option>
-                    <Option value="A+">A+</Option>
-                    <Option value="A">A</Option>
-                    <Option value="B++">B++</Option>
-                    <Option value="B+">B+</Option>
-                    <Option value="B">B</Option>
-                    <Option value="C">C</Option>
-                  </Select>
-                </Form.Item>
-              </Col> */}
-
-              {/* <Col xs={24} md={8} >
-                <Form.Item
-                  name="autonomousStatus"
-                  label="Autonomous Status"
-                  rules={[{ required: true }]}
-                >
-                  <Select>
-                    <Option value="true">Yes</Option>
-                    <Option value="false">No</Option>
-                  </Select>
-                </Form.Item>
-              </Col> */}
-
-              <Col xs={24} md={8} className="!hidden">
-                <Form.Item
-                  name="isActive"
-                  label="Status"
-                  rules={[{ required: true }]}
-                >
-                  <Select>
-                    <Option value="true">Active</Option>
-                    <Option value="false">Inactive</Option>
-                  </Select>
-                </Form.Item>
-              </Col>
-
-              {/* Principal Creation Section - Only for new institutes */}
-              {!editingInstitute && (
-                <>
-                  <Col span={24}>
-                    <Divider />
-                    <Checkbox
-                      checked={createPrincipal}
-                      onChange={(e) => setCreatePrincipal(e.target.checked)}
-                    >
-                      <Title level={5} style={{ display: "inline", marginLeft: 8 }}>
-                        Also Create Principal for this Institute
-                      </Title>
-                    </Checkbox>
-                  </Col>
-
-                  {createPrincipal && (
-                    <>
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="principalName"
-                          label="Principal Name"
-                          rules={[
-                            {
-                              required: createPrincipal,
-                              message: "Please enter principal name",
-                            },
-                            {
-                              min: 3,
-                              message: "Name must be at least 3 characters",
-                            },
-                          ]}
-                        >
-                          <Input
-                            prefix={<TeamOutlined />}
-                            placeholder="Full name"
-                          />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12}>
-                        <Form.Item
-                          name="principalPhone"
-                          label="Principal Phone"
-                          rules={[
-                            {
-                              required: createPrincipal,
-                              message: "Please enter phone number",
-                            },
-                            {
-                              pattern: /^[0-9]{10}$/,
-                              message: "Phone must be 10 digits",
-                            },
-                          ]}
-                        >
-                          <Input
-                            prefix={<PhoneOutlined />}
-                            placeholder="10-digit phone"
-                            maxLength={10}
-                          />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24} md={12} className="!hidden">
-                        <Form.Item
-                          name="principalDesignation"
-                          label="Principal Designation"
-                        >
-                          <Input placeholder="Principal (optional)" />
-                        </Form.Item>
-                      </Col>
-
-                      <Col xs={24}>
-                        <Alert
-                          title="Principal email will use the college contact email"
-                          description="Password format: First 4 letters of name + @ + First 4 digits of phone. Credentials will be sent to the college email address."
-                          type="info"
-                          showIcon
-                          style={{ marginBottom: 16 }}
-                        />
-                      </Col>
-                    </>
-                  )}
-                </>
-              )}
-            </Row>
-
-            {/* Form Actions */}
-            <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
-              <Space style={{ width: "100%", justifyContent: "flex-end" }}>
-                <Button
-                  onClick={() => {
-                    setModalVisible(false);
-                    form.resetFields();
-                    setEditingInstitute(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  loading={editingInstitute ? updating : creating}
-                  icon={editingInstitute ? <EditOutlined /> : <PlusOutlined />}
-                  style={{
-                    border: "none",
-                  }}
-                >
-                  {editingInstitute ? "Update Institute" : "Create Institute"}
-                </Button>
-              </Space>
-            </Form.Item>
-          </Form>
-        </Modal>
+          onClose={() => setModalVisible(false)}
+          institutionId={editingInstituteId}
+          onSuccess={() => handleRefresh()}
+        />
 
         {/* Delete Confirmation Modal */}
         <Modal
           title={
-            <Space>
+            <div className="flex items-center gap-2 text-error">
               <DeleteOutlined />
-              <span>Delete Institute</span>
-            </Space>
+              <span className="font-bold">Delete Institute</span>
+            </div>
           }
           open={deleteModalVisible}
           onCancel={() => {
             setDeleteModalVisible(false);
             setInstituteToDelete(null);
-            setDeleteConfirmText("");
           }}
           footer={[
             <Button
               key="cancel"
-              onClick={() => {
-                setDeleteModalVisible(false);
-                setInstituteToDelete(null);
-                setDeleteConfirmText("");
-              }}
+              onClick={() => setDeleteModalVisible(false)}
+              className="rounded-lg font-medium"
             >
               Cancel
             </Button>,
@@ -1082,58 +424,42 @@ const InstituteManagement = () => {
               danger
               loading={deleting}
               disabled={deleteConfirmText !== instituteToDelete?.name}
-              onClick={handleDelete}
-              icon={<DeleteOutlined />}
+              onClick={handleDeleteConfirm}
+              className="rounded-lg font-bold"
             >
               Delete
             </Button>,
           ]}
-          width={500}
+          centered
+          className="rounded-2xl overflow-hidden"
         >
           {instituteToDelete && (
-            <Space orientation="vertical" style={{ width: "100%" }} size="middle">
-              {/* Warning Alert */}
+            <div className="space-y-4">
               <Alert
-                title="Warning: This action cannot be undone"
-                description="Deleting this institute will disconnect all associated users, students, and academic records."
+                message="Warning: Irreversible Action"
+                description="This will permanently delete the institution and all associated data including students, faculty, and academic records."
                 type="error"
                 showIcon
+                className="rounded-lg border-error/20 bg-error/5"
               />
 
-              {/* Confirmation Input */}
               <div>
-                <Text strong style={{ display: "block", marginBottom: 8 }}>
-                  Type institute name to confirm:
-                </Text>
-                <Text
-                  code
-                  style={{
-                    display: "block",
-                    marginBottom: 12,
-                    padding: "8px 12px",
-                    borderRadius: "4px",
-                  }}
-                >
-                  {instituteToDelete.name || instituteToDelete.shortName}
+                <Text className="block mb-2 text-text-primary font-medium">
+                  Type <Text code>{instituteToDelete.name}</Text> to confirm:
                 </Text>
                 <Input
-                  placeholder="Type institute name here..."
+                  placeholder="Type institute name..."
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   status={deleteConfirmText && deleteConfirmText !== instituteToDelete?.name ? "error" : ""}
-                  prefix={<BankOutlined />}
+                  className="rounded-lg h-10"
                 />
-                {deleteConfirmText && deleteConfirmText !== instituteToDelete?.name && (
-                  <Text type="danger" style={{ fontSize: "12px", marginTop: "4px", display: "block" }}>
-                    Name does not match
-                  </Text>
-                )}
               </div>
-            </Space>
+            </div>
           )}
         </Modal>
       </div>
-    </Layout>
+    </div>
   );
 };
 

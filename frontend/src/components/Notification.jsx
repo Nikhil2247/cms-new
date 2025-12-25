@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Dropdown,
   Badge,
@@ -6,7 +6,6 @@ import {
   List,
   Typography,
   Empty,
-  Divider,
   Space,
   Tag,
   Avatar,
@@ -34,125 +33,97 @@ import {
   UserOutlined,
   ExperimentOutlined,
   SearchOutlined,
+  WifiOutlined,
 } from '@ant-design/icons';
 import { useTheme } from '../contexts/ThemeContext';
-import api from '../services/api';
+import { useNotifications } from '../hooks/useNotifications';
 
 const { Text, Title } = Typography;
 
 const NotificationDropdown = () => {
   const { token } = theme.useToken();
-  const [notifications, setNotifications] = useState([]);
   const [open, setOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const { darkMode } = useTheme();
-  const [user, setUser] = useState(null);
-  const isInitialized = useRef(false);
 
-  // Parse user data
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser(payload);
-      } catch (error) {
-        // Token parse error handled silently
-      }
-    }
-  }, []);
-
-  // Load notifications on mount
-  useEffect(() => {
-    if (user?.sub && !isInitialized.current) {
-      loadNotifications();
-      isInitialized.current = true;
-    }
-  }, [user?.sub]);
-
-  const loadNotifications = async () => {
-    try {
-      setLoading(true);
-      const response = await api.get(`/shared/notifications`);
-      if (response.data?.data) {
-        setNotifications(response.data.data || []);
-      }
-    } catch (error) {
-      // Notification load error handled
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Use the notifications hook for real-time updates
+  const {
+    notifications,
+    unreadCount,
+    loading,
+    isConnected,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    clearAll,
+  } = useNotifications();
 
   const getNotificationIcon = (type) => {
     const iconStyle = { fontSize: '16px' };
     switch (type) {
       case 'internship':
+      case 'INTERNSHIP_DEADLINE':
+      case 'INTERNSHIP_APPLICATION':
+      case 'INTERNSHIP_ACCEPTED':
+      case 'INTERNSHIP_REJECTED':
       case 'ELIGIBLE_INTERNSHIPS':
         return <ExperimentOutlined style={iconStyle} />;
       case 'assignment':
+      case 'MONTHLY_REPORT_REMINDER':
+      case 'MONTHLY_REPORT_URGENT':
+      case 'ASSIGNMENT_NEW':
+      case 'ASSIGNMENT_DUE':
         return <BookOutlined style={iconStyle} />;
       case 'exam':
       case 'examSchedule':
+      case 'EXAM_SCHEDULED':
+      case 'EXAM_REMINDER':
         return <CalendarOutlined style={iconStyle} />;
       case 'placement':
+      case 'PLACEMENT_UPDATE':
+      case 'PLACEMENT_OFFER':
         return <TrophyOutlined style={iconStyle} />;
       case 'fee':
       case 'feeReminder':
+      case 'FEE_DUE':
+      case 'FEE_REMINDER':
         return <DollarOutlined style={iconStyle} />;
       case 'announcement':
+      case 'ANNOUNCEMENT':
+      case 'WEEKLY_SUMMARY':
         return <TeamOutlined style={iconStyle} />;
       case 'attendance':
+      case 'ATTENDANCE_MARKED':
+      case 'ATTENDANCE_WARNING':
         return <UserOutlined style={iconStyle} />;
+      case 'GRIEVANCE_ASSIGNED':
+      case 'GRIEVANCE_UPDATE':
+      case 'GRIEVANCE_STATUS_CHANGED':
+      case 'SUPPORT_TICKET_NEW':
+        return <NotificationOutlined style={iconStyle} />;
       default:
         return <NotificationOutlined style={iconStyle} />;
     }
   };
 
-  const markAsRead = async (id) => {
-    try {
-      await api.put(`/shared/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-      );
-    } catch (error) {
-      // Mark read error handled
-    }
+  const handleMarkAsRead = async (id, e) => {
+    if (e) e.stopPropagation();
+    await markAsRead(id);
   };
 
-  const markAllAsRead = async () => {
-    try {
-      await api.put('/shared/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      message.success('All notifications marked as read');
-    } catch (error) {
-      // Mark all read error handled
-    }
+  const handleMarkAllAsRead = async () => {
+    await markAllAsRead();
+    message.success('All notifications marked as read');
   };
 
-  const deleteNotification = async (id) => {
-    try {
-      await api.delete(`/shared/notifications/${id}`);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-      message.success('Notification deleted');
-    } catch (error) {
-      // Delete error handled
-    }
+  const handleDelete = async (id, e) => {
+    if (e) e.stopPropagation();
+    await deleteNotification(id);
   };
 
-  const clearAllNotifications = async () => {
-    try {
-      // Delete all notifications (one by one for now)
-      for (const n of notifications) {
-        await api.delete(`/shared/notifications/${n.id}`);
-      }
-      setNotifications([]);
-      message.success('All notifications cleared');
-    } catch (error) {
-      // Clear error handled
-    }
+  const handleClearAll = async () => {
+    await clearAll();
   };
 
   const formatTimeAgo = (timestamp) => {
@@ -167,16 +138,14 @@ const NotificationDropdown = () => {
     return time.toLocaleDateString();
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  const filteredNotifications = notifications.filter((n) => {
-    if (!searchText) return true;
+  const filteredNotifications = useMemo(() => {
+    if (!searchText) return notifications;
     const search = searchText.toLowerCase();
-    return (
+    return notifications.filter((n) =>
       n.title?.toLowerCase().includes(search) ||
       n.body?.toLowerCase().includes(search)
     );
-  });
+  }, [notifications, searchText]);
 
   const renderNotificationItem = (item) => (
     <List.Item
@@ -188,7 +157,7 @@ const NotificationDropdown = () => {
         padding: '12px 16px',
       }}
       onClick={() => {
-        if (!item.read) markAsRead(item.id);
+        if (!item.read) handleMarkAsRead(item.id);
       }}
     >
       <List.Item.Meta
@@ -229,20 +198,14 @@ const NotificationDropdown = () => {
                       type="text"
                       size="small"
                       icon={<CheckOutlined />}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        markAsRead(item.id);
-                      }}
+                      onClick={(e) => handleMarkAsRead(item.id, e)}
                     />
                   </Tooltip>
                 )}
                 <Tooltip title="Delete">
                   <Popconfirm
                     title="Delete notification?"
-                    onConfirm={(e) => {
-                      e?.stopPropagation();
-                      deleteNotification(item.id);
-                    }}
+                    onConfirm={(e) => handleDelete(item.id, e)}
                     okText="Yes"
                     cancelText="No"
                   >
@@ -272,9 +235,16 @@ const NotificationDropdown = () => {
         className="px-5 py-4 border-b border-border/50"
       >
         <div className="flex items-center justify-between mb-3">
-          <Title level={5} className="!m-0">
-            Notifications
-          </Title>
+          <div className="flex items-center gap-2">
+            <Title level={5} className="!m-0">
+              Notifications
+            </Title>
+            {isConnected && (
+              <Tooltip title="Real-time connected">
+                <WifiOutlined className="text-green-500 text-xs" />
+              </Tooltip>
+            )}
+          </div>
           <Space>
             {unreadCount > 0 && (
               <Tooltip title="Mark all as read">
@@ -282,7 +252,7 @@ const NotificationDropdown = () => {
                   type="text"
                   size="small"
                   icon={<CheckOutlined />}
-                  onClick={markAllAsRead}
+                  onClick={handleMarkAllAsRead}
                 />
               </Tooltip>
             )}
@@ -369,11 +339,18 @@ const NotificationDropdown = () => {
       <Drawer
         title={
           <div className="flex items-center justify-between">
-            <span>All Notifications</span>
+            <div className="flex items-center gap-2">
+              <span>All Notifications</span>
+              {isConnected && (
+                <Tooltip title="Real-time connected">
+                  <WifiOutlined className="text-green-500 text-sm" />
+                </Tooltip>
+              )}
+            </div>
             {notifications.length > 0 && (
               <Popconfirm
                 title="Clear all notifications?"
-                onConfirm={clearAllNotifications}
+                onConfirm={handleClearAll}
                 okText="Yes"
                 cancelText="No"
               >
