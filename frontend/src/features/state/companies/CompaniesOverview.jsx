@@ -41,6 +41,8 @@ import {
   UserOutlined,
   BuildOutlined,
   RiseOutlined,
+  GlobalOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import {
   fetchAllCompanies,
@@ -203,25 +205,25 @@ const CompaniesOverview = () => {
       fixed: 'left',
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Avatar
-            icon={<BankOutlined />}
-            className={record.isSelfIdentifiedCompany
-              ? 'bg-gradient-to-br from-purple-500 to-pink-500'
-              : 'bg-gradient-to-br from-blue-500 to-cyan-500'}
-            size={44}
-          />
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+            record.isSelfIdentifiedCompany 
+              ? 'bg-purple-500/10 border-purple-500/20 text-purple-600' 
+              : 'bg-primary/10 border-primary/20 text-primary'
+          }`}>
+            <BankOutlined className="text-xl" />
+          </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <Text strong className="text-sm truncate max-w-[180px]" title={record.companyName}>
+            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+              <Text strong className="text-sm text-text-primary truncate max-w-[180px]" title={record.companyName}>
                 {record.companyName || 'Unknown Company'}
               </Text>
               {record.isSelfIdentifiedCompany && (
-                <Tag color="purple" className="text-[10px] px-1.5 py-0 m-0 rounded-full">
-                  Self-Identified
+                <Tag color="purple" className="text-[10px] px-1.5 py-0 m-0 rounded-md border-0 leading-tight">
+                  Self-ID
                 </Tag>
               )}
             </div>
-            <div className="flex items-center gap-1 text-xs text-text-tertiary mt-0.5">
+            <div className="flex items-center gap-1 text-[11px] text-text-tertiary font-medium">
               <EnvironmentOutlined className="text-[10px]" />
               <span className="truncate max-w-[200px]">
                 {record.city && record.state
@@ -237,54 +239,49 @@ const CompaniesOverview = () => {
       title: 'Industry',
       dataIndex: 'industryType',
       key: 'industryType',
-      width: 140,
+      width: 150,
       render: (type, record) => (
-        <Tag color={record.isSelfIdentifiedCompany ? 'purple' : 'cyan'} className="font-medium">
+        <Tag 
+          color={record.isSelfIdentifiedCompany ? 'purple' : 'cyan'} 
+          className="font-bold text-[10px] uppercase tracking-wide rounded-md border-0 m-0 px-2 py-0.5"
+        >
           {type || 'General'}
         </Tag>
       ),
     },
     {
-      title: 'Total Students',
-      key: 'totalStudents',
-      width: 120,
-      align: 'center',
-      sorter: false,
-      render: (_, record) => (
-        <div className="flex flex-col items-center">
-          <div className="text-xl font-bold text-primary">{record.totalStudents || 0}</div>
-          <div className="text-[10px] text-text-tertiary">students</div>
-        </div>
-      ),
-    },
-    {
-      title: 'Institutions',
-      key: 'institutionCount',
-      width: 120,
+      title: 'Placement Stats',
+      key: 'stats',
+      width: 140,
       align: 'center',
       render: (_, record) => (
-        <div className="flex flex-col items-center">
-          <div className="text-xl font-bold text-success">{record.institutionCount || 0}</div>
-          <div className="text-[10px] text-text-tertiary">institutions</div>
+        <div className="flex flex-col items-center p-2 rounded-xl bg-background-tertiary/30 border border-border/50">
+          <div className="flex items-baseline gap-1">
+            <Text className="text-lg font-black text-primary leading-none">{record.totalStudents || 0}</Text>
+            <Text className="text-[10px] text-text-tertiary font-bold uppercase">Students</Text>
+          </div>
+          <Text className="text-[10px] text-text-tertiary mt-1">
+            across <strong className="text-text-primary">{record.institutionCount || 0}</strong> institutes
+          </Text>
         </div>
       ),
     },
     {
       title: 'Top Institutions',
       key: 'institutions',
-      width: 220,
+      width: 240,
       render: (_, record) => (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1.5">
           {record.institutions?.slice(0, 2).map((inst, i) => (
             <Tooltip key={i} title={`${inst.name}: ${inst.studentCount} students`}>
-              <Tag className="text-xs m-0" color="blue">
-                {inst.code || inst.name?.substring(0, 10)}: {inst.studentCount}
+              <Tag className="text-[10px] m-0 rounded-md border border-border bg-surface text-text-secondary px-2 py-0.5 font-medium">
+                {inst.code || inst.name?.substring(0, 10)}: <strong className="text-primary">{inst.studentCount}</strong>
               </Tag>
             </Tooltip>
           ))}
           {record.institutions?.length > 2 && (
             <Tooltip title={record.institutions.slice(2).map(i => `${i.name}: ${i.studentCount}`).join(', ')}>
-              <Tag className="text-xs m-0 cursor-pointer" color="default">
+              <Tag className="text-[10px] m-0 cursor-pointer rounded-md border border-border bg-background-tertiary text-text-tertiary px-2 py-0.5 hover:bg-background-tertiary/80 transition-colors">
                 +{record.institutions.length - 2} more
               </Tag>
             </Tooltip>
@@ -295,27 +292,16 @@ const CompaniesOverview = () => {
     {
       title: 'Status',
       key: 'status',
-      width: 120,
+      width: 130,
       align: 'center',
-      render: (_, record) => (
-        <div className="flex flex-col items-center gap-1">
-          {record.isSelfIdentifiedCompany ? (
-            <Tag icon={<CheckCircleOutlined />} color="success" className="m-0">
-              Auto-Approved
-            </Tag>
-          ) : (
-            <>
-              {record.isApproved ? (
-                <Tag icon={<CheckCircleOutlined />} color="success" className="m-0">Approved</Tag>
-              ) : record.isVerified ? (
-                <Tag icon={<SafetyCertificateOutlined />} color="processing" className="m-0">Verified</Tag>
-              ) : (
-                <Tag icon={<ClockCircleOutlined />} color="warning" className="m-0">Pending</Tag>
-              )}
-            </>
-          )}
-        </div>
-      ),
+      render: (_, record) => {
+        if (record.isSelfIdentifiedCompany) {
+          return <Tag icon={<CheckCircleOutlined />} color="success" className="m-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wide px-2 py-0.5">Auto-Approved</Tag>;
+        }
+        if (record.isApproved) return <Tag icon={<CheckCircleOutlined />} color="success" className="m-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wide px-2 py-0.5">Approved</Tag>;
+        if (record.isVerified) return <Tag icon={<SafetyCertificateOutlined />} color="processing" className="m-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wide px-2 py-0.5">Verified</Tag>;
+        return <Tag icon={<ClockCircleOutlined />} color="warning" className="m-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wide px-2 py-0.5">Pending</Tag>;
+      },
     },
     {
       title: 'Action',
@@ -325,90 +311,93 @@ const CompaniesOverview = () => {
       align: 'center',
       render: (_, record) => (
         <Button
-          type="primary"
-          ghost
+          type="text"
           size="small"
           icon={<EyeOutlined />}
           onClick={() => handleViewDetails(record)}
-        >
-          Details
-        </Button>
+          className="text-primary hover:bg-primary/10 font-medium text-xs rounded-lg h-8 w-8 flex items-center justify-center"
+        />
       ),
     },
   ], []);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <Title level={3} className="!mb-1 flex items-center gap-2">
-            <BankOutlined className="text-blue-500" />
-            Companies Overview
-          </Title>
-          <Text type="secondary">
-            View all companies across institutions with student placements
-          </Text>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-surface border border-border shadow-soft flex items-center justify-center text-primary">
+            <BankOutlined className="text-2xl" />
+          </div>
+          <div>
+            <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
+              Companies Overview
+            </Title>
+            <Text className="text-text-secondary text-sm">
+              View and manage partner companies across all institutions
+            </Text>
+          </div>
         </div>
         <Button
           icon={<ReloadOutlined />}
           onClick={() => fetchCompanies({ forceRefresh: true })}
           loading={loading}
+          className="rounded-xl h-10 border-border hover:border-primary hover:text-primary shadow-sm bg-surface font-medium"
         >
-          Refresh
+          Refresh Data
         </Button>
       </div>
 
       {/* Summary Cards */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-slate-800 dark:to-slate-700 border-blue-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center">
-                <BankOutlined className="text-white text-xl" />
+          <Card className="rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-sm border border-primary/20">
+                <BankOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-primary">{summary?.totalCompanies || 0}</div>
-                <div className="text-xs text-text-tertiary">Total Companies</div>
+                <div className="text-3xl font-black text-text-primary leading-tight">{summary?.totalCompanies || 0}</div>
+                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Total Companies</div>
               </div>
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-slate-800 dark:to-slate-700 border-green-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-success flex items-center justify-center">
-                <TeamOutlined className="text-white text-xl" />
+          <Card className="rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center text-success shadow-sm border border-success/20">
+                <TeamOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-success">{summary?.totalStudentsPlaced || 0}</div>
-                <div className="text-xs text-text-tertiary">Total Students Placed</div>
+                <div className="text-3xl font-black text-text-primary leading-tight">{summary?.totalStudentsPlaced || 0}</div>
+                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Students Placed</div>
               </div>
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-slate-800 dark:to-slate-700 border-purple-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-secondary flex items-center justify-center">
-                <SafetyCertificateOutlined className="text-white text-xl" />
+          <Card className="rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 shadow-sm border border-purple-500/20">
+                <SafetyCertificateOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-secondary">{summary?.totalSelfIdentified || 0}</div>
-                <div className="text-xs text-text-tertiary">Self-Identified Placements</div>
+                <div className="text-3xl font-black text-text-primary leading-tight">{summary?.totalSelfIdentified || 0}</div>
+                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Self-Identified</div>
               </div>
             </div>
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
-          <Card size="small" className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-slate-800 dark:to-slate-700 border-orange-200">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-warning flex items-center justify-center">
-                <RiseOutlined className="text-white text-xl" />
+          <Card className="rounded-2xl border-border shadow-soft bg-surface h-full hover:translate-y-[-2px] transition-transform duration-300">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-warning/10 flex items-center justify-center text-warning shadow-sm border border-warning/20">
+                <RiseOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-warning">{summary?.selfIdentifiedRate || 0}%</div>
-                <div className="text-xs text-text-tertiary">Self-Identified Rate</div>
+                <div className="text-3xl font-black text-text-primary leading-tight">{summary?.selfIdentifiedRate || 0}%</div>
+                <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Self-ID Rate</div>
               </div>
             </div>
           </Card>
@@ -416,13 +405,13 @@ const CompaniesOverview = () => {
       </Row>
 
       {/* Filters */}
-      <Card size="small">
+      <Card className="rounded-2xl border-border shadow-soft bg-surface" styles={{ body: { padding: '16px' } }}>
         <div className="flex flex-wrap items-center gap-4">
           <Input.Search
             placeholder="Search companies..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            style={{ width: 280 }}
+            className="w-full md:w-80 rounded-xl h-10 bg-background border-border"
             allowClear
             prefix={<SearchOutlined className="text-text-tertiary" />}
           />
@@ -431,7 +420,8 @@ const CompaniesOverview = () => {
             value={industryType || undefined}
             onChange={setIndustryType}
             allowClear
-            style={{ width: 180 }}
+            className="w-full md:w-48 h-10 rounded-lg"
+            dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
           >
             {summary?.industryTypes?.map((type) => (
               <Select.Option key={type} value={type}>{type}</Select.Option>
@@ -440,7 +430,8 @@ const CompaniesOverview = () => {
           <Select
             value={sortBy}
             onChange={setSortBy}
-            style={{ width: 160 }}
+            className="w-full md:w-48 h-10 rounded-lg"
+            dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
           >
             <Select.Option value="studentCount">Sort by Students</Select.Option>
             <Select.Option value="institutionCount">Sort by Institutions</Select.Option>
@@ -449,6 +440,7 @@ const CompaniesOverview = () => {
           <Button
             icon={sortOrder === 'desc' ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
             onClick={toggleSortOrder}
+            className="h-10 rounded-xl px-4 border-border font-medium"
           >
             {sortOrder === 'desc' ? 'Desc' : 'Asc'}
           </Button>
@@ -456,10 +448,10 @@ const CompaniesOverview = () => {
       </Card>
 
       {/* Error Alert */}
-      {error && <Alert type="error" title={error} showIcon closable />}
+      {error && <Alert type="error" title="Error" description={error} showIcon closable className="rounded-xl border-error/20 bg-error/5" />}
 
       {/* Companies Table */}
-      <Card>
+      <Card className="rounded-2xl border-border shadow-soft bg-surface overflow-hidden" styles={{ body: { padding: 0 } }}>
         <Table
           columns={columns}
           dataSource={filteredAndSortedCompanies}
@@ -470,14 +462,15 @@ const CompaniesOverview = () => {
             pageSize: pageSize,
             total: pagination?.total || 0,
             showSizeChanger: true,
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} companies`,
+            showTotal: (total, range) => <span className="text-text-tertiary">Showing {range[0]}-{range[1]} of {total} companies</span>,
             pageSizeOptions: ['10', '20', '50', '100'],
+            className: "px-6 py-4"
           }}
           onChange={handleTableChange}
           scroll={{ x: 1200 }}
           size="middle"
-          className="[&_.ant-table-thead>tr>th]:bg-gray-50 dark:[&_.ant-table-thead>tr>th]:bg-slate-800"
-          rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/30 dark:bg-purple-900/10' : ''}
+          className="custom-table"
+          rowClassName={(record) => record.isSelfIdentifiedCompany ? 'bg-purple-50/10 hover:bg-purple-50/20' : 'hover:bg-background-tertiary/40'}
         />
       </Card>
 
@@ -485,21 +478,21 @@ const CompaniesOverview = () => {
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <Avatar
-              icon={<BankOutlined />}
-              className={selectedCompanyDetails?.isSelfIdentifiedCompany
-                ? 'bg-gradient-to-br from-purple-500 to-pink-500'
-                : 'bg-gradient-to-br from-blue-500 to-cyan-500'}
-              size={44}
-            />
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm ${
+              selectedCompanyDetails?.isSelfIdentifiedCompany 
+                ? 'bg-purple-500/10 border-purple-500/20 text-purple-600' 
+                : 'bg-primary/10 border-primary/20 text-primary'
+            }`}>
+              <BankOutlined className="text-lg" />
+            </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-semibold">{selectedCompanyDetails?.companyName || 'Company Details'}</span>
+                <span className="font-bold text-lg text-text-primary">{selectedCompanyDetails?.companyName || 'Company Details'}</span>
                 {selectedCompanyDetails?.isSelfIdentifiedCompany && (
-                  <Tag color="purple" className="text-xs">Self-Identified</Tag>
+                  <Tag color="purple" className="text-[10px] font-bold uppercase tracking-wider rounded-md border-0 m-0">Self-ID</Tag>
                 )}
               </div>
-              <Text type="secondary" className="text-xs font-normal">
+              <Text className="text-text-tertiary text-xs font-medium uppercase tracking-wide">
                 {selectedCompanyDetails?.totalStudents || 0} students across {selectedCompanyDetails?.institutionCount || 0} institutions
               </Text>
             </div>
@@ -510,58 +503,51 @@ const CompaniesOverview = () => {
         footer={null}
         width={1000}
         destroyOnClose
+        className="rounded-2xl overflow-hidden"
+        styles={{ content: { borderRadius: '16px' } }}
       >
         {detailsLoading ? (
-          <div className="flex justify-center py-12">
-            <Spin size="large" tip="Loading company details..." />
+          <div className="flex justify-center py-20">
+            <Spin size="large" tip="Loading details..." />
           </div>
         ) : detailsError ? (
-          <div className="py-12">
+          <div className="py-12 px-6">
             <Alert
               type="error"
-              title="Failed to load company details"
+              title="Failed to load details"
               description={detailsError}
               action={
-                <Button
-                  size="small"
-                  type="primary"
-                  onClick={() => {
-                    if (selectedCompany?.id) {
-                      dispatch(fetchCompanyDetails(selectedCompany.id));
-                    }
-                  }}
-                >
-                  Retry
-                </Button>
+                <Button size="small" type="primary" onClick={() => { if (selectedCompany?.id) dispatch(fetchCompanyDetails(selectedCompany.id)); }}>Retry</Button>
               }
               showIcon
+              className="rounded-xl border-error/20 bg-error/5"
             />
           </div>
         ) : selectedCompanyDetails ? (
-          <div className="space-y-4 mt-4">
+          <div className="space-y-6 pt-4">
             {/* Company Info */}
             <Card
               size="small"
-              className={selectedCompanyDetails.isSelfIdentifiedCompany
-                ? 'border-purple-200 bg-gradient-to-r from-purple-50 to-pink-50'
-                : 'border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50'}
+              className={`rounded-xl border shadow-sm ${selectedCompanyDetails.isSelfIdentifiedCompany
+                ? 'border-purple-200 bg-purple-50/30'
+                : 'border-border bg-surface'}`}
             >
               <Row gutter={[24, 16]}>
                 <Col xs={24} sm={8}>
                   <div className="flex items-center gap-2 mb-1">
-                    <BuildOutlined className="text-text-tertiary" />
-                    <Text type="secondary" className="text-xs">Industry Type</Text>
+                    <BuildOutlined className="text-text-tertiary text-xs" />
+                    <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Industry Type</Text>
                   </div>
-                  <Tag color={selectedCompanyDetails.isSelfIdentifiedCompany ? 'purple' : 'cyan'}>
+                  <Tag className="m-0 rounded-lg font-medium bg-background border-border text-text-primary px-3 py-1">
                     {selectedCompanyDetails.industryType || 'General'}
                   </Tag>
                 </Col>
                 <Col xs={24} sm={8}>
                   <div className="flex items-center gap-2 mb-1">
-                    <EnvironmentOutlined className="text-text-tertiary" />
-                    <Text type="secondary" className="text-xs">Location</Text>
+                    <EnvironmentOutlined className="text-text-tertiary text-xs" />
+                    <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Location</Text>
                   </div>
-                  <Text>
+                  <Text className="text-text-primary font-medium">
                     {selectedCompanyDetails.city && selectedCompanyDetails.state
                       ? `${selectedCompanyDetails.city}, ${selectedCompanyDetails.state}`
                       : selectedCompanyDetails.address || 'Not specified'}
@@ -569,15 +555,15 @@ const CompaniesOverview = () => {
                 </Col>
                 <Col xs={24} sm={8}>
                   <div className="flex items-center gap-2 mb-1">
-                    <SafetyCertificateOutlined className="text-text-tertiary" />
-                    <Text type="secondary" className="text-xs">Status</Text>
+                    <SafetyCertificateOutlined className="text-text-tertiary text-xs" />
+                    <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Status</Text>
                   </div>
                   {selectedCompanyDetails.isSelfIdentifiedCompany ? (
-                    <Tag icon={<CheckCircleOutlined />} color="success">Auto-Approved</Tag>
+                    <Tag icon={<CheckCircleOutlined />} color="success" className="m-0 rounded-md border-0 font-bold">Auto-Approved</Tag>
                   ) : (
                     <Space>
-                      {selectedCompanyDetails.isApproved && <Tag color="success">Approved</Tag>}
-                      {selectedCompanyDetails.isVerified && <Tag color="processing">Verified</Tag>}
+                      {selectedCompanyDetails.isApproved && <Tag color="success" className="m-0 rounded-md border-0 font-bold">Approved</Tag>}
+                      {selectedCompanyDetails.isVerified && <Tag color="processing" className="m-0 rounded-md border-0 font-bold">Verified</Tag>}
                     </Space>
                   )}
                 </Col>
@@ -585,17 +571,17 @@ const CompaniesOverview = () => {
                   <>
                     <Col xs={24} sm={12}>
                       <div className="flex items-center gap-2 mb-1">
-                        <MailOutlined className="text-text-tertiary" />
-                        <Text type="secondary" className="text-xs">Email</Text>
+                        <MailOutlined className="text-text-tertiary text-xs" />
+                        <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Email</Text>
                       </div>
-                      <Text>{selectedCompanyDetails.email || 'N/A'}</Text>
+                      <Text className="text-text-primary font-medium">{selectedCompanyDetails.email || 'N/A'}</Text>
                     </Col>
                     <Col xs={24} sm={12}>
                       <div className="flex items-center gap-2 mb-1">
-                        <PhoneOutlined className="text-text-tertiary" />
-                        <Text type="secondary" className="text-xs">Phone</Text>
+                        <PhoneOutlined className="text-text-tertiary text-xs" />
+                        <Text className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Phone</Text>
                       </div>
-                      <Text>{selectedCompanyDetails.phone || 'N/A'}</Text>
+                      <Text className="text-text-primary font-medium">{selectedCompanyDetails.phone || 'N/A'}</Text>
                     </Col>
                   </>
                 )}
@@ -603,104 +589,126 @@ const CompaniesOverview = () => {
             </Card>
 
             {/* Institutions Breakdown */}
-            <Card size="small" title={<><TeamOutlined className="mr-2" />Institutions ({selectedCompanyDetails.institutions?.length || 0})</>}>
-              <Collapse accordion>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 mb-2">
+                <TeamOutlined className="text-primary" />
+                <Title level={5} className="!mb-0 !text-sm uppercase tracking-widest text-text-tertiary font-bold">Participating Institutions ({selectedCompanyDetails.institutions?.length || 0})</Title>
+              </div>
+              
+              <Collapse 
+                accordion 
+                ghost 
+                className="bg-transparent"
+                expandIconPosition="end"
+              >
                 {selectedCompanyDetails.institutions?.map((institution, idx) => (
                   <Panel
                     key={idx}
                     header={
-                      <div className="flex items-center justify-between w-full pr-4">
-                        <div className="flex items-center gap-2">
-                          <Avatar size="small" className="bg-primary">{institution.code?.[0] || 'I'}</Avatar>
+                      <div className="flex items-center justify-between w-full pr-4 py-1">
+                        <div className="flex items-center gap-3">
+                          <Avatar size="small" className="bg-primary/10 text-primary border border-primary/20 font-bold">{institution.code?.[0] || 'I'}</Avatar>
                           <div>
-                            <Text strong>{institution.name}</Text>
-                            <Text type="secondary" className="ml-2 text-xs">({institution.code})</Text>
+                            <Text strong className="text-text-primary block">{institution.name}</Text>
+                            <Text type="secondary" className="text-xs font-mono">{institution.code}</Text>
                           </div>
                         </div>
-                        <Badge count={institution.studentCount} className="[&_.ant-badge-count]:!bg-primary" />
+                        <Badge count={institution.studentCount} className="[&_.ant-badge-count]:!bg-primary [&_.ant-badge-count]:shadow-none" />
                       </div>
                     }
+                    className="mb-2 bg-surface border border-border rounded-xl overflow-hidden shadow-sm"
                   >
-                    <div className="space-y-3">
+                    <div className="space-y-4 pt-2">
                       {/* Branch Distribution */}
                       {institution.branchWiseData?.length > 0 && (
-                        <div className="mb-3">
-                          <Text type="secondary" className="text-xs mb-2 block">Branch Distribution:</Text>
+                        <div className="p-3 bg-background-tertiary/30 rounded-xl border border-border/50">
+                          <Text className="text-[10px] uppercase font-bold text-text-tertiary mb-2 block tracking-widest">Branch Distribution</Text>
                           <div className="flex flex-wrap gap-2">
                             {institution.branchWiseData.map((b, i) => (
-                              <Tag key={i} color="blue">{b.branch}: {b.count}</Tag>
+                              <Tag key={i} className="m-0 rounded-md border border-border bg-background text-text-secondary px-2 py-0.5">
+                                {b.branch}: <strong className="text-primary">{b.count}</strong>
+                              </Tag>
                             ))}
                           </div>
                         </div>
                       )}
 
                       {/* Students Table */}
-                      <Table
-                        dataSource={institution.students || []}
-                        columns={[
-                          {
-                            title: 'Student',
-                            key: 'student',
-                            render: (_, record) => (
-                              <div className="flex items-center gap-2">
-                                <Avatar size="small" icon={<UserOutlined />} className="bg-primary" />
-                                <div>
-                                  <div className="font-medium text-sm">{record.name}</div>
-                                  <div className="text-xs text-text-tertiary">{record.email}</div>
+                      <div className="rounded-xl border border-border overflow-hidden">
+                        <Table
+                          dataSource={institution.students || []}
+                          columns={[
+                            {
+                              title: 'Student',
+                              key: 'student',
+                              render: (_, record) => (
+                                <div className="flex items-center gap-3">
+                                  <Avatar size="small" icon={<UserOutlined />} className="bg-background-tertiary text-text-secondary" />
+                                  <div>
+                                    <div className="font-bold text-sm text-text-primary">{record.name}</div>
+                                    <div className="text-xs text-text-tertiary">{record.email}</div>
+                                  </div>
                                 </div>
-                              </div>
-                            ),
-                          },
-                          { title: 'Roll No.', dataIndex: 'rollNumber', key: 'rollNumber', width: 100 },
-                          {
-                            title: 'Branch',
-                            dataIndex: 'branch',
-                            key: 'branch',
-                            width: 120,
-                            render: (text) => <Tag color="blue">{text || 'N/A'}</Tag>,
-                          },
-                          {
-                            title: 'Job Profile',
-                            dataIndex: 'jobProfile',
-                            key: 'jobProfile',
-                            width: 150,
-                            render: (text) => text || '-',
-                          },
-                          {
-                            title: 'Status',
-                            dataIndex: 'status',
-                            key: 'status',
-                            width: 100,
-                            render: (status) => (
-                              <Tag color={status === 'JOINED' || status === 'COMPLETED' ? 'green' : 'blue'}>
-                                {status}
-                              </Tag>
-                            ),
-                          },
-                          {
-                            title: 'Joining Letter',
-                            dataIndex: 'hasJoiningLetter',
-                            key: 'hasJoiningLetter',
-                            width: 100,
-                            render: (val) => val ? (
-                              <Tag color="green" icon={<CheckCircleOutlined />}>Yes</Tag>
-                            ) : (
-                              <Tag color="default">No</Tag>
-                            ),
-                          },
-                        ]}
-                        rowKey="id"
-                        pagination={{ pageSize: 5, size: 'small' }}
-                        size="small"
-                      />
+                              ),
+                            },
+                            { title: 'Roll No.', dataIndex: 'rollNumber', key: 'rollNumber', width: 120, render: (t) => <span className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded text-text-secondary">{t}</span> },
+                            {
+                              title: 'Branch',
+                              dataIndex: 'branch',
+                              key: 'branch',
+                              width: 140,
+                              render: (text) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{text || 'N/A'}</Tag>,
+                            },
+                            {
+                              title: 'Job Profile',
+                              dataIndex: 'jobProfile',
+                              key: 'jobProfile',
+                              width: 160,
+                              render: (text) => <Text className="text-sm">{text || '-'}</Text>,
+                            },
+                            {
+                              title: 'Status',
+                              dataIndex: 'status',
+                              key: 'status',
+                              width: 120,
+                              render: (status) => (
+                                <Tag 
+                                  color={status === 'JOINED' || status === 'COMPLETED' ? 'green' : 'blue'}
+                                  className="m-0 rounded-md border-0 font-bold text-[10px] px-2 py-0.5"
+                                >
+                                  {status}
+                                </Tag>
+                              ),
+                            },
+                            {
+                              title: 'Letter',
+                              dataIndex: 'hasJoiningLetter',
+                              key: 'hasJoiningLetter',
+                              width: 100,
+                              align: 'center',
+                              render: (val) => val ? (
+                                <Tooltip title="Joining Letter Uploaded">
+                                  <CheckCircleOutlined className="text-success text-lg" />
+                                </Tooltip>
+                              ) : (
+                                <Text type="secondary" className="text-xs">-</Text>
+                              ),
+                            },
+                          ]}
+                          rowKey="id"
+                          pagination={{ pageSize: 5, size: 'small', className: "px-4" }}
+                          size="small"
+                          className="custom-table"
+                        />
+                      </div>
                     </div>
                   </Panel>
                 ))}
               </Collapse>
               {(!selectedCompanyDetails.institutions || selectedCompanyDetails.institutions.length === 0) && (
-                <Empty description="No institutions found" />
+                <Empty description="No institutions found" className="py-8 bg-surface rounded-xl border border-border" />
               )}
-            </Card>
+            </div>
           </div>
         ) : (
           <Empty description="No data available" />

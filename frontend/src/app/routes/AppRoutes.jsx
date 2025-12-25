@@ -53,6 +53,7 @@ import CompaniesOverview from '../../features/state/companies/CompaniesOverview'
 // Shared
 import GrievanceList from '../../features/shared/grievances/GrievanceList';
 import NotificationCenter from '../../features/shared/notifications/NotificationCenter';
+import { SendNotification } from '../../features/shared';
 import SubmitGrievance from '../../features/student/grievances/SubmitGrievance';
 
 // Help & Support
@@ -512,6 +513,21 @@ const AppRoutes = () => {
 
         {/* Shared Routes */}
         <Route path="notifications" element={<NotificationCenter />} />
+        <Route
+          path="send-notification"
+          element={
+            <ProtectedRoute
+              allowedRoles={[
+                ROLES.PRINCIPAL,
+                ROLES.STATE,
+                ROLES.SYSTEM_ADMIN,
+                ...ROLES.FACULTY,
+              ]}
+            >
+              <SendNotification />
+            </ProtectedRoute>
+          }
+        />
         <Route path="change-password" element={<ChangePassword />} />
 
         {/* Help & Support Routes - Available to all authenticated users */}

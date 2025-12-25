@@ -5,9 +5,10 @@ import { PrismaModule } from '../../core/database/prisma.module';
 import { UserModule } from '../../domain/user/user.module';
 import { MentorModule } from '../../domain/mentor/mentor.module';
 import { AcademicModule } from '../../domain/academic/academic.module';
+import { AuditModule } from '../../infrastructure/audit/audit.module';
 
 @Module({
-  imports: [PrismaModule, UserModule, MentorModule, AcademicModule],
+  imports: [PrismaModule, UserModule, MentorModule, AcademicModule, AuditModule],
   controllers: [PrincipalController],
   providers: [PrincipalService],
   exports: [PrincipalService],

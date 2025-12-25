@@ -11,6 +11,8 @@ import { PrismaModule } from '../../core/database/prisma.module';
 import { CloudinaryModule } from '../../infrastructure/cloudinary/cloudinary.module';
 import { ReportBuilderModule } from '../../domain/report/builder/report-builder.module';
 import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
+import { NotificationModule } from '../../infrastructure/notification/notification.module';
+import { AuditModule } from '../../infrastructure/audit/audit.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { FileStorageModule } from '../../infrastructure/file-storage/file-storag
     CloudinaryModule,
     ReportBuilderModule,
     FileStorageModule,
+    NotificationModule,
+    AuditModule,
   ],
   controllers: [
     NotificationsController,

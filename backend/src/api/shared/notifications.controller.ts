@@ -12,6 +12,15 @@ import {
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../../core/auth/guards/roles.guard';
+import { Roles } from '../../core/auth/decorators/roles.decorator';
+import { Role } from '@prisma/client';
+import {
+  SendNotificationDto,
+  SendStudentReminderDto,
+  SendInstitutionAnnouncementDto,
+  SendSystemAnnouncementDto,
+} from './dto';
 
 @Controller('shared/notifications')
 @UseGuards(JwtAuthGuard)
@@ -97,5 +106,82 @@ export class NotificationsController {
   @Post('delete-multiple')
   async deleteMultipleNotifications(@Request() req, @Body() body: { ids: string[] }) {
     return this.notificationsService.deleteMultipleNotifications(req.user.userId, body.ids);
+  }
+
+  // ============ NOTIFICATION SENDING ENDPOINTS ============
+
+  /**
+   * Generic send notification endpoint
+   * Supports: user, users, role, institution, broadcast targets
+   */
+  @Post('send')
+  @UseGuards(RolesGuard)
+  @Roles(
+    Role.PRINCIPAL,
+    Role.STATE_DIRECTORATE,
+    Role.SYSTEM_ADMIN,
+    Role.TEACHER,
+    Role.FACULTY_SUPERVISOR,
+  )
+  async sendNotification(@Request() req, @Body() dto: SendNotificationDto) {
+    return this.notificationsService.sendNotification(
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        institutionId: req.user.institutionId,
+      },
+      dto,
+    );
+  }
+
+  /**
+   * Faculty: Send reminder to assigned students
+   */
+  @Post('send/student-reminder')
+  @UseGuards(RolesGuard)
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  async sendStudentReminder(@Request() req, @Body() dto: SendStudentReminderDto) {
+    return this.notificationsService.sendStudentReminder(
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        institutionId: req.user.institutionId,
+      },
+      dto,
+    );
+  }
+
+  /**
+   * Principal: Send announcement to institution
+   */
+  @Post('send/institution-announcement')
+  @UseGuards(RolesGuard)
+  @Roles(Role.PRINCIPAL)
+  async sendInstitutionAnnouncement(@Request() req, @Body() dto: SendInstitutionAnnouncementDto) {
+    return this.notificationsService.sendInstitutionAnnouncement(
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        institutionId: req.user.institutionId,
+      },
+      dto,
+    );
+  }
+
+  /**
+   * State/Admin: Send system-wide announcement
+   */
+  @Post('send/system-announcement')
+  @UseGuards(RolesGuard)
+  @Roles(Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN)
+  async sendSystemAnnouncement(@Request() req, @Body() dto: SendSystemAnnouncementDto) {
+    return this.notificationsService.sendSystemAnnouncement(
+      {
+        userId: req.user.userId,
+        role: req.user.role,
+        institutionId: req.user.institutionId,
+      },
+      dto,
+    );
   }
 }

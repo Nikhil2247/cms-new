@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CloudinaryService } from '../../infrastructure/cloudinary/cloudinary.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
 
 interface PaginationParams {
   page?: number;
@@ -14,6 +16,7 @@ export class DocumentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cloudinaryService: CloudinaryService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -26,11 +29,18 @@ export class DocumentsService {
       type: string;
       fileName?: string;
     },
+    ipAddress?: string,
+    userAgent?: string,
   ) {
     try {
-      // Find the student associated with this user
+      // Find the student and user associated with this user
       const student = await this.prisma.student.findFirst({
         where: { userId },
+        include: {
+          user: {
+            select: { name: true, role: true, institutionId: true },
+          },
+        },
       });
 
       if (!student) {
@@ -52,6 +62,29 @@ export class DocumentsService {
           fileUrl: uploadResult.secure_url,
         },
       });
+
+      // Log document upload
+      this.auditService.log({
+        action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
+        entityType: 'Document',
+        entityId: document.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role,
+        description: `Document uploaded: ${document.fileName} (${metadata.type})`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: {
+          documentId: document.id,
+          fileName: document.fileName,
+          type: document.type,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+        },
+      }).catch(() => {}); // Non-blocking
 
       this.logger.log(`Document uploaded: ${document.id} for student: ${student.id}`);
 
@@ -112,14 +145,18 @@ export class DocumentsService {
   /**
    * Delete a document
    */
-  async deleteDocument(documentId: string, userId: string) {
+  async deleteDocument(documentId: string, userId: string, ipAddress?: string, userAgent?: string) {
     try {
       const document = await this.prisma.document.findUnique({
         where: { id: documentId },
         include: {
           Student: {
             select: {
+              id: true,
               userId: true,
+              user: {
+                select: { name: true, role: true, institutionId: true },
+              },
             },
           },
         },
@@ -134,6 +171,14 @@ export class DocumentsService {
         throw new ForbiddenException('You do not have access to this document');
       }
 
+      // Store document info for audit before deletion
+      const deletedDocInfo = {
+        documentId: document.id,
+        fileName: document.fileName,
+        type: document.type,
+        studentId: document.Student.id,
+      };
+
       // Extract public ID from Cloudinary URL
       const publicId = this.extractPublicIdFromUrl(document.fileUrl);
 
@@ -146,6 +191,23 @@ export class DocumentsService {
       await this.prisma.document.delete({
         where: { id: documentId },
       });
+
+      // Log document deletion
+      this.auditService.log({
+        action: AuditAction.STUDENT_DOCUMENT_DELETE,
+        entityType: 'Document',
+        entityId: documentId,
+        userId,
+        userName: document.Student.user.name,
+        userRole: document.Student.user.role,
+        description: `Document deleted: ${document.fileName} (${document.type})`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.HIGH,
+        institutionId: document.Student.user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        oldValues: deletedDocInfo,
+      }).catch(() => {}); // Non-blocking
 
       this.logger.log(`Document deleted: ${documentId}`);
 

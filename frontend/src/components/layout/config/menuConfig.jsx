@@ -39,6 +39,8 @@ import {
   MessageOutlined,
   HistoryOutlined,
   CloudUploadOutlined,
+  BellOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import React from 'react';
 
@@ -55,6 +57,7 @@ export const menuConfig = {
       { key: 'institutions-overview', label: 'Institutions Overview', icon: <BankOutlined />, path: '/institutions-overview' },
       { key: 'companies-overview', label: 'Companies Overview', icon: <ShopOutlined />, path: '/companies-overview' },
       { key: 'report-builder', label: 'Report Builder', icon: <BarChartOutlined />, path: '/reports/builder' },
+      { key: 'send-announcement', label: 'Send Announcement', icon: <SendOutlined />, path: '/send-notification' },
       { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/audit-logs' },
     ],
   },
@@ -100,6 +103,7 @@ export const menuConfig = {
     items: [
       { key: 'principal-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
       { key: 'staff-list', label: 'Staff List', icon: <TeamOutlined />, path: '/staff' },
+      { key: 'send-announcement', label: 'Send Announcement', icon: <BellOutlined />, path: '/send-notification' },
     ],
   },
   BULK_OPERATIONS: {
@@ -147,6 +151,7 @@ export const menuConfig = {
       { key: 'assigned-students', label: 'Assigned Students', icon: <TeamOutlined />, path: '/assigned-students' },
       { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/visit-logs' },
       { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/faculty-grievances' },
+      { key: 'send-reminder', label: 'Send Reminder', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
 
@@ -199,6 +204,7 @@ export const menuConfig = {
       { key: 'system-admin-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/admin/dashboard' },
       { key: 'system-health', label: 'System Health', icon: <SafetyCertificateOutlined />, path: '/admin/health' },
       { key: 'analytics', label: 'Analytics', icon: <LineChartOutlined />, path: '/admin/analytics' },
+      { key: 'send-system-notification', label: 'Send Announcement', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
   SYSTEM_ADMIN_USERS: {

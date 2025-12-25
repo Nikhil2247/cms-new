@@ -7,7 +7,9 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Headers,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { AuthService } from './services/auth.service';
 import { TokenService } from './services/token.service';
 import { Public } from './decorators/public.decorator';
@@ -39,12 +41,19 @@ export class AuthController {
   @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() loginDto: LoginDto) {
+  async login(
+    @Body() loginDto: LoginDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.password,
+      ipAddress,
+      userAgent,
     );
-    return this.authService.login(user);
+    return this.authService.login(user, ipAddress, userAgent);
   }
 
   /**
@@ -53,8 +62,13 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  async register(@Body() registerDto: RegisterDto) {
-    return this.authService.register(registerDto);
+  async register(
+    @Body() registerDto: RegisterDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.register(registerDto, ipAddress, userAgent);
   }
 
   /**
@@ -99,11 +113,16 @@ export class AuthController {
   async changePassword(
     @CurrentUser() user: any,
     @Body() changePasswordDto: ChangePasswordDto,
+    @Req() req: Request,
   ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
     return this.authService.changePassword(
       user.userId,
       changePasswordDto.oldPassword,
       changePasswordDto.newPassword,
+      ipAddress,
+      userAgent,
     );
   }
 
@@ -122,9 +141,19 @@ export class AuthController {
   @Post('logout')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.OK)
-  async logout(@CurrentUser() user: any) {
-    // TODO: Invalidate refresh token if stored in database
-    // TODO: Add token to blacklist
+  async logout(
+    @CurrentUser() user: any,
+    @Req() req: Request,
+    @Headers('authorization') authorization: string,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    const token = authorization?.replace('Bearer ', '');
+
+    if (token) {
+      await this.authService.logout(token, user.userId, ipAddress, userAgent);
+    }
+
     return { message: 'Logged out successfully' };
   }
 
@@ -155,8 +184,14 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN, Role.PRINCIPAL)
   @HttpCode(HttpStatus.OK)
-  async adminResetPassword(@Body() body: { userId: string }) {
-    return this.authService.adminResetPassword(body.userId);
+  async adminResetPassword(
+    @Body() body: { userId: string },
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.adminResetPassword(body.userId, user.userId, ipAddress, userAgent);
   }
 
   /**
@@ -166,7 +201,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN)
   @HttpCode(HttpStatus.OK)
-  async bulkResetPasswords(@Body() body: { userIds: string[] }) {
-    return this.authService.bulkResetPasswords(body.userIds);
+  async bulkResetPasswords(
+    @Body() body: { userIds: string[] },
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.bulkResetPasswords(body.userIds, user.userId, ipAddress, userAgent);
   }
 }

@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus } from '@prisma/client';
+import { Prisma, ApplicationStatus, Role, GrievanceStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
 import { CreateStudentDto } from './dto/create-student.dto';
 import { UpdateStudentDto } from './dto/update-student.dto';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
 import * as bcrypt from 'bcryptjs';
 import * as XLSX from 'xlsx';
 
@@ -19,6 +20,7 @@ export class PrincipalService {
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
     private readonly userService: UserService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -1011,6 +1013,26 @@ export class PrincipalService {
       address: createStudentDto.address,
     });
 
+    // Log student creation
+    this.auditService.log({
+      action: AuditAction.USER_REGISTRATION,
+      entityType: 'Student',
+      entityId: result.student.id,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Student created: ${createStudentDto.name} (${createStudentDto.email})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      newValues: {
+        studentId: result.student.id,
+        email: createStudentDto.email,
+        enrollmentNumber: createStudentDto.enrollmentNumber,
+        batchId: createStudentDto.batchId,
+      },
+    }).catch(() => {}); // Non-blocking
+
     // TODO: Send email with temporary password to student
     // result.temporaryPassword contains the generated password
 
@@ -1090,6 +1112,27 @@ export class PrincipalService {
         data: { active: false },
       }),
     ]);
+
+    // Log student deletion
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Student deactivated: ${student.user.name} (${student.user.email})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      institutionId: principal.institutionId,
+      oldValues: {
+        studentId,
+        userId: student.userId,
+        email: student.user.email,
+        name: student.user.name,
+        rollNumber: student.rollNumber,
+      },
+    }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`]);
 
@@ -1324,6 +1367,27 @@ export class PrincipalService {
         Institution: { connect: { id: principal.institutionId } },
       },
     });
+
+    // Log staff creation
+    this.auditService.log({
+      action: AuditAction.USER_REGISTRATION,
+      entityType: 'Staff',
+      entityId: staff.id,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Staff member created: ${createStaffDto.name} (${createStaffDto.email}) as ${staffRole}`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      newValues: {
+        staffId: staff.id,
+        email: createStaffDto.email,
+        role: staffRole,
+        designation: createStaffDto.designation,
+      },
+    }).catch(() => {}); // Non-blocking
+
     // TODO: Send email with temporary password to staff
 
     await this.cache.invalidateByTags(['staff', `institution:${principal.institutionId}`]);
@@ -1391,6 +1455,26 @@ export class PrincipalService {
       where: { id: staffId },
       data: { active: false },
     });
+
+    // Log staff deletion
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'Staff',
+      entityId: staffId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Staff member deactivated: ${staff.name} (${staff.email})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      institutionId: principal.institutionId,
+      oldValues: {
+        staffId,
+        email: staff.email,
+        name: staff.name,
+        role: staff.role,
+      },
+    }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
 
@@ -1544,6 +1628,28 @@ export class PrincipalService {
         }),
       ),
     );
+
+    // Log mentor assignment
+    this.auditService.log({
+      action: AuditAction.MENTOR_ASSIGN,
+      entityType: 'MentorAssignment',
+      entityId: mentor.id,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Mentor ${mentor.name} assigned to ${assignMentorDto.studentIds.length} student(s)`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      newValues: {
+        mentorId: assignMentorDto.mentorId,
+        mentorName: mentor.name,
+        studentCount: assignMentorDto.studentIds.length,
+        studentIds: assignMentorDto.studentIds,
+        academicYear: assignMentorDto.academicYear,
+        semester: assignMentorDto.semester,
+      },
+    }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags([
       'mentors',

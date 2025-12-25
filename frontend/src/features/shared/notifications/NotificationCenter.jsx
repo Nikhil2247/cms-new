@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Avatar, Button, Empty, Badge } from 'antd';
+import { Card, Avatar, Button, Empty, Badge, Flex } from 'antd';
 import { BellOutlined, CheckOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNotifications } from '../../../hooks/useNotifications';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
@@ -45,14 +45,24 @@ const NotificationCenter = () => {
         {notifications.length === 0 ? (
           <Empty description="No notifications" />
         ) : (
-          <List
-            itemLayout="horizontal"
-            dataSource={notifications}
-            renderItem={(item) => (
-              <List.Item
-                className={!item.read ? 'bg-blue-50' : ''}
-                actions={[
-                  !item.read && (
+          <Flex vertical gap={0}>
+            {notifications.map((item) => (
+              <div
+                key={item.id}
+                className={`flex items-start gap-4 p-4 border-b border-border last:border-b-0 ${
+                  !item.read ? 'bg-blue-50' : ''
+                }`}
+              >
+                <Avatar icon={<BellOutlined />} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-text-primary">{item.title}</div>
+                  <p className="text-text-secondary mt-1">{item.message}</p>
+                  <span className="text-xs text-gray-500">
+                    {formatRelativeTime(item.createdAt)}
+                  </span>
+                </div>
+                <div className="flex gap-2 flex-shrink-0">
+                  {!item.read && (
                     <Button
                       type="link"
                       icon={<CheckOutlined />}
@@ -60,7 +70,7 @@ const NotificationCenter = () => {
                     >
                       Mark as read
                     </Button>
-                  ),
+                  )}
                   <Button
                     type="link"
                     danger
@@ -68,24 +78,11 @@ const NotificationCenter = () => {
                     onClick={() => deleteNotification(item.id)}
                   >
                     Delete
-                  </Button>,
-                ].filter(Boolean)}
-              >
-                <List.Item.Meta
-                  avatar={<Avatar icon={<BellOutlined />} />}
-                  title={item.title}
-                  description={
-                    <div>
-                      <p>{item.message}</p>
-                      <span className="text-xs text-gray-500">
-                        {formatRelativeTime(item.createdAt)}
-                      </span>
-                    </div>
-                  }
-                />
-              </List.Item>
-            )}
-          />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </Flex>
         )}
       </Card>
     </div>

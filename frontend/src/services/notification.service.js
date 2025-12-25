@@ -107,6 +107,41 @@ const NotificationService = {
   updateSettings: (data) => {
     return API.put('/shared/notifications/settings', data);
   },
+
+  // ============ NOTIFICATION SENDING METHODS ============
+
+  /**
+   * Send notification (generic)
+   * @param {Object} data - { target, title, body, userId?, userIds?, role?, institutionId?, roleFilter?, sendEmail?, data? }
+   * Target types: 'user', 'users', 'role', 'institution', 'broadcast'
+   */
+  send: (data) => {
+    return API.post('/shared/notifications/send', data);
+  },
+
+  /**
+   * Faculty: Send reminder to assigned students
+   * @param {Object} data - { title, body, studentIds?, sendEmail?, data? }
+   */
+  sendStudentReminder: (data) => {
+    return API.post('/shared/notifications/send/student-reminder', data);
+  },
+
+  /**
+   * Principal: Send announcement to institution
+   * @param {Object} data - { title, body, targetRoles?, sendEmail?, data? }
+   */
+  sendInstitutionAnnouncement: (data) => {
+    return API.post('/shared/notifications/send/institution-announcement', data);
+  },
+
+  /**
+   * State/Admin: Send system-wide announcement
+   * @param {Object} data - { title, body, targetRoles?, sendEmail?, force?, data? }
+   */
+  sendSystemAnnouncement: (data) => {
+    return API.post('/shared/notifications/send/system-announcement', data);
+  },
 };
 
 export default NotificationService;

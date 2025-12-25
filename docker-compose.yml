@@ -189,15 +189,15 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 768M
         reservations:
-          memory: 128M
+          memory: 256M
     ulimits:
       memlock: -1
     command: >
       --logtostderr
       --cache_mode=true
-      --maxmemory=400mb
+      --maxmemory=512mb
       --keys_output_limit=12288
       --proactor_threads=2
     healthcheck:

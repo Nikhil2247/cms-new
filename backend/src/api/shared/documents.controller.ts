@@ -26,16 +26,20 @@ export class DocumentsController {
     @Body() metadata: any,
     @Request() req,
   ) {
-    return this.documentsService.uploadDocument(req.user.userId, file, metadata);
+    const ipAddress = req.ip || req.headers['x-forwarded-for'];
+    const userAgent = req.headers['user-agent'];
+    return this.documentsService.uploadDocument(req.user.userId, file, metadata, ipAddress, userAgent);
   }
 
   @Get(':id')
   async getDocument(@Param('id') id: string, @Request() req) {
-    return this.documentsService.getDocument(req.user.userId, id);
+    return this.documentsService.getDocument(id, req.user.userId);
   }
 
   @Delete(':id')
   async deleteDocument(@Param('id') id: string, @Request() req) {
-    return this.documentsService.deleteDocument(req.user.userId, id);
+    const ipAddress = req.ip || req.headers['x-forwarded-for'];
+    const userAgent = req.headers['user-agent'];
+    return this.documentsService.deleteDocument(id, req.user.userId, ipAddress, userAgent);
   }
 }

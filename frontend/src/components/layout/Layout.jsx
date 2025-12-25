@@ -97,9 +97,10 @@ const Layouts = () => {
           closable
           onClose={() => setMobileOpen(false)}
           open={mobileOpen}
-          width={280}
+          size="default"
+          styles={{ body: { padding: 0, display: 'flex', flexDirection: 'column' } }}
           classNames={{
-            body: 'p-0 bg-surface flex flex-col',
+            body: 'bg-surface',
             header: 'bg-surface border-b border-border px-4 py-3',
             wrapper: 'shadow-2xl',
           }}

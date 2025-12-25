@@ -1,5 +1,15 @@
-import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
+import { Role, AuditAction } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
+import { NotificationSenderService } from '../../infrastructure/notification/notification-sender.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  SendNotificationDto,
+  SendStudentReminderDto,
+  SendInstitutionAnnouncementDto,
+  SendSystemAnnouncementDto,
+  NotificationTarget,
+} from './dto';
 
 interface PaginationParams {
   page?: number;
@@ -17,11 +27,21 @@ interface NotificationSettingsDto {
   feeReminders?: boolean;
 }
 
+interface UserContext {
+  userId: string;
+  role: Role;
+  institutionId?: string;
+}
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationSender: NotificationSenderService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /**
    * Get notifications for a user with pagination
@@ -418,5 +438,357 @@ export class NotificationsService {
       this.logger.error(`Failed to update notification settings for user ${userId}`, error.stack);
       throw error;
     }
+  }
+
+  // ============ NOTIFICATION SENDING METHODS ============
+
+  /**
+   * Send notification (generic - based on target type)
+   */
+  async sendNotification(user: UserContext, dto: SendNotificationDto) {
+    const { target, title, body, sendEmail, data } = dto;
+
+    try {
+      let result: { sentCount: number; skippedCount: number } | any;
+
+      switch (target) {
+        case NotificationTarget.USER:
+          if (!dto.userId) {
+            throw new BadRequestException('userId is required for user target');
+          }
+          result = await this.notificationSender.send({
+            userId: dto.userId,
+            type: 'ANNOUNCEMENT',
+            title,
+            body,
+            data,
+            sendEmail,
+          });
+          break;
+
+        case NotificationTarget.USERS:
+          if (!dto.userIds || dto.userIds.length === 0) {
+            throw new BadRequestException('userIds is required for users target');
+          }
+          result = await this.notificationSender.sendBulk({
+            userIds: dto.userIds,
+            type: 'ANNOUNCEMENT',
+            title,
+            body,
+            data,
+            sendEmail,
+          });
+          break;
+
+        case NotificationTarget.ROLE:
+          if (!dto.role) {
+            throw new BadRequestException('role is required for role target');
+          }
+          // Only State/Admin can send to roles
+          if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
+            throw new ForbiddenException('Only State/Admin can send to roles');
+          }
+          result = await this.notificationSender.sendToRole(dto.role, {
+            type: 'ANNOUNCEMENT',
+            title,
+            body,
+            data,
+            sendEmail,
+          });
+          break;
+
+        case NotificationTarget.INSTITUTION:
+          const institutionId = dto.institutionId || user.institutionId;
+          if (!institutionId) {
+            throw new BadRequestException('institutionId is required');
+          }
+          // Principal can only send to their institution
+          if (user.role === Role.PRINCIPAL && institutionId !== user.institutionId) {
+            throw new ForbiddenException('Principals can only send to their own institution');
+          }
+          result = await this.notificationSender.sendToInstitution(
+            institutionId,
+            { type: 'ANNOUNCEMENT', title, body, data, sendEmail },
+            dto.roleFilter,
+          );
+          break;
+
+        case NotificationTarget.BROADCAST:
+          // Only State/Admin can broadcast
+          if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
+            throw new ForbiddenException('Only State/Admin can broadcast');
+          }
+          this.notificationSender.broadcast('ANNOUNCEMENT', title, body, data);
+          result = { success: true, message: 'Broadcast sent' };
+          break;
+
+        default:
+          throw new BadRequestException('Invalid target type');
+      }
+
+      // Audit log
+      await this.auditService.log({
+        userId: user.userId,
+        userRole: user.role,
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        description: `Notification sent: ${title}`,
+        newValues: { target, title, recipientCount: result.sentCount || 1 },
+      });
+
+      this.logger.log(`Notification sent by ${user.userId}: ${target} - "${title}"`);
+
+      return {
+        success: true,
+        message: 'Notification sent successfully',
+        ...result,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send notification`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Faculty: Send reminder to assigned students
+   */
+  async sendStudentReminder(user: UserContext, dto: SendStudentReminderDto) {
+    if (!['FACULTY', 'TEACHER', 'FACULTY_SUPERVISOR'].includes(user.role)) {
+      throw new ForbiddenException('Only faculty can send student reminders');
+    }
+
+    try {
+      // Get assigned students
+      let studentIds = dto.studentIds;
+
+      if (!studentIds || studentIds.length === 0) {
+        // Get all assigned students for this faculty
+        const assignments = await this.prisma.mentorAssignment.findMany({
+          where: {
+            mentorId: user.userId,
+            isActive: true,
+          },
+          select: { studentId: true },
+        });
+        studentIds = assignments.map((a) => a.studentId);
+      } else {
+        // Verify faculty has access to these students
+        const validAssignments = await this.prisma.mentorAssignment.findMany({
+          where: {
+            mentorId: user.userId,
+            studentId: { in: studentIds },
+            isActive: true,
+          },
+          select: { studentId: true },
+        });
+        const validIds = validAssignments.map((a) => a.studentId);
+        const invalidIds = studentIds.filter((id) => !validIds.includes(id));
+        if (invalidIds.length > 0) {
+          throw new ForbiddenException(`You are not assigned to students: ${invalidIds.join(', ')}`);
+        }
+      }
+
+      if (studentIds.length === 0) {
+        return {
+          success: false,
+          message: 'No assigned students found',
+          sentCount: 0,
+        };
+      }
+
+      const result = await this.notificationSender.sendBulk({
+        userIds: studentIds,
+        type: 'ANNOUNCEMENT',
+        title: dto.title,
+        body: dto.body,
+        data: { ...dto.data, fromFaculty: user.userId },
+        sendEmail: dto.sendEmail,
+      });
+
+      let sentCount = 0;
+      for (const r of result.values()) {
+        if (r.success) sentCount++;
+      }
+
+      // Audit log
+      await this.auditService.log({
+        userId: user.userId,
+        userRole: user.role,
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        description: `Student reminder sent: ${dto.title}`,
+        newValues: { type: 'student_reminder', title: dto.title, sentCount },
+      });
+
+      this.logger.log(`Faculty ${user.userId} sent reminder to ${sentCount} students`);
+
+      return {
+        success: true,
+        message: `Reminder sent to ${sentCount} students`,
+        sentCount,
+        totalStudents: studentIds.length,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send student reminder`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Principal: Send announcement to institution
+   */
+  async sendInstitutionAnnouncement(user: UserContext, dto: SendInstitutionAnnouncementDto) {
+    if (user.role !== Role.PRINCIPAL) {
+      throw new ForbiddenException('Only principals can send institution announcements');
+    }
+
+    if (!user.institutionId) {
+      throw new BadRequestException('Principal must be associated with an institution');
+    }
+
+    try {
+      const result = await this.notificationSender.sendToInstitution(
+        user.institutionId,
+        {
+          type: 'ANNOUNCEMENT',
+          title: dto.title,
+          body: dto.body,
+          data: { ...dto.data, fromPrincipal: user.userId },
+          sendEmail: dto.sendEmail,
+        },
+        dto.targetRoles,
+      );
+
+      // Audit log
+      await this.auditService.log({
+        userId: user.userId,
+        userRole: user.role,
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        description: `Institution announcement sent: "${dto.title}" to ${result.sentCount} recipients`,
+        newValues: {
+          type: 'institution_announcement',
+          institutionId: user.institutionId,
+          title: dto.title,
+          sentCount: result.sentCount,
+          targetRoles: dto.targetRoles,
+        },
+      });
+
+      this.logger.log(`Principal ${user.userId} sent announcement to institution: ${result.sentCount} recipients`);
+
+      return {
+        success: true,
+        message: `Announcement sent to ${result.sentCount} users`,
+        ...result,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send institution announcement`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * State/Admin: Send system-wide announcement
+   */
+  async sendSystemAnnouncement(user: UserContext, dto: SendSystemAnnouncementDto) {
+    if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
+      throw new ForbiddenException('Only State/Admin can send system announcements');
+    }
+
+    try {
+      let result: { sentCount: number; skippedCount: number };
+
+      if (dto.targetRoles && dto.targetRoles.length > 0) {
+        // Send to specific roles
+        let totalSent = 0;
+        let totalSkipped = 0;
+
+        for (const role of dto.targetRoles) {
+          const roleResult = await this.notificationSender.sendToRole(role, {
+            type: 'SYSTEM_ALERT',
+            title: dto.title,
+            body: dto.body,
+            data: { ...dto.data, fromAdmin: user.userId },
+            sendEmail: dto.sendEmail,
+            force: dto.force,
+          });
+          totalSent += roleResult.sentCount;
+          totalSkipped += roleResult.skippedCount;
+        }
+
+        result = { sentCount: totalSent, skippedCount: totalSkipped };
+      } else {
+        // Broadcast to all
+        this.notificationSender.broadcast('SYSTEM_ALERT', dto.title, dto.body, {
+          ...dto.data,
+          fromAdmin: user.userId,
+        });
+
+        // Also save to database for all active users
+        const users = await this.prisma.user.findMany({
+          where: { active: true },
+          select: { id: true },
+        });
+
+        const bulkResult = await this.notificationSender.sendBulk({
+          userIds: users.map((u) => u.id),
+          type: 'SYSTEM_ALERT',
+          title: dto.title,
+          body: dto.body,
+          data: { ...dto.data, fromAdmin: user.userId },
+          sendEmail: dto.sendEmail,
+          force: dto.force,
+        });
+
+        let sentCount = 0;
+        let skippedCount = 0;
+        for (const r of bulkResult.values()) {
+          if (r.success) sentCount++;
+          else skippedCount++;
+        }
+
+        result = { sentCount, skippedCount };
+      }
+
+      // Audit log
+      await this.auditService.log({
+        userId: user.userId,
+        userRole: user.role,
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        description: `System announcement sent: "${dto.title}" to ${result.sentCount} recipients`,
+        newValues: {
+          type: 'system_announcement',
+          title: dto.title,
+          sentCount: result.sentCount,
+          targetRoles: dto.targetRoles,
+          force: dto.force,
+        },
+      });
+
+      this.logger.log(`System announcement sent by ${user.userId}: ${result.sentCount} recipients`);
+
+      return {
+        success: true,
+        message: `System announcement sent to ${result.sentCount} users`,
+        ...result,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to send system announcement`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get notification history (sent by current user)
+   */
+  async getSentNotifications(user: UserContext, pagination?: PaginationParams) {
+    // This would require a separate table to track sent notifications
+    // For now, return a placeholder
+    return {
+      data: [],
+      message: 'Sent notification history is not yet implemented',
+    };
   }
 }

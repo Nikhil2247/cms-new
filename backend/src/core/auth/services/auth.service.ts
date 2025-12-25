@@ -9,7 +9,8 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
-import { User } from '@prisma/client';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -19,12 +20,13 @@ export class AuthService {
     private prisma: PrismaService,
     private tokenService: TokenService,
     private tokenBlacklistService: TokenBlacklistService,
+    private auditService: AuditService,
   ) {}
 
   /**
    * Validate user credentials
    */
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<any> {
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -40,11 +42,38 @@ export class AuthService {
 
     if (!user) {
       this.logger.warn(`User not found with email: ${email}`);
+      // Log failed login attempt - user not found
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        description: `Failed login attempt - user not found: ${email}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.MEDIUM,
+        ipAddress,
+        userAgent,
+        newValues: { email, reason: 'user_not_found' },
+      }).catch(() => {}); // Non-blocking
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.active) {
       this.logger.warn(`Inactive account attempted login: ${email}`);
+      // Log failed login attempt - inactive account
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        description: `Failed login attempt - account inactive: ${email}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        institutionId: user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: { email, reason: 'account_inactive' },
+      }).catch(() => {}); // Non-blocking
       throw new UnauthorizedException('Account is inactive');
     }
 
@@ -52,6 +81,22 @@ export class AuthService {
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for user: ${email}`);
+      // Log failed login attempt - invalid password
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        description: `Failed login attempt - invalid password: ${email}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: { email, reason: 'invalid_password' },
+      }).catch(() => {}); // Non-blocking
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -72,7 +117,7 @@ export class AuthService {
   /**
    * Login user and return tokens
    */
-  async login(user: any) {
+  async login(user: any, ipAddress?: string, userAgent?: string) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -81,6 +126,27 @@ export class AuthService {
 
     const accessToken = this.tokenService.generateAccessToken(payload);
     const refreshToken = this.tokenService.generateRefreshToken(payload);
+
+    // Log successful login
+    this.auditService.log({
+      action: AuditAction.USER_LOGIN,
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role || Role.STUDENT,
+      description: `User logged in successfully: ${user.email}`,
+      category: AuditCategory.AUTHENTICATION,
+      severity: AuditSeverity.LOW,
+      institutionId: user.institutionId || undefined,
+      ipAddress,
+      userAgent,
+      newValues: {
+        email: user.email,
+        role: user.role,
+        loginCount: user.loginCount,
+      },
+    }).catch(() => {}); // Non-blocking
 
     return {
       access_token: accessToken,
@@ -98,7 +164,7 @@ export class AuthService {
     name: string;
     phoneNo?: string;
     role?: any;
-  }) {
+  }, ipAddress?: string, userAgent?: string) {
     const existingUser = await this.prisma.user.findUnique({
       where: { email: userData.email },
     });
@@ -122,8 +188,28 @@ export class AuthService {
       },
     });
 
+    // Log user registration
+    this.auditService.log({
+      action: AuditAction.USER_REGISTRATION,
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      description: `New user registered: ${user.email}`,
+      category: AuditCategory.AUTHENTICATION,
+      severity: AuditSeverity.MEDIUM,
+      ipAddress,
+      userAgent,
+      newValues: {
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    }).catch(() => {}); // Non-blocking
+
     const { password: _, ...result } = user;
-    return this.login(result);
+    return this.login(result, ipAddress, userAgent);
   }
 
   /**
@@ -242,6 +328,20 @@ export class AuthService {
       },
     });
 
+    // Log password reset
+    this.auditService.log({
+      action: AuditAction.PASSWORD_RESET,
+      entityType: 'User',
+      entityId: user.id,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      description: `Password reset via token for: ${user.email}`,
+      category: AuditCategory.AUTHENTICATION,
+      severity: AuditSeverity.HIGH,
+      institutionId: user.institutionId || undefined,
+    }).catch(() => {}); // Non-blocking
+
     return { message: 'Password reset successfully' };
   }
 
@@ -252,6 +352,8 @@ export class AuthService {
     userId: string,
     oldPassword: string,
     newPassword: string,
+    ipAddress?: string,
+    userAgent?: string,
   ) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -265,6 +367,22 @@ export class AuthService {
     const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
 
     if (!isOldPasswordValid) {
+      // Log failed password change attempt
+      this.auditService.log({
+        action: AuditAction.PASSWORD_CHANGE,
+        entityType: 'User',
+        entityId: userId,
+        userId: userId,
+        userName: user.name,
+        userRole: user.role,
+        description: `Failed password change attempt - invalid current password: ${user.email}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: { success: false, reason: 'invalid_current_password' },
+      }).catch(() => {}); // Non-blocking
       throw new BadRequestException('Current password is incorrect');
     }
 
@@ -287,6 +405,22 @@ export class AuthService {
         hasChangedDefaultPassword: true,
       },
     });
+
+    // Log successful password change
+    this.auditService.log({
+      action: AuditAction.PASSWORD_CHANGE,
+      entityType: 'User',
+      entityId: userId,
+      userId: userId,
+      userName: user.name,
+      userRole: user.role,
+      description: `Password changed successfully: ${user.email}`,
+      category: AuditCategory.AUTHENTICATION,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: user.institutionId || undefined,
+      ipAddress,
+      userAgent,
+    }).catch(() => {}); // Non-blocking
 
     return { message: 'Password changed successfully' };
   }
@@ -356,7 +490,7 @@ export class AuthService {
   /**
    * Logout user - blacklist the current token
    */
-  async logout(token: string, userId: string): Promise<void> {
+  async logout(token: string, userId: string, ipAddress?: string, userAgent?: string): Promise<void> {
     try {
       // Decode token to get expiration
       const decoded = this.tokenService.decodeToken(token);
@@ -368,6 +502,28 @@ export class AuthService {
 
       // Blacklist the token
       await this.tokenBlacklistService.blacklistToken(token, expiresAt);
+
+      // Get user details for audit
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true, role: true, institutionId: true },
+      });
+
+      // Log logout
+      this.auditService.log({
+        action: AuditAction.USER_LOGOUT,
+        entityType: 'User',
+        entityId: userId,
+        userId: userId,
+        userName: user?.name,
+        userRole: user?.role || Role.STUDENT,
+        description: `User logged out: ${user?.email}`,
+        category: AuditCategory.AUTHENTICATION,
+        severity: AuditSeverity.LOW,
+        institutionId: user?.institutionId || undefined,
+        ipAddress,
+        userAgent,
+      }).catch(() => {}); // Non-blocking
 
       this.logger.log(`User ${userId} logged out successfully`);
     } catch (error) {
@@ -392,7 +548,7 @@ export class AuthService {
   /**
    * Force logout a user (admin action)
    */
-  async forceLogout(targetUserId: string, adminUserId: string): Promise<void> {
+  async forceLogout(targetUserId: string, adminUserId: string, ipAddress?: string, userAgent?: string): Promise<void> {
     try {
       // Verify target user exists
       const user = await this.prisma.user.findUnique({
@@ -403,8 +559,36 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
 
+      // Get admin details for audit
+      const admin = await this.prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { name: true, email: true, role: true, institutionId: true },
+      });
+
       // Invalidate all tokens for the target user
       await this.tokenBlacklistService.invalidateUserTokens(targetUserId);
+
+      // Log force logout
+      this.auditService.log({
+        action: AuditAction.USER_LOGOUT,
+        entityType: 'User',
+        entityId: targetUserId,
+        userId: adminUserId,
+        userName: admin?.name,
+        userRole: admin?.role || Role.SYSTEM_ADMIN,
+        description: `Admin forced logout for user: ${user.email} (by ${admin?.email})`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        institutionId: admin?.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: {
+          targetUserId,
+          targetEmail: user.email,
+          targetRole: user.role,
+          initiatedBy: adminUserId,
+        },
+      }).catch(() => {}); // Non-blocking
 
       this.logger.log(
         `Admin ${adminUserId} forced logout for user ${targetUserId}`,
@@ -421,7 +605,7 @@ export class AuthService {
   /**
    * Admin reset password - Generate random password and update user
    */
-  async adminResetPassword(userId: string) {
+  async adminResetPassword(userId: string, adminUserId?: string, ipAddress?: string, userAgent?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -430,6 +614,7 @@ export class AuthService {
         name: true,
         role: true,
         active: true,
+        institutionId: true,
       },
     });
 
@@ -439,6 +624,15 @@ export class AuthService {
 
     if (!user.active) {
       throw new BadRequestException('Cannot reset password for inactive user');
+    }
+
+    // Get admin details for audit
+    let admin = null;
+    if (adminUserId) {
+      admin = await this.prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { name: true, email: true, role: true, institutionId: true },
+      });
     }
 
     // Generate random password (8 characters: letters + numbers)
@@ -463,6 +657,29 @@ export class AuthService {
     // Invalidate all existing tokens for this user
     await this.tokenBlacklistService.invalidateUserTokens(userId);
 
+    // Log admin password reset
+    this.auditService.log({
+      action: AuditAction.PASSWORD_RESET,
+      entityType: 'User',
+      entityId: userId,
+      userId: adminUserId || userId,
+      userName: admin?.name || user.name,
+      userRole: admin?.role || Role.SYSTEM_ADMIN,
+      description: `Admin reset password for user: ${user.email}${admin ? ` (by ${admin.email})` : ''}`,
+      category: AuditCategory.SECURITY,
+      severity: AuditSeverity.HIGH,
+      institutionId: admin?.institutionId || user.institutionId || undefined,
+      ipAddress,
+      userAgent,
+      newValues: {
+        targetUserId: userId,
+        targetEmail: user.email,
+        targetRole: user.role,
+        initiatedBy: adminUserId,
+        forcePasswordChange: true,
+      },
+    }).catch(() => {}); // Non-blocking
+
     this.logger.log(`Admin reset password for user ${userId}`);
 
     // TODO: Send email with new password
@@ -482,7 +699,7 @@ export class AuthService {
   /**
    * Bulk reset passwords for multiple users
    */
-  async bulkResetPasswords(userIds: string[]) {
+  async bulkResetPasswords(userIds: string[], adminUserId?: string, ipAddress?: string, userAgent?: string) {
     if (!userIds || userIds.length === 0) {
       throw new BadRequestException('No user IDs provided');
     }
@@ -491,12 +708,21 @@ export class AuthService {
       throw new BadRequestException('Cannot reset passwords for more than 100 users at once');
     }
 
+    // Get admin details for audit
+    let admin = null;
+    if (adminUserId) {
+      admin = await this.prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { name: true, email: true, role: true, institutionId: true },
+      });
+    }
+
     const results = [];
     const errors = [];
 
     for (const userId of userIds) {
       try {
-        const result = await this.adminResetPassword(userId);
+        const result = await this.adminResetPassword(userId, adminUserId, ipAddress, userAgent);
         results.push({
           userId,
           success: true,
@@ -513,6 +739,28 @@ export class AuthService {
         });
       }
     }
+
+    // Log bulk operation summary
+    this.auditService.log({
+      action: AuditAction.BULK_OPERATION,
+      entityType: 'User',
+      userId: adminUserId,
+      userName: admin?.name,
+      userRole: admin?.role || Role.SYSTEM_ADMIN,
+      description: `Bulk password reset: ${results.length} successful, ${errors.length} failed out of ${userIds.length} users`,
+      category: AuditCategory.SECURITY,
+      severity: AuditSeverity.CRITICAL,
+      institutionId: admin?.institutionId || undefined,
+      ipAddress,
+      userAgent,
+      newValues: {
+        totalUsers: userIds.length,
+        successful: results.length,
+        failed: errors.length,
+        failedUserIds: errors.map(e => e.userId),
+        initiatedBy: adminUserId,
+      },
+    }).catch(() => {}); // Non-blocking
 
     return {
       total: userIds.length,

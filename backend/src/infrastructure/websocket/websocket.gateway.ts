@@ -24,12 +24,10 @@ import {
 
 @WebSocketGateway({
   cors: {
-    origin: (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || 'http://localhost:5173')
-      .split(',')
-      .map(o => o.trim()),
+    origin: true,
     credentials: true,
   },
-  namespace: '/ws',
+  transports: ['websocket', 'polling'],
 })
 @Injectable()
 export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -47,7 +45,7 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
   constructor(private readonly tokenService: TokenService) {}
 
   afterInit(): void {
-    this.logger.log('Unified WebSocket Gateway initialized at /ws');
+    this.logger.log('Unified WebSocket Gateway initialized');
   }
 
   /**

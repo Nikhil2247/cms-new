@@ -223,7 +223,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
             <Progress
               type="circle"
               percent={score}
-              width={36}
+              size={36}
               strokeColor={color}
               format={(percent) => <span className="text-[10px] font-bold text-text-primary">{percent}%</span>}
             />

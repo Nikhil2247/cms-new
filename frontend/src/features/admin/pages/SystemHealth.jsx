@@ -167,13 +167,15 @@ const SystemHealth = () => {
               title="System Status"
               value={report?.status?.toUpperCase() || 'UNKNOWN'}
               prefix={getStatusIcon(report?.status)}
-              valueStyle={{
-                color:
-                  report?.status === 'healthy'
-                    ? '#52c41a'
-                    : report?.status === 'degraded'
-                    ? '#faad14'
-                    : '#ff4d4f',
+              styles={{
+                content: {
+                  color:
+                    report?.status === 'healthy'
+                      ? '#52c41a'
+                      : report?.status === 'degraded'
+                      ? '#faad14'
+                      : '#ff4d4f',
+                },
               }}
             />
           </Card>
@@ -193,8 +195,8 @@ const SystemHealth = () => {
               title="Active Alerts"
               value={report?.alerts?.length || 0}
               prefix={<WarningOutlined />}
-              valueStyle={{
-                color: report?.alerts?.length > 0 ? '#ff4d4f' : '#52c41a',
+              styles={{
+                content: { color: report?.alerts?.length > 0 ? '#ff4d4f' : '#52c41a' },
               }}
             />
           </Card>
@@ -290,7 +292,7 @@ const SystemHealth = () => {
           />
         ) : (
           <Alert
-            message="No Recent Alerts"
+            title="No Recent Alerts"
             description="System is operating normally with no recent alerts."
             type="success"
             showIcon
