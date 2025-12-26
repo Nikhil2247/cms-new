@@ -70,4 +70,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-5000}/health || exit 1
 
 # Start with PM2 runtime (handles clustering)
-CMD ["pm2", "start", "ecosystem.config.js", "--no-daemon"]
+CMD ["pm2-runtime", "start", "ecosystem.config.js"]

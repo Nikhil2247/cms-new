@@ -104,8 +104,6 @@ services:
     volumes:
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs
-    command: ["pm2", "start", "ecosystem.config.js", "--no-daemon"]
-    user: "appuser"
     depends_on:
       mongodb:
         condition: service_healthy
