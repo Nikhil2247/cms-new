@@ -163,6 +163,11 @@ const initialState = {
     complianceSummary: null,
     companiesOverview: null,
     companiesOverviewKey: null,
+    // Institute detail caching - keyed by institutionId
+    instituteOverview: {},
+    instituteStudents: {},
+    instituteCompanies: {},
+    instituteFaculty: {},
   },
 };
 
@@ -765,10 +770,18 @@ export const fetchJoiningLetterStats = createAsyncThunk(
 // Institute Detail View thunks
 export const fetchInstituteOverview = createAsyncThunk(
   'state/fetchInstituteOverview',
-  async (institutionId, { rejectWithValue }) => {
+  async (institutionId, { getState, rejectWithValue }) => {
     try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.instituteOverview?.[institutionId];
+
+      // Return cached data if available and fresh
+      if (lastFetched && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true, institutionId };
+      }
+
       const response = await stateService.getInstitutionOverview(institutionId);
-      return response;
+      return { ...response, institutionId };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch institute overview');
     }
@@ -777,8 +790,19 @@ export const fetchInstituteOverview = createAsyncThunk(
 
 export const fetchInstituteStudents = createAsyncThunk(
   'state/fetchInstituteStudents',
-  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, loadMore = false }, { rejectWithValue }) => {
+  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, loadMore = false, forceRefresh = false }, { getState, rejectWithValue }) => {
     try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.instituteStudents?.[institutionId];
+      const hasFilters = search || (filter && filter !== 'all') || (branch && branch !== 'all') ||
+                        companyId || (reportStatus && reportStatus !== 'all') ||
+                        (visitStatus && visitStatus !== 'all') || (selfIdentified && selfIdentified !== 'all');
+
+      // Return cached data if available, fresh, not loading more, and no active filters
+      if (lastFetched && !forceRefresh && !loadMore && !hasFilters && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true, institutionId };
+      }
+
       const response = await stateService.getInstitutionStudents(institutionId, {
         cursor,
         limit,
@@ -790,7 +814,7 @@ export const fetchInstituteStudents = createAsyncThunk(
         visitStatus,
         selfIdentified,
       });
-      return { ...response, loadMore };
+      return { ...response, loadMore, institutionId };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch students');
     }
@@ -799,10 +823,18 @@ export const fetchInstituteStudents = createAsyncThunk(
 
 export const fetchInstituteCompanies = createAsyncThunk(
   'state/fetchInstituteCompanies',
-  async ({ institutionId, limit, search }, { rejectWithValue }) => {
+  async ({ institutionId, limit, search, forceRefresh = false }, { getState, rejectWithValue }) => {
     try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.instituteCompanies?.[institutionId];
+
+      // Return cached data if available, fresh, and no search filter
+      if (lastFetched && !forceRefresh && !search && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true, institutionId };
+      }
+
       const response = await stateService.getInstitutionCompanies(institutionId, { limit, search });
-      return response;
+      return { ...response, institutionId };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch companies');
     }
@@ -811,10 +843,18 @@ export const fetchInstituteCompanies = createAsyncThunk(
 
 export const fetchInstituteFacultyPrincipal = createAsyncThunk(
   'state/fetchInstituteFacultyPrincipal',
-  async (institutionId, { rejectWithValue }) => {
+  async (institutionId, { getState, rejectWithValue }) => {
     try {
+      const state = getState();
+      const lastFetched = state.state.lastFetched.instituteFaculty?.[institutionId];
+
+      // Return cached data if available and fresh
+      if (lastFetched && (Date.now() - lastFetched) < CACHE_DURATION) {
+        return { cached: true, institutionId };
+      }
+
       const response = await stateService.getInstitutionFacultyPrincipal(institutionId);
-      return response;
+      return { ...response, institutionId };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch faculty and principal');
     }
@@ -854,6 +894,19 @@ export const removeMentorFromStudent = createAsyncThunk(
       return { studentId, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to remove mentor');
+    }
+  }
+);
+
+// Delete student thunk
+export const deleteInstituteStudent = createAsyncThunk(
+  'state/deleteInstituteStudent',
+  async ({ studentId, institutionId }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.deleteStudent(studentId);
+      return { studentId, institutionId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete student');
     }
   }
 );
@@ -1059,16 +1112,13 @@ const stateSlice = createSlice({
     },
     setSelectedInstitute: (state, action) => {
       state.selectedInstitute.id = action.payload;
-      // Reset other data when selecting new institute
-      state.instituteOverview.data = null;
-      state.instituteStudents.list = [];
-      state.instituteStudents.cursor = null;
-      state.instituteStudents.hasMore = true;
-      state.instituteCompanies.list = [];
-      state.instituteCompanies.summary = null;
-      state.instituteFacultyPrincipal.principal = null;
-      state.instituteFacultyPrincipal.faculty = [];
-      state.instituteFacultyPrincipal.summary = null;
+      // Don't clear data - let caching handle when to refetch
+      // Reset loading states only
+      state.instituteOverview.loading = false;
+      state.instituteStudents.loading = false;
+      state.instituteStudents.loadingMore = false;
+      state.instituteCompanies.loading = false;
+      state.instituteFacultyPrincipal.loading = false;
     },
     clearSelectedInstitute: (state) => {
       state.selectedInstitute = { id: null, data: null, loading: false, error: null };
@@ -1631,33 +1681,54 @@ const stateSlice = createSlice({
       })
 
       // Institute Detail View
-      .addCase(fetchInstituteOverview.pending, (state) => {
-        state.instituteOverview.loading = true;
+      .addCase(fetchInstituteOverview.pending, (state, action) => {
+        // Only show loading if not cached
+        if (!state.lastFetched.instituteOverview?.[action.meta.arg]) {
+          state.instituteOverview.loading = true;
+        }
         state.instituteOverview.error = null;
       })
       .addCase(fetchInstituteOverview.fulfilled, (state, action) => {
         state.instituteOverview.loading = false;
-        state.instituteOverview.data = action.payload;
+        if (!action.payload.cached) {
+          state.instituteOverview.data = action.payload;
+          // Cache timestamp per institution
+          if (!state.lastFetched.instituteOverview) {
+            state.lastFetched.instituteOverview = {};
+          }
+          state.lastFetched.instituteOverview[action.payload.institutionId] = Date.now();
+        }
       })
       .addCase(fetchInstituteOverview.rejected, (state, action) => {
         state.instituteOverview.loading = false;
         state.instituteOverview.error = action.payload;
       })
       .addCase(fetchInstituteStudents.pending, (state, action) => {
-        if (action.meta.arg.loadMore) {
+        const { loadMore, institutionId } = action.meta.arg;
+        const isCached = state.lastFetched.instituteStudents?.[institutionId];
+        if (loadMore) {
           state.instituteStudents.loadingMore = true;
-        } else {
+        } else if (!isCached) {
           state.instituteStudents.loading = true;
         }
         state.instituteStudents.error = null;
       })
       .addCase(fetchInstituteStudents.fulfilled, (state, action) => {
+        if (action.payload.cached) {
+          state.instituteStudents.loading = false;
+          return;
+        }
         if (action.payload.loadMore) {
           state.instituteStudents.list = [...state.instituteStudents.list, ...action.payload.students];
           state.instituteStudents.loadingMore = false;
         } else {
           state.instituteStudents.list = action.payload.students;
           state.instituteStudents.loading = false;
+          // Cache timestamp per institution (only for initial fetch without filters)
+          if (!state.lastFetched.instituteStudents) {
+            state.lastFetched.instituteStudents = {};
+          }
+          state.lastFetched.instituteStudents[action.payload.institutionId] = Date.now();
         }
         state.instituteStudents.cursor = action.payload.nextCursor;
         state.instituteStudents.hasMore = action.payload.hasMore;
@@ -1672,15 +1743,26 @@ const stateSlice = createSlice({
         state.instituteStudents.loadingMore = false;
         state.instituteStudents.error = action.payload;
       })
-      .addCase(fetchInstituteCompanies.pending, (state) => {
-        state.instituteCompanies.loading = true;
+      .addCase(fetchInstituteCompanies.pending, (state, action) => {
+        const isCached = state.lastFetched.instituteCompanies?.[action.meta.arg.institutionId];
+        if (!isCached) {
+          state.instituteCompanies.loading = true;
+        }
         state.instituteCompanies.error = null;
       })
       .addCase(fetchInstituteCompanies.fulfilled, (state, action) => {
         state.instituteCompanies.loading = false;
+        if (action.payload.cached) {
+          return;
+        }
         state.instituteCompanies.list = action.payload.companies || action.payload.data || [];
         state.instituteCompanies.total = action.payload.total || 0;
         state.instituteCompanies.summary = action.payload.summary || null;
+        // Cache timestamp per institution
+        if (!state.lastFetched.instituteCompanies) {
+          state.lastFetched.instituteCompanies = {};
+        }
+        state.lastFetched.instituteCompanies[action.payload.institutionId] = Date.now();
       })
       .addCase(fetchInstituteCompanies.rejected, (state, action) => {
         state.instituteCompanies.loading = false;
@@ -1688,19 +1770,48 @@ const stateSlice = createSlice({
       })
 
       // Faculty & Principal
-      .addCase(fetchInstituteFacultyPrincipal.pending, (state) => {
-        state.instituteFacultyPrincipal.loading = true;
+      .addCase(fetchInstituteFacultyPrincipal.pending, (state, action) => {
+        const isCached = state.lastFetched.instituteFaculty?.[action.meta.arg];
+        if (!isCached) {
+          state.instituteFacultyPrincipal.loading = true;
+        }
         state.instituteFacultyPrincipal.error = null;
       })
       .addCase(fetchInstituteFacultyPrincipal.fulfilled, (state, action) => {
         state.instituteFacultyPrincipal.loading = false;
+        if (action.payload.cached) {
+          return;
+        }
         state.instituteFacultyPrincipal.principal = action.payload.principal || null;
         state.instituteFacultyPrincipal.faculty = action.payload.faculty || [];
         state.instituteFacultyPrincipal.summary = action.payload.summary || null;
+        // Cache timestamp per institution
+        if (!state.lastFetched.instituteFaculty) {
+          state.lastFetched.instituteFaculty = {};
+        }
+        state.lastFetched.instituteFaculty[action.payload.institutionId] = Date.now();
       })
       .addCase(fetchInstituteFacultyPrincipal.rejected, (state, action) => {
         state.instituteFacultyPrincipal.loading = false;
         state.instituteFacultyPrincipal.error = action.payload;
+      })
+
+      // Delete Student
+      .addCase(deleteInstituteStudent.fulfilled, (state, action) => {
+        // Remove student from list
+        state.instituteStudents.list = state.instituteStudents.list.filter(
+          s => s.id !== action.payload.studentId
+        );
+        state.instituteStudents.total = Math.max(0, state.instituteStudents.total - 1);
+        // Invalidate caches for this institution to force refresh on next visit
+        if (action.payload.institutionId) {
+          if (state.lastFetched.instituteStudents) {
+            delete state.lastFetched.instituteStudents[action.payload.institutionId];
+          }
+          if (state.lastFetched.instituteOverview) {
+            delete state.lastFetched.instituteOverview[action.payload.institutionId];
+          }
+        }
       })
 
       // Critical Alerts

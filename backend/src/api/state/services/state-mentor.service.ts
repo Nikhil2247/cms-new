@@ -188,6 +188,92 @@ export class StateMentorService {
     };
   }
 
+  /**
+   * Delete student and all associated data (State Directorate)
+   */
+  async deleteStudent(studentId: string, deletedBy: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        institutionId: true,
+        name: true,
+        email: true,
+        user: { select: { id: true } },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Use transaction to delete all related data
+    await this.prisma.$transaction(async (tx) => {
+      // Delete mentor assignments
+      await tx.mentorAssignment.deleteMany({
+        where: { studentId },
+      });
+
+      // Delete internship applications (FacultyVisitLog will cascade delete)
+      await tx.internshipApplication.deleteMany({
+        where: { studentId },
+      });
+
+      // Delete monthly reports
+      await tx.monthlyReport.deleteMany({
+        where: { studentId },
+      });
+
+      // Delete documents related to the student
+      await tx.document.deleteMany({
+        where: { studentId },
+      });
+
+      // Delete the student record
+      await tx.student.delete({
+        where: { id: studentId },
+      });
+
+      // Delete the associated user account if exists
+      if (student.user?.id) {
+        await tx.user.delete({
+          where: { id: student.user.id },
+        });
+      }
+    });
+
+    // Audit student deletion
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: deletedBy,
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Student ${student.name} (${student.email}) deleted by State Directorate`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: student.institutionId || undefined,
+      oldValues: {
+        studentId,
+        studentName: student.name,
+        studentEmail: student.email,
+        institutionId: student.institutionId,
+      },
+    }).catch(() => {});
+
+    // Invalidate cache
+    await Promise.all([
+      this.cache.mdel(`student:${studentId}`),
+      this.cache.mdel(`state:institute:${student.institutionId}:students`),
+      this.cache.mdel(`state:institute:${student.institutionId}:overview`),
+    ]);
+
+    return {
+      success: true,
+      message: `Student ${student.name} has been deleted successfully`,
+    };
+  }
+
   private getCurrentAcademicYear(): string {
     const now = new Date();
     const year = now.getFullYear();

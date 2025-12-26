@@ -4,6 +4,7 @@ import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App,
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons';
 import { fetchStaff, deleteStaff, resetStaffPassword, fetchInstitutions } from '../store/stateSlice';
 import StaffModal from './StaffModal';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const StaffList = () => {
   const { modal } = App.useApp();
@@ -189,7 +190,7 @@ const StaffList = () => {
       key: 'staff',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={record.profileImage} />
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.email}</div>

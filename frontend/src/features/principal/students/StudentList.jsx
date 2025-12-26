@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, message } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStudents, deleteStudent, updateStudent, fetchDepartments, fetchBatches, optimisticallyDeleteStudent, rollbackStudentOperation } from '../store/principalSlice';
+import { fetchStudents, deleteStudent, updateStudent, fetchDepartments, fetchBatches, optimisticallyDeleteStudent, rollbackStudentOperation, resetUserPassword } from '../store/principalSlice';
 import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
@@ -13,8 +13,10 @@ import {
   MoreOutlined,
   CheckCircleOutlined,
   StopOutlined,
+  KeyOutlined,
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
+import { getImageUrl } from '../../../utils/imageUtils';
 import { generateTxnId, snapshotManager, optimisticToast } from '../../../store/optimisticMiddleware';
 import StudentModal from './StudentModal';
 
@@ -159,6 +161,58 @@ const StudentList = () => {
     });
   };
 
+  const handleResetPassword = (record) => {
+    const userId = record.user?.id;
+    if (!userId) {
+      message.error('User account not found for this student');
+      return;
+    }
+
+    Modal.confirm({
+      title: 'Reset Password',
+      content: `Are you sure you want to reset the password for ${record.name}? A new password will be generated.`,
+      okText: 'Reset Password',
+      okType: 'primary',
+      onOk: async () => {
+        try {
+          const result = await dispatch(resetUserPassword(userId)).unwrap();
+          // Show success modal with new password (if available) or email notification message
+          Modal.success({
+            title: 'Password Reset Successful',
+            content: (
+              <div className="space-y-3 mt-4">
+                <p><strong>Name:</strong> {result.name || record.name}</p>
+                <p><strong>Email:</strong> {result.email || record.email}</p>
+                {result.newPassword ? (
+                  <>
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">New Password:</p>
+                      <p className="text-lg font-mono font-bold text-green-700 select-all">{result.newPassword}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Please share this password securely with the student. They will be required to change it on first login.
+                    </p>
+                  </>
+                ) : (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      A new password has been generated and sent to the student's email address.
+                      They will be required to change it on first login.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ),
+            width: 450,
+            okText: 'Close',
+          });
+        } catch (error) {
+          message.error(error || 'Failed to reset password');
+        }
+      },
+    });
+  };
+
   const getActionMenuItems = (record) => [
     {
       key: 'view',
@@ -174,6 +228,12 @@ const StudentList = () => {
     },
     {
       type: 'divider',
+    },
+    {
+      key: 'resetPassword',
+      label: 'Reset Password',
+      icon: <KeyOutlined />,
+      onClick: () => handleResetPassword(record),
     },
     {
       key: 'toggle',
@@ -199,7 +259,7 @@ const StudentList = () => {
       key: 'name',
       render: (name, record) => (
         <div className="flex items-center gap-2">
-          <Avatar icon={<UserOutlined />} src={record.avatar} />
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
             <div className="font-medium">{name}</div>
             <div className="text-xs text-text-tertiary">{record.rollNumber}</div>

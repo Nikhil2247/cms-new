@@ -207,7 +207,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
         }
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={420}
+        styles={{ wrapper: { width: 420 } }}
         placement="right"
       >
         <Input

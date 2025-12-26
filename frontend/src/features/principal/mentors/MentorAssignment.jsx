@@ -690,6 +690,7 @@ const MentorAssignment = () => {
                 }}
                 disabled={selectedStudents.length === 0}
                 placement="bottomRight"
+                trigger={['click']}
               >
                 <Button disabled={selectedStudents.length === 0} className="rounded-lg h-10 px-6">
                   <Space>

@@ -1087,10 +1087,34 @@ export class PrincipalService {
         id: studentId,
         institutionId: principal.institutionId,
       },
+      include: { user: true },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
+    }
+
+    // If isActive is being updated, also sync the user's active field
+    if (typeof updateStudentDto.isActive === 'boolean' && student.userId) {
+      const [updatedStudent] = await this.prisma.$transaction([
+        this.prisma.student.update({
+          where: { id: studentId },
+          data: updateStudentDto,
+          include: {
+            user: true,
+            batch: true,
+            branch: true,
+          },
+        }),
+        this.prisma.user.update({
+          where: { id: student.userId },
+          data: { active: updateStudentDto.isActive },
+        }),
+      ]);
+
+      await this.cache.invalidateByTags(['students', `student:${studentId}`]);
+
+      return updatedStudent;
     }
 
     const updated = await this.prisma.student.update({

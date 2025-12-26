@@ -118,7 +118,8 @@
       "Bash(npx prisma db push:*)",
       "Bash(DRY_RUN=true npx ts-node:*)",
       "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\src\\\\features\\\\common\\\\notifications\\\\notificationUtils.js\")",
-      "Bash(ss:*)"
+      "Bash(ss:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

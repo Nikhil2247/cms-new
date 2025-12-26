@@ -525,4 +525,14 @@ export class StateController {
     const removedBy = req.user?.userId || 'state-admin';
     return this.stateService.removeMentorFromStudent(studentId, removedBy);
   }
+
+  @Delete('students/:id')
+  @ApiOperation({ summary: 'Delete student by ID' })
+  async deleteStudent(
+    @Param('id') studentId: string,
+    @Req() req,
+  ) {
+    const deletedBy = req.user?.userId || 'state-admin';
+    return this.stateService.deleteStudent(studentId, deletedBy);
+  }
 }

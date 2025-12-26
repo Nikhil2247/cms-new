@@ -1,10 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Space, Tag, Avatar, Input, Select, Card, Modal, message } from 'antd';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStaff, deleteStaff, fetchDepartments } from '../store/principalSlice';
+import { fetchStaff, deleteStaff, updateStaff, resetUserPassword } from '../store/principalSlice';
 import DataTable from '../../../components/tables/DataTable';
-import { EyeOutlined, EditOutlined, UserOutlined, SearchOutlined, PlusOutlined, DeleteOutlined } from '@ant-design/icons';
-import { getStatusColor } from '../../../utils/format';
+import {
+  EyeOutlined,
+  EditOutlined,
+  UserOutlined,
+  SearchOutlined,
+  PlusOutlined,
+  DeleteOutlined,
+  MoreOutlined,
+  CheckCircleOutlined,
+  StopOutlined,
+  KeyOutlined,
+} from '@ant-design/icons';
+import { getImageUrl } from '../../../utils/imageUtils';
 import StaffModal from './StaffModal';
 
 const { Search } = Input;
@@ -13,12 +24,10 @@ const { Option } = Select;
 const StaffList = () => {
   const dispatch = useDispatch();
   const { list, loading, pagination } = useSelector((state) => state.principal.staff);
-  const departments = useSelector((state) => state.principal.departments.list);
   const [filters, setFilters] = useState({
     search: '',
-    department: '',
-    designation: '',
-    status: '',
+    role: '',
+    active: '',
     page: 1,
     limit: 10,
   });
@@ -41,7 +50,6 @@ const StaffList = () => {
 
   useEffect(() => {
     dispatch(fetchStaff(filters));
-    dispatch(fetchDepartments());
   }, [dispatch, filters]);
 
   const handleView = (record) => {
@@ -70,78 +78,201 @@ const StaffList = () => {
     });
   };
 
-  const columns = [
+  const handleToggleStatus = async (record) => {
+    // Staff records use 'active' boolean field
+    const isCurrentlyActive = record.active === true;
+    const actionText = isCurrentlyActive ? 'deactivate' : 'activate';
+
+    Modal.confirm({
+      title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
+      content: `Are you sure you want to ${actionText} ${record.name}?`,
+      okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
+      okType: isCurrentlyActive ? 'danger' : 'primary',
+      onOk: async () => {
+        try {
+          await dispatch(updateStaff({
+            id: record.id,
+            data: { active: !isCurrentlyActive }
+          })).unwrap();
+          message.success(`Staff member ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully`);
+          dispatch(fetchStaff({ ...filters, forceRefresh: true }));
+        } catch (error) {
+          message.error(error || `Failed to ${actionText} staff member`);
+        }
+      },
+    });
+  };
+
+  const handleResetPassword = (record) => {
+    Modal.confirm({
+      title: 'Reset Password',
+      content: `Are you sure you want to reset the password for ${record.name}? A new password will be generated.`,
+      okText: 'Reset Password',
+      okType: 'primary',
+      onOk: async () => {
+        try {
+          // Staff records are User records, so record.id is the userId
+          const result = await dispatch(resetUserPassword(record.id)).unwrap();
+          // Show success modal with new password (if available) or email notification message
+          Modal.success({
+            title: 'Password Reset Successful',
+            content: (
+              <div className="space-y-3 mt-4">
+                <p><strong>Name:</strong> {result.name || record.name}</p>
+                <p><strong>Email:</strong> {result.email || record.email}</p>
+                {result.newPassword ? (
+                  <>
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-sm text-gray-600 mb-1">New Password:</p>
+                      <p className="text-lg font-mono font-bold text-green-700 select-all">{result.newPassword}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Please share this password securely with the staff member. They will be required to change it on first login.
+                    </p>
+                  </>
+                ) : (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-700">
+                      A new password has been generated and sent to the staff member's email address.
+                      They will be required to change it on first login.
+                    </p>
+                  </div>
+                )}
+              </div>
+            ),
+            width: 450,
+            okText: 'Close',
+          });
+        } catch (error) {
+          message.error(error || 'Failed to reset password');
+        }
+      },
+    });
+  };
+
+  const getActionMenuItems = (record) => {
+    const isActive = record.active === true;
+    return [
+      {
+        key: 'view',
+        label: 'View Details',
+        icon: <EyeOutlined />,
+        onClick: () => handleView(record),
+      },
+      {
+        key: 'edit',
+        label: 'Edit',
+        icon: <EditOutlined />,
+        onClick: () => handleEdit(record),
+      },
+      {
+        type: 'divider',
+      },
+      {
+        key: 'resetPassword',
+        label: 'Reset Password',
+        icon: <KeyOutlined />,
+        onClick: () => handleResetPassword(record),
+      },
+      {
+        key: 'toggle',
+        label: isActive ? 'Deactivate' : 'Activate',
+        icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
+        onClick: () => handleToggleStatus(record),
+        danger: isActive,
+      },
+      {
+        key: 'delete',
+        label: 'Delete',
+        icon: <DeleteOutlined />,
+        onClick: () => handleDelete(record),
+        danger: true,
+      },
+    ];
+  };
+
+  const columns = useMemo(() => [
     {
       title: 'Staff Member',
       dataIndex: 'name',
       key: 'name',
       render: (name, record) => (
         <div className="flex items-center gap-2">
-          <Avatar icon={<UserOutlined />} src={record.avatar} />
-          <span>{name}</span>
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <span>{name || 'N/A'}</span>
         </div>
       ),
     },
     {
-      title: 'Employee ID',
-      dataIndex: 'employeeId',
-      key: 'employeeId',
-    },
-    {
-      title: 'Department',
-      dataIndex: 'department',
-      key: 'department',
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      render: (role) => (
+        <Tag color="blue">
+          {role?.replace(/_/g, ' ') || 'N/A'}
+        </Tag>
+      ),
     },
     {
       title: 'Designation',
       dataIndex: 'designation',
       key: 'designation',
+      render: (designation) => designation || '-',
     },
     {
       title: 'Email',
       dataIndex: 'email',
       key: 'email',
+      render: (email) => email || '-',
+    },
+    {
+      title: 'Phone',
+      dataIndex: 'phoneNo',
+      key: 'phoneNo',
+      render: (phone) => phone || '-',
     },
     {
       title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      render: (status) => (
-        <Tag color={getStatusColor(status)}>
-          {status?.toUpperCase()}
+      dataIndex: 'active',
+      key: 'active',
+      width: 100,
+      render: (active) => (
+        <Tag color={active ? 'success' : 'default'}>
+          {active ? 'Active' : 'Inactive'}
         </Tag>
       ),
     },
     {
-      title: 'Actions',
+      title: '',
       key: 'actions',
+      width: 50,
       render: (_, record) => (
-        <Space>
-          <Button type="link" icon={<EyeOutlined />} onClick={() => handleView(record)}>
-            View
-          </Button>
-          <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-            Edit
-          </Button>
-          <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
-            Delete
-          </Button>
-        </Space>
+        <Dropdown
+          menu={{ items: getActionMenuItems(record) }}
+          trigger={['click']}
+          placement="bottomRight"
+        >
+          <Button
+            type="text"
+            icon={<MoreOutlined style={{ fontSize: '18px' }} />}
+            className="flex items-center justify-center"
+          />
+        </Dropdown>
       ),
     },
-  ];
+  ], [filters, list]);
 
-  const handleSearch = (value) => {
-    setFilters({ ...filters, search: value, page: 1 });
-  };
+  const handleSearch = useCallback((value) => {
+    setFilters(prev => ({ ...prev, search: value, page: 1 }));
+  }, []);
 
-  const handleFilterChange = (key, value) => {
-    setFilters({ ...filters, [key]: value, page: 1 });
-  };
+  const handleFilterChange = useCallback((key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value ?? '', page: 1 }));
+  }, []);
 
-  const handlePageChange = (page, pageSize) => {
-    setFilters({ ...filters, page, limit: pageSize });
-  };
+  const handlePageChange = useCallback((page, pageSize) => {
+    setFilters(prev => ({ ...prev, page, limit: pageSize }));
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -167,35 +298,24 @@ const StaffList = () => {
             prefix={<SearchOutlined className="text-text-tertiary" />}
           />
           <Select
-            placeholder="Department"
+            placeholder="Role"
             allowClear
             className="w-full md:w-[200px]"
-            onChange={(value) => handleFilterChange('department', value)}
+            onChange={(value) => handleFilterChange('role', value)}
           >
-            {departments?.map(dept => (
-              <Option key={dept.id} value={dept.id}>{dept.name}</Option>
-            ))}
-          </Select>
-          <Select
-            placeholder="Designation"
-            allowClear
-            className="w-full md:w-[200px]"
-            onChange={(value) => handleFilterChange('designation', value)}
-          >
-            <Option value="Professor">Professor</Option>
-            <Option value="Associate Professor">Associate Professor</Option>
-            <Option value="Assistant Professor">Assistant Professor</Option>
-            <Option value="Lecturer">Lecturer</Option>
+            <Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Option>
+            <Option value="TEACHER">Teacher</Option>
+            <Option value="HOD">HOD</Option>
+            <Option value="COORDINATOR">Coordinator</Option>
           </Select>
           <Select
             placeholder="Status"
             allowClear
             className="w-full md:w-[150px]"
-            onChange={(value) => handleFilterChange('status', value)}
+            onChange={(value) => handleFilterChange('active', value)}
           >
-            <Option value="active">Active</Option>
-            <Option value="inactive">Inactive</Option>
-            <Option value="on_leave">On Leave</Option>
+            <Option value="true">Active</Option>
+            <Option value="false">Inactive</Option>
           </Select>
         </div>
       </Card>

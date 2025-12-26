@@ -4,6 +4,7 @@ import { Card, Table, Button, Tag, Space, Modal, Input, message, Avatar, Drawer,
 import { CheckOutlined, CloseOutlined, UserOutlined, EyeOutlined, FileTextOutlined } from '@ant-design/icons';
 import { fetchMyApplications, shortlistApplication, selectApplication, rejectApplication, optimisticallyUpdateApplicationStatus, rollbackApplicationOperation } from '../store/industrySlice';
 import { generateTxnId, snapshotManager, optimisticToast } from '../../../store/optimisticMiddleware';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const { Text, Paragraph } = Typography;
 
@@ -143,7 +144,7 @@ const ApplicationsList = () => {
       key: 'student',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={record.student?.profileImage} />
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.student?.profileImage)} />
           <div>
             <div className="font-medium">{record.student?.name}</div>
             <div className="text-gray-500 text-xs">{record.student?.email}</div>
@@ -331,7 +332,7 @@ const ApplicationsList = () => {
         {selectedApp && (
           <div className="space-y-8">
             <div className="text-center bg-background-tertiary/30 p-6 rounded-2xl border border-border/50">
-              <Avatar size={80} icon={<UserOutlined />} src={selectedApp.student?.profileImage} className="shadow-md border-4 border-background" />
+              <Avatar size={80} icon={<UserOutlined />} src={getImageUrl(selectedApp.student?.profileImage)} className="shadow-md border-4 border-background" />
               <h2 className="text-2xl font-bold text-text-primary mt-4">{selectedApp.student?.name}</h2>
               <Tag color={getStatusColor(selectedApp.status)} className="mt-2 px-4 py-0.5 rounded-full font-medium">
                 {selectedApp.status}

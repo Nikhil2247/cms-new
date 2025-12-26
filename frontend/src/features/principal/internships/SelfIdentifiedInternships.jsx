@@ -55,6 +55,8 @@ import {
   MoreOutlined,
   CheckOutlined,
   StopOutlined,
+  UserAddOutlined,
+  UserDeleteOutlined,
 } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import dayjs from 'dayjs';
@@ -95,6 +97,11 @@ const SelfIdentifiedInternships = () => {
     pageSize: 10,
     total: 0,
   });
+  // Mentor assignment state
+  const [mentors, setMentors] = useState([]);
+  const [assignMentorVisible, setAssignMentorVisible] = useState(false);
+  const [selectedMentorId, setSelectedMentorId] = useState(null);
+  const [mentorAssignLoading, setMentorAssignLoading] = useState(false);
 
   // Fetch internships
   const fetchInternships = useCallback(async () => {
@@ -180,14 +187,27 @@ const SelfIdentifiedInternships = () => {
     }
   }, []); // No dependencies - fetch all data once
 
+  // Fetch mentors
+  const fetchMentors = useCallback(async () => {
+    try {
+      const response = await principalService.getMentors({ limit: 100 });
+      // getMentors returns array directly, not { data: [...] }
+      setMentors(Array.isArray(response) ? response : (response?.data || []));
+    } catch (error) {
+      console.error('Failed to fetch mentors:', error);
+      setMentors([]);
+    }
+  }, []);
+
   // Initial fetch - only runs once
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
 
     fetchInternships();
+    fetchMentors();
     dispatch(fetchInternshipStats());
-  }, [fetchInternships, dispatch]);
+  }, [fetchInternships, fetchMentors, dispatch]);
 
   // Filter internships
   const filteredInternships = useMemo(() => {
@@ -334,8 +354,73 @@ const SelfIdentifiedInternships = () => {
 
   const handleRefresh = () => {
     fetchInternships();
+    fetchMentors();
     dispatch(fetchInternshipStats());
     toast.success('Data refreshed');
+  };
+
+  // Bulk assign mentor
+  const handleBulkAssignMentor = async () => {
+    if (!selectedMentorId) {
+      toast.error('Please select a mentor');
+      return;
+    }
+
+    const selectedStudentIds = selectedRowKeys.map(key => {
+      const internship = internships.find(i => i.id === key);
+      return internship?.studentId;
+    }).filter(Boolean);
+
+    if (selectedStudentIds.length === 0) {
+      toast.error('No valid students selected');
+      return;
+    }
+
+    try {
+      setMentorAssignLoading(true);
+      const currentYear = new Date().getFullYear();
+      await principalService.assignMentor({
+        mentorId: selectedMentorId,
+        studentIds: selectedStudentIds,
+        academicYear: `${currentYear}-${currentYear + 1}`,
+      });
+      toast.success(`Mentor assigned to ${selectedStudentIds.length} student(s)`);
+      setAssignMentorVisible(false);
+      setSelectedMentorId(null);
+      setSelectedRowKeys([]);
+      fetchInternships();
+    } catch (error) {
+      console.error('Failed to assign mentor:', error);
+      toast.error(error.message || 'Failed to assign mentor');
+    } finally {
+      setMentorAssignLoading(false);
+    }
+  };
+
+  // Bulk unassign mentor
+  const handleBulkUnassignMentor = async () => {
+    const selectedStudentIds = selectedRowKeys.map(key => {
+      const internship = internships.find(i => i.id === key);
+      return internship?.studentId;
+    }).filter(Boolean);
+
+    if (selectedStudentIds.length === 0) {
+      toast.error('No valid students selected');
+      return;
+    }
+
+    try {
+      setBulkActionLoading(true);
+      await principalService.bulkUnassignMentors(selectedStudentIds);
+      toast.success(`Mentor unassigned from ${selectedStudentIds.length} student(s)`);
+      setSelectedRowKeys([]);
+      fetchInternships();
+    } catch (error) {
+      console.error('Failed to unassign mentors:', error);
+      toast.error(error.message || 'Failed to unassign mentors');
+    } finally {
+      setBulkActionLoading(false);
+    }
   };
 
   // Row selection for bulk actions
@@ -349,10 +434,15 @@ const SelfIdentifiedInternships = () => {
 
   // Bulk action menu items
   const bulkActionItems = [
-    { key: 'APPROVED', label: 'Mark as Active', icon: <CheckCircleOutlined className="text-green-500" /> },
-    { key: 'JOINED', label: 'Mark as Joined', icon: <RiseOutlined className="text-blue-500" /> },
-    { key: 'COMPLETED', label: 'Mark as Completed', icon: <CheckOutlined className="text-purple-500" /> },
-    { key: 'REJECTED', label: 'Mark as Rejected', icon: <StopOutlined className="text-red-500" /> },
+    { type: 'group', label: 'Mentor Actions' },
+    { key: 'ASSIGN_MENTOR', label: 'Assign Mentor', icon: <UserAddOutlined className="text-green-500" />, action: 'mentor' },
+    { key: 'UNASSIGN_MENTOR', label: 'Unassign Mentor', icon: <UserDeleteOutlined className="text-orange-500" />, action: 'mentor' },
+    { type: 'divider' },
+    { type: 'group', label: 'Status Actions' },
+    { key: 'APPROVED', label: 'Mark as Active', icon: <CheckCircleOutlined className="text-green-500" />, action: 'status' },
+    { key: 'JOINED', label: 'Mark as Joined', icon: <RiseOutlined className="text-blue-500" />, action: 'status' },
+    { key: 'COMPLETED', label: 'Mark as Completed', icon: <CheckOutlined className="text-purple-500" />, action: 'status' },
+    { key: 'REJECTED', label: 'Mark as Rejected', icon: <StopOutlined className="text-red-500" />, action: 'status' },
   ];
 
   // Table columns
@@ -541,23 +631,64 @@ const SelfIdentifiedInternships = () => {
           {selectedRowKeys.length > 0 && (
             <Dropdown
               menu={{
-                items: bulkActionItems.map(item => ({
-                  key: item.key,
-                  label: (
-                    <Popconfirm
-                      title={`Update ${selectedRowKeys.length} internship(s)?`}
-                      description={`This will change their status to "${item.label.replace('Mark as ', '')}"`}
-                      onConfirm={() => handleBulkStatusUpdate(item.key)}
-                      okText="Yes"
-                      cancelText="No"
-                    >
-                      <div className="flex items-center gap-2 py-1">
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </div>
-                    </Popconfirm>
-                  ),
-                })),
+                items: bulkActionItems.map(item => {
+                  if (item.type === 'group') {
+                    return { type: 'group', label: item.label, key: item.label };
+                  }
+                  if (item.type === 'divider') {
+                    return { type: 'divider', key: 'divider' };
+                  }
+                  if (item.key === 'ASSIGN_MENTOR') {
+                    return {
+                      key: item.key,
+                      label: (
+                        <div
+                          className="flex items-center gap-2 py-1"
+                          onClick={() => setAssignMentorVisible(true)}
+                        >
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </div>
+                      ),
+                    };
+                  }
+                  if (item.key === 'UNASSIGN_MENTOR') {
+                    return {
+                      key: item.key,
+                      label: (
+                        <Popconfirm
+                          title={`Unassign mentor from ${selectedRowKeys.length} student(s)?`}
+                          description="This will remove the assigned mentor from selected students"
+                          onConfirm={handleBulkUnassignMentor}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                          <div className="flex items-center gap-2 py-1">
+                            {item.icon}
+                            <span>{item.label}</span>
+                          </div>
+                        </Popconfirm>
+                      ),
+                    };
+                  }
+                  return {
+                    key: item.key,
+                    label: (
+                      <Popconfirm
+                        title={`Update ${selectedRowKeys.length} internship(s)?`}
+                        description={`This will change their status to "${item.label.replace('Mark as ', '')}"`}
+                        onConfirm={() => handleBulkStatusUpdate(item.key)}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <div className="flex items-center gap-2 py-1">
+                          {item.icon}
+                          <span>{item.label}</span>
+                        </div>
+                      </Popconfirm>
+                    ),
+                  };
+                }),
               }}
               trigger={['click']}
             >
@@ -1044,6 +1175,82 @@ const SelfIdentifiedInternships = () => {
             </Button>
           </div>
         </Form>
+      </Modal>
+
+      {/* Assign Mentor Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2 text-text-primary">
+            <UserAddOutlined className="text-green-500" />
+            <span>Assign Mentor to Selected Students</span>
+          </div>
+        }
+        open={assignMentorVisible}
+        onCancel={() => {
+          setAssignMentorVisible(false);
+          setSelectedMentorId(null);
+        }}
+        footer={[
+          <Button
+            key="cancel"
+            onClick={() => {
+              setAssignMentorVisible(false);
+              setSelectedMentorId(null);
+            }}
+          >
+            Cancel
+          </Button>,
+          <Button
+            key="assign"
+            type="primary"
+            loading={mentorAssignLoading}
+            onClick={handleBulkAssignMentor}
+            disabled={!selectedMentorId}
+            icon={<UserAddOutlined />}
+          >
+            Assign Mentor
+          </Button>,
+        ]}
+        width={500}
+      >
+        <div className="space-y-4 py-4">
+          <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <Text className="text-sm text-blue-700">
+              <strong>{selectedRowKeys.length}</strong> student(s) selected for mentor assignment
+            </Text>
+          </div>
+
+          <div>
+            <Text className="block text-sm font-medium text-text-primary mb-2">
+              Select Faculty Mentor
+            </Text>
+            <Select
+              placeholder="Search and select a mentor..."
+              value={selectedMentorId}
+              onChange={setSelectedMentorId}
+              className="w-full"
+              showSearch
+              optionFilterProp="children"
+              filterOption={(input, option) =>
+                option?.children?.toLowerCase().includes(input.toLowerCase())
+              }
+            >
+              {mentors.map(mentor => (
+                <Select.Option key={mentor.id} value={mentor.id}>
+                  {mentor.name} - {mentor.designation || mentor.role}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+
+          {selectedMentorId && (
+            <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+              <Text className="text-sm text-green-700">
+                Selected mentor will be assigned to all {selectedRowKeys.length} student(s)
+              </Text>
+            </div>
+          )}
+        </div>
       </Modal>
     </div>
   );

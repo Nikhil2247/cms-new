@@ -119,7 +119,6 @@ const Analytics = () => {
   const [selectedBatch, setSelectedBatch] = useState('all');
   const [selectedDepartment, setSelectedDepartment] = useState('all');
   const [activeTab, setActiveTab] = useState('overview');
-  const [chartView, setChartView] = useState('monthly');
   const [exporting, setExporting] = useState(false);
 
   // Modal states for detailed views
@@ -273,7 +272,7 @@ const Analytics = () => {
             value={analytics?.dashboard?.internships?.totalApplications || 0}
             icon={<BankOutlined />}
             color={token.colorSuccess}
-            subValue="Self-identified (auto-approved)"
+            subValue="Active applications"
           />
         </Col>
         <Col xs={24} sm={12} lg={6}>
@@ -340,44 +339,6 @@ const Analytics = () => {
 
       {/* Charts Row */}
       <Row gutter={[24, 24]}>
-        {/* Students by Batch */}
-        <Col xs={24} lg={12}>
-          <Card
-            className="rounded-2xl border-border shadow-sm"
-            title={
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-text-primary">
-                  <BarChartOutlined className="text-primary" />
-                  <span className="font-semibold">Students by Batch</span>
-                </div>
-              </div>
-            }
-          >
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={analytics?.studentsByBatch || []}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                <XAxis dataKey="batch" tick={{ fontSize: 12, fill: '#666' }} />
-                <YAxis tick={{ fontSize: 12, fill: '#666' }} />
-                <RechartsTooltip
-                  contentStyle={{
-                    backgroundColor: 'var(--color-card-bg, #fff)',
-                    borderRadius: '12px',
-                    border: '1px solid var(--color-border, #e5e7eb)',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
-                  }}
-                />
-                <Bar
-                  dataKey="students"
-                  fill={token.colorPrimary}
-                  radius={[6, 6, 0, 0]}
-                  name="Students"
-                  animationDuration={800}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-
         {/* Internship Status Distribution */}
         <Col xs={24} lg={12}>
           <Card
@@ -418,97 +379,6 @@ const Analytics = () => {
         </Col>
       </Row>
 
-      {/* Monthly Progress Trend */}
-      <Card
-        className="rounded-2xl border-border shadow-sm"
-        title={
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-text-primary">
-              <LineChartOutlined className="text-warning" />
-              <span className="font-semibold">Monthly Progress Trend</span>
-            </div>
-            <Segmented
-              options={[
-                { label: 'Line', value: 'line' },
-                { label: 'Area', value: 'area' },
-              ]}
-              value={chartView === 'monthly' ? 'line' : 'area'}
-              onChange={(v) => setChartView(v === 'line' ? 'monthly' : 'area')}
-              size="small"
-            />
-          </div>
-        }
-      >
-        <ResponsiveContainer width="100%" height={350}>
-          {chartView === 'monthly' ? (
-            <LineChart data={analytics?.monthlyProgress || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#666' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#666' }} />
-              <RechartsTooltip
-                contentStyle={{
-                  backgroundColor: 'var(--color-card-bg, #fff)',
-                  borderRadius: '12px',
-                  border: '1px solid var(--color-border, #e5e7eb)'
-                }}
-              />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="completed"
-                stroke={token.colorSuccess}
-                strokeWidth={3}
-                dot={{ r: 5, strokeWidth: 2 }}
-                activeDot={{ r: 8 }}
-                name="Completed"
-                animationDuration={800}
-              />
-              <Line
-                type="monotone"
-                dataKey="inProgress"
-                stroke={token.colorPrimary}
-                strokeWidth={3}
-                dot={{ r: 5, strokeWidth: 2 }}
-                activeDot={{ r: 8 }}
-                name="In Progress"
-                animationDuration={800}
-              />
-            </LineChart>
-          ) : (
-            <AreaChart data={analytics?.monthlyProgress || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#666' }} />
-              <YAxis tick={{ fontSize: 12, fill: '#666' }} />
-              <RechartsTooltip
-                contentStyle={{
-                  backgroundColor: 'var(--color-card-bg, #fff)',
-                  borderRadius: '12px',
-                  border: '1px solid var(--color-border, #e5e7eb)'
-                }}
-              />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="completed"
-                stackId="1"
-                stroke={token.colorSuccess}
-                fill={`${token.colorSuccess}40`}
-                name="Completed"
-                animationDuration={800}
-              />
-              <Area
-                type="monotone"
-                dataKey="inProgress"
-                stackId="1"
-                stroke={token.colorPrimary}
-                fill={`${token.colorPrimary}40`}
-                name="In Progress"
-                animationDuration={800}
-              />
-            </AreaChart>
-          )}
-        </ResponsiveContainer>
-      </Card>
     </div>
   );
 
@@ -518,58 +388,119 @@ const Analytics = () => {
     const companyData = internshipStats?.byCompany || [];
     const industryData = internshipStats?.byIndustry || [];
 
+    // Calculate self-identified stats
+    const totalInternships = analytics?.dashboard?.internships?.totalApplications || internshipStats?.totalApplications || 0;
+    const ongoingCount = analytics?.dashboard?.internships?.ongoingInternships || 0;
+    const completedCount = analytics?.dashboard?.internships?.completedInternships || 0;
+    const completionRate = totalInternships > 0 ? Math.round((completedCount / totalInternships) * 100) : 0;
+
     return (
       <div className="space-y-6">
-        {/* Internship Summary Cards */}
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={8}>
-            <Card className="rounded-2xl border-border shadow-sm text-center">
+        {/* Self-Identified Internships Overview Banner */}
+        <Card className="rounded-2xl border-primary/20 bg-gradient-to-r from-primary/5 to-transparent shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <SafetyCertificateOutlined className="text-primary text-xl" />
+                <Text className="text-lg font-semibold text-text-primary">Self-Identified Internships</Text>
+              </div>
+              <Text className="text-text-secondary">
+                Students identify and register their own internships. All self-identified internships are auto-approved and tracked for compliance.
+              </Text>
+            </div>
+            <div className="flex gap-4">
               <Statistic
-                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Applications</Text>}
-                value={internshipStats?.totalApplications || 0}
+                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Completion Rate</Text>}
+                value={completionRate}
+                suffix="%"
+                styles={{ content: { color: token.colorSuccess, fontWeight: 'bold', fontSize: 28 } }}
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* Key Metrics Row */}
+        <Row gutter={[16, 16]}>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="rounded-2xl border-border shadow-sm">
+              <Statistic
+                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Registered</Text>}
+                value={totalInternships}
                 prefix={<FileTextOutlined className="text-primary mr-2" />}
                 styles={{ content: { color: token.colorPrimary, fontWeight: 'bold' } }}
               />
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <Text className="text-xs text-text-tertiary">All self-identified internships</Text>
+              </div>
             </Card>
           </Col>
-          <Col xs={24} sm={8}>
-            <Card className="rounded-2xl border-border shadow-sm text-center">
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="rounded-2xl border-border shadow-sm">
               <Statistic
-                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Companies Partnered</Text>}
-                value={companyData.length || 0}
-                prefix={<BankOutlined className="text-success mr-2" />}
-                styles={{ content: { color: token.colorSuccess, fontWeight: 'bold' } }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} sm={8}>
-            <Card className="rounded-2xl border-border shadow-sm text-center">
-              <Statistic
-                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Industry Sectors</Text>}
-                value={industryData.length || 0}
-                prefix={<FundOutlined className="text-warning mr-2" />}
+                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Currently Ongoing</Text>}
+                value={ongoingCount}
+                prefix={<ClockCircleOutlined className="text-warning mr-2" />}
                 styles={{ content: { color: token.colorWarning, fontWeight: 'bold' } }}
               />
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <Progress percent={totalInternships > 0 ? Math.round((ongoingCount / totalInternships) * 100) : 0} size="small" strokeColor={token.colorWarning} showInfo={false} />
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="rounded-2xl border-border shadow-sm">
+              <Statistic
+                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Completed</Text>}
+                value={completedCount}
+                prefix={<CheckCircleOutlined className="text-success mr-2" />}
+                styles={{ content: { color: token.colorSuccess, fontWeight: 'bold' } }}
+              />
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <Progress percent={completionRate} size="small" strokeColor={token.colorSuccess} showInfo={false} />
+              </div>
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} lg={6}>
+            <Card className="rounded-2xl border-border shadow-sm">
+              <Statistic
+                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Companies</Text>}
+                value={companyData.length || 0}
+                prefix={<BankOutlined className="text-info mr-2" />}
+                styles={{ content: { color: token.colorInfo, fontWeight: 'bold' } }}
+              />
+              <div className="mt-2 pt-2 border-t border-border/50">
+                <Text className="text-xs text-text-tertiary">{industryData.length || 0} industry sectors</Text>
+              </div>
             </Card>
           </Col>
         </Row>
 
-        <Row gutter={[24, 24]}>
-          {/* Status Distribution */}
-          <Col xs={24} lg={12}>
-            <Card
-              className="rounded-2xl border-border shadow-sm h-full"
-              title={
-                <div className="flex items-center gap-2 text-text-primary">
-                  <PieChartOutlined className="text-primary" />
-                  <span className="font-semibold">Application Status Distribution</span>
-                </div>
-              }
-            >
+        {/* Internship Status Breakdown */}
+        <Card
+          className="rounded-2xl border-border shadow-sm"
+          title={
+            <div className="flex items-center gap-2 text-text-primary">
+              <PieChartOutlined className="text-primary" />
+              <span className="font-semibold">Internship Status Breakdown</span>
+            </div>
+          }
+        >
+          {(() => {
+            // Build status data from dashboard or internshipStats
+            const dashboardData = analytics?.dashboard?.internships;
+            const builtStatusData = dashboardData ? [
+              { name: 'Ongoing', value: dashboardData.ongoingInternships || 0 },
+              { name: 'Completed', value: dashboardData.completedInternships || 0 },
+              { name: 'Pending', value: (dashboardData.totalApplications || 0) - (dashboardData.ongoingInternships || 0) - (dashboardData.completedInternships || 0) },
+            ].filter(d => d.value > 0) : statusData.map(s => ({ name: s.status, value: s.count }));
+
+            const chartData = builtStatusData.length > 0 ? builtStatusData : statusData.map(s => ({ name: s.status, value: s.count }));
+
+            return chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={statusData.map(s => ({ name: s.status, value: s.count }))}
+                    data={chartData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -579,7 +510,7 @@ const Analytics = () => {
                     label={({ name, value }) => `${name}: ${value}`}
                     animationDuration={800}
                   >
-                    {statusData.map((entry, index) => (
+                    {chartData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
@@ -587,35 +518,13 @@ const Analytics = () => {
                   <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
-            </Card>
-          </Col>
-
-          {/* Industry Distribution */}
-          <Col xs={24} lg={12}>
-            <Card
-              className="rounded-2xl border-border shadow-sm h-full"
-              title={
-                <div className="flex items-center gap-2 text-text-primary">
-                  <BarChartOutlined className="text-success" />
-                  <span className="font-semibold">Industry Distribution</span>
-                </div>
-              }
-            >
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={industryData.slice(0, 8).map(i => ({ name: i.type, value: i.count }))}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: '#666' }} />
-                  <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fill: '#666' }} />
-                  <RechartsTooltip />
-                  <Bar dataKey="value" fill={token.colorSuccess} radius={[0, 6, 6, 0]} animationDuration={800} />
-                </BarChart>
-              </ResponsiveContainer>
-            </Card>
-          </Col>
-        </Row>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <Empty description="No internship data available" />
+              </div>
+            );
+          })()}
+        </Card>
 
         {/* Top Companies */}
         <Card
@@ -623,7 +532,7 @@ const Analytics = () => {
           title={
             <div className="flex items-center gap-2 text-text-primary">
               <TrophyOutlined className="text-warning" />
-              <span className="font-semibold">Top Hiring Companies</span>
+              <span className="font-semibold">Top Companies (Self-Identified)</span>
             </div>
           }
           extra={
@@ -1002,7 +911,7 @@ const Analytics = () => {
       label: (
         <span className="flex items-center gap-2">
           <BankOutlined />
-          Self-Identified Internships
+          Internships
         </span>
       ),
       children: renderInternshipsTab(),

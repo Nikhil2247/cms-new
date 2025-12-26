@@ -380,4 +380,8 @@ export class StateService {
   async removeMentorFromStudent(studentId: string, removedBy: string) {
     return this.mentorService.removeMentorFromStudent(studentId, removedBy);
   }
+
+  async deleteStudent(studentId: string, deletedBy: string) {
+    return this.mentorService.deleteStudent(studentId, deletedBy);
+  }
 }

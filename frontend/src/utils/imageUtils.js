@@ -2,8 +2,17 @@
  * Utility functions for handling image URLs in the application
  */
 
-// API base URL for static files
-const API_BASE_URL = 'https://api.placeintern.com';
+// Determine the base URL for uploads based on environment
+const getUploadsBaseUrl = () => {
+  if (import.meta.env.DEV) {
+    // Local development - use MinIO directly
+    return 'http://127.0.0.1:9000/cms-uploads';
+  }
+  // Production - use API proxy
+  return 'https://api.placeintern.com/uploads';
+};
+
+const UPLOADS_BASE_URL = getUploadsBaseUrl();
 
 /**
  * Convert relative file path to full URL
@@ -16,6 +25,6 @@ export const getImageUrl = (relativePath) => {
   // If it's already a full URL (old Cloudinary URLs), return as is
   if (relativePath.startsWith('http')) return relativePath;
 
-  // Otherwise, prepend the API base URL with /uploads/
-  return `${API_BASE_URL}/uploads/${relativePath}`;
+  // Otherwise, prepend the uploads base URL
+  return `${UPLOADS_BASE_URL}/${relativePath}`;
 };

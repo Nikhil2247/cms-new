@@ -519,6 +519,23 @@ export const autoAssignMentors = createAsyncThunk(
   }
 );
 
+// Reset user password (student or staff)
+export const resetUserPassword = createAsyncThunk(
+  'principal/resetUserPassword',
+  async (userId, { rejectWithValue }) => {
+    try {
+      const response = await principalService.resetUserPassword(userId);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to reset password. Please try again.';
+      console.error('Reset password error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 export const fetchMentorAssignments = createAsyncThunk(
   'principal/fetchMentorAssignments',
   async (params = {}, { getState, rejectWithValue }) => {

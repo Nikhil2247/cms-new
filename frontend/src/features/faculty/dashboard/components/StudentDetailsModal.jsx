@@ -44,6 +44,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
+import { getImageUrl } from '../../../../utils/imageUtils';
 import {
   getExpectedReportsAsOfToday,
   getExpectedVisitsAsOfToday,
@@ -651,7 +652,7 @@ const StudentDetailsModal = ({
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <Avatar size={40} icon={<UserOutlined />} className="bg-primary" />
+            <Avatar size={40} icon={<UserOutlined />} src={getImageUrl(studentData?.profileImage)} className="bg-primary" />
             <div>
               <Title level={5} className="m-0">
                 {studentData?.name || 'Student Details'}

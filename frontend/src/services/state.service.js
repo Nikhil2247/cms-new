@@ -323,6 +323,11 @@ export const stateService = {
     return response.data;
   },
 
+  async deleteStudent(studentId) {
+    const response = await API.delete(`/state/students/${studentId}`);
+    return response.data;
+  },
+
   // Users Management
   async getUsers(params = {}) {
     // Filter out undefined/null values to prevent "undefined" strings in query

@@ -43,6 +43,7 @@ import {
 } from "@ant-design/icons";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import API from "../../../services/api";
+import { getImageUrl } from "../../../utils/imageUtils";
 import Layouts from "../../../components/Layout";
 import dayjs from "dayjs";
 import { toast } from "react-hot-toast";
@@ -423,7 +424,7 @@ const ViewApplicants = () => {
         <div className="flex items-center space-x-3">
           <Avatar
             size="large"
-            src={record.student?.profileImage}
+            src={getImageUrl(record.student?.profileImage)}
             icon={!record.student?.profileImage && <UserOutlined />}
             className="flex-shrink-0 bg-blue-500"
           />
@@ -804,7 +805,7 @@ const ViewApplicants = () => {
                       <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
                         <Avatar
                           size={120}
-                          src={selectedApplication.student?.profileImage}
+                          src={getImageUrl(selectedApplication.student?.profileImage)}
                           icon={!selectedApplication.student?.profileImage && <UserOutlined />}
                           className="rounded-2xl border-4 border-background shadow-soft ring-1 ring-border shrink-0"
                         />

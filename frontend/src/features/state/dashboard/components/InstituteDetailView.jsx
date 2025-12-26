@@ -23,6 +23,8 @@ import {
   message,
   Dropdown,
   Tooltip,
+  Popover,
+  Image,
   List,
   Alert,
   Result,
@@ -61,6 +63,7 @@ import {
   fetchInstitutionMentors,
   assignMentorToStudent,
   removeMentorFromStudent,
+  deleteInstituteStudent,
   selectInstituteOverview,
   selectInstituteStudents,
   selectInstituteCompanies,
@@ -68,6 +71,7 @@ import {
   selectSelectedInstitute,
 } from '../../store/stateSlice';
 import { useDebounce } from '../../../../hooks/useDebounce';
+import { getImageUrl } from '../../../../utils/imageUtils';
 
 const { Title, Text } = Typography;
 
@@ -391,6 +395,32 @@ const StudentDetailModal = memo(({ visible, student, onClose }) => {
   return (
     <Modal title="Student Details" open={visible} onCancel={onClose} footer={null} width={800} destroyOnHidden className="rounded-2xl overflow-hidden">
       <div className="space-y-4 pt-2">
+        {/* Student Header with Profile Image */}
+        <div className="flex items-center gap-4 pb-4 border-b border-border">
+          {getImageUrl(student.profileImage) ? (
+            <Image
+              src={getImageUrl(student.profileImage)}
+              alt={student.name}
+              width={64}
+              height={64}
+              className="rounded-full object-cover"
+              fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAADRfaVRYdFhNTDpjb20uYWRvYmUueG1wAAAAAAA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJBZG9iZSBYTVAgQ29yZSA1LjYtYzE0MiA3OS4xNjA5MjQsIDIwMTcvMDcvMTMtMDE6MDY6MzkgICAgICAgICI+CiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOnhtcD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLyIKICAgICAgICAgICAgeG1sbnM6ZGM9Imh0dHA6Ly9wdXJsLm9yZy9kYy9lbGVtZW50cy8xLjEvIgogICAgICAgICAgICB4bWxuczpwaG90b3Nob3A9Imh0dHA6Ly9ucy5hZG9iZS5jb20vcGhvdG9zaG9wLzEuMC8iCiAgICAgICAgICAgIHhtbG5zOnhtcE1NPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvbW0vIgogICAgICAgICAgICB4bWxuczpzdEV2dD0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL3NUeXBlL1Jlc291cmNlRXZlbnQjIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgICAgICAgICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iPgogICAgICAgICA8eG1wOkNyZWF0b3JUb29sPkFkb2JlIFBob3Rvc2hvcCBDQyAyMDE4IChXaW5kb3dzKTwveG1wOkNyZWF0b3JUb29sPgogICAgICAgICA8eG1wOkNyZWF0ZURhdGU+MjAxOS0wMS0yN1QxNDoyODowMyswNTozMDwveG1wOkNyZWF0ZURhdGU+CiAgICAgICAgIDx4bXA6TW9kaWZ5RGF0ZT4yMDE5LTAxLTI3VDE0OjI4OjQ3KzA1OjMwPC94bXA6TW9kaWZ5RGF0ZT4KICAgICAgICAgPHhtcDpNZXRhZGF0YURhdGU+MjAxOS0wMS0yN1QxNDoyODo0NyswNTozMDwveG1wOk1ldGFkYXRhRGF0ZT4KICAgICAgPC9yZGY6RGVzY3JpcHRpb24+CiAgIDwvcmRmOlJERj4KPC94OnhtcG1ldGE+Cjw/eHBhY2tldCBlbmQ9InIiPz7jlUMHAAAC8klEQVR4nO3dwW7TQBRA0U7z/z9NF0gsQIIFLFpUqVJpMx5n/M5ZJnGcF+VqNM742/F4PAIXd/PZFwBrIAQSIZAIgUQIJEIgEQKJEEiEQCIEEiGQCIFECCRCIBECiRBIhEAiBBIhkAiBRAgkQiARAokQSIRAIgQSIZAIgUQIJEIgEQKJEEiEQCIEEiGQCIFECCRCIBECiRBIhEAiBBIhkAiBRAgkQiARAokQSIRAIgQSIZAIgUQIJEIgEQKJEEiEQCIEEiGQCIFECCRCIBECiRBIhEAiBBIhkAiBRAgkQiARAokQSIRAIgQSIZAIgUQIJEIgEQKJEEiEQCIEEiGQCIFECCRCIBECiRBIhEAiBBIhkAiBRAgkQiARAokQSIRAIgQSIZAIgUQIJEIgEQKJEEiEQCIEEiGQCIFECCRCIBECiRBIhEAiBBIhkAiBRAgkQiARAsnNZ18A/5v98fUjjk/fP+t6LmHTIRz3PuL2d/nHNx3Ccfc7bo6P+OP7vbnd3cZxd3fy53j6+e3dXRzfv1z0c//bPoTj2x/y/PaTy76+6xfx/M6TOL7/fJFLO7N9CNd++rlBbB/C8e2PuGx+xPH9LxNsH8K1n35uENuHsP5Tzw1i+xCu/fRzg9g+hPWfem4Q24dw7aefG8TuIVz96ecGsXsI6z/13CB2D+HaTz83iO1DuPbTzw1i9xDWf+q5Qewewt8/e3fu/tnevpxLuPbTzw1i+xDWf+q5QWwfwv6fOuI4bHxP9k8+9d2J7T+n7v/Ucc/x+/f++vvv+Txv09P9E7jG08fO+5n9j9j9l8nHPce3X3/c/Yl7urd76nPXcQ2n/z3X/tS7h/D7J3/5+L5/87f/9O+K+71+OU//fo/f/uzfvz7n53ra0/6Oz/87r/f+/d63W+r3/p7H3/ue69/76uNe3e81/N3vf/R6rnXfn+s5/rmu9e+91vc+fj3XcIbH/X7t0/+c0/8dtv+cz/Vsz3oJx3HO/e+9/zvuue71uMexgM/3HL77A4AP8he07A5JHwvl9wAAAABJRU5ErkJggg=="
+              preview={{
+                mask: <div className="text-xs">Click to enlarge</div>,
+              }}
+            />
+          ) : (
+            <Avatar
+              size={64}
+              icon={<UserOutlined />}
+              className="bg-primary/10 text-primary shrink-0"
+            />
+          )}
+          <div>
+            <Text className="text-xl font-bold text-text-primary block">{student.name}</Text>
+            <Text className="text-text-tertiary font-mono">{student.rollNumber}</Text>
+          </div>
+        </div>
         <Descriptions bordered column={2} size="small" title={<Text className="text-xs uppercase font-bold text-text-tertiary">Basic Information</Text>} className="rounded-xl overflow-hidden bg-background-tertiary/20">
           <Descriptions.Item label="Name"><Text strong>{student.name}</Text></Descriptions.Item>
           <Descriptions.Item label="Roll Number"><Text code>{student.rollNumber}</Text></Descriptions.Item>
@@ -654,6 +684,35 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     });
   }, [dispatch, applyFilters]);
 
+  // Delete student handler
+  const handleDeleteStudent = useCallback((student) => {
+    Modal.confirm({
+      title: 'Delete Student',
+      icon: <ExclamationCircleOutlined className="text-error" />,
+      content: (
+        <div>
+          <p>Are you sure you want to delete <strong>{student.name}</strong>?</p>
+          <p className="text-text-tertiary text-sm mt-2">
+            This will permanently remove the student and all associated data including reports, internship applications, and mentor assignments.
+          </p>
+        </div>
+      ),
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        try {
+          await dispatch(deleteInstituteStudent({
+            studentId: student.id,
+            institutionId: selectedInstitute?.id
+          })).unwrap();
+          message.success('Student deleted successfully');
+        } catch (error) {
+          message.error(typeof error === 'string' ? error : 'Failed to delete student');
+        }
+      },
+    });
+  }, [dispatch, selectedInstitute?.id]);
+
   // Handler for viewing student details
   const handleViewStudentDetails = useCallback((record) => {
     setSelectedStudent(record);
@@ -681,8 +740,10 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       { type: 'divider' },
       { key: 'approve-report', icon: <CheckCircleOutlined />, label: 'Approve Report', disabled: !record.currentMonthReport || record.currentMonthReport.status !== 'SUBMITTED', onClick: handleApproveReport },
       { key: 'reject-report', icon: <CloseCircleOutlined />, label: 'Reject Report', danger: true, disabled: !record.currentMonthReport || record.currentMonthReport.status !== 'SUBMITTED', onClick: handleRejectReport },
+      { type: 'divider' },
+      { key: 'delete', icon: <DeleteOutlined />, label: 'Delete Student', danger: true, onClick: () => handleDeleteStudent(record) },
     ];
-  }, [handleEditMentor, handleRemoveMentor, handleViewStudentDetails, handleApproveReport, handleRejectReport]);
+  }, [handleEditMentor, handleRemoveMentor, handleViewStudentDetails, handleApproveReport, handleRejectReport, handleDeleteStudent]);
 
   // Memoized student columns - Clean and non-overlapping
   const studentColumns = useMemo(() => [
@@ -691,21 +752,56 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       key: 'student',
       fixed: 'left',
       width: 220,
-      render: (_, record) => (
-        <div className="flex items-center gap-3">
+      render: (_, record) => {
+        const imageUrl = getImageUrl(record.profileImage);
+        const avatarElement = (
           <Avatar
             icon={<UserOutlined />}
-            className="bg-primary/10 text-primary shrink-0"
+            src={imageUrl}
+            className="bg-primary/10 text-primary shrink-0 cursor-pointer"
             size={36}
           />
-          <div className="min-w-0 flex-1">
-            <div className="font-semibold text-text-primary text-sm truncate" title={record.name}>
-              {record.name}
+        );
+
+        return (
+          <div className="flex items-center gap-3">
+            {imageUrl ? (
+              <Popover
+                content={
+                  <div className="p-1">
+                    <Image
+                      src={imageUrl}
+                      alt={record.name}
+                      width={200}
+                      height={200}
+                      className="rounded-lg object-cover"
+                      fallback="data:image/png;base64,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"
+                      preview={false}
+                    />
+                    <div className="text-center mt-2">
+                      <div className="font-semibold text-text-primary">{record.name}</div>
+                      <div className="text-xs text-text-tertiary">{record.rollNumber}</div>
+                    </div>
+                  </div>
+                }
+                trigger="hover"
+                placement="right"
+                overlayClassName="student-image-popover"
+              >
+                {avatarElement}
+              </Popover>
+            ) : (
+              avatarElement
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="font-semibold text-text-primary text-sm truncate" title={record.name}>
+                {record.name}
+              </div>
+              <div className="text-xs text-text-tertiary font-mono">{record.rollNumber}</div>
             </div>
-            <div className="text-xs text-text-tertiary font-mono">{record.rollNumber}</div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: 'Branch',

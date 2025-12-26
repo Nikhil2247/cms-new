@@ -4,6 +4,7 @@ import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App 
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined } from '@ant-design/icons';
 import { fetchPrincipals, deletePrincipal, resetPrincipalPassword } from '../store/stateSlice';
 import PrincipalModal from './PrincipalModal';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 const PrincipalList = () => {
   const { modal } = App.useApp();
@@ -122,7 +123,7 @@ const PrincipalList = () => {
       key: 'principal',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={record.profileImage} />
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-gray-500 text-xs">{record.email}</div>

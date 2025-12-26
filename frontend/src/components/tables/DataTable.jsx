@@ -40,7 +40,7 @@ const DataTable = ({
   const customEmpty = (
     <Empty
       image={<InboxOutlined className="text-5xl text-text-tertiary" />}
-      imageStyle={{ height: 60, marginBottom: 12 }}
+      styles={{ image: { height: 60, marginBottom: 12 } }}
       description={
         <div className="text-center">
           <Text className="text-text-secondary text-base block mb-1">

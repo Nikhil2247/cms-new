@@ -64,18 +64,24 @@ export const principalService = {
   },
 
   async updateStudent(id, data, profileImage = null) {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value);
-      }
-    });
+    // Only use FormData if there's a profile image, otherwise send JSON
     if (profileImage) {
+      const formData = new FormData();
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          // Convert booleans to strings for FormData
+          formData.append(key, typeof value === 'boolean' ? String(value) : value);
+        }
+      });
       formData.append('profileImage', profileImage);
+      const response = await API.put(`/principal/students/${id}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
     }
-    const response = await API.put(`/principal/students/${id}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+
+    // Send JSON for regular updates (preserves boolean types)
+    const response = await API.put(`/principal/students/${id}`, data);
     return response.data;
   },
 
@@ -252,6 +258,12 @@ export const principalService = {
   // Auto-assign mentors
   async autoAssignMentors() {
     const response = await API.post('/principal/mentors/auto-assign');
+    return response.data;
+  },
+
+  // Reset user password (student or staff)
+  async resetUserPassword(userId) {
+    const response = await API.post('/auth/admin/reset-password', { userId });
     return response.data;
   },
 };

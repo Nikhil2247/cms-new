@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, Input, Select, Drawer, Descriptions, Avatar, Divider, Progress } from 'antd';
 import { SearchOutlined, UserOutlined, EyeOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import { fetchAssignedStudents } from '../store/facultySlice';
+import { getImageUrl } from '../../../utils/imageUtils';
 
 // Constant styles outside component
 const SELECT_STYLE = { width: 200 };
@@ -78,7 +79,7 @@ const AssignedStudentsList = React.memo(() => {
       key: 'student',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={record.profileImage} />
+          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-text-secondary text-xs">{record.rollNumber}</div>
@@ -199,7 +200,7 @@ const AssignedStudentsList = React.memo(() => {
         {selectedStudent && (
           <div>
             <div className="text-center mb-6">
-              <Avatar size={100} icon={<UserOutlined />} src={selectedStudent.profileImage} />
+              <Avatar size={100} icon={<UserOutlined />} src={getImageUrl(selectedStudent.profileImage)} />
               <h2 className="text-xl font-semibold mt-3">{selectedStudent.name}</h2>
               <p className="text-text-secondary">{selectedStudent.rollNumber}</p>
             </div>
