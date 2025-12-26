@@ -8,6 +8,12 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  calculateFourWeekCycles,
+  getTotalExpectedCycles,
+  getExpectedReportsAsOfToday,
+  FOUR_WEEK_CYCLE,
+} from '../../common/utils/four-week-cycle.util';
 import * as bcrypt from 'bcryptjs';
 import * as XLSX from 'xlsx';
 
@@ -458,8 +464,11 @@ export class PrincipalService {
       const mentor = student.mentorAssignments[0]?.mentor;
       const reports = application?.monthlyReports || [];
 
-      // Calculate expected reports based on internship dates (months elapsed so far)
-      let totalExpectedReports = 1; // Default to at least 1
+      /**
+       * Calculate expected reports using 4-week cycles
+       * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+       */
+      let totalExpectedReports = 0;
       if (application) {
         const startDate = (application as any).startDate || application.joiningDate;
         const endDate = (application as any).endDate || application.completionDate;
@@ -469,25 +478,18 @@ export class PrincipalService {
           const start = new Date(startDate);
           // Only calculate if internship has started
           if (start <= now) {
-            // Calculate months from start to now (or endDate if earlier/completed)
-            const effectiveEnd = endDate && new Date(endDate) < now ? new Date(endDate) : now;
-            const yearsDiff = effectiveEnd.getFullYear() - start.getFullYear();
-            const monthsDiff = effectiveEnd.getMonth() - start.getMonth();
-            totalExpectedReports = Math.max(1, yearsDiff * 12 + monthsDiff + 1);
-          }
-        } else {
-          // Fallback: if no startDate, try duration string (legacy behavior)
-          const duration = (application as any).isSelfIdentified
-            ? ((application as any).internshipDuration || '')
-            : (application.internship?.duration || '');
-          const monthsMatch = duration.match(/(\d+)\s*month/i);
-          if (monthsMatch) {
-            totalExpectedReports = parseInt(monthsMatch[1], 10);
-          } else {
-            // Ultimate fallback for legacy data without dates or duration
-            totalExpectedReports = 6;
+            // Calculate using 4-week cycles
+            const effectiveEnd = endDate
+              ? new Date(endDate)
+              : new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // Default 6 months if no end date
+
+            // Get all 4-week cycles and count those where submission window has started
+            const cycles = calculateFourWeekCycles(start, effectiveEnd);
+            totalExpectedReports = cycles.filter(c => now >= c.submissionWindowStart).length;
+            totalExpectedReports = Math.max(1, totalExpectedReports);
           }
         }
+        // If no startDate, expected reports remains 0 (cannot calculate without dates)
       }
 
       const submittedReports = reports.filter(

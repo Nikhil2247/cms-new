@@ -11,6 +11,10 @@ import {
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import {
+  getExpectedReportsAsOfToday,
+  getExpectedVisitsAsOfToday,
+} from '../../../../utils/fourWeekCycle';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -23,7 +27,6 @@ const AssignedStudentsList = ({
   onViewStudent,
   onScheduleVisit
 }) => {
-  const navigate = useNavigate();
   const [searchText, setSearchText] = useState('');
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -97,102 +100,156 @@ const AssignedStudentsList = ({
            null;
   };
 
-  // Get visit status icon
-  const getVisitStatusIcon = (student) => {
+  /**
+   * Calculate expected reports using 4-week cycles.
+   * Reports are due every 4 weeks from internship startDate + 5 days grace period.
+   */
+  const calculateExpectedReports = (internshipApp) => {
+    if (internshipApp?.totalExpectedReports) {
+      return internshipApp.totalExpectedReports;
+    }
+
+    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
+
+    const startDate = new Date(internshipApp.startDate);
+    const endDate = new Date(internshipApp.endDate);
+    const now = new Date();
+
+    if (startDate > now) return 0;
+
+    return getExpectedReportsAsOfToday(startDate, endDate);
+  };
+
+  /**
+   * Calculate expected visits using 4-week cycles.
+   * Visits are aligned with report cycles - 1 visit per 4-week cycle.
+   */
+  const calculateExpectedVisits = (internshipApp) => {
+    if (internshipApp?.totalExpectedVisits) {
+      return internshipApp.totalExpectedVisits;
+    }
+
+    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
+
+    const startDate = new Date(internshipApp.startDate);
+    const endDate = new Date(internshipApp.endDate);
+    const now = new Date();
+
+    if (startDate > now) return 0;
+
+    return getExpectedVisitsAsOfToday(startDate, endDate);
+  };
+
+  // Get visit status with done/expected
+  const getVisitStatus = (student) => {
     const internshipApp = getInternshipApp(student);
     const visits = student.visits ||
                   student.visitLogs ||
                   internshipApp?.facultyVisitLogs ||
                   student.student?.facultyVisitLogs ||
                   [];
-    const visitCount = visits.length;
+    const done = visits.length;
+    const expected = calculateExpectedVisits(internshipApp);
 
-    if (visitCount === 0) {
-      return (
-        <Tooltip title="No visits recorded">
-          <Space size={4}>
-            <MinusCircleOutlined style={{ color: '#d9d9d9', fontSize: 16 }} />
-            <Text type="secondary" style={{ fontSize: 12 }}>0</Text>
-          </Space>
-        </Tooltip>
-      );
+    // Determine color based on completion
+    let color = '#d9d9d9'; // grey - no progress
+    let bgColor = '#f5f5f5';
+    if (expected > 0) {
+      const ratio = done / expected;
+      if (ratio >= 1) {
+        color = '#52c41a'; // green - complete
+        bgColor = '#f6ffed';
+      } else if (ratio >= 0.5) {
+        color = '#faad14'; // orange - partial
+        bgColor = '#fffbe6';
+      } else if (done > 0) {
+        color = '#ff7a45'; // light red - started
+        bgColor = '#fff2e8';
+      }
     }
 
-    // FIXED: Check if there's a recent visit (within last 30 days) AND after internship start
-    const hasRecentVisit = visits.some(visit => {
-      const visitDate = new Date(visit.visitDate || visit.createdAt);
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-      // Visit must be within last 30 days
-      if (visitDate < thirtyDaysAgo) return false;
-
-      // FIXED: Check if visit is after internship start date
-      const internshipStartDate = visit.application?.internship?.startDate ||
-                                   internshipApp?.startDate ||
-                                   student.activeInternship?.startDate ||
-                                   student.application?.internship?.startDate;
-
-      if (internshipStartDate) {
-        const startDate = new Date(internshipStartDate);
-        return visitDate >= startDate;
-      }
-
-      // If no start date available, don't show green (be conservative)
-      return false;
-    });
-
     return (
-      <Tooltip title={hasRecentVisit ? `${visitCount} visits (recent visit within 30 days)` : `${visitCount} visits (no recent visits)`}>
-        <Space size={4}>
-          <EnvironmentOutlined style={{ color: hasRecentVisit ? '#52c41a' : '#d9d9d9', fontSize: 16 }} />
-          <Text style={{ color: hasRecentVisit ? '#52c41a' : '#8c8c8c', fontSize: 12, fontWeight: 500 }}>
-            {visitCount}
+      <Tooltip title={`${done} of ${expected} visits completed`}>
+        <div
+          style={{
+            background: bgColor,
+            padding: '2px 8px',
+            borderRadius: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <EnvironmentOutlined style={{ color, fontSize: 12 }} />
+          <Text style={{ color, fontSize: 12, fontWeight: 600 }}>
+            {done}/{expected}
           </Text>
-        </Space>
+        </div>
       </Tooltip>
     );
   };
 
-  // Get report status icon
-  const getReportStatusIcon = (student) => {
+  // Get report status with done/expected
+  const getReportStatus = (student) => {
     const internshipApp = getInternshipApp(student);
     const reports = student.monthlyReports ||
                    student.reports ||
                    internshipApp?.monthlyReports ||
                    student.student?.monthlyReports ||
                    [];
-    const latestReport = reports[0];
+    const done = reports.length;
+    const expected = calculateExpectedReports(internshipApp);
 
-    if (!latestReport) {
-      return (
-        <Tooltip title="No reports submitted">
-          <MinusCircleOutlined style={{ color: '#d9d9d9', fontSize: 16 }} />
-        </Tooltip>
-      );
+    // Check for pending reports
+    const pendingCount = reports.filter(r =>
+      r.status === 'SUBMITTED' || r.status === 'PENDING'
+    ).length;
+
+    // Determine color based on completion
+    let color = '#d9d9d9'; // grey - no progress
+    let bgColor = '#f5f5f5';
+    let icon = <MinusCircleOutlined style={{ color, fontSize: 12 }} />;
+
+    if (expected > 0) {
+      const ratio = done / expected;
+      if (ratio >= 1) {
+        color = '#52c41a'; // green - complete
+        bgColor = '#f6ffed';
+        icon = <CheckCircleOutlined style={{ color, fontSize: 12 }} />;
+      } else if (pendingCount > 0) {
+        color = '#faad14'; // orange - has pending
+        bgColor = '#fffbe6';
+        icon = <ClockCircleOutlined style={{ color, fontSize: 12 }} />;
+      } else if (done > 0) {
+        color = '#1890ff'; // blue - in progress
+        bgColor = '#e6f7ff';
+        icon = <CheckCircleOutlined style={{ color, fontSize: 12 }} />;
+      }
     }
 
-    const status = latestReport.status || latestReport.reviewStatus;
+    const tooltipText = pendingCount > 0
+      ? `${done}/${expected} reports (${pendingCount} pending review)`
+      : `${done} of ${expected} reports submitted`;
 
-    if (status === 'APPROVED') {
-      return (
-        <Tooltip title="Report approved">
-          <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
-        </Tooltip>
-      );
-    } else if (status === 'REJECTED') {
-      return (
-        <Tooltip title="Report rejected">
-          <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
-        </Tooltip>
-      );
-    } else {
-      return (
-        <Tooltip title="Report pending review">
-          <ClockCircleOutlined style={{ color: '#faad14', fontSize: 16 }} />
-        </Tooltip>
-      );
-    }
+    return (
+      <Tooltip title={tooltipText}>
+        <div
+          style={{
+            background: bgColor,
+            padding: '2px 8px',
+            borderRadius: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          {icon}
+          <Text style={{ color, fontSize: 12, fontWeight: 600 }}>
+            {done}/{expected}
+          </Text>
+        </div>
+      </Tooltip>
+    );
   };
 
   // Get joining letter status icon
@@ -247,6 +304,8 @@ const AssignedStudentsList = ({
     {
       title: 'Student',
       key: 'student',
+      width: 150,
+      ellipsis: true,
       sorter: (a, b) => {
         const nameA = (a.name || a.student?.name || '').toLowerCase();
         const nameB = (b.name || b.student?.name || '').toLowerCase();
@@ -257,83 +316,123 @@ const AssignedStudentsList = ({
         const rollNumber = student.rollNumber || student.student?.rollNumber || 'N/A';
 
         return (
-          <div>
-            <Text strong style={{ display: 'block' }}>{name}</Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>{rollNumber}</Text>
+          <div style={{ maxWidth: 140 }}>
+            <Text strong style={{ display: 'block', fontSize: 13 }} ellipsis={{ tooltip: name }}>
+              {name}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 11 }}>{rollNumber}</Text>
           </div>
         );
       },
     },
     {
-      title: 'Company',
+      title: 'Company & Duration',
       key: 'company',
+      width: 200,
+      ellipsis: true,
       sorter: (a, b) => {
         const companyA = getCompanyName(a).toLowerCase();
         const companyB = getCompanyName(b).toLowerCase();
         return companyA.localeCompare(companyB);
       },
       render: (_, student) => {
+        const internshipApp = getInternshipApp(student);
+        const startDate = internshipApp?.startDate;
+        const endDate = internshipApp?.endDate;
+
+        // Calculate duration in months
+        let duration = '';
+        if (startDate && endDate) {
+          const start = dayjs(startDate);
+          const end = dayjs(endDate);
+          const months = end.diff(start, 'month');
+          const days = end.diff(start, 'day') % 30;
+          duration = months > 0 ? `${months}m` : `${days}d`;
+        }
+
         return (
-          <Text style={{ fontSize: 13 }}>
-            {getCompanyName(student)}
-          </Text>
+          <div style={{ maxWidth: 190 }}>
+            <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis={{ tooltip: getCompanyName(student) }}>
+              {getCompanyName(student)}
+            </Text>
+            {(startDate || endDate) && (
+              <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                {startDate && dayjs(startDate).format('DD MMM')}
+                {startDate && endDate && ' - '}
+                {endDate && dayjs(endDate).format('DD MMM YY')}
+                {duration && <span style={{ color: '#1890ff', marginLeft: 4 }}>({duration})</span>}
+              </div>
+            )}
+          </div>
         );
       },
     },
     {
       title: 'Visits',
       key: 'visits',
-      width: 80,
+      width: 70,
       align: 'center',
       sorter: (a, b) => {
-        const visitsA = (a.visits || a.visitLogs || []).length;
-        const visitsB = (b.visits || b.visitLogs || []).length;
+        const internshipAppA = getInternshipApp(a);
+        const internshipAppB = getInternshipApp(b);
+        const visitsA = (a.visits || a.visitLogs || internshipAppA?.facultyVisitLogs || []).length;
+        const visitsB = (b.visits || b.visitLogs || internshipAppB?.facultyVisitLogs || []).length;
         return visitsA - visitsB;
       },
-      render: (_, student) => getVisitStatusIcon(student),
+      render: (_, student) => getVisitStatus(student),
     },
     {
       title: 'Reports',
       key: 'reports',
-      width: 80,
+      width: 70,
       align: 'center',
-      render: (_, student) => getReportStatusIcon(student),
+      sorter: (a, b) => {
+        const internshipAppA = getInternshipApp(a);
+        const internshipAppB = getInternshipApp(b);
+        const reportsA = (a.monthlyReports || internshipAppA?.monthlyReports || []).length;
+        const reportsB = (b.monthlyReports || internshipAppB?.monthlyReports || []).length;
+        return reportsA - reportsB;
+      },
+      render: (_, student) => getReportStatus(student),
     },
     {
-      title: 'Joining Letter',
+      title: 'Letter',
       key: 'joiningLetter',
-      width: 110,
+      width: 60,
       align: 'center',
       render: (_, student) => getJoiningLetterStatusIcon(student),
     },
     {
-      title: 'Actions',
+      title: '',
       key: 'actions',
-      width: 180,
+      width: 70,
       align: 'center',
+      fixed: 'right',
       render: (_, student) => (
-        <Space size="small">
-          <Button
-            type="primary"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={(e) => {
-              e.stopPropagation();
-              // Use actual student ID for finding the record
-              const studentId = student.id || student.studentId || student.student?.id;
-              if (onViewStudent) {
-                onViewStudent(studentId);
-              }
-            }}
-          >
-            View
-          </Button>
-          <Button
-            size="small"
-            onClick={(e) => handleLogVisit(student, e)}
-          >
-            Log Visit
-          </Button>
+        <Space size={2}>
+          <Tooltip title="View">
+            <Button
+              type="primary"
+              size="small"
+              icon={<EyeOutlined />}
+              style={{ padding: '0 6px' }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const studentId = student.id || student.studentId || student.student?.id;
+                if (onViewStudent) {
+                  onViewStudent(studentId);
+                }
+              }}
+            />
+          </Tooltip>
+          <Tooltip title="Log Visit">
+            <Button
+              size="small"
+              icon={<EnvironmentOutlined />}
+              style={{ padding: '0 6px' }}
+              onClick={(e) => handleLogVisit(student, e)}
+            />
+          </Tooltip>
         </Space>
       ),
     },

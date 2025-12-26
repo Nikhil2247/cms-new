@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import helmet from 'helmet';
 import { json, urlencoded } from 'express';
 import compression from 'compression';
@@ -33,6 +34,10 @@ async function bootstrap() {
     logger: ['error', 'warn', 'log'],
     bufferLogs: true,
   });
+
+  // Configure WebSocket adapter for Socket.io
+  app.useWebSocketAdapter(new IoAdapter(app));
+  logger.log('WebSocket adapter (Socket.io) configured');
 
   // Trust proxy - required to get real client IP behind reverse proxy (nginx, cloudflare, etc.)
   // This allows Express to read X-Forwarded-For and X-Real-IP headers correctly

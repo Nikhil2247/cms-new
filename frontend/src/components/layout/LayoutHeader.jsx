@@ -9,7 +9,7 @@ import {
   UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
-import NotificationDropdown from '../Notification';
+import { NotificationDropdown } from '../../features/common/notifications';
 
 const { Header } = Layout;
 

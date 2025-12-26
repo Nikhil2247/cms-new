@@ -150,6 +150,9 @@ export const menuConfig = {
       { key: 'supervision-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
       { key: 'assigned-students', label: 'Assigned Students', icon: <TeamOutlined />, path: '/assigned-students' },
       { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/visit-logs' },
+      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/monthly-reports' },
+      { key: 'joining-letters', label: 'Joining Letters', icon: <SafetyCertificateOutlined />, path: '/joining-letters' },
+      { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/approvals' },
       { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/faculty-grievances' },
       { key: 'send-reminder', label: 'Send Reminder', icon: <SendOutlined />, path: '/send-notification' },
     ],
@@ -247,6 +250,18 @@ export const menuConfig = {
   },
 
   // ==========================================
+  // NOTIFICATIONS (All Users)
+  // ==========================================
+  NOTIFICATIONS: {
+    key: 'notifications',
+    title: 'Notifications',
+    icon: <BellOutlined />,
+    items: [
+      { key: 'all-notifications', label: 'All Notifications', icon: <BellOutlined />, path: '/notifications' },
+    ],
+  },
+
+  // ==========================================
   // SUPPORT (All Users)
   // ==========================================
   SUPPORT: {
@@ -323,6 +338,11 @@ export const getMenuSectionsForRole = (role) => {
 
     default:
       break;
+  }
+
+  // Add Notifications menu for all logged-in users
+  if (role) {
+    sections.push(menuConfig.NOTIFICATIONS);
   }
 
   // Add Support menu for all logged-in users

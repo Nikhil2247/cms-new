@@ -172,4 +172,38 @@ export interface WebSocketSubscriber {
   role: Role;
   institutionId?: string;
   connectedAt: Date;
+  lastActivity?: Date;
+}
+
+/**
+ * Auth refresh payload
+ */
+export interface AuthRefreshPayload {
+  token: string;
+}
+
+/**
+ * Auth refreshed response
+ */
+export interface AuthRefreshedPayload {
+  success: boolean;
+  userId: string;
+  role: Role;
+  rooms: string[];
+}
+
+/**
+ * Heartbeat acknowledgment payload
+ */
+export interface HeartbeatAckPayload {
+  timestamp: Date;
+  userId: string;
+}
+
+/**
+ * WebSocket error payload
+ */
+export interface WebSocketErrorPayload {
+  message: string;
+  code?: 'AUTH_INVALID' | 'AUTH_EXPIRED' | 'AUTH_FAILED' | 'RATE_LIMIT' | 'NOT_AUTHORIZED';
 }

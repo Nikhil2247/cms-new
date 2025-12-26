@@ -17,15 +17,15 @@ export const facultyService = {
     return response.data;
   },
 
-  // Assigned Students - Fixed endpoint to match backend
+  // Assigned Students - Fetch all without pagination
   async getAssignedStudents(params = {}) {
     const queryParams = new URLSearchParams();
-    if (params.page) queryParams.append('page', params.page);
-    if (params.limit) queryParams.append('limit', params.limit);
+    // Set a high limit to fetch all students at once
+    queryParams.append('limit', params.limit || '1000');
+    queryParams.append('page', '1');
     if (params.search) queryParams.append('search', params.search);
 
-    const queryString = queryParams.toString();
-    const url = queryString ? `/faculty/students?${queryString}` : '/faculty/students';
+    const url = `/faculty/students?${queryParams.toString()}`;
     const response = await API.get(url);
     return response.data;
   },

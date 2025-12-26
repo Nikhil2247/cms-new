@@ -9,6 +9,7 @@ import {
   Input,
   Select,
   DatePicker,
+  InputNumber,
   message,
   Spin,
   Empty,
@@ -19,6 +20,8 @@ import {
   Avatar,
   Typography,
   Tooltip,
+  Upload,
+  Popconfirm,
 } from 'antd';
 import {
   UserOutlined,
@@ -34,8 +37,17 @@ import {
   EditOutlined,
   EyeOutlined,
   DownloadOutlined,
+  DeleteOutlined,
+  UploadOutlined,
+  SaveOutlined,
+  CloseOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import facultyService from '../../../../services/faculty.service';
+import {
+  getExpectedReportsAsOfToday,
+  getExpectedVisitsAsOfToday,
+} from '../../../../utils/fourWeekCycle';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -50,16 +62,19 @@ const StudentDetailsModal = ({
   loading = false,
 }) => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingInternship, setIsEditingInternship] = useState(false);
   const [editForm] = Form.useForm();
   const [visitForm] = Form.useForm();
   const [visitModalVisible, setVisitModalVisible] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
+  const [uploadingReport, setUploadingReport] = useState(false);
 
   // Reset state when modal opens/closes
   useEffect(() => {
     if (visible) {
       setActiveTab('overview');
-      setIsEditing(false);
+      setIsEditingInternship(false);
     }
   }, [visible]);
 
@@ -105,6 +120,89 @@ const StudentDetailsModal = ({
     return colors[status] || 'default';
   };
 
+  // Calculate duration
+  const getDuration = () => {
+    if (!internshipApp?.startDate || !internshipApp?.endDate) return 'N/A';
+    const start = dayjs(internshipApp.startDate);
+    const end = dayjs(internshipApp.endDate);
+    const months = end.diff(start, 'month');
+    const days = end.diff(start.add(months, 'month'), 'day');
+    if (months > 0 && days > 0) return `${months} months ${days} days`;
+    if (months > 0) return `${months} months`;
+    return `${end.diff(start, 'day')} days`;
+  };
+
+  /**
+   * Calculate expected reports using 4-week cycles.
+   * Reports are due every 4 weeks from internship startDate + 5 days grace period.
+   */
+  const getExpectedReports = () => {
+    if (internshipApp?.totalExpectedReports) return internshipApp.totalExpectedReports;
+    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
+
+    const startDate = new Date(internshipApp.startDate);
+    const endDate = new Date(internshipApp.endDate);
+    const now = new Date();
+
+    if (startDate > now) return 0;
+
+    return getExpectedReportsAsOfToday(startDate, endDate);
+  };
+
+  /**
+   * Calculate expected visits using 4-week cycles.
+   * Visits are aligned with report cycles - 1 visit per 4-week cycle.
+   */
+  const getExpectedVisits = () => {
+    if (internshipApp?.totalExpectedVisits) return internshipApp.totalExpectedVisits;
+    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
+
+    const startDate = new Date(internshipApp.startDate);
+    const endDate = new Date(internshipApp.endDate);
+    const now = new Date();
+
+    if (startDate > now) return 0;
+
+    return getExpectedVisitsAsOfToday(startDate, endDate);
+  };
+
+  // Handle edit internship
+  const handleEditInternship = () => {
+    editForm.setFieldsValue({
+      companyName: internshipApp?.companyName,
+      startDate: internshipApp?.startDate ? dayjs(internshipApp.startDate) : null,
+      endDate: internshipApp?.endDate ? dayjs(internshipApp.endDate) : null,
+      stipend: internshipApp?.stipend,
+      location: internshipApp?.location || internshipApp?.city,
+    });
+    setIsEditingInternship(true);
+  };
+
+  // Save internship changes
+  const handleSaveInternship = async () => {
+    try {
+      const values = await editForm.validateFields();
+      setSaving(true);
+
+      const updateData = {
+        companyName: values.companyName,
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
+        stipend: values.stipend,
+        location: values.location,
+      };
+
+      await facultyService.updateInternship(internshipApp.id, updateData);
+      message.success('Internship details updated successfully');
+      setIsEditingInternship(false);
+      onRefresh?.();
+    } catch (error) {
+      message.error(error.message || 'Failed to update internship details');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   // Handle visit form submission
   const handleVisitSubmit = async () => {
     try {
@@ -129,12 +227,70 @@ const StudentDetailsModal = ({
     }
   };
 
-  // Open joining letter
-  const handleViewJoiningLetter = () => {
-    if (internshipApp?.joiningLetterUrl) {
-      window.open(internshipApp.joiningLetterUrl, '_blank');
+  // Handle joining letter upload
+  const handleJoiningLetterUpload = async (file) => {
+    setUploadingJoiningLetter(true);
+    try {
+      await facultyService.uploadJoiningLetter(internshipApp?.id, file);
+      message.success('Joining letter uploaded successfully');
+      onRefresh?.();
+    } catch (error) {
+      message.error(error.message || 'Failed to upload joining letter');
+    } finally {
+      setUploadingJoiningLetter(false);
+    }
+    return false; // Prevent default upload
+  };
+
+  // Handle joining letter delete
+  const handleDeleteJoiningLetter = async () => {
+    try {
+      await facultyService.deleteJoiningLetter(internshipApp?.id);
+      message.success('Joining letter deleted successfully');
+      onRefresh?.();
+    } catch (error) {
+      message.error(error.message || 'Failed to delete joining letter');
+    }
+  };
+
+  // Handle monthly report delete
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await facultyService.deleteMonthlyReport(reportId);
+      message.success('Report deleted successfully');
+      onRefresh?.();
+    } catch (error) {
+      message.error(error.message || 'Failed to delete report');
+    }
+  };
+
+  // Handle monthly report upload
+  const handleReportUpload = async (file) => {
+    setUploadingReport(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('applicationId', internshipApp?.id);
+      formData.append('reportMonth', dayjs().month() + 1);
+      formData.append('reportYear', dayjs().year());
+
+      await facultyService.uploadMonthlyReport(formData);
+      message.success('Monthly report uploaded successfully');
+      onRefresh?.();
+    } catch (error) {
+      message.error(error.message || 'Failed to upload report');
+    } finally {
+      setUploadingReport(false);
+    }
+    return false;
+  };
+
+  // View document
+  const handleViewDocument = (url) => {
+    if (url) {
+      window.open(url, '_blank');
     } else {
-      message.info('No joining letter available');
+      message.info('Document not available');
     }
   };
 
@@ -170,70 +326,181 @@ const StudentDetailsModal = ({
           </Card>
 
           {/* Internship Info Card */}
-          <Card size="small" title="Internship Information" className="border-border">
-            <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-              <Descriptions.Item label="Company">
-                <Text strong>{internshipApp?.companyName || 'Not Assigned'}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Status">
-                <Tag color={getStatusColor(internshipApp?.status)}>
-                  {internshipApp?.status || 'N/A'}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Start Date">
-                {internshipApp?.startDate
-                  ? dayjs(internshipApp.startDate).format('DD MMM YYYY')
-                  : 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="End Date">
-                {internshipApp?.endDate
-                  ? dayjs(internshipApp.endDate).format('DD MMM YYYY')
-                  : 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Location">
-                {internshipApp?.location || internshipApp?.city || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Stipend">
-                {internshipApp?.stipend ? `₹${internshipApp.stipend}` : 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
+          <Card
+            size="small"
+            title="Internship Information"
+            className="border-border"
+            extra={
+              !isEditingInternship ? (
+                <Button
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={handleEditInternship}
+                  size="small"
+                >
+                  Edit
+                </Button>
+              ) : (
+                <Space>
+                  <Button
+                    type="primary"
+                    icon={<SaveOutlined />}
+                    onClick={handleSaveInternship}
+                    size="small"
+                    loading={saving}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    icon={<CloseOutlined />}
+                    onClick={() => setIsEditingInternship(false)}
+                    size="small"
+                  >
+                    Cancel
+                  </Button>
+                </Space>
+              )
+            }
+          >
+            {isEditingInternship ? (
+              <Form form={editForm} layout="vertical" size="small">
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item
+                    name="companyName"
+                    label="Company Name"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <Input />
+                  </Form.Item>
+                  <Form.Item name="location" label="Location">
+                    <Input />
+                  </Form.Item>
+                  <Form.Item
+                    name="startDate"
+                    label="Start Date"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <DatePicker className="w-full" />
+                  </Form.Item>
+                  <Form.Item
+                    name="endDate"
+                    label="End Date"
+                    rules={[{ required: true, message: 'Required' }]}
+                  >
+                    <DatePicker className="w-full" />
+                  </Form.Item>
+                  <Form.Item name="stipend" label="Stipend (₹)">
+                    <InputNumber className="w-full" min={0} />
+                  </Form.Item>
+                </div>
+              </Form>
+            ) : (
+              <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+                <Descriptions.Item label="Company">
+                  <Text strong>{internshipApp?.companyName || 'Not Assigned'}</Text>
+                </Descriptions.Item>
+                <Descriptions.Item label="Status">
+                  <Tag color={getStatusColor(internshipApp?.status)}>
+                    {internshipApp?.status || 'N/A'}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Start Date">
+                  {internshipApp?.startDate
+                    ? dayjs(internshipApp.startDate).format('DD MMM YYYY')
+                    : 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="End Date">
+                  {internshipApp?.endDate
+                    ? dayjs(internshipApp.endDate).format('DD MMM YYYY')
+                    : 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Duration">
+                  {getDuration()}
+                </Descriptions.Item>
+                <Descriptions.Item label="Location">
+                  {internshipApp?.location || internshipApp?.city || 'N/A'}
+                </Descriptions.Item>
+                <Descriptions.Item label="Stipend">
+                  {internshipApp?.stipend ? `₹${internshipApp.stipend}` : 'N/A'}
+                </Descriptions.Item>
+              </Descriptions>
+            )}
+          </Card>
 
-            {/* Joining Letter */}
-            <Divider className="my-3" />
+          {/* Joining Letter Card */}
+          <Card size="small" title="Joining Letter" className="border-border">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileTextOutlined />
-                <Text>Joining Letter</Text>
+                <Text>
+                  {internshipApp?.joiningLetterUrl ? 'Joining letter uploaded' : 'No joining letter'}
+                </Text>
+                {internshipApp?.joiningLetterUrl && (
+                  <Tag color="green">Uploaded</Tag>
+                )}
               </div>
-              {internshipApp?.joiningLetterUrl ? (
-                <Button
-                  type="link"
-                  icon={<EyeOutlined />}
-                  onClick={handleViewJoiningLetter}
+              <Space>
+                {internshipApp?.joiningLetterUrl && (
+                  <>
+                    <Tooltip title="View">
+                      <Button
+                        type="text"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewDocument(internshipApp.joiningLetterUrl)}
+                      />
+                    </Tooltip>
+                    <Popconfirm
+                      title="Delete joining letter?"
+                      description="This action cannot be undone."
+                      onConfirm={handleDeleteJoiningLetter}
+                      okText="Delete"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Tooltip title="Delete">
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                      </Tooltip>
+                    </Popconfirm>
+                  </>
+                )}
+                <Upload
+                  showUploadList={false}
+                  beforeUpload={handleJoiningLetterUpload}
+                  accept=".pdf,.jpg,.jpeg,.png"
                 >
-                  View
-                </Button>
-              ) : (
-                <Tag>Not Uploaded</Tag>
-              )}
+                  <Tooltip title={internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}>
+                    <Button
+                      type={internshipApp?.joiningLetterUrl ? 'default' : 'primary'}
+                      icon={<UploadOutlined />}
+                      loading={uploadingJoiningLetter}
+                      size="small"
+                    >
+                      {internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}
+                    </Button>
+                  </Tooltip>
+                </Upload>
+              </Space>
             </div>
           </Card>
 
-          {/* Quick Stats */}
+          {/* Quick Stats - Done/Expected */}
           <div className="grid grid-cols-3 gap-4">
             <Card size="small" className="text-center border-border">
-              <div className="text-2xl font-bold text-primary">{visits.length}</div>
+              <div className="text-2xl font-bold text-primary">
+                {visits.length}<span className="text-sm font-normal text-text-secondary">/{getExpectedVisits()}</span>
+              </div>
               <Text type="secondary" className="text-xs">Visits</Text>
             </Card>
             <Card size="small" className="text-center border-border">
-              <div className="text-2xl font-bold text-success">{monthlyReports.length}</div>
+              <div className="text-2xl font-bold text-success">
+                {monthlyReports.length}<span className="text-sm font-normal text-text-secondary">/{getExpectedReports()}</span>
+              </div>
               <Text type="secondary" className="text-xs">Reports</Text>
             </Card>
             <Card size="small" className="text-center border-border">
               <div className="text-2xl font-bold text-warning">
                 {monthlyReports.filter(r => r.status === 'PENDING' || r.status === 'SUBMITTED').length}
               </div>
-              <Text type="secondary" className="text-xs">Pending</Text>
+              <Text type="secondary" className="text-xs">Pending Review</Text>
             </Card>
           </div>
         </div>
@@ -296,6 +563,21 @@ const StudentDetailsModal = ({
       label: `Reports (${monthlyReports.length})`,
       children: (
         <div>
+          <div className="flex justify-end mb-4">
+            <Upload
+              showUploadList={false}
+              beforeUpload={handleReportUpload}
+              accept=".pdf,.doc,.docx"
+            >
+              <Button
+                type="primary"
+                icon={<UploadOutlined />}
+                loading={uploadingReport}
+              >
+                Upload Report
+              </Button>
+            </Upload>
+          </div>
           {monthlyReports.length > 0 ? (
             <div className="space-y-3">
               {monthlyReports.map((report, idx) => (
@@ -309,20 +591,47 @@ const StudentDetailsModal = ({
                         {report.status}
                       </Tag>
                     </div>
-                    <Space>
+                    <Space size={4}>
                       {report.reportFileUrl && (
-                        <Tooltip title="Download Report">
+                        <Tooltip title="View Report">
                           <Button
                             type="text"
-                            icon={<DownloadOutlined />}
-                            onClick={() => window.open(report.reportFileUrl, '_blank')}
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => handleViewDocument(report.reportFileUrl)}
                           />
                         </Tooltip>
                       )}
+                      {report.reportFileUrl && (
+                        <Tooltip title="Download">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            onClick={() => handleViewDocument(report.reportFileUrl)}
+                          />
+                        </Tooltip>
+                      )}
+                      <Popconfirm
+                        title="Delete this report?"
+                        description="This action cannot be undone."
+                        onConfirm={() => handleDeleteReport(report.id)}
+                        okText="Delete"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Tooltip title="Delete">
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                          />
+                        </Tooltip>
+                      </Popconfirm>
                     </Space>
                   </div>
                   {report.submittedAt && (
-                    <Text type="secondary" className="text-xs">
+                    <Text type="secondary" className="text-xs block mt-1">
                       Submitted: {dayjs(report.submittedAt).format('DD MMM YYYY')}
                     </Text>
                   )}
@@ -349,6 +658,7 @@ const StudentDetailsModal = ({
               </Title>
               <Text type="secondary" className="text-xs">
                 {studentData?.rollNumber || ''}
+                {internshipApp?.companyName && ` • ${internshipApp.companyName}`}
               </Text>
             </div>
           </div>

@@ -3,6 +3,11 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  calculateFourWeekCycles,
+  getTotalExpectedCycles,
+  FOUR_WEEK_CYCLE,
+} from '../../common/utils/four-week-cycle.util';
 
 @Injectable()
 export class FacultyService {
@@ -13,18 +18,29 @@ export class FacultyService {
   ) {}
 
   /**
-   * Calculate months between two dates
-   * Used to determine expected monthly reports based on internship duration
+   * Calculate expected cycles (reports/visits) using 4-week cycles
+   * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+   *
+   * @param startDate - Internship start date
+   * @param endDate - Internship end date (or current date if ongoing)
+   * @param countOnlyDue - If true, only count cycles where submission window has started
    */
-  private calculateMonthsBetween(startDate: Date, endDate: Date): number {
+  private calculateExpectedCycles(startDate: Date, endDate: Date, countOnlyDue = false): number {
     const start = new Date(startDate);
     const end = new Date(endDate);
+    const now = new Date();
 
-    const yearsDiff = end.getFullYear() - start.getFullYear();
-    const monthsDiff = end.getMonth() - start.getMonth();
+    const cycles = calculateFourWeekCycles(start, end);
 
-    return Math.max(1, yearsDiff * 12 + monthsDiff + 1); // +1 to include both start and end month
+    if (countOnlyDue) {
+      // Only count cycles where submission window has started (past due or currently due)
+      return cycles.filter(c => now >= c.submissionWindowStart).length;
+    }
+
+    // Count total expected cycles for the internship duration
+    return cycles.length;
   }
+
 
   /**
    * Get faculty profile
@@ -357,26 +373,25 @@ export class FacultyService {
       const startDate = currentApplication.startDate;
       const endDate = currentApplication.endDate;
 
-      let totalReportsExpected = 1; // Default to at least 1
+      let totalReportsExpected = 0;
 
       if (startDate) {
-        // Calculate months from start date to now (or end date if completed)
+        // Calculate using 4-week cycles from start date to now (or end date if completed)
         const effectiveEndDate = endDate && new Date(endDate) < now ? new Date(endDate) : now;
 
         // Only calculate if internship has started
         if (new Date(startDate) <= now) {
-          totalReportsExpected = this.calculateMonthsBetween(new Date(startDate), effectiveEndDate);
+          totalReportsExpected = this.calculateExpectedCycles(new Date(startDate), effectiveEndDate, true);
+          totalReportsExpected = Math.max(1, totalReportsExpected);
         }
-      } else {
-        // Fallback: if no startDate, assume 6 months (legacy behavior)
-        totalReportsExpected = 6;
       }
+      // If no startDate, expected reports remains 0 (cannot calculate without dates)
 
       const submittedReports = currentApplication.monthlyReports.filter(
         r => r.status === MonthlyReportStatus.APPROVED || r.status === MonthlyReportStatus.SUBMITTED
       ).length;
 
-      overallProgress = (submittedReports / totalReportsExpected) * 100;
+      overallProgress = totalReportsExpected > 0 ? (submittedReports / totalReportsExpected) * 100 : 0;
 
       if (currentApplication.status === ApplicationStatus.COMPLETED) {
         completionStatus = 'COMPLETED';
@@ -1724,6 +1739,27 @@ export class FacultyService {
       message: 'Joining letter deleted successfully',
       data: updated,
     };
+  }
+
+  /**
+   * Get application details for file upload (used by controller to determine file path)
+   */
+  async getApplicationForUpload(applicationId: string) {
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            institutionId: true,
+          },
+        },
+      },
+    });
+
+    return application;
   }
 
   /**

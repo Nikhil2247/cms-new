@@ -8,3 +8,5 @@ import { FileStorageService } from './file-storage.service';
   exports: [FileStorageService],
 })
 export class FileStorageModule {}
+
+export { MinioUploadInterceptor, MinioUploadConfig, createMinioUploadInterceptor } from './minio-upload.interceptor';

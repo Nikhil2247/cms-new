@@ -123,6 +123,7 @@ export const useFacultyDashboard = () => {
     return {
       totalStudents: dashboardStats.totalStudents || students.total || 0,
       activeStudents: dashboardStats.activeInternships || 0,
+      activeInternships: dashboardStats.activeInternships || 0,
       totalVisits: dashboardStats.totalVisits || visitLogs.total || 0,
       completedVisits: completedVisitsCount,
       pendingReports: dashboardStats.pendingReports || 0,

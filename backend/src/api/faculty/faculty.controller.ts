@@ -11,21 +11,27 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { FacultyService } from './faculty.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 
 @ApiTags('Faculty Portal')
 @Controller('faculty')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class FacultyController {
-  constructor(private readonly facultyService: FacultyService) {}
+  constructor(
+    private readonly facultyService: FacultyService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   @Get('dashboard')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
@@ -272,7 +278,7 @@ export class FacultyController {
 
   @Post('joining-letters/:id/upload')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   @ApiOperation({ summary: 'Upload joining letter for a student' })
   @ApiResponse({ status: 200, description: 'Joining letter uploaded successfully' })
   async uploadJoiningLetter(
@@ -280,13 +286,24 @@ export class FacultyController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req,
   ) {
-    // Get the file URL from the uploaded file
-    const fileUrl = (file as any)?.path || (file as any)?.location || (file as any)?.url || '';
-
-    if (!fileUrl) {
-      throw new Error('File upload failed - no URL returned');
+    if (!file) {
+      throw new BadRequestException('No file provided');
     }
 
-    return this.facultyService.uploadJoiningLetter(applicationId, fileUrl, req.user.userId);
+    // Get application details to determine student info for file path
+    const application = await this.facultyService.getApplicationForUpload(applicationId);
+
+    if (!application) {
+      throw new BadRequestException('Application not found');
+    }
+
+    // Upload to MinIO
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionId: application.student?.institutionId || 'default',
+      studentId: application.studentId,
+      documentType: 'joining-letter',
+    });
+
+    return this.facultyService.uploadJoiningLetter(applicationId, result.url, req.user.userId);
   }
 }

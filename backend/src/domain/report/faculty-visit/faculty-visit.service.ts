@@ -2,15 +2,28 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { Role, VisitType, VisitLogStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
+import {
+  calculateFourWeekCycles,
+  FourWeekCycle,
+  FOUR_WEEK_CYCLE,
+} from '../../../common/utils/four-week-cycle.util';
 
 // Types for visit status
 export type VisitStatusType = 'UPCOMING' | 'PENDING' | 'OVERDUE' | 'COMPLETED';
 
+/**
+ * Visit period now based on 4-week cycles (aligned with report cycles)
+ * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V
+ */
 interface VisitPeriod {
-  month: number;
-  year: number;
+  cycleNumber: number;
+  month: number; // For backward compatibility
+  year: number;  // For backward compatibility
   requiredByDate: Date;
-  isPartialMonth: boolean;
+  cycleStartDate: Date;
+  cycleEndDate: Date;
+  isPartialMonth: boolean; // Now refers to partial cycle
+  daysInCycle: number;
 }
 
 export interface VisitWithStatus {
@@ -27,45 +40,43 @@ export interface VisitWithStatus {
   isOverdue: boolean;
 }
 
-// Helper: Calculate expected visit periods for internship
+/**
+ * Calculate expected visit periods for internship
+ *
+ * UPDATED: Now uses 4-week cycles (aligned with report cycles)
+ * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V
+ *
+ * Example:
+ * - Internship Start: Dec 15, 2025
+ * - Visit 1 due: Jan 11 (end of 4-week cycle 1)
+ * - Visit 2 due: Feb 8 (end of 4-week cycle 2)
+ * - Visit 3 due: Mar 8 (end of 4-week cycle 3)
+ */
 function calculateExpectedVisitPeriods(startDate: Date, endDate: Date): VisitPeriod[] {
-  const periods: VisitPeriod[] = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const cycles = calculateFourWeekCycles(startDate, endDate);
 
-  let current = new Date(start.getFullYear(), start.getMonth(), 1);
-
-  while (current <= end) {
-    const month = current.getMonth() + 1;
-    const year = current.getFullYear();
-
-    // Calculate required by date (last day of month or internship end, whichever is earlier)
-    const lastDayOfMonth = new Date(year, month, 0);
-    const requiredByDate = lastDayOfMonth > end ? end : lastDayOfMonth;
-
-    // Check if partial month (start or end month)
-    const isFirstMonth = current.getFullYear() === start.getFullYear() && current.getMonth() === start.getMonth();
-    const isLastMonth = current.getFullYear() === end.getFullYear() && current.getMonth() === end.getMonth();
-    const isPartialMonth = isFirstMonth || isLastMonth;
-
-    periods.push({
-      month,
-      year,
-      requiredByDate,
-      isPartialMonth,
-    });
-
-    // Move to next month
-    current.setMonth(current.getMonth() + 1);
-  }
-
-  return periods;
+  return cycles.map((cycle: FourWeekCycle) => ({
+    cycleNumber: cycle.cycleNumber,
+    // For backward compatibility, use cycle end date for month/year reference
+    month: cycle.cycleEndDate.getMonth() + 1,
+    year: cycle.cycleEndDate.getFullYear(),
+    // Visit should be completed by end of cycle (not submission window)
+    requiredByDate: cycle.cycleEndDate,
+    cycleStartDate: cycle.cycleStartDate,
+    cycleEndDate: cycle.cycleEndDate,
+    isPartialMonth: cycle.daysInCycle < FOUR_WEEK_CYCLE.DURATION_DAYS,
+    daysInCycle: cycle.daysInCycle,
+  }));
 }
 
-// Helper: Get visit submission status
+/**
+ * Get visit submission status based on 4-week cycles
+ * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V
+ */
 function getVisitSubmissionStatus(visit: any): { status: VisitStatusType; label: string; color: string; sublabel?: string } {
   const now = new Date();
   const requiredByDate = visit.requiredByDate ? new Date(visit.requiredByDate) : null;
+  const cycleStartDate = visit.cycleStartDate ? new Date(visit.cycleStartDate) : null;
 
   // If visit is completed
   if (visit.status === VisitLogStatus.COMPLETED) {
@@ -81,7 +92,7 @@ function getVisitSubmissionStatus(visit: any): { status: VisitStatusType; label:
     return { status: 'PENDING', label: 'Pending', color: 'blue' };
   }
 
-  // Check if overdue
+  // Check if overdue (past cycle end date)
   if (now > requiredByDate) {
     const daysOverdue = Math.floor((now.getTime() - requiredByDate.getTime()) / (1000 * 60 * 60 * 24));
     return {
@@ -92,20 +103,29 @@ function getVisitSubmissionStatus(visit: any): { status: VisitStatusType; label:
     };
   }
 
-  // Check if current month (pending)
-  const currentMonth = now.getMonth() + 1;
-  const currentYear = now.getFullYear();
-  if (visit.visitMonth === currentMonth && visit.visitYear === currentYear) {
+  // Check if we're in the current cycle (between cycleStart and cycleEnd)
+  if (cycleStartDate && now >= cycleStartDate && now <= requiredByDate) {
     const daysLeft = Math.ceil((requiredByDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     return {
       status: 'PENDING',
-      label: 'Pending',
+      label: 'Due This Cycle',
       color: 'blue',
-      sublabel: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left`,
+      sublabel: `${daysLeft} day${daysLeft === 1 ? '' : 's'} left in cycle`,
     };
   }
 
-  // Future month
+  // Future cycle (not yet started)
+  if (cycleStartDate && now < cycleStartDate) {
+    const daysUntil = Math.ceil((cycleStartDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return {
+      status: 'UPCOMING',
+      label: 'Upcoming',
+      color: 'gray',
+      sublabel: `Cycle starts in ${daysUntil} day${daysUntil === 1 ? '' : 's'}`,
+    };
+  }
+
+  // Default: upcoming
   return {
     status: 'UPCOMING',
     label: 'Upcoming',

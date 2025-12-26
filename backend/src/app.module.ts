@@ -29,7 +29,6 @@ import { MailModule } from './infrastructure/mail/mail.module';
 import { WebSocketModule } from './infrastructure/websocket/websocket.module';
 import { NotificationModule } from './infrastructure/notification/notification.module';
 import { FileStorageModule } from './infrastructure/file-storage/file-storage.module';
-import { CloudinaryModule } from './infrastructure/cloudinary/cloudinary.module';
 import { AuditModule } from './infrastructure/audit/audit.module';
 import { HealthModule } from './infrastructure/health/health.module';
 
@@ -74,7 +73,6 @@ import { BulkModule } from './bulk/bulk.module';
     MailModule,
     NotificationModule,
     FileStorageModule,
-    CloudinaryModule,
     AuditModule,
     HealthModule,
 

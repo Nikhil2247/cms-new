@@ -22,12 +22,18 @@ import {
   MarkAsReadPayload,
 } from './dto';
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_EVENTS = 100; // Max events per window
+
 @WebSocketGateway({
   cors: {
     origin: true,
     credentials: true,
   },
   transports: ['websocket', 'polling'],
+  pingInterval: 25000, // Heartbeat every 25 seconds
+  pingTimeout: 20000, // Timeout after 20 seconds without pong
 })
 @Injectable()
 export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -41,6 +47,9 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
 
   // Track all subscribers with detailed info
   private subscribers: Map<string, WebSocketSubscriber> = new Map();
+
+  // Rate limiting: socketId -> { count, windowStart }
+  private rateLimitMap: Map<string, { count: number; windowStart: number }> = new Map();
 
   constructor(private readonly tokenService: TokenService) {}
 
@@ -212,6 +221,163 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
       return;
     }
     client.emit('sessionsRefreshRequested', { timestamp: new Date() });
+  }
+
+  /**
+   * Handle heartbeat/ping from client to keep connection alive
+   */
+  @SubscribeMessage('heartbeat')
+  handleHeartbeat(@ConnectedSocket() client: Socket): void {
+    const userData = client.data as SocketUserData;
+    if (!userData?.userId) {
+      return;
+    }
+
+    // Update last activity time
+    const subscriber = this.subscribers.get(client.id);
+    if (subscriber) {
+      subscriber.lastActivity = new Date();
+    }
+
+    // Respond with pong
+    client.emit('heartbeat_ack', {
+      timestamp: new Date(),
+      userId: userData.userId,
+    });
+  }
+
+  /**
+   * Handle token refresh request from client
+   * Client should call this periodically or when token is about to expire
+   */
+  @SubscribeMessage('refreshAuth')
+  handleRefreshAuth(
+    @MessageBody() data: { token: string },
+    @ConnectedSocket() client: Socket,
+  ): void {
+    try {
+      const payload = this.tokenService.validateAccessToken(data.token);
+
+      if (!payload || !payload.sub) {
+        client.emit(WebSocketEvent.ERROR, {
+          message: 'Invalid token',
+          code: 'AUTH_INVALID',
+        });
+        client.disconnect();
+        return;
+      }
+
+      // Update socket data with new token info
+      const userData = client.data as SocketUserData;
+      const newRole = (payload.roles?.[0] || payload.role) as Role;
+      const newInstitutionId = payload.institutionId;
+
+      // Check if role or institution changed - may need to update rooms
+      if (userData.role !== newRole || userData.institutionId !== newInstitutionId) {
+        // Leave old role room
+        client.leave(RoomPatterns.ROLE(userData.role));
+        // Join new role room
+        client.join(RoomPatterns.ROLE(newRole));
+
+        // Handle institution room changes
+        if (userData.institutionId && userData.institutionId !== newInstitutionId) {
+          client.leave(RoomPatterns.INSTITUTION(userData.institutionId));
+        }
+        if (newInstitutionId && userData.institutionId !== newInstitutionId) {
+          client.join(RoomPatterns.INSTITUTION(newInstitutionId));
+        }
+
+        // Update admin room access
+        if (AdminRoles.includes(newRole) && !AdminRoles.includes(userData.role)) {
+          client.join(AdminChannel.METRICS);
+          client.join(AdminChannel.SESSIONS);
+          if (newRole === Role.SYSTEM_ADMIN) {
+            client.join(AdminChannel.BACKUP);
+            client.join(AdminChannel.USERS);
+          }
+        } else if (!AdminRoles.includes(newRole) && AdminRoles.includes(userData.role)) {
+          client.leave(AdminChannel.METRICS);
+          client.leave(AdminChannel.SESSIONS);
+          client.leave(AdminChannel.BACKUP);
+          client.leave(AdminChannel.USERS);
+        }
+
+        // Update user data
+        userData.role = newRole;
+        userData.institutionId = newInstitutionId;
+
+        // Update subscriber info
+        const subscriber = this.subscribers.get(client.id);
+        if (subscriber) {
+          subscriber.role = newRole;
+          subscriber.institutionId = newInstitutionId;
+        }
+      }
+
+      client.emit('authRefreshed', {
+        success: true,
+        userId: payload.sub,
+        role: newRole,
+        rooms: Array.from(client.rooms),
+      });
+
+      this.logger.debug(`Token refreshed for user ${payload.sub}`);
+    } catch (error) {
+      if (error.message?.includes('expired')) {
+        client.emit(WebSocketEvent.ERROR, {
+          message: 'Token expired',
+          code: 'AUTH_EXPIRED',
+        });
+      } else {
+        client.emit(WebSocketEvent.ERROR, {
+          message: 'Token validation failed',
+          code: 'AUTH_FAILED',
+        });
+      }
+      client.disconnect();
+    }
+  }
+
+  /**
+   * Check rate limit for a socket
+   * Returns true if within limits, false if exceeded
+   */
+  private checkRateLimit(socketId: string): boolean {
+    const now = Date.now();
+    let rateInfo = this.rateLimitMap.get(socketId);
+
+    if (!rateInfo || now - rateInfo.windowStart > RATE_LIMIT_WINDOW_MS) {
+      // Start new window
+      rateInfo = { count: 1, windowStart: now };
+      this.rateLimitMap.set(socketId, rateInfo);
+      return true;
+    }
+
+    rateInfo.count++;
+    if (rateInfo.count > RATE_LIMIT_MAX_EVENTS) {
+      this.logger.warn(`Rate limit exceeded for socket ${socketId}`);
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Generic message handler with rate limiting
+   */
+  @SubscribeMessage('*')
+  handleGenericMessage(
+    @MessageBody() data: any,
+    @ConnectedSocket() client: Socket,
+  ): void {
+    // Check rate limit
+    if (!this.checkRateLimit(client.id)) {
+      client.emit(WebSocketEvent.ERROR, {
+        message: 'Rate limit exceeded. Please slow down.',
+        code: 'RATE_LIMIT',
+      });
+      return;
+    }
   }
 
   // ============ Public Methods for WebSocketService ============

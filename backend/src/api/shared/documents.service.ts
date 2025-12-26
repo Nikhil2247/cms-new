@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { CloudinaryService } from '../../infrastructure/cloudinary/cloudinary.service';
+import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
 
@@ -15,7 +15,7 @@ export class DocumentsService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly cloudinaryService: CloudinaryService,
+    private readonly fileStorageService: FileStorageService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -47,11 +47,13 @@ export class DocumentsService {
         throw new ForbiddenException('Only students can upload documents');
       }
 
-      // Upload to Cloudinary
-      const uploadResult = await this.cloudinaryService.uploadDocument(
-        file,
-        `documents/${student.id}`,
-      );
+      // Upload to MinIO
+      const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
+        institutionId: student.user.institutionId || 'default',
+        studentId: student.id,
+        documentType: 'other',
+        customName: metadata.type,
+      });
 
       // Save document record to database
       const document = await this.prisma.document.create({
@@ -59,7 +61,7 @@ export class DocumentsService {
           studentId: student.id,
           type: metadata.type as any,
           fileName: metadata.fileName || file.originalname,
-          fileUrl: uploadResult.secure_url,
+          fileUrl: uploadResult.url,
         },
       });
 
@@ -179,12 +181,16 @@ export class DocumentsService {
         studentId: document.Student.id,
       };
 
-      // Extract public ID from Cloudinary URL
-      const publicId = this.extractPublicIdFromUrl(document.fileUrl);
-
-      // Delete from Cloudinary
-      if (publicId) {
-        await this.cloudinaryService.deleteResource(publicId, 'raw');
+      // Extract key from MinIO URL and delete
+      if (document.fileUrl) {
+        const key = this.extractKeyFromMinioUrl(document.fileUrl);
+        if (key) {
+          try {
+            await this.fileStorageService.deleteFile(key);
+          } catch (error) {
+            this.logger.warn(`Failed to delete file from MinIO: ${error.message}`);
+          }
+        }
       }
 
       // Delete from database
@@ -274,23 +280,27 @@ export class DocumentsService {
   }
 
   /**
-   * Extract Cloudinary public ID from URL
+   * Extract MinIO key from URL
+   * URL format: http://localhost:9000/bucket-name/path/to/file.ext
    */
-  private extractPublicIdFromUrl(url: string): string | null {
+  private extractKeyFromMinioUrl(url: string): string | null {
     try {
-      const parts = url.split('/');
-      const uploadIndex = parts.indexOf('upload');
+      if (!url) return null;
 
-      if (uploadIndex === -1) {
+      // Parse URL and extract path after bucket name
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+
+      // First part is bucket name, rest is the key
+      if (pathParts.length < 2) {
         return null;
       }
 
-      const pathAfterUpload = parts.slice(uploadIndex + 2).join('/');
-      const publicId = pathAfterUpload.split('.')[0];
-
-      return publicId;
+      // Join everything after bucket name
+      const key = pathParts.slice(1).join('/');
+      return key;
     } catch (error) {
-      this.logger.warn('Failed to extract public ID from URL', error);
+      this.logger.warn('Failed to extract key from MinIO URL', error);
       return null;
     }
   }

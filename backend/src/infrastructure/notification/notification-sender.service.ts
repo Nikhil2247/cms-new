@@ -159,6 +159,24 @@ export class NotificationSenderService {
             notificationId = notification.id;
           }
         }
+
+        // Send real-time notification via WebSocket after saving to database
+        if (sendRealtime && notificationId) {
+          const payload: NotificationPayload = {
+            id: notificationId,
+            title,
+            body,
+            type,
+            data,
+            read: false,
+            createdAt: new Date(),
+          };
+          this.wsService.sendNotificationToUser(userId, payload);
+
+          // Also update the unread count for the user
+          const unreadCount = await this.notificationService.getUnreadCount(userId);
+          this.wsService.sendUnreadCount(userId, unreadCount);
+        }
       } else if (sendRealtime) {
         // Send realtime without saving to database
         const payload: NotificationPayload = {

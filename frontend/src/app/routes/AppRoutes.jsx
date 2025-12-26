@@ -52,7 +52,7 @@ import CompaniesOverview from '../../features/state/companies/CompaniesOverview'
 
 // Shared
 import GrievanceList from '../../features/shared/grievances/GrievanceList';
-import NotificationCenter from '../../features/shared/notifications/NotificationCenter';
+import { NotificationViewer } from '../../features/common/notifications';
 import { SendNotification } from '../../features/shared';
 import SubmitGrievance from '../../features/student/grievances/SubmitGrievance';
 
@@ -512,7 +512,7 @@ const AppRoutes = () => {
         />
 
         {/* Shared Routes */}
-        <Route path="notifications" element={<NotificationCenter />} />
+        <Route path="notifications" element={<NotificationViewer />} />
         <Route
           path="send-notification"
           element={

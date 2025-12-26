@@ -11,21 +11,27 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { StudentService } from './student.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 
 @ApiTags('Student Portal')
 @Controller('student')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class StudentController {
-  constructor(private readonly studentService: StudentService) {}
+  constructor(
+    private readonly studentService: StudentService,
+    private readonly fileStorageService: FileStorageService,
+  ) {}
 
   @Get('dashboard')
   @Roles(Role.STUDENT)
@@ -56,10 +62,24 @@ export class StudentController {
   @ApiOperation({ summary: 'Upload profile image' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 200, description: 'Profile image uploaded successfully' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadProfileImage(@Req() req, @UploadedFile() file: Express.Multer.File) {
-    const imageUrl = (file as any)?.path || (file as any)?.location || (file as any)?.url || '';
-    return this.studentService.uploadProfileImage(req.user.userId, imageUrl);
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Get student info for proper file path
+    const profile = await this.studentService.getProfile(req.user.userId);
+
+    // Upload to MinIO
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionId: profile.institutionId || 'default',
+      studentId: profile.id,
+      documentType: 'other',
+      customName: 'profile-image',
+    });
+
+    return this.studentService.uploadProfileImage(req.user.userId, result.url);
   }
 
   // Internships
@@ -228,18 +248,34 @@ export class StudentController {
   @ApiOperation({ summary: 'Upload report file as draft' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Report file uploaded successfully' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadReportFile(
     @Req() req,
     @UploadedFile() file: Express.Multer.File,
     @Body() reportDto: any,
   ) {
-    const fileUrl = (file as any)?.path || (file as any)?.location || (file as any)?.url || '';
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Get student info for proper file path
+    const profile = await this.studentService.getProfile(req.user.userId);
+    const reportMonth = parseInt(reportDto.reportMonth, 10);
+    const reportYear = parseInt(reportDto.reportYear, 10);
+
+    // Upload to MinIO
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionId: profile.institutionId || 'default',
+      studentId: profile.id,
+      documentType: 'monthly-report',
+      month: `${reportMonth}-${reportYear}`,
+    });
+
     return this.studentService.uploadReportFile(req.user.userId, {
       applicationId: reportDto.applicationId,
-      reportMonth: parseInt(reportDto.reportMonth, 10),
-      reportYear: parseInt(reportDto.reportYear, 10),
-      reportFileUrl: fileUrl,
+      reportMonth,
+      reportYear,
+      reportFileUrl: result.url,
     });
   }
 
@@ -273,13 +309,36 @@ export class StudentController {
   @ApiOperation({ summary: 'Upload document' })
   @ApiConsumes('multipart/form-data')
   @ApiResponse({ status: 201, description: 'Document uploaded successfully' })
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadDocument(
     @Req() req,
     @UploadedFile() file: Express.Multer.File,
     @Body() documentDto: any,
   ) {
-    return this.studentService.uploadDocument(req.user.userId, file, documentDto);
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Get student info for proper file path
+    const profile = await this.studentService.getProfile(req.user.userId);
+
+    // Upload to MinIO
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionId: profile.institutionId || 'default',
+      studentId: profile.id,
+      documentType: 'other',
+      customName: documentDto.type || 'document',
+    });
+
+    // Create a modified file object with MinIO URL
+    const fileWithUrl = {
+      ...file,
+      path: result.url,
+      url: result.url,
+      location: result.url,
+    };
+
+    return this.studentService.uploadDocument(req.user.userId, fileWithUrl, documentDto);
   }
 
   @Delete('documents/:id')

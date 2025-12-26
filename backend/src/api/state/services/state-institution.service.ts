@@ -3,6 +3,12 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { Prisma, ApplicationStatus, Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import {
+  calculateFourWeekCycles,
+  getExpectedReportsAsOfToday,
+  getExpectedVisitsAsOfToday,
+  FOUR_WEEK_CYCLE,
+} from '../../../common/utils/four-week-cycle.util';
 
 @Injectable()
 export class StateInstitutionService {
@@ -159,7 +165,7 @@ export class StateInstitutionService {
       visitCounts,
       reportCounts,
       facultyCounts,
-      internshipsInTrainingCounts, // Internships currently in their training period
+      internshipsInTrainingData, // Internships currently in their training period (with dates for 4-week calculation)
     ] = await Promise.all([
       // 1. Total students per institution
       this.prisma.student.groupBy({
@@ -269,11 +275,7 @@ export class StateInstitutionService {
           visitDate: { gte: startOfMonth, lte: endOfMonth },
           application: {
             student: { institutionId: { in: institutionIds } },
-            // Only count visits for internships that have started
-            OR: [
-              { startDate: null }, // Legacy data without startDate
-              { startDate: { lte: now } }, // Internship has started
-            ],
+            startDate: { lte: now },
           },
         },
         select: {
@@ -319,36 +321,24 @@ export class StateInstitutionService {
         _count: true,
       }),
 
-      // 9. Internships currently in their training period per institution
-      // Include: startDate is NULL (legacy data) OR (startDate <= now AND (endDate >= now OR endDate IS NULL))
+      // 9. Internships currently in their training period per institution (with dates for 4-week cycle calculation)
+      // Requires startDate to be set and in the past, with endDate in the future or not set
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: { in: institutionIds } },
           isSelfIdentified: true,
           status: ApplicationStatus.APPROVED,
+          startDate: { not: null, lte: now },
           OR: [
-            // No startDate set - treat as active (legacy data)
-            { startDate: null },
-            // Has startDate and is currently in training
-            {
-              startDate: { lte: now },
-              OR: [
-                { endDate: { gte: now } },
-                { endDate: null },
-              ],
-            },
+            { endDate: { gte: now } },
+            { endDate: null },
           ],
         },
         select: {
           student: { select: { institutionId: true } },
+          startDate: true,
+          endDate: true,
         },
-      }).then((results) => {
-        const instCounts = new Map<string, number>();
-        for (const app of results) {
-          const instId = app.student.institutionId;
-          instCounts.set(instId, (instCounts.get(instId) || 0) + 1);
-        }
-        return instCounts;
       }),
     ]);
 
@@ -356,6 +346,45 @@ export class StateInstitutionService {
     const studentCountMap = new Map(studentCounts.map(c => [c.institutionId, c._count]));
     const activeStudentCountMap = new Map(activeStudentCounts.map(c => [c.institutionId, c._count]));
     const facultyCountMap = new Map(facultyCounts.map(c => [c.institutionId, c._count]));
+
+    /**
+     * Process internship data for 4-week cycle calculations
+     * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+     *
+     * For each institution, calculate:
+     * - internshipsInTraining: count of internships currently in training period
+     * - expectedReports: total expected reports based on 4-week cycles
+     * - expectedVisits: total expected visits based on 4-week cycles
+     *
+     * OPTIMIZED: Use helper functions instead of calculating full cycle objects
+     */
+    const internshipsInTrainingCounts = new Map<string, number>();
+    const expectedReportsMap = new Map<string, number>();
+    const expectedVisitsMap = new Map<string, number>();
+
+    for (const internship of internshipsInTrainingData) {
+      const instId = internship.student.institutionId;
+
+      // Count internships per institution
+      internshipsInTrainingCounts.set(instId, (internshipsInTrainingCounts.get(instId) || 0) + 1);
+
+      // Calculate expected cycles for this internship
+      // startDate is guaranteed to be set by the query filter
+      try {
+        const endDate = internship.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // Default 6 months if no end date
+
+        // Use optimized helper functions - much faster than building full cycle objects
+        const reportsExpected = getExpectedReportsAsOfToday(internship.startDate!, endDate);
+        const visitsExpected = getExpectedVisitsAsOfToday(internship.startDate!, endDate);
+
+        expectedReportsMap.set(instId, (expectedReportsMap.get(instId) || 0) + reportsExpected);
+        expectedVisitsMap.set(instId, (expectedVisitsMap.get(instId) || 0) + visitsExpected);
+      } catch (error) {
+        // Skip internships with invalid dates
+        this.logger.warn(`Invalid dates for internship at institution ${instId}: ${error.message}`);
+        continue;
+      }
+    }
 
     // Build institutions with stats
     const institutionsWithStats = institutions.map((inst) => {
@@ -374,10 +403,14 @@ export class StateInstitutionService {
       // Calculate unassigned students (active students - students with mentors)
       const unassignedStudents = Math.max(0, activeStudents - activeAssignments);
 
-      // Calculate missing reports based on internships CURRENTLY IN TRAINING
-      // Not all approved internships - only those where current date is within training period
-      const expectedReportsThisMonth = internshipsInTraining;
+      /**
+       * Calculate expected reports/visits using 4-week cycles
+       * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+       */
+      const expectedReportsThisMonth = expectedReportsMap.get(inst.id) || 0;
+      const expectedVisitsThisMonth = expectedVisitsMap.get(inst.id) || 0;
       const missingReports = Math.max(0, expectedReportsThisMonth - reportsSubmittedThisMonth);
+      const missingVisits = Math.max(0, expectedVisitsThisMonth - facultyVisitsThisMonth);
 
       // Calculate compliance score using 2-metric formula:
       // Compliance = (MentorRate + JoiningLetterRate) / 2
@@ -391,8 +424,13 @@ export class StateInstitutionService {
         ? Math.min((joiningLettersSubmitted / activeStudents) * 100, 100)
         : null;
       // Monthly report rate calculated separately (NOT included in compliance score)
-      const monthlyReportRate = internshipsInTraining > 0
-        ? Math.min((reportsSubmittedThisMonth / internshipsInTraining) * 100, 100)
+      // Monthly report rate based on 4-week cycle expected reports
+      const monthlyReportRate = expectedReportsThisMonth > 0
+        ? Math.min((reportsSubmittedThisMonth / expectedReportsThisMonth) * 100, 100)
+        : null;
+      // Visit completion rate based on 4-week cycle expected visits
+      const visitCompletionRate = expectedVisitsThisMonth > 0
+        ? Math.min((facultyVisitsThisMonth / expectedVisitsThisMonth) * 100, 100)
         : null;
       // Calculate compliance score using only mentor and joining letter rates
       const validRates = [mentorAssignmentRate, joiningLetterRate].filter(r => r !== null) as number[];
@@ -409,9 +447,13 @@ export class StateInstitutionService {
           assigned: activeAssignments,
           unassigned: unassignedStudents,
           facultyVisits: facultyVisitsThisMonth,
+          visitsExpected: expectedVisitsThisMonth, // Expected visits based on 4-week cycles
+          visitsMissing: missingVisits,
+          visitCompletionRate,
           reportsSubmitted: reportsSubmittedThisMonth,
-          reportsExpected: expectedReportsThisMonth, // Expected reports based on training period
+          reportsExpected: expectedReportsThisMonth, // Expected reports based on 4-week cycles
           reportsMissing: missingReports,
+          monthlyReportRate,
           totalFaculty,
           complianceScore,
         },

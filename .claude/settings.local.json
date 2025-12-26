@@ -115,7 +115,10 @@
       "Bash(\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb+srv://nikhil97798:nikhil123@college.ivcx6vv.mongodb.net\" --archive=\"D:/Github/New folder/cms-new/prisma backup/mongodb_backup_2025-12-26_03-14-07.gz\" --gzip --nsFrom=\"internship.generated_reports\" --nsTo=\"college.generated_reports\" --drop --verbose)",
       "Bash(\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb+srv://nikhil97798:nikhil123@college.ivcx6vv.mongodb.net\" --archive=\"D:/Github/New folder/cms-new/prisma backup/mongodb_backup_2025-12-26_03-14-07.gz\" --gzip --nsFrom=\"internship.technical_queries\" --nsTo=\"college.technical_queries\" --drop)",
       "Bash(\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb+srv://nikhil97798:nikhil123@college.ivcx6vv.mongodb.net\" --archive=\"D:/Github/New folder/cms-new/prisma backup/mongodb_backup_2025-12-26_03-14-07.gz\" --gzip --nsFrom=\"internship.Student\" --nsTo=\"college.Student\" --drop)",
-      "Bash(npx prisma db push:*)"
+      "Bash(npx prisma db push:*)",
+      "Bash(DRY_RUN=true npx ts-node:*)",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\src\\\\features\\\\common\\\\notifications\\\\notificationUtils.js\")",
+      "Bash(ss:*)"
     ]
   }
 }

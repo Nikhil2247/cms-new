@@ -4,6 +4,13 @@ import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
 import { Prisma, ApplicationStatus, InternshipStatus, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  calculateFourWeekCycles,
+  FourWeekCycle,
+  getCycleSubmissionStatus,
+  isSubmissionLate,
+  FOUR_WEEK_CYCLE,
+} from '../../common/utils/four-week-cycle.util';
 
 // Month names for display
 const MONTH_NAMES = [
@@ -14,16 +21,22 @@ const MONTH_NAMES = [
 // Report submission status types
 type ReportSubmissionStatus = 'NOT_YET_DUE' | 'CAN_SUBMIT' | 'OVERDUE' | 'SUBMITTED' | 'APPROVED';
 
+/**
+ * Report period now based on 4-week cycles instead of calendar months
+ * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+ */
 interface ReportPeriod {
-  month: number;
-  year: number;
+  cycleNumber: number;
+  month: number; // For backward compatibility
+  year: number;  // For backward compatibility
   periodStartDate: Date;
   periodEndDate: Date;
   submissionWindowStart: Date;
   submissionWindowEnd: Date;
   dueDate: Date;
-  isPartialMonth: boolean;
+  isPartialMonth: boolean; // Now refers to partial cycle
   isFinalReport: boolean;
+  daysInCycle: number;
 }
 
 @Injectable()
@@ -37,64 +50,33 @@ export class StudentService {
 
   /**
    * Helper: Calculate all expected report periods for an internship
+   *
+   * UPDATED: Now uses 4-week cycles instead of calendar months
+   * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+   *
+   * Example:
+   * - Internship Start: Dec 15, 2025
+   * - Report 1 cycle: Dec 15 - Jan 11 (4 weeks) → Due by Jan 16 (5 days grace)
+   * - Report 2 cycle: Jan 12 - Feb 8 → Due by Feb 13
+   * - Report 3 cycle: Feb 9 - Mar 8 → Due by Mar 13
    */
   private calculateExpectedReportPeriods(startDate: Date, endDate: Date): ReportPeriod[] {
-    const periods: ReportPeriod[] = [];
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const cycles = calculateFourWeekCycles(startDate, endDate);
 
-    // Start from the month of startDate
-    let currentMonth = start.getMonth();
-    let currentYear = start.getFullYear();
-
-    while (true) {
-      const periodStartDate = new Date(currentYear, currentMonth, 1);
-      const lastDayOfMonth = new Date(currentYear, currentMonth + 1, 0);
-      const periodEndDate = new Date(Math.min(lastDayOfMonth.getTime(), end.getTime()));
-
-      // Check if this month is within the internship period
-      if (periodStartDate > end) break;
-
-      // Calculate actual period start (first day of internship if partial month)
-      const actualPeriodStart = currentYear === start.getFullYear() && currentMonth === start.getMonth()
-        ? new Date(start)
-        : periodStartDate;
-
-      // Submission window: 1st to 10th of NEXT month
-      const nextMonth = currentMonth === 11 ? 0 : currentMonth + 1;
-      const nextYear = currentMonth === 11 ? currentYear + 1 : currentYear;
-      const submissionWindowStart = new Date(nextYear, nextMonth, 1);
-      const submissionWindowEnd = new Date(nextYear, nextMonth, 10, 23, 59, 59);
-
-      // Determine if this is first (partial) or last (final) report
-      const isFirstMonth = currentYear === start.getFullYear() && currentMonth === start.getMonth();
-      const isLastMonth = currentYear === end.getFullYear() && currentMonth === end.getMonth();
-      const isPartialMonth = isFirstMonth && start.getDate() > 1;
-
-      periods.push({
-        month: currentMonth + 1, // 1-12 format
-        year: currentYear,
-        periodStartDate: actualPeriodStart,
-        periodEndDate,
-        submissionWindowStart,
-        submissionWindowEnd,
-        dueDate: submissionWindowEnd,
-        isPartialMonth,
-        isFinalReport: isLastMonth,
-      });
-
-      // Move to next month
-      currentMonth++;
-      if (currentMonth > 11) {
-        currentMonth = 0;
-        currentYear++;
-      }
-
-      // Safety check: don't create more than 24 months of reports
-      if (periods.length > 24) break;
-    }
-
-    return periods;
+    return cycles.map((cycle: FourWeekCycle) => ({
+      cycleNumber: cycle.cycleNumber,
+      // For backward compatibility, use cycle end date for month/year reference
+      month: cycle.cycleEndDate.getMonth() + 1,
+      year: cycle.cycleEndDate.getFullYear(),
+      periodStartDate: cycle.cycleStartDate,
+      periodEndDate: cycle.cycleEndDate,
+      submissionWindowStart: cycle.submissionWindowStart,
+      submissionWindowEnd: cycle.submissionWindowEnd,
+      dueDate: cycle.dueDate,
+      isPartialMonth: cycle.daysInCycle < FOUR_WEEK_CYCLE.DURATION_DAYS,
+      isFinalReport: cycle.isFinalCycle,
+      daysInCycle: cycle.daysInCycle,
+    }));
   }
 
   /**
@@ -129,41 +111,59 @@ export class StudentService {
     const windowEnd = report.submissionWindowEnd ? new Date(report.submissionWindowEnd) : null;
 
     if (!windowStart || !windowEnd) {
-      // Fallback calculation
-      const nextMonth = report.reportMonth === 12 ? 1 : report.reportMonth + 1;
-      const nextYear = report.reportMonth === 12 ? report.reportYear + 1 : report.reportYear;
-      const calcWindowStart = new Date(nextYear, nextMonth - 1, 1);
-      const calcWindowEnd = new Date(nextYear, nextMonth - 1, 10, 23, 59, 59);
+      // Fallback: use 4-week cycle calculation based on cycle number and start date
+      // If we have cycle info, use that; otherwise fall back to period dates
+      const cycleEndDate = report.periodEndDate ? new Date(report.periodEndDate) : null;
 
-      if (now < calcWindowStart) {
-        const daysUntil = Math.ceil((calcWindowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return {
-          status: 'NOT_YET_DUE',
-          label: 'Not Yet Due',
-          color: 'default',
-          canSubmit: false,
-          sublabel: `Opens in ${daysUntil} days`
-        };
-      }
+      if (cycleEndDate) {
+        // Calculate submission window: day after cycle ends + 5 days grace
+        const calcWindowStart = new Date(cycleEndDate);
+        calcWindowStart.setDate(calcWindowStart.getDate() + 1);
+        calcWindowStart.setHours(0, 0, 0, 0);
 
-      if (now >= calcWindowStart && now <= calcWindowEnd) {
-        const daysLeft = Math.ceil((calcWindowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const calcWindowEnd = new Date(calcWindowStart);
+        calcWindowEnd.setDate(calcWindowEnd.getDate() + FOUR_WEEK_CYCLE.GRACE_DAYS - 1);
+        calcWindowEnd.setHours(23, 59, 59, 999);
+
+        if (now < calcWindowStart) {
+          const daysUntil = Math.ceil((calcWindowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return {
+            status: 'NOT_YET_DUE',
+            label: 'In Progress',
+            color: 'default',
+            canSubmit: false,
+            sublabel: `Cycle ends in ${daysUntil} days`
+          };
+        }
+
+        if (now >= calcWindowStart && now <= calcWindowEnd) {
+          const daysLeft = Math.ceil((calcWindowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          return {
+            status: 'CAN_SUBMIT',
+            label: 'Submit Now',
+            color: 'blue',
+            canSubmit: true,
+            sublabel: `${daysLeft} days left`
+          };
+        }
+
+        const daysOverdue = Math.ceil((now.getTime() - calcWindowEnd.getTime()) / (1000 * 60 * 60 * 24));
         return {
-          status: 'CAN_SUBMIT',
-          label: 'Submit Now',
-          color: 'blue',
+          status: 'OVERDUE',
+          label: 'Overdue',
+          color: 'red',
           canSubmit: true,
-          sublabel: `${daysLeft} days left`
+          sublabel: `${daysOverdue} days overdue`
         };
       }
 
-      const daysOverdue = Math.ceil((now.getTime() - calcWindowEnd.getTime()) / (1000 * 60 * 60 * 24));
+      // No valid period end date available - cannot determine status
       return {
-        status: 'OVERDUE',
-        label: 'Overdue',
-        color: 'red',
-        canSubmit: true,
-        sublabel: `${daysOverdue} days overdue`
+        status: 'NOT_YET_DUE',
+        label: 'Pending',
+        color: 'default',
+        canSubmit: false,
+        sublabel: 'Unable to calculate due date'
       };
     }
 

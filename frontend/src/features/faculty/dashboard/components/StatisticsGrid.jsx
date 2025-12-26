@@ -35,6 +35,13 @@ const StatisticsGrid = ({ stats }) => {
       bgClass: 'bg-primary/10',
     },
     {
+      title: 'Active Internships',
+      value: stats?.activeInternships || 0,
+      icon: <CheckCircleOutlined />,
+      colorClass: 'text-success',
+      bgClass: 'bg-success/10',
+    },
+    {
       title: 'Pending Reports',
       value: stats?.pendingReports || 0,
       icon: <FileTextOutlined />,
@@ -42,16 +49,9 @@ const StatisticsGrid = ({ stats }) => {
       bgClass: 'bg-warning/10',
     },
     {
-      title: 'Visits Completed',
-      value: stats?.completedVisits || 0,
+      title: 'Total Visits',
+      value: stats?.totalVisits || stats?.completedVisits || 0,
       icon: <CalendarOutlined />,
-      colorClass: 'text-success',
-      bgClass: 'bg-success/10',
-    },
-    {
-      title: 'Approvals Pending',
-      value: stats?.pendingApprovals || 0,
-      icon: <CheckCircleOutlined />,
       colorClass: 'text-info',
       bgClass: 'bg-info/10',
     },

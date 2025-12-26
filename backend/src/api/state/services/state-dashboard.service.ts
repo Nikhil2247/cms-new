@@ -3,6 +3,12 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { ApplicationStatus, Role } from '@prisma/client';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import {
+  calculateFourWeekCycles,
+  getExpectedReportsAsOfToday,
+  getExpectedVisitsAsOfToday,
+  FOUR_WEEK_CYCLE,
+} from '../../../common/utils/four-week-cycle.util';
 
 @Injectable()
 export class StateDashboardService {
@@ -139,10 +145,7 @@ export class StateDashboardService {
             where: {
               visitDate: { gte: startOfCurrentMonth },
               application: {
-                OR: [
-                  { startDate: null }, // Legacy data
-                  { startDate: { lte: now } }, // Internship has started
-                ],
+                startDate: { lte: now },
               },
             },
           }),
@@ -151,10 +154,7 @@ export class StateDashboardService {
             where: {
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
-                OR: [
-                  { startDate: null }, // Legacy data
-                  { startDate: { lte: now } }, // Internship has started
-                ],
+                startDate: { lte: now },
               },
             },
           }),
@@ -162,10 +162,7 @@ export class StateDashboardService {
           this.prisma.facultyVisitLog.count({
             where: {
               application: {
-                OR: [
-                  { startDate: null }, // Legacy data
-                  { startDate: { lte: now } }, // Internship has started
-                ],
+                startDate: { lte: now },
               },
             },
           }),
@@ -216,33 +213,61 @@ export class StateDashboardService {
         // Students with no mentor (total students - students with active mentors)
         const studentsWithNoMentor = Math.max(0, totalStudents - studentsWithActiveMentors);
 
-        // Count internships currently in their training period
-        // Include: startDate is NULL (legacy data) OR (startDate <= now AND (endDate >= now OR endDate IS NULL))
-        const internshipsCurrentlyInTraining = await this.prisma.internshipApplication.count({
+        // Fetch internships currently in their training period with dates for 4-week cycle calculation
+        // Requires startDate to be set and in the past, with endDate in the future or not set
+        const internshipsInTraining = await this.prisma.internshipApplication.findMany({
           where: {
             isSelfIdentified: true,
             status: ApplicationStatus.APPROVED,
+            startDate: { not: null, lte: now },
             OR: [
-              // No startDate set - treat as active (legacy data)
-              { startDate: null },
-              // Has startDate and is currently in training
-              {
-                startDate: { lte: now },
-                OR: [
-                  { endDate: { gte: now } },
-                  { endDate: null },
-                ],
-              },
+              { endDate: { gte: now } },
+              { endDate: null },
             ],
+          },
+          select: {
+            id: true,
+            startDate: true,
+            endDate: true,
           },
         });
 
-        // Calculate expected reports and visits based on internships CURRENTLY in training period
-        // Not all approved internships - only those where current month is within training dates
-        const expectedReportsThisMonth = internshipsCurrentlyInTraining;
+        const internshipsCurrentlyInTraining = internshipsInTraining.length;
+
+        /**
+         * Calculate expected reports/visits using 4-week cycles
+         * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
+         *
+         * For each internship:
+         * - Reports: 1 per 4-week cycle (due 5 days after cycle ends)
+         * - Visits: 1 per 4-week cycle (due at cycle end)
+         *
+         * "Expected this month" = sum of all cycles where submission window is currently open
+         *
+         * OPTIMIZED: Use helper functions instead of calculating full cycle objects
+         */
+        let expectedReportsThisMonth = 0;
+        let expectedVisitsThisMonth = 0;
+
+        for (const internship of internshipsInTraining) {
+          // startDate is guaranteed to be set by the query filter
+          try {
+            const endDate = internship.endDate || new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000); // Default 6 months if no end date
+
+            // Use optimized helper functions - much faster than building full cycle objects
+            expectedReportsThisMonth += getExpectedReportsAsOfToday(internship.startDate!, endDate);
+            expectedVisitsThisMonth += getExpectedVisitsAsOfToday(internship.startDate!, endDate);
+          } catch (error) {
+            // Skip internships with invalid dates
+            this.logger.warn(`Invalid dates for internship ${internship.id}: ${error.message}`);
+            continue;
+          }
+        }
+
         const missingReportsThisMonth = Math.max(0, expectedReportsThisMonth - reportsSubmittedThisMonth);
+        // Note: missingReportsLastMonth should use last month's expected count, but we don't have historical data
+        // For now, use this month's expected as an approximation (most internships are long-term)
         const missingReportsLastMonth = Math.max(0, expectedReportsThisMonth - reportsSubmittedLastMonth);
-        const expectedVisitsThisMonth = internshipsCurrentlyInTraining;
         const pendingVisitsThisMonth = Math.max(0, expectedVisitsThisMonth - visitsThisMonth);
 
         return {
