@@ -327,7 +327,7 @@ const SubmitGrievance = () => {
                       placeholder="Select category"
                       size="large"
                       className="rounded-lg h-12"
-                      dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
+                      popupStyle={{ borderRadius: '12px', padding: '8px' }}
                     >
                       {CATEGORIES.map(cat => (
                         <Option key={cat.value} value={cat.value}>
@@ -352,7 +352,7 @@ const SubmitGrievance = () => {
                       placeholder="Select priority level"
                       size="large"
                       className="rounded-lg h-12"
-                      dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
+                      popupStyle={{ borderRadius: '12px', padding: '8px' }}
                     >
                       {PRIORITIES.map(pri => (
                         <Option key={pri.value} value={pri.value}>

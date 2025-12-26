@@ -14,6 +14,7 @@ export const useMetricsSocket = (options = {}) => {
   const [metrics, setMetrics] = useState(null);
   const [sessionStats, setSessionStats] = useState(null);
   const [backupProgress, setBackupProgress] = useState(null);
+  const [restoreProgress, setRestoreProgress] = useState(null);
   const [bulkOperationProgress, setBulkOperationProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -22,8 +23,30 @@ export const useMetricsSocket = (options = {}) => {
   // Use shared WebSocket connection
   const { isConnected, connectionError, on, off, emit } = useWebSocket();
 
-  const pollingInterval = useRef(null);
-  const mounted = useRef(true);
+  const pollingIntervalRef = useRef(null);
+  const mountedRef = useRef(true);
+  const handlersRef = useRef([]);
+  const progressClearTimeoutRef = useRef(null);
+
+  // Set mounted ref on mount/unmount
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  // Clear progress after delay (for completed/failed states)
+  const clearProgressAfterDelay = useCallback((setter, delay = 5000) => {
+    if (progressClearTimeoutRef.current) {
+      clearTimeout(progressClearTimeoutRef.current);
+    }
+    progressClearTimeoutRef.current = setTimeout(() => {
+      if (mountedRef.current) {
+        setter(null);
+      }
+    }, delay);
+  }, []);
 
   // Fallback polling function
   const fetchMetricsHttp = useCallback(async () => {
@@ -34,7 +57,7 @@ export const useMetricsSocket = (options = {}) => {
         adminService.getRealtimeMetrics(),
       ]);
 
-      if (mounted.current) {
+      if (mountedRef.current) {
         setHealth(healthData);
         setMetrics(metricsData);
         setLastUpdate(new Date());
@@ -42,7 +65,7 @@ export const useMetricsSocket = (options = {}) => {
         setError(null);
       }
     } catch (err) {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setError(err.message);
         setLoading(false);
       }
@@ -51,18 +74,16 @@ export const useMetricsSocket = (options = {}) => {
 
   // Start HTTP polling fallback
   const startPolling = useCallback(() => {
-    if (pollingInterval.current) return;
-
-    console.log('[useMetricsSocket] Starting HTTP polling fallback');
-    fetchMetricsHttp(); // Initial fetch
-    pollingInterval.current = setInterval(fetchMetricsHttp, 15000);
+    if (pollingIntervalRef.current) return;
+    fetchMetricsHttp();
+    pollingIntervalRef.current = setInterval(fetchMetricsHttp, 15000);
   }, [fetchMetricsHttp]);
 
   // Stop HTTP polling
   const stopPolling = useCallback(() => {
-    if (pollingInterval.current) {
-      clearInterval(pollingInterval.current);
-      pollingInterval.current = null;
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
     }
   }, []);
 
@@ -82,7 +103,7 @@ export const useMetricsSocket = (options = {}) => {
     }
   }, [isConnected, emit]);
 
-  // Handle connection state changes
+  // Handle connection state changes - manage polling
   useEffect(() => {
     if (isConnected) {
       stopPolling();
@@ -94,7 +115,7 @@ export const useMetricsSocket = (options = {}) => {
 
   // Handle connection errors
   useEffect(() => {
-    if (connectionError) {
+    if (connectionError && mountedRef.current) {
       setError(connectionError);
       if (fallbackToPolling) {
         message.info('Using HTTP polling for metrics updates');
@@ -103,15 +124,20 @@ export const useMetricsSocket = (options = {}) => {
     }
   }, [connectionError, fallbackToPolling, startPolling]);
 
-  // Setup WebSocket event listeners
+  // Setup WebSocket event listeners when connected
   useEffect(() => {
-    mounted.current = true;
-
-    if (!isConnected) return;
+    if (!isConnected) {
+      // Clean up any existing handlers when disconnected
+      for (const { event, handler } of handlersRef.current) {
+        off(event, handler);
+      }
+      handlersRef.current = [];
+      return;
+    }
 
     // Handler for metrics updates
     const handleMetricsUpdate = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setHealth(data.health);
         setMetrics(data.metrics);
         setLastUpdate(new Date(data.timestamp));
@@ -122,7 +148,7 @@ export const useMetricsSocket = (options = {}) => {
 
     // Handler for quick metrics (CPU/Memory only)
     const handleQuickMetrics = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setMetrics((prev) => ({
           ...prev,
           cpu: { ...prev?.cpu, usage: data.cpu },
@@ -135,11 +161,10 @@ export const useMetricsSocket = (options = {}) => {
 
     // Handler for service alerts
     const handleServiceAlert = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         const alertType = data.status === 'down' ? 'error' : 'success';
         message[alertType](`${data.service} is ${data.status.toUpperCase()}`);
 
-        // Update health with new service status
         setHealth((prev) => {
           if (!prev) return prev;
           const serviceKey = data.service.toLowerCase();
@@ -162,7 +187,7 @@ export const useMetricsSocket = (options = {}) => {
 
     // Handler for session updates
     const handleSessionUpdate = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setSessionStats(data.stats);
         if (data.action === 'terminated') {
           message.info('Session activity updated');
@@ -172,29 +197,46 @@ export const useMetricsSocket = (options = {}) => {
 
     // Handler for backup progress
     const handleBackupProgress = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setBackupProgress(data);
         if (data.status === 'completed') {
           message.success('Backup completed successfully');
+          clearProgressAfterDelay(setBackupProgress);
         } else if (data.status === 'failed') {
           message.error(`Backup failed: ${data.message || 'Unknown error'}`);
+          clearProgressAfterDelay(setBackupProgress);
+        }
+      }
+    };
+
+    // Handler for restore progress
+    const handleRestoreProgress = (data) => {
+      if (mountedRef.current) {
+        setRestoreProgress(data);
+        if (data.status === 'completed') {
+          message.success('Database restored successfully');
+          clearProgressAfterDelay(setRestoreProgress);
+        } else if (data.status === 'failed') {
+          message.error(`Restore failed: ${data.message || 'Unknown error'}`);
+          clearProgressAfterDelay(setRestoreProgress);
         }
       }
     };
 
     // Handler for bulk operation progress
     const handleBulkOperationProgress = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setBulkOperationProgress(data);
         if (data.completed === data.total) {
           message.success(`Bulk ${data.type} operation completed: ${data.completed}/${data.total}`);
+          clearProgressAfterDelay(setBulkOperationProgress);
         }
       }
     };
 
     // Handler for initial data (sent when admin connects)
     const handleInitialData = (data) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setHealth(data.health);
         setMetrics(data.metrics);
         setLastUpdate(new Date());
@@ -204,35 +246,48 @@ export const useMetricsSocket = (options = {}) => {
 
     // Handler for errors
     const handleError = (err) => {
-      if (mounted.current) {
+      if (mountedRef.current) {
         setError(err.message || 'WebSocket error');
       }
     };
 
+    // Define handlers to register
+    const handlers = [
+      { event: 'metricsUpdate', handler: handleMetricsUpdate },
+      { event: 'quickMetrics', handler: handleQuickMetrics },
+      { event: 'serviceAlert', handler: handleServiceAlert },
+      { event: 'sessionUpdate', handler: handleSessionUpdate },
+      { event: 'backupProgress', handler: handleBackupProgress },
+      { event: 'restoreProgress', handler: handleRestoreProgress },
+      { event: 'bulkOperationProgress', handler: handleBulkOperationProgress },
+      { event: 'initialData', handler: handleInitialData },
+      { event: 'error', handler: handleError },
+    ];
+
     // Subscribe to events
-    on('metricsUpdate', handleMetricsUpdate);
-    on('quickMetrics', handleQuickMetrics);
-    on('serviceAlert', handleServiceAlert);
-    on('sessionUpdate', handleSessionUpdate);
-    on('backupProgress', handleBackupProgress);
-    on('bulkOperationProgress', handleBulkOperationProgress);
-    on('initialData', handleInitialData);
-    on('error', handleError);
+    for (const { event, handler } of handlers) {
+      on(event, handler);
+    }
+    handlersRef.current = handlers;
 
     // Cleanup
     return () => {
-      mounted.current = false;
-      off('metricsUpdate', handleMetricsUpdate);
-      off('quickMetrics', handleQuickMetrics);
-      off('serviceAlert', handleServiceAlert);
-      off('sessionUpdate', handleSessionUpdate);
-      off('backupProgress', handleBackupProgress);
-      off('bulkOperationProgress', handleBulkOperationProgress);
-      off('initialData', handleInitialData);
-      off('error', handleError);
-      stopPolling();
+      for (const { event, handler } of handlers) {
+        off(event, handler);
+      }
+      handlersRef.current = [];
     };
-  }, [isConnected, on, off, stopPolling]);
+  }, [isConnected, on, off, clearProgressAfterDelay]);
+
+  // Cleanup polling and timeouts on unmount
+  useEffect(() => {
+    return () => {
+      stopPolling();
+      if (progressClearTimeoutRef.current) {
+        clearTimeout(progressClearTimeoutRef.current);
+      }
+    };
+  }, [stopPolling]);
 
   // Initial data fetch if using polling
   useEffect(() => {
@@ -246,6 +301,7 @@ export const useMetricsSocket = (options = {}) => {
     metrics,
     sessionStats,
     backupProgress,
+    restoreProgress,
     bulkOperationProgress,
     connected: isConnected,
     loading,

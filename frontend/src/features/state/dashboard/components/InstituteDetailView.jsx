@@ -159,7 +159,11 @@ const OverviewTab = memo(({ data, loading, error }) => {
           </div>
         }
         className="rounded-2xl border-border shadow-soft bg-surface"
-        extra={<Tag color="blue" className="rounded-lg font-bold px-3 py-1 text-sm border-0">{data.selfIdentifiedInternships?.rate || 0}% of students</Tag>}
+        extra={
+          <Tag color="blue" className="rounded-lg font-bold px-3 py-1 text-sm border-0">
+            {data.totalStudents > 0 ? `${data.selfIdentifiedInternships?.rate || 0}% of students` : 'N/A'}
+          </Tag>
+        }
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
           <div className="text-center p-4 bg-background-tertiary/30 rounded-xl border border-border/50">
@@ -231,7 +235,14 @@ const OverviewTab = memo(({ data, loading, error }) => {
             </div>
           }
           className="rounded-2xl border-border shadow-soft bg-surface"
-          extra={<Tag color={data.joiningLetterStatus?.rate >= 80 ? 'green' : 'orange'} className="rounded-lg font-bold border-0 px-2 py-0.5">{data.joiningLetterStatus?.rate || 0}%</Tag>}
+          extra={
+            <Tag
+              color={data.joiningLetterStatus?.rate >= 80 ? 'green' : 'orange'}
+              className="rounded-lg font-bold border-0 px-2 py-0.5"
+            >
+              {data.joiningLetterStatus?.total > 0 ? `${data.joiningLetterStatus?.rate || 0}%` : 'N/A'}
+            </Tag>
+          }
         >
           <div className="grid grid-cols-2 gap-y-6">
             <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Submitted</span>} value={data.joiningLetterStatus?.submitted || 0} styles={{ content: { fontSize: '24px', fontWeight: 'bold', color: 'rgb(var(--color-text-primary))' } }} />
@@ -251,7 +262,14 @@ const OverviewTab = memo(({ data, loading, error }) => {
             </div>
           }
           className="rounded-2xl border-border shadow-soft bg-surface"
-          extra={<Tag color={data.monthlyReportStatus?.rate >= 80 ? 'green' : 'orange'} className="rounded-lg font-bold border-0 px-2 py-0.5">{data.monthlyReportStatus?.rate || 0}%</Tag>}
+          extra={
+            <Tag
+              color={data.monthlyReportStatus?.rate >= 80 ? 'green' : 'orange'}
+              className="rounded-lg font-bold border-0 px-2 py-0.5"
+            >
+              {data.monthlyReportStatus?.total > 0 ? `${data.monthlyReportStatus?.rate || 0}%` : 'N/A'}
+            </Tag>
+          }
         >
           <div className="grid grid-cols-2 gap-y-6">
             <Statistic title={<span className="text-xs uppercase font-bold text-text-tertiary">Submitted</span>} value={data.monthlyReportStatus?.submitted || 0} styles={{ content: { fontSize: '24px', fontWeight: 'bold', color: 'rgb(var(--color-text-primary))' } }} />
@@ -273,7 +291,14 @@ const OverviewTab = memo(({ data, loading, error }) => {
           </div>
         }
         className="rounded-2xl border-border shadow-soft bg-surface"
-        extra={<Tag color={data.facultyVisits?.completionRate >= 80 ? 'green' : 'orange'} className="rounded-lg font-bold border-0 px-2 py-0.5">{data.facultyVisits?.completionRate || 0}% Complete</Tag>}
+        extra={
+          <Tag
+            color={data.facultyVisits?.completionRate >= 80 ? 'green' : 'orange'}
+            className="rounded-lg font-bold border-0 px-2 py-0.5"
+          >
+            {data.facultyVisits?.scheduled > 0 ? `${data.facultyVisits?.completionRate || 0}% Complete` : 'N/A'}
+          </Tag>
+        }
       >
         <div className="grid grid-cols-3 gap-6 text-center pt-2">
           <div className="p-4 bg-background-tertiary/30 rounded-2xl">
@@ -335,7 +360,7 @@ const FacultyTab = memo(({ principal, faculty, summary, loading, error }) => {
     return (
       <Alert
         type="error"
-        message="Failed to load faculty data"
+        title="Failed to load faculty data"
         description={error}
         showIcon
         className="rounded-xl"
@@ -964,7 +989,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       title: 'Industry', key: 'industry', width: 140,
       render: (_, record) => (
         <Tag
-          bordered={false}
+          variant="borderless"
           className={`font-bold rounded-md m-0 px-2 py-0.5 text-[10px] uppercase tracking-wider ${
             record.isSelfIdentifiedCompany
               ? 'bg-purple-500/10 text-purple-600'

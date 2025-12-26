@@ -15,7 +15,7 @@ export class CreateStaffDto {
   @ApiProperty({ description: 'Staff phone number', required: false })
   @IsString()
   @IsOptional()
-  phone?: string;
+  phoneNo?: string;
 
   @ApiProperty({ description: 'Staff role', enum: ['FACULTY', 'MENTOR', 'ADMIN'] })
   @IsEnum(['FACULTY', 'MENTOR', 'ADMIN'])

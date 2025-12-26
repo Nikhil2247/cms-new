@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Tag, Button, Typography, Empty, Avatar, Badge, Tooltip } from 'antd';
+import { Card, Tag, Button, Typography, Empty, Avatar, Badge, Tooltip } from 'antd';
 import {
   ExclamationCircleOutlined,
   PlusOutlined,
@@ -79,60 +79,55 @@ const GrievancesCard = ({ grievances = [], loading, onCreateNew, onViewAll }) =>
     >
       {grievancesList.length > 0 ? (
         <>
-          <List
-            loading={loading}
-            dataSource={grievancesList.slice(0, 3)}
-            size="small"
-            renderItem={(grievance) => {
+          <div className="flex flex-col gap-3">
+            {grievancesList.slice(0, 3).map((grievance, index) => {
               const statusConfig = getStatusConfig(grievance.status);
               const escalationConfig = ESCALATION_LEVELS[grievance.escalationLevel];
 
               return (
-                <List.Item className="!px-0">
-                  <div className="flex items-start justify-between w-full gap-3">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <Avatar
-                        size="small"
-                        icon={<ExclamationCircleOutlined />}
-                        className="bg-warning-100 text-warning-600 mt-1"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <Text className="text-sm font-medium block truncate">
-                          {grievance.title || grievance.subject}
+                <div key={grievance.id || index} className={`flex items-start justify-between w-full gap-3 pb-3 ${index !== grievancesList.slice(0, 3).length - 1 ? 'border-b border-border/50' : ''}`}>
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <Avatar
+                      size="small"
+                      icon={<ExclamationCircleOutlined />}
+                      className="bg-warning-100 text-warning-600 mt-1"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <Text className="text-sm font-medium block truncate">
+                        {grievance.title || grievance.subject}
+                      </Text>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Tag color={getPriorityColor(grievance.severity || grievance.priority)} className="text-[10px] py-0 px-1 m-0">
+                          {grievance.severity || grievance.priority || 'MEDIUM'}
+                        </Tag>
+                        {escalationConfig && (
+                          <Tooltip title={`At ${escalationConfig.label} level`}>
+                            <Tag color={escalationConfig.color} className="text-[10px] py-0 px-1 m-0" icon={escalationConfig.icon}>
+                              {escalationConfig.label}
+                            </Tag>
+                          </Tooltip>
+                        )}
+                        {grievance.assignedTo && (
+                          <Tooltip title={`Assigned to ${grievance.assignedTo.name}`}>
+                            <Text className="text-[10px] text-text-tertiary">
+                              <UserOutlined className="mr-1" />
+                              {grievance.assignedTo.name.split(' ')[0]}
+                            </Text>
+                          </Tooltip>
+                        )}
+                        <Text className="text-[10px] text-text-tertiary">
+                          {dayjs(grievance.createdAt).format('MMM DD')}
                         </Text>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <Tag color={getPriorityColor(grievance.severity || grievance.priority)} className="text-xs">
-                            {grievance.severity || grievance.priority || 'MEDIUM'}
-                          </Tag>
-                          {escalationConfig && (
-                            <Tooltip title={`At ${escalationConfig.label} level`}>
-                              <Tag color={escalationConfig.color} className="text-xs" icon={escalationConfig.icon}>
-                                {escalationConfig.label}
-                              </Tag>
-                            </Tooltip>
-                          )}
-                          {grievance.assignedTo && (
-                            <Tooltip title={`Assigned to ${grievance.assignedTo.name}`}>
-                              <Text className="text-xs text-text-tertiary">
-                                <UserOutlined className="mr-1" />
-                                {grievance.assignedTo.name.split(' ')[0]}
-                              </Text>
-                            </Tooltip>
-                          )}
-                          <Text className="text-xs text-text-tertiary">
-                            {dayjs(grievance.createdAt).format('MMM DD')}
-                          </Text>
-                        </div>
                       </div>
                     </div>
-                    <Tag color={statusConfig.color} className="flex-shrink-0">
-                      {statusConfig.label}
-                    </Tag>
                   </div>
-                </List.Item>
+                  <Tag color={statusConfig.color} className="flex-shrink-0 m-0">
+                    {statusConfig.label}
+                  </Tag>
+                </div>
               );
-            }}
-          />
+            })}
+          </div>
           {grievancesList.length > 3 && (
             <Button
               type="link"

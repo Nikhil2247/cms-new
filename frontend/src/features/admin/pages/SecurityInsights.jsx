@@ -195,7 +195,7 @@ const SecurityInsights = () => {
           <Card title="Security Status">
             {suspiciousActivities.length === 0 ? (
               <Alert
-                message="No Suspicious Activities"
+                title="No Suspicious Activities"
                 description="No suspicious activities detected in the selected time period."
                 type="success"
                 showIcon
@@ -203,7 +203,7 @@ const SecurityInsights = () => {
               />
             ) : (
               <Alert
-                message={`${suspiciousActivities.length} Suspicious Activities Detected`}
+                title={`${suspiciousActivities.length} Suspicious Activities Detected`}
                 description="Review the activities below and take appropriate action."
                 type="warning"
                 showIcon

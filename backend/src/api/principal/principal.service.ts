@@ -681,23 +681,42 @@ export class PrincipalService {
     }
 
     // Get list of mentors for filter dropdown
-    const mentors = await this.prisma.user.findMany({
-      where: {
-        institutionId: principal.institutionId,
-        role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
-        active: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            mentorAssignments: { where: { isActive: true } },
-          },
+    const [mentorsList, mentorAssignmentsList] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          institutionId: principal.institutionId,
+          role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
+          active: true,
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        select: {
+          id: true,
+          name: true,
+        },
+        orderBy: { name: 'asc' },
+      }),
+      // Get all mentor assignments to count unique students per mentor
+      this.prisma.mentorAssignment.findMany({
+        where: {
+          student: { institutionId: principal.institutionId },
+          isActive: true,
+        },
+        select: { mentorId: true, studentId: true },
+      }),
+    ]);
+
+    // Compute unique students per mentor
+    const mentorStudentMap = new Map<string, Set<string>>();
+    for (const { mentorId, studentId } of mentorAssignmentsList) {
+      if (!mentorStudentMap.has(mentorId)) {
+        mentorStudentMap.set(mentorId, new Set());
+      }
+      mentorStudentMap.get(mentorId)!.add(studentId);
+    }
+
+    const mentors = mentorsList.map((m) => ({
+      ...m,
+      assignedCount: mentorStudentMap.get(m.id)?.size || 0,
+    }));
 
     // Calculate status counts for the entire dataset (not just current page)
     // These are approximate based on database status, not computed internshipStatus
@@ -773,7 +792,7 @@ export class PrincipalService {
       mentors: mentors.map((m) => ({
         id: m.id,
         name: m.name,
-        assignedCount: m._count.mentorAssignments,
+        assignedCount: m.assignedCount,
       })),
     };
   }
@@ -1005,8 +1024,8 @@ export class PrincipalService {
     const result = await this.userService.createStudent(principal.institutionId, {
       name: createStudentDto.name,
       email: createStudentDto.email,
-      phone: createStudentDto.phone,
-      enrollmentNumber: createStudentDto.enrollmentNumber,
+      phoneNo: createStudentDto.phoneNo,
+      rollNumber: createStudentDto.rollNumber,
       batchId: createStudentDto.batchId,
       dateOfBirth: createStudentDto.dateOfBirth,
       gender: createStudentDto.gender,
@@ -1028,7 +1047,7 @@ export class PrincipalService {
       newValues: {
         studentId: result.student.id,
         email: createStudentDto.email,
-        enrollmentNumber: createStudentDto.enrollmentNumber,
+        rollNumber: createStudentDto.rollNumber,
         batchId: createStudentDto.batchId,
       },
     }).catch(() => {}); // Non-blocking
@@ -1362,7 +1381,7 @@ export class PrincipalService {
         password: hashedPassword,
         role: staffRole,
         active: true,
-        phoneNo: createStaffDto.phone,
+        phoneNo: createStaffDto.phoneNo,
         designation: createStaffDto.designation,
         Institution: { connect: { id: principal.institutionId } },
       },
@@ -1545,13 +1564,25 @@ export class PrincipalService {
             id: true,
             name: true,
             email: true,
+            institutionId: true,
+            Institution: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
           },
         },
       },
       orderBy: { assignmentDate: 'desc' },
     });
 
-    return assignments;
+    // Add flag for cross-institution assignments
+    return assignments.map(a => ({
+      ...a,
+      isCrossInstitution: a.mentor?.institutionId !== principal.institutionId,
+    }));
   }
 
   /**
@@ -2313,7 +2344,7 @@ export class PrincipalService {
 
       // Monthly report counts grouped by month and status
       this.prisma.monthlyReport.groupBy({
-        by: ['status'],
+        by: ['reportMonth', 'reportYear', 'status'],
         where: {
           student: { institutionId },
           submittedAt: { gte: sixMonthsAgo },
@@ -2337,7 +2368,7 @@ export class PrincipalService {
         activeInternships += count;
       }
       if (item.status === 'COMPLETED') {
-        completedInternships = count;
+        completedInternships += count;
       }
     });
 
@@ -2376,25 +2407,32 @@ export class PrincipalService {
     };
   }
 
-  private formatMonthlyProgress(reportCounts: { status: string; _count: { status: number } }[]) {
+  private formatMonthlyProgress(reportCounts: { reportMonth: number; reportYear: number; status: string; _count: { status: number } }[]) {
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const now = new Date();
 
-    // Generate last 6 months with sample data distribution
+    // Generate last 6 months with actual data
     const result = [];
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now);
       date.setMonth(date.getMonth() - i);
       const monthName = monthNames[date.getMonth()];
+      const month = date.getMonth() + 1;
+      const year = date.getFullYear();
 
-      // Distribute counts across months (simplified)
-      const totalApproved = reportCounts.find(r => r.status === 'APPROVED')?._count.status || 0;
-      const totalPending = reportCounts.find(r => r.status === 'PENDING' || r.status === 'SUBMITTED')?._count.status || 0;
+      // Get counts for this specific month
+      const approved = reportCounts
+        .filter(r => r.reportMonth === month && r.reportYear === year && r.status === 'APPROVED')
+        .reduce((sum, r) => sum + r._count.status, 0);
+
+      const pending = reportCounts
+        .filter(r => r.reportMonth === month && r.reportYear === year && (r.status === 'PENDING' || r.status === 'SUBMITTED'))
+        .reduce((sum, r) => sum + r._count.status, 0);
 
       result.push({
         month: monthName,
-        completed: Math.round(totalApproved / 6),
-        inProgress: Math.round(totalPending / 6),
+        completed: approved,
+        inProgress: pending,
       });
     }
 
@@ -2634,8 +2672,26 @@ export class PrincipalService {
     ]);
 
     // Compute unique mentors with assignments
-    const mentorsWithAssignments = new Set(allAssignments.map(a => a.mentorId));
-    const assignedMentors = mentorsWithAssignments.size;
+    // Note: allAssignments includes cross-institution mentors (mentors from other institutions)
+    const allMentorsWithAssignments = new Set(allAssignments.map(a => a.mentorId));
+
+    // Get local mentors (from this institution) who have assignments
+    const localMentors = await this.prisma.user.findMany({
+      where: {
+        institutionId,
+        role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+        active: true,
+      },
+      select: { id: true },
+    });
+    const localMentorIds = new Set(localMentors.map(m => m.id));
+
+    // Count how many of our local mentors have assignments
+    const localMentorsWithAssignments = [...allMentorsWithAssignments].filter(id => localMentorIds.has(id)).length;
+    // Count external mentors (from other institutions) mentoring our students
+    const externalMentors = [...allMentorsWithAssignments].filter(id => !localMentorIds.has(id)).length;
+
+    const assignedMentors = localMentorsWithAssignments;
     const unassignedMentors = totalMentors - assignedMentors;
 
     // Compute students with/without mentors
@@ -2643,10 +2699,14 @@ export class PrincipalService {
     const studentsWithoutMentors = totalStudents - studentsWithMentors;
 
     // Get mentor distribution for load balancing display
-    const mentorLoad: Record<string, number> = {};
-    allAssignments.forEach(a => {
-      mentorLoad[a.mentorId] = (mentorLoad[a.mentorId] || 0) + 1;
-    });
+    // Count unique students per mentor (avoid counting duplicate assignment records)
+    const mentorStudentMap = new Map<string, Set<string>>();
+    for (const { mentorId, studentId } of allAssignments) {
+      if (!mentorStudentMap.has(mentorId)) {
+        mentorStudentMap.set(mentorId, new Set());
+      }
+      mentorStudentMap.get(mentorId)!.add(studentId);
+    }
 
     const avgStudentsPerMentor = assignedMentors > 0
       ? Math.round((studentsWithMentors / assignedMentors) * 10) / 10
@@ -2657,6 +2717,7 @@ export class PrincipalService {
         total: totalMentors,
         assigned: assignedMentors,
         unassigned: unassignedMentors,
+        external: externalMentors, // Mentors from other institutions mentoring our students
       },
       students: {
         total: totalStudents,
@@ -2664,8 +2725,12 @@ export class PrincipalService {
         withoutMentor: studentsWithoutMentors,
       },
       avgStudentsPerMentor,
-      mentorLoadDistribution: Object.entries(mentorLoad)
-        .map(([mentorId, count]) => ({ mentorId, studentCount: count }))
+      mentorLoadDistribution: Array.from(mentorStudentMap.entries())
+        .map(([mentorId, students]) => ({
+          mentorId,
+          studentCount: students.size,
+          isExternal: !localMentorIds.has(mentorId),
+        }))
         .sort((a, b) => b.studentCount - a.studentCount),
     };
   }
@@ -2797,40 +2862,43 @@ export class PrincipalService {
     const month = now.getMonth();
     const academicYear = month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
 
-    // Get all mentors with their current assignment counts
-    const mentors = await this.prisma.user.findMany({
-      where: {
-        institutionId,
-        role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
-        active: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        _count: {
-          select: {
-            mentorAssignments: {
-              where: { isActive: true },
-            },
-          },
+    // Get all mentors and active assignments in parallel
+    const [mentors, allActiveAssignments] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          institutionId,
+          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          active: true,
         },
-      },
-    });
+        select: {
+          id: true,
+          name: true,
+        },
+      }),
+      // Get all active assignments to count unique students per mentor
+      this.prisma.mentorAssignment.findMany({
+        where: {
+          student: { institutionId },
+          isActive: true,
+        },
+        select: { studentId: true, mentorId: true },
+      }),
+    ]);
 
     if (mentors.length === 0) {
       throw new BadRequestException('No mentors available for assignment');
     }
 
-    // Get all students without active mentor assignments
-    const studentsWithMentors = await this.prisma.mentorAssignment.findMany({
-      where: {
-        student: { institutionId },
-        isActive: true,
-      },
-      select: { studentId: true },
-    });
-
-    const assignedStudentIds = new Set(studentsWithMentors.map(a => a.studentId));
+    // Build unique students per mentor map and track assigned students
+    const mentorStudentMap = new Map<string, Set<string>>();
+    const assignedStudentIds = new Set<string>();
+    for (const { mentorId, studentId } of allActiveAssignments) {
+      assignedStudentIds.add(studentId);
+      if (!mentorStudentMap.has(mentorId)) {
+        mentorStudentMap.set(mentorId, new Set());
+      }
+      mentorStudentMap.get(mentorId)!.add(studentId);
+    }
 
     const unassignedStudents = await this.prisma.student.findMany({
       where: {
@@ -2850,10 +2918,11 @@ export class PrincipalService {
     }
 
     // Sort mentors by current load (ascending) for even distribution
+    // Using unique student count, not assignment record count
     const mentorLoads = mentors.map(m => ({
       id: m.id,
       name: m.name,
-      count: m._count.mentorAssignments,
+      count: mentorStudentMap.get(m.id)?.size || 0,
     })).sort((a, b) => a.count - b.count);
 
     // Distribute students evenly
@@ -2935,22 +3004,46 @@ export class PrincipalService {
       ];
     }
 
-    const faculty = await this.prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phoneNo: true,
-        _count: {
-          select: {
-            mentorAssignments: { where: { isActive: true } },
-            facultyVisitLogs: true,
-          },
+    const [faculty, mentorAssignmentsList, visitCounts] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phoneNo: true,
         },
-      },
-      orderBy: { name: 'asc' },
-    });
+        orderBy: { name: 'asc' },
+      }),
+      // Get all mentor assignments to count unique students per mentor
+      this.prisma.mentorAssignment.findMany({
+        where: {
+          student: { institutionId: principal.institutionId },
+          isActive: true,
+        },
+        select: { mentorId: true, studentId: true },
+      }),
+      // Get visit counts per faculty
+      this.prisma.facultyVisitLog.groupBy({
+        by: ['facultyId'],
+        where: {
+          faculty: { institutionId: principal.institutionId },
+        },
+        _count: { id: true },
+      }),
+    ]);
+
+    // Compute unique students per mentor
+    const mentorStudentMap = new Map<string, Set<string>>();
+    for (const { mentorId, studentId } of mentorAssignmentsList) {
+      if (!mentorStudentMap.has(mentorId)) {
+        mentorStudentMap.set(mentorId, new Set());
+      }
+      mentorStudentMap.get(mentorId)!.add(studentId);
+    }
+
+    // Build visit count map
+    const visitCountMap = new Map(visitCounts.map(v => [v.facultyId, v._count.id]));
 
     return {
       faculty: faculty.map((f) => ({
@@ -2959,8 +3052,8 @@ export class PrincipalService {
         email: f.email,
         phone: f.phoneNo,
         employeeId: null,
-        assignedCount: f._count.mentorAssignments,
-        totalVisits: f._count.facultyVisitLogs,
+        assignedCount: mentorStudentMap.get(f.id)?.size || 0,
+        totalVisits: visitCountMap.get(f.id) || 0,
       })),
     };
   }
@@ -2977,11 +3070,11 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
-    // Get faculty details
+    // Get faculty details - can be from this institution OR an external mentor
+    // who has students from this institution assigned to them
     const faculty = await this.prisma.user.findFirst({
       where: {
         id: facultyId,
-        institutionId: principal.institutionId,
         role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
       },
       select: {
@@ -2989,6 +3082,10 @@ export class PrincipalService {
         name: true,
         email: true,
         phoneNo: true,
+        institutionId: true,
+        Institution: {
+          select: { id: true, name: true, code: true },
+        },
       },
     });
 
@@ -2996,11 +3093,28 @@ export class PrincipalService {
       throw new NotFoundException('Faculty not found');
     }
 
+    // Check if this is an external faculty - verify they have at least one student from our institution
+    const isExternalFaculty = faculty.institutionId !== principal.institutionId;
+    if (isExternalFaculty) {
+      const hasOurStudents = await this.prisma.mentorAssignment.findFirst({
+        where: {
+          mentorId: facultyId,
+          isActive: true,
+          student: { institutionId: principal.institutionId },
+        },
+      });
+      if (!hasOurStudents) {
+        throw new NotFoundException('Faculty not found');
+      }
+    }
+
     // Get assigned students with their internship details
+    // Only show students from this institution (for cross-institution mentors, only show relevant students)
     const mentorAssignments = await this.prisma.mentorAssignment.findMany({
       where: {
         mentorId: facultyId,
         isActive: true,
+        student: { institutionId: principal.institutionId },
       },
       include: {
         student: {
@@ -3228,10 +3342,16 @@ export class PrincipalService {
 
     // Get mentor coverage stats
     const [
+      totalStudents,
       totalStudentsWithInternships,
-      studentsWithMentors,
+      studentsWithMentorsData,
       mentors,
+      allAssignments,
     ] = await Promise.all([
+      // Total students
+      this.prisma.student.count({
+        where: { institutionId },
+      }),
       // Total students with ongoing internships
       this.prisma.internshipApplication.count({
         where: {
@@ -3240,22 +3360,18 @@ export class PrincipalService {
           internshipStatus: 'ONGOING',
         },
       }),
-      // Students with active mentor assignments (only those with ongoing internships)
-      this.prisma.mentorAssignment.count({
+      // Unique students with active mentor assignments (all students)
+      this.prisma.mentorAssignment.findMany({
         where: {
           student: {
             institutionId,
-            internshipApplications: {
-              some: {
-                isSelfIdentified: true,
-                internshipStatus: 'ONGOING',
-              },
-            },
           },
           isActive: true,
         },
+        select: { studentId: true },
+        distinct: ['studentId'],
       }),
-      // Get all mentors with their assignment counts
+      // Get all mentors (potential mentors)
       this.prisma.user.findMany({
         where: {
           institutionId,
@@ -3266,27 +3382,42 @@ export class PrincipalService {
           id: true,
           name: true,
           email: true,
-          _count: {
-            select: {
-              mentorAssignments: { where: { isActive: true } },
-            },
-          },
+        },
+      }),
+      // Get all active mentor assignments to compute unique students per mentor
+      this.prisma.mentorAssignment.findMany({
+        where: {
+          student: { institutionId },
+          isActive: true,
+        },
+        select: {
+          mentorId: true,
+          studentId: true,
         },
       }),
     ]);
 
-    const studentsWithMentorsCount = studentsWithMentors;
-    const studentsWithoutMentorsCount = Math.max(0, totalStudentsWithInternships - studentsWithMentorsCount);
-    const coveragePercentage = totalStudentsWithInternships > 0
-      ? Math.round((studentsWithMentorsCount / totalStudentsWithInternships) * 100)
+    const studentsWithMentorsCount = studentsWithMentorsData.length;
+    const studentsWithoutMentorsCount = Math.max(0, totalStudents - studentsWithMentorsCount);
+    const coveragePercentage = totalStudents > 0
+      ? Math.round((studentsWithMentorsCount / totalStudents) * 100)
       : 100;
+
+    // Compute unique students per mentor (avoid counting duplicate assignment records)
+    const mentorStudentMap = new Map<string, Set<string>>();
+    for (const { mentorId, studentId } of allAssignments) {
+      if (!mentorStudentMap.has(mentorId)) {
+        mentorStudentMap.set(mentorId, new Set());
+      }
+      mentorStudentMap.get(mentorId)!.add(studentId);
+    }
 
     const mentorLoadDistribution = mentors
       .map(m => ({
         mentorId: m.id,
         mentorName: m.name,
         mentorEmail: m.email,
-        assignedStudents: m._count.mentorAssignments,
+        assignedStudents: mentorStudentMap.get(m.id)?.size || 0,
       }))
       .sort((a, b) => b.assignedStudents - a.assignedStudents);
 
@@ -3295,6 +3426,7 @@ export class PrincipalService {
       : 0;
 
     return {
+      totalStudents,
       totalStudentsWithInternships,
       studentsWithMentors: studentsWithMentorsCount,
       studentsWithoutMentors: studentsWithoutMentorsCount,
@@ -3337,7 +3469,7 @@ export class PrincipalService {
             student: { institutionId },
             isSelfIdentified: true,
             internshipStatus: 'ONGOING',
-            createdAt: { lte: endOfMonth },
+            startDate: { lte: endOfMonth },
           },
         }),
         this.prisma.facultyVisitLog.count({
@@ -3346,6 +3478,7 @@ export class PrincipalService {
               student: { institutionId },
               isSelfIdentified: true,
               internshipStatus: 'ONGOING',
+              startDate: { lte: endOfMonth },
             },
             visitDate: { gte: startOfMonth, lte: endOfMonth },
           },
@@ -3362,11 +3495,11 @@ export class PrincipalService {
 
       const visitCompliance = studentsWithInternships > 0
         ? Math.round(Math.min((facultyVisits / studentsWithInternships) * 100, 100))
-        : 100;
+        : 0;
 
       const reportCompliance = studentsWithInternships > 0
         ? Math.round((reportsSubmitted / studentsWithInternships) * 100)
-        : 100;
+        : 0;
 
       const overallScore = Math.round((visitCompliance + reportCompliance) / 2);
 
@@ -3425,6 +3558,7 @@ export class PrincipalService {
     const currentYear = now.getFullYear();
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const startOfCurrentMonth = new Date(currentYear, currentMonth - 1, 1);
 
     // Define where clauses for reuse in both count and findMany
     const urgentGrievancesWhere: Prisma.GrievanceWhereInput = {
@@ -3440,6 +3574,7 @@ export class PrincipalService {
         some: {
           isSelfIdentified: true,
           internshipStatus: 'ONGOING',
+          startDate: { lt: startOfCurrentMonth },
         },
       },
       monthlyReports: {
@@ -3458,6 +3593,7 @@ export class PrincipalService {
         some: {
           isSelfIdentified: true,
           internshipStatus: 'ONGOING',
+          startDate: { lte: thirtyDaysAgo },
           facultyVisitLogs: {
             none: {
               visitDate: { gte: thirtyDaysAgo },
@@ -3494,7 +3630,7 @@ export class PrincipalService {
     ] = await Promise.all([
       // Actual counts (not limited)
       this.prisma.grievance.count({ where: urgentGrievancesWhere }),
-      now.getDate() > 5 ? this.prisma.student.count({ where: overdueReportsWhere }) : 0,
+      this.prisma.student.count({ where: overdueReportsWhere }),
       this.prisma.student.count({ where: missingVisitsWhere }),
       this.prisma.student.count({ where: unassignedStudentsWhere }),
 
@@ -3510,7 +3646,7 @@ export class PrincipalService {
         take: 50,
       }),
 
-      now.getDate() > 5 ? this.prisma.student.findMany({
+      this.prisma.student.findMany({
         where: overdueReportsWhere,
         select: {
           id: true,
@@ -3525,7 +3661,7 @@ export class PrincipalService {
           },
         },
         take: 50,
-      }) : [],
+      }),
 
       this.prisma.student.findMany({
         where: missingVisitsWhere,

@@ -14,7 +14,6 @@ import {
   Statistic,
   Tabs,
   Badge,
-  List,
   Skeleton,
   Descriptions,
   Rate,
@@ -428,41 +427,40 @@ const FacultyProgress = () => {
         ) : filteredFaculty.length === 0 ? (
           <Empty description="No faculty found" className="py-10" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
-          <List
-            dataSource={filteredFaculty}
-            renderItem={(faculty) => (
-              <List.Item
-                key={faculty.id}
+          <div className="flex flex-col">
+            {filteredFaculty.map((faculty, index) => (
+              <div
+                key={faculty.id || index}
                 onClick={() => handleFacultySelect(faculty)}
-                className={`cursor-pointer px-4 py-3 transition-all border-l-4 hover:bg-background-tertiary/50 ${
+                className={`cursor-pointer px-4 py-3 transition-all border-l-4 hover:bg-background-tertiary/50 flex items-center gap-3 w-full ${
+                  index !== filteredFaculty.length - 1 ? 'border-b border-border/50' : ''
+                } ${
                   selectedFaculty?.id === faculty.id
                     ? 'bg-primary/5 border-l-primary'
                     : 'border-l-transparent'
                 }`}
               >
-                <div className="flex items-center gap-3 w-full">
-                  <Avatar
-                    size={40}
-                    icon={<UserOutlined />}
-                    className={selectedFaculty?.id === faculty.id ? 'bg-primary text-white' : 'bg-background-tertiary text-text-tertiary'}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <Text className="block font-medium text-text-primary truncate">{faculty.name}</Text>
-                    <Text className="text-xs text-text-tertiary">{faculty.employeeId || faculty.email}</Text>
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <Badge
-                      count={faculty.assignedCount}
-                      showZero
-                      color="var(--ant-primary-color)"
-                      className="mb-1"
-                    />
-                    <Text className="text-[10px] text-text-tertiary uppercase">Students</Text>
-                  </div>
+                <Avatar
+                  size={40}
+                  icon={<UserOutlined />}
+                  className={selectedFaculty?.id === faculty.id ? 'bg-primary text-white' : 'bg-background-tertiary text-text-tertiary'}
+                />
+                <div className="flex-1 min-w-0">
+                  <Text className="block font-medium text-text-primary truncate">{faculty.name}</Text>
+                  <Text className="text-xs text-text-tertiary">{faculty.employeeId || faculty.email}</Text>
                 </div>
-              </List.Item>
-            )}
-          />
+                <div className="flex flex-col items-end">
+                  <Badge
+                    count={faculty.assignedCount}
+                    showZero
+                    color="var(--ant-primary-color)"
+                    className="mb-1"
+                  />
+                  <Text className="text-[10px] text-text-tertiary uppercase">Students</Text>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </Card>

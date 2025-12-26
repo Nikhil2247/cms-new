@@ -24,6 +24,23 @@ export class InternshipApplicationService {
     private readonly cache: CacheService,
   ) {}
 
+  /**
+   * Maps legacy status strings to current ApplicationStatus enum values.
+   *
+   * This mapping exists for backward compatibility with older frontend code
+   * and external integrations that may still use legacy status values.
+   *
+   * Mapping:
+   * - PENDING → APPLIED (Application submitted, awaiting review)
+   * - SHORTLISTED → SHORTLISTED (Application under consideration)
+   * - ACCEPTED → SELECTED (Application accepted by employer)
+   * - REJECTED → REJECTED (Application declined)
+   * - WITHDRAWN → WITHDRAWN (Application withdrawn by student)
+   *
+   * Note: New code should use ApplicationStatus enum values directly.
+   * @param status - Legacy status string or ApplicationStatus enum value
+   * @returns Standardized ApplicationStatus enum value
+   */
   private mapLegacyStatus(status: UpdateApplicationStatusDto['status']): ApplicationStatus {
     if (typeof status !== 'string') return status;
 

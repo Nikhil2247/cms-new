@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Tag, Button, Typography, Empty, Progress, Avatar } from 'antd';
+import { Card, Tag, Button, Typography, Empty, Progress, Avatar } from 'antd';
 import {
   FileTextOutlined,
   UploadOutlined,
@@ -65,44 +65,39 @@ const MonthlyReportsCard = ({
 
       {/* Reports List */}
       {reports.length > 0 ? (
-        <List
-          loading={loading}
-          dataSource={reports.slice(0, 5)}
-          size="small"
-          renderItem={(report) => {
+        <div className="flex flex-col gap-3">
+          {reports.slice(0, 5).map((report, index) => {
             const statusConfig = getStatusConfig(report.status);
             const monthName = dayjs()
               .month(report.reportMonth - 1)
               .format('MMMM');
 
             return (
-              <List.Item className="!px-0">
-                <div className="flex items-center justify-between w-full">
-                  <div className="flex items-center gap-3">
-                    <Avatar
-                      size="small"
-                      icon={<FileTextOutlined />}
-                      className="bg-secondary-100 text-secondary-600"
-                    />
-                    <div>
-                      <Text className="text-sm font-medium block">
-                        {monthName} {report.reportYear}
-                      </Text>
-                      <Text className="text-xs text-text-secondary">
-                        {report.submittedAt
-                          ? `Submitted ${dayjs(report.submittedAt).format('MMM DD')}`
-                          : 'Not submitted'}
-                      </Text>
-                    </div>
+              <div key={report.id || index} className={`flex items-center justify-between w-full pb-3 ${index !== reports.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}>
+                <div className="flex items-center gap-3">
+                  <Avatar
+                    size="small"
+                    icon={<FileTextOutlined />}
+                    className="bg-secondary-100 text-secondary-600"
+                  />
+                  <div>
+                    <Text className="text-sm font-medium block">
+                      {monthName} {report.reportYear}
+                    </Text>
+                    <Text className="text-xs text-text-secondary">
+                      {report.submittedAt
+                        ? `Submitted ${dayjs(report.submittedAt).format('MMM DD')}`
+                        : 'Not submitted'}
+                    </Text>
                   </div>
-                  <Tag color={statusConfig.color} icon={statusConfig.icon}>
-                    {statusConfig.label}
-                  </Tag>
                 </div>
-              </List.Item>
+                <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
+                  {statusConfig.label}
+                </Tag>
+              </div>
             );
-          }}
-        />
+          })}
+        </div>
       ) : (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}

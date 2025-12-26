@@ -73,7 +73,8 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
       }
 
       const userId = payload.sub;
-      const role = payload.role as Role;
+      // Token stores roles as array, get first role
+      const role = (payload.roles?.[0] || payload.role) as Role;
       const institutionId = payload.institutionId;
 
       // Store user data in socket
@@ -226,8 +227,15 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
    * Emit to a specific room
    */
   emitToRoom(room: string, event: string, data: any): void {
+    const roomSockets = this.server.sockets.adapter.rooms.get(room);
+    const socketCount = roomSockets ? roomSockets.size : 0;
+
+    // Only log important events or when there are subscribers
+    if (socketCount > 0 || event.includes('Progress') || event.includes('Alert')) {
+      this.logger.debug(`Emitting '${event}' to room '${room}' (${socketCount} subscribers)`);
+    }
+
     this.server.to(room).emit(event, data);
-    this.logger.debug(`Emitted '${event}' to room '${room}'`);
   }
 
   /**

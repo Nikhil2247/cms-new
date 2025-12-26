@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, List, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
 import {
   FileProtectOutlined,
   RightOutlined,
@@ -117,91 +117,84 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
         styles={{ body: { padding: letters.length > 0 ? 0 : 24 } }}
       >
         {letters.length > 0 ? (
-          <List
-            loading={loading}
-            dataSource={letters.slice(0, 5)}
-            renderItem={(letter) => {
+          <div className="flex flex-col">
+            {letters.slice(0, 5).map((letter, index) => {
               const statusConfig = getStatusConfig(letter.status);
               const student = letter.student || letter.application?.student;
               const company = letter.company || letter.application?.internship?.industry;
 
               return (
-                <List.Item
-                  className="px-4 hover:bg-surface-hover"
-                  actions={[
-                    <Space key="actions" size="small">
-                      {letter.joiningLetterUrl && (
-                        <Tooltip title="View Document">
+                <div
+                  key={letter.id || index}
+                  className={`px-4 py-3 hover:bg-surface-hover flex items-start gap-4 ${index !== letters.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}
+                >
+                  <Avatar icon={<UserOutlined />} className="bg-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium truncate mr-2">{student?.name || 'Unknown Student'}</span>
+                      <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
+                        {statusConfig.label}
+                      </Tag>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1 text-xs text-text-secondary">
+                        <BankOutlined />
+                        <span className="truncate">{company?.companyName || 'N/A'}</span>
+                      </div>
+                      {letter.uploadedAt && (
+                        <div className="text-xs text-text-tertiary">
+                          Uploaded: {dayjs(letter.uploadedAt).format('DD/MM/YYYY')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Space size="small">
+                        {letter.joiningLetterUrl && (
+                          <Tooltip title="View Document">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EyeOutlined />}
+                              onClick={() => handleView(letter)}
+                            />
+                          </Tooltip>
+                        )}
+                        {(letter.status === 'PENDING' || letter.status === 'UPLOADED') && (
+                          <>
+                            <Tooltip title="Verify">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CheckCircleOutlined className="text-green-500" />}
+                                onClick={() => setActionModal({ visible: true, letter, action: 'verify' })}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Reject">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CloseCircleOutlined className="text-red-500" />}
+                                onClick={() => setActionModal({ visible: true, letter, action: 'reject' })}
+                              />
+                            </Tooltip>
+                          </>
+                        )}
+                        <Tooltip title="Delete">
                           <Button
                             type="text"
                             size="small"
-                            icon={<EyeOutlined />}
-                            onClick={() => handleView(letter)}
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={() => handleDelete(letter)}
                           />
                         </Tooltip>
-                      )}
-                      {(letter.status === 'PENDING' || letter.status === 'UPLOADED') && (
-                        <>
-                          <Tooltip title="Verify">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CheckCircleOutlined className="text-green-500" />}
-                              onClick={() => setActionModal({ visible: true, letter, action: 'verify' })}
-                            />
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CloseCircleOutlined className="text-red-500" />}
-                              onClick={() => setActionModal({ visible: true, letter, action: 'reject' })}
-                            />
-                          </Tooltip>
-                        </>
-                      )}
-                      <Tooltip title="Delete">
-                        <Button
-                          type="text"
-                          size="small"
-                          danger
-                          icon={<DeleteOutlined />}
-                          onClick={() => handleDelete(letter)}
-                        />
-                      </Tooltip>
-                    </Space>,
-                  ]}
-                >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar icon={<UserOutlined />} className="bg-primary" />
-                    }
-                    title={
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{student?.name || 'Unknown Student'}</span>
-                        <Tag color={statusConfig.color} icon={statusConfig.icon}>
-                          {statusConfig.label}
-                        </Tag>
-                      </div>
-                    }
-                    description={
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-1 text-xs text-text-secondary">
-                          <BankOutlined />
-                          <span>{company?.companyName || 'N/A'}</span>
-                        </div>
-                        {letter.uploadedAt && (
-                          <div className="text-xs text-text-tertiary">
-                            Uploaded: {dayjs(letter.uploadedAt).format('DD/MM/YYYY')}
-                          </div>
-                        )}
-                      </div>
-                    }
-                  />
-                </List.Item>
+                      </Space>
+                    </div>
+                  </div>
+                </div>
               );
-            }}
-          />
+            })}
+          </div>
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}

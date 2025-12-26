@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
   Card,
-  List,
   Avatar,
   Typography,
   Tag,
@@ -52,7 +51,7 @@ const CompanyItem = ({ company, rank }) => {
   };
 
   return (
-    <List.Item className="!px-0 !py-2">
+    <div className="!px-0 !py-2">
       <div className={`flex items-center w-full gap-3 p-2 rounded-lg ${getRankBg(rank)} transition-all hover:shadow-sm`}>
         <div className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm"
              style={{ backgroundColor: getRankColor(rank) }}>
@@ -84,7 +83,7 @@ const CompanyItem = ({ company, rank }) => {
           </Tag>
         )}
       </div>
-    </List.Item>
+    </div>
   );
 };
 
@@ -111,10 +110,12 @@ const InternshipCompaniesCard = () => {
     const industryData = stats?.byIndustry || [];
 
     // Backend returns individual status counts: approved, joined, selected, completed, etc.
-    // Ongoing = approved + joined + selected (all active internship states)
-    const ongoing = (stats?.approved || 0) + (stats?.joined || 0) + (stats?.selected || 0);
+    // FIXED: Use total from backend directly to avoid double counting
+    // Ongoing internships are those with APPROVED, JOINED, or SELECTED status
+    // Don't add them together as backend already provides the correct total
+    const total = stats?.total || 0;
+    const ongoing = stats?.ongoing || (stats?.approved || 0) + (stats?.joined || 0) + (stats?.selected || 0);
     const completed = stats?.completed || 0;
-    const total = stats?.total || companiesData.reduce((sum, c) => sum + (c.count || 0), 0);
 
     return {
       companies: companiesData,
@@ -235,14 +236,11 @@ const InternshipCompaniesCard = () => {
           </Text>
         </div>
         {companies.length > 0 ? (
-          <List
-            dataSource={companies.slice(0, 5)}
-            renderItem={(company, index) => (
-              <CompanyItem company={company} rank={index} />
-            )}
-            split={false}
-            size="small"
-          />
+          <div className="flex flex-col">
+            {companies.slice(0, 5).map((company, index) => (
+              <CompanyItem key={company.id || index} company={company} rank={index} />
+            ))}
+          </div>
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}

@@ -16,7 +16,7 @@ export class BulkStudentRowDto {
   @ApiProperty({ description: 'Phone number', required: false })
   @IsString()
   @IsOptional()
-  phone?: string;
+  phoneNo?: string;
 
   @ApiProperty({ description: 'Enrollment/Admission number' })
   @IsString()

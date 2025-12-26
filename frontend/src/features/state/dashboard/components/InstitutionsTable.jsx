@@ -135,7 +135,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
               <CheckCircleOutlined /> {assigned}
             </Tag>
             {hasUnassigned && (
-              <Tooltip title={`${unassigned} students need mentors`}>
+              <Tooltip title={`${unassigned} students without mentors`}>
                 <Tag color="warning" className="m-0 rounded-md border-0">
                   <WarningOutlined /> {unassigned}
                 </Tag>

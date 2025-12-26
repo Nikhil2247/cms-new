@@ -97,12 +97,27 @@ const AssignedStudentsList = ({
       );
     }
 
-    // Check if there's a recent visit (within last 30 days)
+    // FIXED: Check if there's a recent visit (within last 30 days) AND after internship start
     const hasRecentVisit = visits.some(visit => {
       const visitDate = new Date(visit.visitDate || visit.createdAt);
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      return visitDate >= thirtyDaysAgo;
+
+      // Visit must be within last 30 days
+      if (visitDate < thirtyDaysAgo) return false;
+
+      // FIXED: Check if visit is after internship start date
+      const internshipStartDate = visit.application?.internship?.startDate ||
+                                   student.activeInternship?.startDate ||
+                                   student.application?.internship?.startDate;
+
+      if (internshipStartDate) {
+        const startDate = new Date(internshipStartDate);
+        return visitDate >= startDate;
+      }
+
+      // If no start date available, don't show green (be conservative)
+      return false;
     });
 
     return (

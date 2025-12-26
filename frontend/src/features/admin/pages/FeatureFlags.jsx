@@ -136,13 +136,13 @@ const FeatureFlags = () => {
 
       {/* Maintenance Mode Warning */}
       {maintenanceMode && (
-        <Alert
-          message="Maintenance Mode Active"
-          description="The system is currently in maintenance mode. Only administrators can access the platform."
-          type="warning"
-          showIcon
-          className="mb-6"
-        />
+          <Alert
+            title="Maintenance Mode Active"
+            description="The system is currently in maintenance mode. Only administrators can perform critical operations."
+            type="warning"
+            showIcon
+            className="mb-6 rounded-xl border-warning/20"
+          />
       )}
 
       {/* Summary */}

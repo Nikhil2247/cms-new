@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { getClientIp, getUserId } from '../utils/request.utils';
 
 /**
  * Global Exception Filter
@@ -36,17 +37,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Get error details
     const errorDetails = this.getErrorDetails(exception);
 
-    // Get user from request (may be populated by JWT guard if auth succeeded)
-    const user = (request as any).user;
-    const userId = user?.userId || user?.id || 'anonymous';
-
     // Prepare error context for logging
     const errorContext = {
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
-      ip: this.getClientIp(request),
-      user: userId,
+      ip: getClientIp(request),
+      user: getUserId(request),
       statusCode: status,
       message,
       stack: exception.stack,
@@ -172,21 +169,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
       .replace(/password/gi, '***')
       .replace(/token/gi, '***')
       .replace(/secret/gi, '***');
-  }
-
-  /**
-   * Get client IP address (handle proxies)
-   */
-  private getClientIp(request: Request): string {
-    const forwarded = request.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string') {
-      return forwarded.split(',')[0].trim();
-    }
-    return (
-      request.headers['x-real-ip'] ||
-      request.socket.remoteAddress ||
-      'unknown'
-    ) as string;
   }
 
   /**

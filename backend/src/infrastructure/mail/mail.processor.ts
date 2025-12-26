@@ -14,7 +14,7 @@ interface MailJob {
   context: any;
 }
 
-@Processor('mail')
+@Processor('{mail}')
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
   private transporter: nodemailer.Transporter;

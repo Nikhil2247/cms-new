@@ -79,8 +79,13 @@ export const adminService = {
     return response.data;
   },
 
-  async restoreBackup(id, confirmRestore = true) {
-    const response = await API.post(`/system-admin/backup/restore/${id}`, { confirmRestore });
+  async restoreBackup(id, options = {}) {
+    const { confirmRestore = true, confirmationText = 'RESTORE', dropExisting = true } = options;
+    const response = await API.post(`/system-admin/backup/restore/${id}`, {
+      confirmRestore,
+      confirmationText,
+      dropExisting,
+    });
     return response.data;
   },
 
@@ -96,6 +101,21 @@ export const adminService = {
 
   async deleteBackup(id) {
     const response = await API.delete(`/system-admin/backup/${id}`);
+    return response.data;
+  },
+
+  async getBackupDetails(id) {
+    const response = await API.get(`/system-admin/backup/${id}/details`);
+    return response.data;
+  },
+
+  async updateBackupStatus(id, status) {
+    const response = await API.put(`/system-admin/backup/${id}/status`, { status });
+    return response.data;
+  },
+
+  async cleanupStaleBackups() {
+    const response = await API.post('/system-admin/backup/cleanup-stale');
     return response.data;
   },
 

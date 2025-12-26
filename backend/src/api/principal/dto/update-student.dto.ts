@@ -12,10 +12,10 @@ export class UpdateStudentDto {
   @IsOptional()
   email?: string;
 
-  @ApiProperty({ description: 'Student phone number', required: false })
+  @ApiProperty({ description: 'Student contact number', required: false })
   @IsString()
   @IsOptional()
-  phone?: string;
+  contact?: string;
 
   @ApiProperty({ description: 'Batch ID', required: false })
   @IsString()

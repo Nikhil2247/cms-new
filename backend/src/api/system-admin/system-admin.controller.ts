@@ -119,7 +119,18 @@ export class SystemAdminController {
     @Body() dto: CreateBackupDto,
     @CurrentUser() user: { userId: string; role: Role },
   ) {
-    return this.backupService.createBackup(dto, user.userId, user.role);
+    // Run backup in background - don't await
+    // Progress will be sent via WebSocket
+    this.backupService.createBackup(dto, user.userId, user.role)
+      .catch(error => {
+        // Error is already handled in the service with WebSocket notification
+        console.error('Background backup error:', error.message);
+      });
+
+    return {
+      success: true,
+      message: 'Backup initiated. Progress will be sent via WebSocket.',
+    };
   }
 
   @Get('backup/list')
@@ -164,10 +175,23 @@ export class SystemAdminController {
     @Body() dto: RestoreBackupDto,
     @CurrentUser() user: { userId: string; role: Role },
   ) {
-    if (!dto.confirmRestore) {
-      return { error: 'Please confirm the restore operation' };
+    if (!dto.confirmRestore || dto.confirmationText !== 'RESTORE') {
+      return { error: 'Please confirm the restore operation by setting confirmRestore=true and confirmationText="RESTORE"' };
     }
-    return this.backupService.restoreBackup(id, user.userId, user.role);
+
+    // Run restore in background - don't await
+    // Progress will be sent via WebSocket
+    this.backupService.restoreBackup(id, user.userId, user.role, dto.dropExisting ?? true)
+      .catch(error => {
+        // Error is already handled in the service with WebSocket notification
+        console.error('Background restore error:', error.message);
+      });
+
+    return {
+      success: true,
+      message: 'Restore initiated. Progress will be sent via WebSocket.',
+      backupId: id,
+    };
   }
 
   @Post('backup/upload')
@@ -185,6 +209,27 @@ export class SystemAdminController {
     @CurrentUser() user: { userId: string; role: Role },
   ) {
     return this.backupService.deleteBackup(id, user.userId, user.role);
+  }
+
+  @Get('backup/:id/details')
+  async getBackupDetails(@Param('id') id: string) {
+    return this.backupService.getBackupById(id);
+  }
+
+  @Put('backup/:id/status')
+  async updateBackupStatus(
+    @Param('id') id: string,
+    @Body() body: { status: BackupStatus },
+    @CurrentUser() user: { userId: string; role: Role },
+  ) {
+    return this.backupService.updateBackupStatus(id, body.status, user.userId, user.role);
+  }
+
+  @Post('backup/cleanup-stale')
+  async cleanupStaleBackups(
+    @CurrentUser() user: { userId: string; role: Role },
+  ) {
+    return this.backupService.cleanupStaleBackups(user.userId, user.role);
   }
 
   // ==========================================

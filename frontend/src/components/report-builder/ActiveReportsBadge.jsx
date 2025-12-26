@@ -4,7 +4,6 @@ import {
   Badge,
   Button,
   Popover,
-  List,
   Typography,
   Progress,
   Space,
@@ -173,83 +172,16 @@ const ActiveReportsBadge = ({
 
   const getProgressPercent = (status) => {
     switch (status) {
-      case "pending":
-        return 10;
-      case "processing":
-        return 60;
       case "completed":
         return 100;
       case "failed":
         return 100;
+      case "processing":
+        return 50;
+      case "pending":
       default:
-        return 0;
+        return 10;
     }
-  };
-
-  const renderReportItem = (reportId) => {
-    const statusData = reportStatuses[reportId] || {
-      status: "pending",
-      reportType: "unknown",
-    };
-
-    return (
-      <List.Item
-        key={reportId}
-        className="!px-0"
-        actions={[
-          <Button
-            key="view"
-            type="link"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setPopoverVisible(false);
-              onViewReport?.(reportId);
-            }}
-          >
-            View
-          </Button>,
-        ]}
-      >
-        <List.Item.Meta
-          avatar={STATUS_ICONS[statusData.status]}
-          title={
-            <Space>
-              <Text className="text-sm">
-                {statusData.reportName || formatLabel(statusData.reportType)}
-              </Text>
-              <Tag color={STATUS_COLORS[statusData.status]} className="text-xs">
-                {statusData.status}
-              </Tag>
-            </Space>
-          }
-          description={
-            <div>
-              <Progress
-                percent={getProgressPercent(statusData.status)}
-                size="small"
-                status={
-                  statusData.status === "failed"
-                    ? "exception"
-                    : statusData.status === "completed"
-                    ? "success"
-                    : "active"
-                }
-                showInfo={false}
-                className="!mb-1"
-              />
-              <Text type="secondary" className="text-xs">
-                {statusData.status === "completed"
-                  ? `${statusData.totalRecords?.toLocaleString() || 0} records`
-                  : statusData.status === "failed"
-                  ? "Generation failed"
-                  : "In progress..."}
-              </Text>
-            </div>
-          }
-        />
-      </List.Item>
-    );
   };
 
   const popoverContent = (
@@ -261,12 +193,71 @@ const ActiveReportsBadge = ({
           className="py-4"
         />
       ) : (
-        <List
-          dataSource={activeReports}
-          renderItem={renderReportItem}
-          size="small"
-          className="max-h-64 overflow-y-auto"
-        />
+        <div className="max-h-64 overflow-y-auto flex flex-col gap-2">
+          {activeReports.map((reportId, index) => {
+            const statusData = reportStatuses[reportId] || {
+              status: "pending",
+              reportType: "unknown",
+            };
+
+            return (
+              <div
+                key={reportId}
+                className={`py-2 flex items-start gap-3 ${index !== activeReports.length - 1 ? 'border-b border-border/50' : ''}`}
+              >
+                <div className="mt-1 shrink-0">
+                  {STATUS_ICONS[statusData.status]}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <Text className="text-sm truncate">
+                      {statusData.reportName || formatLabel(statusData.reportType)}
+                    </Text>
+                    <Tag color={STATUS_COLORS[statusData.status]} className="text-[10px] m-0 px-1 py-0 border-0 rounded-sm uppercase font-bold">
+                      {statusData.status}
+                    </Tag>
+                  </div>
+                  <div>
+                    <Progress
+                      percent={getProgressPercent(statusData.status)}
+                      size="small"
+                      status={
+                        statusData.status === "failed"
+                          ? "exception"
+                          : statusData.status === "completed"
+                          ? "success"
+                          : "active"
+                      }
+                      showInfo={false}
+                      className="!mb-1"
+                    />
+                    <div className="flex items-center justify-between">
+                      <Text type="secondary" className="text-[10px]">
+                        {statusData.status === "completed"
+                          ? `${statusData.totalRecords?.toLocaleString() || 0} records`
+                          : statusData.status === "failed"
+                          ? "Generation failed"
+                          : "In progress..."}
+                      </Text>
+                      <Button
+                        type="link"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        className="p-0 h-auto text-[10px]"
+                        onClick={() => {
+                          setPopoverVisible(false);
+                          onViewReport?.(reportId);
+                        }}
+                      >
+                        View
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

@@ -13,6 +13,20 @@ export class FacultyService {
   ) {}
 
   /**
+   * Calculate months between two dates
+   * Used to determine expected monthly reports based on internship duration
+   */
+  private calculateMonthsBetween(startDate: Date, endDate: Date): number {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    const yearsDiff = end.getFullYear() - start.getFullYear();
+    const monthsDiff = end.getMonth() - start.getMonth();
+
+    return Math.max(1, yearsDiff * 12 + monthsDiff + 1); // +1 to include both start and end month
+  }
+
+  /**
    * Get faculty profile
    */
   async getProfile(facultyId: string) {
@@ -102,6 +116,7 @@ export class FacultyService {
             },
           }),
           // Count pending monthly reports for assigned students
+          // Only count reports for internships that have started
           this.prisma.monthlyReport.count({
             where: {
               application: {
@@ -110,6 +125,7 @@ export class FacultyService {
                   { isSelfIdentified: true },
                   { internshipId: null },
                 ],
+                startDate: { lte: new Date() }, // Only count if internship has started
               },
               status: MonthlyReportStatus.SUBMITTED,
             },
@@ -125,9 +141,13 @@ export class FacultyService {
               status: ApplicationStatus.APPLIED,
             },
           }),
+          // Count visit logs - only for internships that have started
           this.prisma.facultyVisitLog.count({
             where: {
               facultyId,
+              application: {
+                startDate: { lte: new Date() }, // Only count visits for started internships
+              },
             },
           }),
         ]);
@@ -152,11 +172,15 @@ export class FacultyService {
           },
         });
 
+        // Only show upcoming visits for internships that have started
         const upcomingVisits = await this.prisma.facultyVisitLog.findMany({
           where: {
             facultyId,
             visitDate: {
               gte: new Date(),
+            },
+            application: {
+              startDate: { lte: new Date() }, // Only show visits for started internships
             },
           },
           take: 5,
@@ -228,12 +252,17 @@ export class FacultyService {
             include: {
               batch: true,
               branch: true,
+              Institution: {
+                select: { id: true, name: true, code: true },
+              },
               internshipApplications: {
                 where: {
                   OR: [
                     { isSelfIdentified: true },
                     { internshipId: null }, // No linked internship = self-identified
                   ],
+                  // Only show active/approved internships for assigned students
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                 },
                 include: {
                   internship: {
@@ -323,7 +352,26 @@ export class FacultyService {
     let completionStatus = 'NOT_STARTED';
 
     if (currentApplication) {
-      const totalReportsExpected = 6; // Assuming 6 months internship
+      // Calculate expected reports dynamically based on months since internship started
+      const now = new Date();
+      const startDate = currentApplication.startDate;
+      const endDate = currentApplication.endDate;
+
+      let totalReportsExpected = 1; // Default to at least 1
+
+      if (startDate) {
+        // Calculate months from start date to now (or end date if completed)
+        const effectiveEndDate = endDate && new Date(endDate) < now ? new Date(endDate) : now;
+
+        // Only calculate if internship has started
+        if (new Date(startDate) <= now) {
+          totalReportsExpected = this.calculateMonthsBetween(new Date(startDate), effectiveEndDate);
+        }
+      } else {
+        // Fallback: if no startDate, assume 6 months (legacy behavior)
+        totalReportsExpected = 6;
+      }
+
       const submittedReports = currentApplication.monthlyReports.filter(
         r => r.status === MonthlyReportStatus.APPROVED || r.status === MonthlyReportStatus.SUBMITTED
       ).length;
@@ -474,6 +522,19 @@ export class FacultyService {
       throw new NotFoundException('Application not found or you are not the assigned mentor');
     }
 
+    // Validate that visit date is not before internship start date
+    const visitDateToUse = visitDate ? new Date(visitDate) : new Date();
+
+    if (application.startDate) {
+      const internshipStartDate = new Date(application.startDate);
+
+      if (visitDateToUse < internshipStartDate) {
+        throw new BadRequestException(
+          `Visit date cannot be before internship start date (${internshipStartDate.toISOString().split('T')[0]})`
+        );
+      }
+    }
+
     // Count existing visits for this application
     const visitCount = await this.prisma.facultyVisitLog.count({
       where: { applicationId: application.id },
@@ -487,8 +548,8 @@ export class FacultyService {
       visitNumber: visitCount + 1,
       visitType,
       visitLocation,
-      // Auto-set visitDate to current date/time if not provided
-      visitDate: visitDate ? new Date(visitDate) : new Date(),
+      // Use the already validated visit date
+      visitDate: visitDateToUse,
       // Auto-set status to COMPLETED for quick logs if not provided
       status: status || 'COMPLETED',
       // Include GPS coordinates if provided
@@ -818,7 +879,8 @@ export class FacultyService {
     if (status) {
       where.status = status as ApplicationStatus;
     } else {
-      where.status = ApplicationStatus.APPLIED; // Default to pending
+      // Self-identified internships are auto-approved, so default to APPROVED
+      where.status = ApplicationStatus.APPROVED;
     }
 
     const [approvals, total] = await Promise.all([

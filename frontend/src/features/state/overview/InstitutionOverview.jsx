@@ -46,7 +46,8 @@ const InstitutionOverview = () => {
 
   // Auto-select institution from URL param
   useEffect(() => {
-    if (urlInstitutionId && institutions.length > 0 && !selectedInstitute?.id) {
+    // Select institution from URL if it's different from current selection
+    if (urlInstitutionId && institutions.length > 0 && urlInstitutionId !== selectedInstitute?.id) {
       const institution = institutions.find(inst => inst.id === urlInstitutionId);
       if (institution) {
         dispatch(setSelectedInstitute(institution.id));

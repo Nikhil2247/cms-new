@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import {
   Card,
-  List,
   Button,
   Typography,
   Space,
@@ -15,7 +14,7 @@ import {
   Empty,
   Spin,
   Popconfirm,
-  message,
+  App,
   Avatar,
 } from "antd";
 import {
@@ -46,6 +45,7 @@ const TemplateManager = ({
   selectedColumns,
   filters,
 }) => {
+  const { message } = App.useApp();
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -154,88 +154,6 @@ const TemplateManager = ({
   const myTemplates = filteredTemplates.filter((t) => t.isOwner);
   const publicTemplates = filteredTemplates.filter((t) => !t.isOwner && t.isPublic);
 
-  const renderTemplateItem = (template) => (
-    <List.Item
-      key={template.id}
-      className="hover:bg-gray-50 rounded-lg transition-colors !px-3"
-      actions={[
-        <Tooltip title="Apply Template" key="apply">
-          <Button
-            type="primary"
-            size="small"
-            icon={<PlayCircleOutlined />}
-            onClick={() => handleApply(template)}
-          >
-            Apply
-          </Button>
-        </Tooltip>,
-        template.isOwner && (
-          <Tooltip title="Edit" key="edit">
-            <Button
-              size="small"
-              icon={<EditOutlined />}
-              onClick={() => handleEditTemplate(template)}
-            />
-          </Tooltip>
-        ),
-        template.isOwner && (
-          <Popconfirm
-            key="delete"
-            title="Delete Template"
-            description="Are you sure you want to delete this template?"
-            onConfirm={() => handleDeleteTemplate(template.id)}
-            okText="Delete"
-            cancelText="Cancel"
-            okButtonProps={{ danger: true }}
-          >
-            <Tooltip title="Delete">
-              <Button size="small" danger icon={<DeleteOutlined />} />
-            </Tooltip>
-          </Popconfirm>
-        ),
-      ].filter(Boolean)}
-    >
-      <List.Item.Meta
-        avatar={
-          <Avatar
-            icon={template.isPublic ? <GlobalOutlined /> : <LockOutlined />}
-          />
-        }
-        title={
-          <Space>
-            <Text strong>{template.name}</Text>
-            {template.isOwner && (
-              <Tag color="blue" icon={<UserOutlined />}>
-                Mine
-              </Tag>
-            )}
-            {template.isPublic && !template.isOwner && (
-              <Tag color="green" icon={<GlobalOutlined />}>
-                Public
-              </Tag>
-            )}
-          </Space>
-        }
-        description={
-          <div>
-            <Text type="secondary" className="text-xs block">
-              {formatLabel(template.reportType)} -{" "}
-              {template.columns?.length || 0} columns
-            </Text>
-            {template.description && (
-              <Text type="secondary" className="text-xs block truncate">
-                {template.description}
-              </Text>
-            )}
-            <Text type="secondary" className="text-xs">
-              Updated {getRelativeTime(template.updatedAt)}
-            </Text>
-          </div>
-        }
-      />
-    </List.Item>
-  );
-
   if (loading) {
     return (
       <div className="py-8 text-center">
@@ -264,12 +182,78 @@ const TemplateManager = ({
             <UserOutlined className="mr-2" />
             My Templates ({myTemplates.length})
           </Text>
-          <List
-            dataSource={myTemplates}
-            renderItem={renderTemplateItem}
-            size="small"
-            className="border rounded-lg"
-          />
+          <div className="border rounded-lg flex flex-col">
+            {myTemplates.map((template, index) => (
+              <div
+                key={template.id || index}
+                className={`hover:bg-gray-50 rounded-lg transition-colors p-3 flex items-start gap-3 ${index !== myTemplates.length - 1 ? 'border-b border-border/50' : ''}`}
+              >
+                <Avatar
+                  icon={template.isPublic ? <GlobalOutlined /> : <LockOutlined />}
+                  shrink-0
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <Space size="small" className="min-w-0">
+                      <Text strong className="truncate block">{template.name}</Text>
+                      {template.isOwner && (
+                        <Tag color="blue" icon={<UserOutlined />} className="m-0 text-[10px] py-0 px-1 border-0">
+                          Mine
+                        </Tag>
+                      )}
+                    </Space>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Tooltip title="Apply Template">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<PlayCircleOutlined />}
+                          className="h-7 text-[10px]"
+                          onClick={() => handleApply(template)}
+                        >
+                          Apply
+                        </Button>
+                      </Tooltip>
+                      <Tooltip title="Edit">
+                        <Button
+                          size="small"
+                          icon={<EditOutlined />}
+                          className="h-7"
+                          onClick={() => handleEditTemplate(template)}
+                        />
+                      </Tooltip>
+                      <Popconfirm
+                        title="Delete Template"
+                        description="Are you sure you want to delete this template?"
+                        onConfirm={() => handleDeleteTemplate(template.id)}
+                        okText="Delete"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true }}
+                      >
+                        <Tooltip title="Delete">
+                          <Button size="small" danger icon={<DeleteOutlined />} className="h-7" />
+                        </Tooltip>
+                      </Popconfirm>
+                    </div>
+                  </div>
+                  <div>
+                    <Text type="secondary" className="text-[10px] block">
+                      {formatLabel(template.reportType)} -{" "}
+                      {template.columns?.length || 0} columns
+                    </Text>
+                    {template.description && (
+                      <Text type="secondary" className="text-[10px] block truncate">
+                        {template.description}
+                      </Text>
+                    )}
+                    <Text type="secondary" className="text-[10px]">
+                      Updated {getRelativeTime(template.updatedAt)}
+                    </Text>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -280,12 +264,56 @@ const TemplateManager = ({
             <GlobalOutlined className="mr-2" />
             Public Templates ({publicTemplates.length})
           </Text>
-          <List
-            dataSource={publicTemplates}
-            renderItem={renderTemplateItem}
-            size="small"
-            className="border rounded-lg"
-          />
+          <div className="border rounded-lg flex flex-col">
+            {publicTemplates.map((template, index) => (
+              <div
+                key={template.id || index}
+                className={`hover:bg-gray-50 rounded-lg transition-colors p-3 flex items-start gap-3 ${index !== publicTemplates.length - 1 ? 'border-b border-border/50' : ''}`}
+              >
+                <Avatar
+                  icon={template.isPublic ? <GlobalOutlined /> : <LockOutlined />}
+                  shrink-0
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <Space size="small" className="min-w-0">
+                      <Text strong className="truncate block">{template.name}</Text>
+                      <Tag color="green" icon={<GlobalOutlined />} className="m-0 text-[10px] py-0 px-1 border-0">
+                        Public
+                      </Tag>
+                    </Space>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Tooltip title="Apply Template">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<PlayCircleOutlined />}
+                          className="h-7 text-[10px]"
+                          onClick={() => handleApply(template)}
+                        >
+                          Apply
+                        </Button>
+                      </Tooltip>
+                    </div>
+                  </div>
+                  <div>
+                    <Text type="secondary" className="text-[10px] block">
+                      {formatLabel(template.reportType)} -{" "}
+                      {template.columns?.length || 0} columns
+                    </Text>
+                    {template.description && (
+                      <Text type="secondary" className="text-[10px] block truncate">
+                        {template.description}
+                      </Text>
+                    )}
+                    <Text type="secondary" className="text-[10px]">
+                      Updated {getRelativeTime(template.updatedAt)}
+                    </Text>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

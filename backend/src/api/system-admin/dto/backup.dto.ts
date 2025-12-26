@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsEnum, IsBoolean } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsBoolean, Equals } from 'class-validator';
 
 export enum StorageType {
   MINIO = 'minio',
@@ -19,6 +19,14 @@ export class CreateBackupDto {
 export class RestoreBackupDto {
   @IsBoolean()
   confirmRestore: boolean;
+
+  @IsString()
+  @Equals('RESTORE', { message: 'You must type "RESTORE" to confirm the restore operation' })
+  confirmationText: string; // Must be exactly "RESTORE"
+
+  @IsOptional()
+  @IsBoolean()
+  dropExisting?: boolean = true; // Whether to drop existing data (default true for full restore)
 }
 
 export class BackupResponseDto {

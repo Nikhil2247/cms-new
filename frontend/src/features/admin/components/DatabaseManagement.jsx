@@ -28,13 +28,14 @@ import {
   CheckCircleOutlined,
   SyncOutlined,
   CloseCircleOutlined,
+  ClearOutlined,
 } from '@ant-design/icons';
 import { adminService } from '../../../services/admin.service';
 
 const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
-const DatabaseManagement = ({ backupProgress, connected }) => {
+const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
@@ -76,6 +77,20 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
     }
   }, [backupProgress, fetchBackups]);
 
+  // Handle restore progress updates
+  useEffect(() => {
+    if (restoreProgress?.status === 'completed') {
+      setRestoreLoading(false);
+      setRestoreModalOpen(false);
+      setSelectedBackup(null);
+      fetchBackups();
+    } else if (restoreProgress?.status === 'failed') {
+      setRestoreLoading(false);
+    } else if (restoreProgress?.status === 'in_progress') {
+      setRestoreLoading(true);
+    }
+  }, [restoreProgress, fetchBackups]);
+
   const handleTableChange = (paginationConfig) => {
     fetchBackups(paginationConfig.current, paginationConfig.pageSize);
   };
@@ -83,11 +98,16 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
   const handleCreateBackup = async (values) => {
     try {
       setCreateLoading(true);
-      await adminService.createBackup(values);
-      message.success('Backup creation started');
-      setCreateModalOpen(false);
-      form.resetFields();
-      fetchBackups();
+      const response = await adminService.createBackup(values);
+
+      if (response.success) {
+        message.info('Backup initiated. Watch progress below...');
+        setCreateModalOpen(false);
+        form.resetFields();
+        // Progress will be shown via WebSocket, backup list refreshed on completion
+      } else {
+        message.error(response.error || 'Failed to initiate backup');
+      }
     } catch (error) {
       console.error('Failed to create backup:', error);
       message.error(error.response?.data?.message || 'Failed to create backup');
@@ -114,15 +134,24 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
     if (!selectedBackup) return;
     try {
       setRestoreLoading(true);
-      await adminService.restoreBackup(selectedBackup.id, true);
-      message.success('Restore started successfully');
-      setRestoreModalOpen(false);
-      setSelectedBackup(null);
-      fetchBackups();
+      const response = await adminService.restoreBackup(selectedBackup.id, {
+        confirmRestore: true,
+        confirmationText: 'RESTORE',
+        dropExisting: true,
+      });
+
+      if (response.success) {
+        message.info('Restore initiated. Watch progress below...');
+        setRestoreModalOpen(false);
+        setSelectedBackup(null);
+        // Keep restoreLoading true - WebSocket progress handler will set it false on completion/failure
+      } else {
+        message.error(response.error || 'Failed to initiate restore');
+        setRestoreLoading(false);
+      }
     } catch (error) {
       console.error('Failed to restore backup:', error);
       message.error(error.response?.data?.message || 'Failed to restore backup');
-    } finally {
       setRestoreLoading(false);
     }
   };
@@ -135,6 +164,21 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
     } catch (error) {
       console.error('Failed to delete backup:', error);
       message.error('Failed to delete backup');
+    }
+  };
+
+  const handleCleanupStale = async () => {
+    try {
+      const result = await adminService.cleanupStaleBackups();
+      if (result.cleaned > 0) {
+        message.success(`Cleaned up ${result.cleaned} stale backups`);
+        fetchBackups();
+      } else {
+        message.info('No stale backups found');
+      }
+    } catch (error) {
+      console.error('Failed to cleanup stale backups:', error);
+      message.error('Failed to cleanup stale backups');
     }
   };
 
@@ -239,7 +283,7 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
             size="small"
             icon={<DownloadOutlined />}
             onClick={() => handleDownload(record)}
-            disabled={record.status !== 'COMPLETED'}
+            disabled={record.status !== 'COMPLETED' && record.status !== 'RESTORED'}
           >
             Download
           </Button>
@@ -251,7 +295,7 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
               setSelectedBackup(record);
               setRestoreModalOpen(true);
             }}
-            disabled={record.status !== 'COMPLETED'}
+            disabled={record.status !== 'COMPLETED' && record.status !== 'RESTORED'}
           >
             Restore
           </Button>
@@ -292,6 +336,31 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
                   status="active"
                   className="mt-2 mb-0"
                   strokeColor={{ from: '#1890ff', to: '#52c41a' }}
+                />
+              )}
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Real-time Restore Progress */}
+      {restoreProgress && restoreProgress.status === 'in_progress' && (
+        <Card className="shadow-sm border-warning/50 rounded-xl bg-warning/5">
+          <div className="flex items-center gap-4">
+            <SyncOutlined spin className="text-warning text-2xl" />
+            <div className="flex-1">
+              <Text strong className="text-text-primary block">
+                Restore in Progress - {restoreProgress.stage?.replace(/_/g, ' ').toUpperCase()}
+              </Text>
+              <Text className="text-text-secondary text-sm">
+                {restoreProgress.message || 'Restoring database...'}
+              </Text>
+              {restoreProgress.progress !== undefined && (
+                <Progress
+                  percent={restoreProgress.progress}
+                  status="active"
+                  className="mt-2 mb-0"
+                  strokeColor={{ from: '#faad14', to: '#52c41a' }}
                 />
               )}
             </div>
@@ -345,6 +414,22 @@ const DatabaseManagement = ({ backupProgress, connected }) => {
               <div>
                 <Text strong className="block text-text-primary">Refresh List</Text>
                 <Text className="text-text-tertiary text-sm">Reload backup list</Text>
+              </div>
+            </div>
+          </Card>
+        </Col>
+        <Col xs={24} sm={8} md={6}>
+          <Card
+            className="shadow-sm border-border rounded-xl bg-surface cursor-pointer hover:shadow-md transition-shadow"
+            onClick={handleCleanupStale}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg bg-warning/10 flex items-center justify-center">
+                <ClearOutlined className="text-warning text-xl" />
+              </div>
+              <div>
+                <Text strong className="block text-text-primary">Cleanup Stale</Text>
+                <Text className="text-text-tertiary text-sm">Fix stuck backups</Text>
               </div>
             </div>
           </Card>

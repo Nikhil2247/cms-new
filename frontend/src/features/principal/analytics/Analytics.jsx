@@ -22,7 +22,6 @@ import {
   Segmented,
   Badge,
   Divider,
-  List,
   Avatar,
 } from 'antd';
 import {
@@ -945,43 +944,40 @@ const Analytics = () => {
               }
               styles={{ body: { maxHeight: 350, overflow: 'auto' } }}
             >
-              <List
-                dataSource={chartData.slice(0, 10)}
-                renderItem={(mentor) => {
+              <div className="flex flex-col">
+                {chartData.slice(0, 10).map((mentor, index) => {
                   const loadStatus = mentor.studentCount > 20 ? 'error' : mentor.studentCount > 15 ? 'warning' : 'success';
                   const loadLabel = mentor.studentCount > 20 ? 'Overloaded' : mentor.studentCount > 15 ? 'Heavy' : mentor.studentCount > 10 ? 'Optimal' : 'Light';
 
                   return (
-                    <List.Item className="!px-0">
-                      <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                          <Avatar icon={<UserOutlined />} className="bg-primary/10 text-primary" />
-                          <div>
-                            <Text className="font-medium text-text-primary block">{mentor.name}</Text>
-                            <Text className="text-xs text-text-tertiary">{mentor.mentorEmail || mentor.department || 'Faculty'}</Text>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="text-right mr-2">
-                            <Text className="font-bold text-text-primary block">{mentor.studentCount}</Text>
-                            <Text className="text-[10px] text-text-tertiary uppercase">Students</Text>
-                          </div>
-                          <Tag color={loadStatus} className="rounded-full px-3">{loadLabel}</Tag>
-                          <Tooltip title="View Details">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={() => setMentorDetailModal({ visible: true, mentor })}
-                              className="text-primary"
-                            />
-                          </Tooltip>
+                    <div key={mentor.id || index} className={`flex items-center justify-between w-full py-3 ${index !== chartData.slice(0, 10).length - 1 ? 'border-b border-border/50' : ''}`}>
+                      <div className="flex items-center gap-3">
+                        <Avatar icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                        <div>
+                          <Text className="font-medium text-text-primary block">{mentor.name}</Text>
+                          <Text className="text-xs text-text-tertiary">{mentor.mentorEmail || mentor.department || 'Faculty'}</Text>
                         </div>
                       </div>
-                    </List.Item>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right mr-2">
+                          <Text className="font-bold text-text-primary block">{mentor.studentCount}</Text>
+                          <Text className="text-[10px] text-text-tertiary uppercase">Students</Text>
+                        </div>
+                        <Tag color={loadStatus} className="rounded-full px-3 m-0">{loadLabel}</Tag>
+                        <Tooltip title="View Details">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<EyeOutlined />}
+                            onClick={() => setMentorDetailModal({ visible: true, mentor })}
+                            className="text-primary"
+                          />
+                        </Tooltip>
+                      </div>
+                    </div>
                   );
-                }}
-              />
+                })}
+              </div>
             </Card>
           </Col>
         </Row>

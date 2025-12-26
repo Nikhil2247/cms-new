@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { Role, VisitType, VisitLogStatus } from '@prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
@@ -168,6 +168,12 @@ export class FacultyVisitService {
             id: true,
             studentId: true,
             internshipId: true,
+            startDate: true,
+            internship: {
+              select: {
+                startDate: true,
+              },
+            },
           },
         }),
         this.prisma.facultyVisitLog.count({ where: { applicationId } }),
@@ -180,6 +186,14 @@ export class FacultyVisitService {
       if (!application) {
         throw new NotFoundException(
           'Application not found or you are not the assigned mentor',
+        );
+      }
+
+      // Validate visitDate is not before internship start date
+      const internshipStartDate = application.internship?.startDate || application.startDate;
+      if (internshipStartDate && data.visitDate < new Date(internshipStartDate)) {
+        throw new BadRequestException(
+          `Visit date cannot be before internship start date (${new Date(internshipStartDate).toLocaleDateString()})`,
         );
       }
 

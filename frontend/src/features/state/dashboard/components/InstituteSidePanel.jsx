@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Input, List, Avatar, Typography, Skeleton, Empty, Tooltip, Tag } from 'antd';
+import { Input, Avatar, Typography, Skeleton, Empty, Tooltip, Tag } from 'antd';
 import {
   SearchOutlined,
   BankOutlined,

@@ -675,7 +675,7 @@ const PrincipalDashboard = () => {
                     type="error"
                     showIcon
                     icon={<ExclamationCircleOutlined />}
-                    message={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
+                    title={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
                     description="Pending grievances that require immediate attention"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -692,7 +692,7 @@ const PrincipalDashboard = () => {
                     type="warning"
                     showIcon
                     icon={<FileTextOutlined />}
-                    message={`${alertsEnhanced.summary.overdueReportsCount} Overdue Reports`}
+                    title={`${alertsEnhanced.summary.overdueReportsCount} Overdue Reports`}
                     description="Students with overdue monthly reports"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -709,7 +709,7 @@ const PrincipalDashboard = () => {
                     type="info"
                     showIcon
                     icon={<EyeOutlined />}
-                    message={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
+                    title={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
                     description="Students without recent faculty visits (30+ days)"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -726,7 +726,7 @@ const PrincipalDashboard = () => {
                     type="warning"
                     showIcon
                     icon={<TeamOutlined />}
-                    message={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
+                    title={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
                     description="Active internship students without assigned mentors"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({

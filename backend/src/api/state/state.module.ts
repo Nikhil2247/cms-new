@@ -2,6 +2,15 @@ import { Module } from '@nestjs/common';
 import { StateController } from './state.controller';
 import { StateService } from './state.service';
 
+// Import sub-services
+import { StateDashboardService } from './services/state-dashboard.service';
+import { StateInstitutionService } from './services/state-institution.service';
+import { StatePrincipalService } from './services/state-principal.service';
+import { StateStaffService } from './services/state-staff.service';
+import { StateReportsService } from './services/state-reports.service';
+import { StateIndustryService } from './services/state-industry.service';
+import { StateMentorService } from './services/state-mentor.service';
+
 // Import domain modules for business logic reuse
 import { InternshipModule } from '../../domain/internship/internship.module';
 import { PlacementModule } from '../../domain/placement/placement.module';
@@ -25,7 +34,18 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
     AuditModule,
   ],
   controllers: [StateController],
-  providers: [StateService],
+  providers: [
+    // Main facade service
+    StateService,
+    // Sub-services for specific domains
+    StateDashboardService,
+    StateInstitutionService,
+    StatePrincipalService,
+    StateStaffService,
+    StateReportsService,
+    StateIndustryService,
+    StateMentorService,
+  ],
   exports: [StateService],
 })
 export class StateModule {}

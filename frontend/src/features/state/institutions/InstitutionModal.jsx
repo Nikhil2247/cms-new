@@ -397,13 +397,13 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
                     </Col>
                   </Row>
 
-                  <Alert
-                    message="Credentials Info"
-                    description="Principal credentials will be sent to the institution email. Default password: First 4 letters of name + @ + First 4 digits of phone."
-                    type="info"
-                    showIcon
-                    className="mt-2 border-primary/20 bg-background text-sm"
-                  />
+              <Alert
+                title="Credentials Info"
+                description="Default credentials will be generated automatically for the Principal and Institutional Admin."
+                type="info"
+                showIcon
+                className="rounded-lg border-info/20"
+              />
                 </div>
               )}
             </div>

@@ -436,7 +436,7 @@ const InstituteManagement = () => {
           {instituteToDelete && (
             <div className="space-y-4">
               <Alert
-                message="Warning: Irreversible Action"
+                title="Warning: Irreversible Action"
                 description="This will permanently delete the institution and all associated data including students, faculty, and academic records."
                 type="error"
                 showIcon

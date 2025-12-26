@@ -10,6 +10,7 @@ import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
 import { LruCacheService } from './lru-cache.service';
 import { CACHE_TTL_KEY } from './cache.decorator';
+import { getUserId } from '../common/utils/request.utils';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -80,12 +81,10 @@ export class CacheInterceptor implements NestInterceptor {
   }
 
   /**
-   * Generate cache key from request URL and query params
+   * Generate cache key from request URL and user
    */
   private generateCacheKey(request: Request): string {
-    const url = request.url;
-    const userId = (request as any).user?.id || 'anonymous';
-    return `cache:${userId}:${url}`;
+    return `cache:${getUserId(request)}:${request.url}`;
   }
 
   /**

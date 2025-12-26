@@ -9,31 +9,35 @@ import {
 import StatCard from './StatCard';
 
 const StatisticsGrid = ({ stats }) => {
+  // FIXED: Improved fallback logic with null-safe access
+  const safeStats = stats || {};
+
   const cardConfigs = [
     {
       title: 'Total Applications',
-      value: stats?.totalApplications || 0,
+      value: safeStats.totalApplications ?? 0,
       icon: <LaptopOutlined />,
       bgClass: 'bg-purple-500/10',
       colorClass: 'text-purple-500',
     },
     {
       title: 'Ongoing Internships',
-      value: stats?.ongoingInternships || stats?.selectedApplications || 0,
+      // FIXED: Better fallback chain with explicit check
+      value: safeStats.ongoingInternships ?? safeStats.selectedApplications ?? 0,
       icon: <CheckCircleOutlined />,
       bgClass: 'bg-green-500/10',
       colorClass: 'text-green-500',
     },
     {
       title: 'Completed',
-      value: stats?.completedInternships || 0,
+      value: safeStats.completedInternships ?? 0,
       icon: <StarOutlined />,
       bgClass: 'bg-pink-500/10',
       colorClass: 'text-pink-500',
     },
     {
       title: 'Self-Identified',
-      value: stats?.selfIdentifiedCount || 0,
+      value: safeStats.selfIdentifiedCount ?? 0,
       icon: <RocketOutlined />,
       bgClass: 'bg-cyan-500/10',
       colorClass: 'text-cyan-500',

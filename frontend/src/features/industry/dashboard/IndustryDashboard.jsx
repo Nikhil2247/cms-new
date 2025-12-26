@@ -8,7 +8,6 @@ import {
   Button,
   Typography,
   Space,
-  List,
   Tag,
   Empty,
   Spin,
@@ -203,54 +202,51 @@ const IndustryDashboard = () => {
                 }
               >
                 {dashboardData.recentApplications.length > 0 ? (
-                  <div className="p-2 max-h-[600px] overflow-y-auto hide-scrollbar">
-                    <List
-                      dataSource={dashboardData.recentApplications}
-                      renderItem={(item) => (
-                        <List.Item className="rounded-xl p-4 border-transparent hover:bg-background-tertiary transition-all duration-200">
-                          <List.Item.Meta
-                            avatar={
-                              <Avatar
-                                className="bg-primary/10 text-primary border-primary/20 rounded-xl"
-                                size={48}
-                                icon={<UserOutlined />}
-                              />
-                            }
-                            title={
-                              <div className="flex justify-between items-start">
-                                <div>
-                                  <Text className="font-bold text-base text-text-primary block leading-none mb-1">
-                                    {item.studentName}
-                                  </Text>
-                                  <Text className="font-medium text-sm text-primary">
-                                    {item.internshipTitle}
-                                  </Text>
-                                </div>
-                                <Tag
-                                  color={getStatusColor(item.status)}
-                                  className="m-0 px-3 py-0.5 rounded-full border-0 font-bold uppercase tracking-widest text-[10px]"
-                                >
-                                  {item.status.replace("_", " ")}
-                                </Tag>
-                              </div>
-                            }
-                            description={
-                              <div className="flex items-center gap-4 mt-3 text-xs text-text-tertiary font-medium">
-                                <span className="flex items-center gap-1.5">
-                                  <BankOutlined className="text-[10px]" />
-                                  {item.branch}
-                                </span>
-                                <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-30" />
-                                <span className="flex items-center gap-1.5">
-                                  <CalendarOutlined className="text-[10px]" />
-                                  Applied {new Date(item.appliedDate).toLocaleDateString()}
-                                </span>
-                              </div>
-                            }
-                          />
-                        </List.Item>
-                      )}
-                    />
+                  <div className="p-2 max-h-[600px] overflow-y-auto hide-scrollbar flex flex-col">
+                    {dashboardData.recentApplications.map((item, index) => (
+                      <div
+                        key={item.id || index}
+                        className={`
+                          rounded-xl p-4 transition-all duration-200 flex items-start gap-4 hover:bg-background-tertiary
+                          ${index !== dashboardData.recentApplications.length - 1 ? 'border-b border-border/50' : ''}
+                        `}
+                      >
+                        <Avatar
+                          className="bg-primary/10 text-primary border-primary/20 rounded-xl shrink-0"
+                          size={48}
+                          icon={<UserOutlined />}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="min-w-0">
+                              <Text className="font-bold text-base text-text-primary block leading-none mb-1 truncate">
+                                {item.studentName}
+                              </Text>
+                              <Text className="font-medium text-sm text-primary truncate block">
+                                {item.internshipTitle}
+                              </Text>
+                            </div>
+                            <Tag
+                              color={getStatusColor(item.status)}
+                              className="m-0 px-3 py-0.5 rounded-full border-0 font-bold uppercase tracking-widest text-[10px] shrink-0"
+                            >
+                              {item.status.replace("_", " ")}
+                            </Tag>
+                          </div>
+                          <div className="flex items-center gap-4 mt-3 text-xs text-text-tertiary font-medium">
+                            <span className="flex items-center gap-1.5">
+                              <BankOutlined className="text-[10px]" />
+                              {item.branch}
+                            </span>
+                            <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-30 shrink-0" />
+                            <span className="flex items-center gap-1.5">
+                              <CalendarOutlined className="text-[10px]" />
+                              Applied {new Date(item.appliedDate).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="p-20 text-center flex flex-col items-center">
@@ -291,47 +287,50 @@ const IndustryDashboard = () => {
                 }
               >
                 {dashboardData.activeInternships.length > 0 ? (
-                  <div className="p-2 max-h-[600px] overflow-y-auto hide-scrollbar">
-                    <List
-                      dataSource={dashboardData.activeInternships}
-                      renderItem={(item) => (
-                        <List.Item className="rounded-xl p-4 border-transparent hover:bg-background-tertiary transition-all duration-200">
-                          <div className="w-full">
-                            <div className="flex items-start gap-3 mb-4">
-                              <div className="bg-success/10 text-success p-2 rounded-xl shrink-0">
-                                <BankOutlined className="text-lg" />
-                              </div>
-                              <div className="min-w-0">
-                                <Text className="font-bold text-sm text-text-primary block truncate mb-1">
-                                  {item.title}
-                                </Text>
-                                <div className="flex items-center gap-2 text-[10px] text-text-tertiary font-bold uppercase tracking-wider">
-                                  <CalendarOutlined />
-                                  Ends: {new Date(item.deadline).toLocaleDateString()}
-                                </div>
-                              </div>
+                  <div className="p-2 max-h-[600px] overflow-y-auto hide-scrollbar flex flex-col">
+                    {dashboardData.activeInternships.map((item, index) => (
+                      <div
+                        key={item.id || index}
+                        className={`
+                          rounded-xl p-4 transition-all duration-200 flex flex-col gap-4 hover:bg-background-tertiary
+                          ${index !== dashboardData.activeInternships.length - 1 ? 'border-b border-border/50' : ''}
+                        `}
+                      >
+                        <div className="w-full">
+                          <div className="flex items-start gap-3 mb-4">
+                            <div className="bg-success/10 text-success p-2 rounded-xl shrink-0">
+                              <BankOutlined className="text-lg" />
                             </div>
-                            
-                            <div className="bg-background-secondary p-3 rounded-xl border border-border/50">
-                              <div className="flex justify-between text-[10px] uppercase font-black text-text-tertiary mb-2 tracking-widest">
-                                <span>Applicants</span>
-                                <span className="text-primary">
-                                  {item.applications} / {item.positions}
-                                </span>
+                            <div className="min-w-0">
+                              <Text className="font-bold text-sm text-text-primary block truncate mb-1">
+                                {item.title}
+                              </Text>
+                              <div className="flex items-center gap-2 text-[10px] text-text-tertiary font-bold uppercase tracking-wider">
+                                <CalendarOutlined />
+                                Ends: {new Date(item.deadline).toLocaleDateString()}
                               </div>
-                              <Progress
-                                percent={Math.min(Math.round((item.applications / item.positions) * 100), 100)}
-                                size="small"
-                                strokeColor={token.colorSuccess}
-                                railColor="rgba(var(--color-border), 0.1)"
-                                showInfo={false}
-                                className="!m-0"
-                              />
                             </div>
                           </div>
-                        </List.Item>
-                      )}
-                    />
+                          
+                          <div className="bg-background-secondary p-3 rounded-xl border border-border/50">
+                            <div className="flex justify-between text-[10px] uppercase font-black text-text-tertiary mb-2 tracking-widest">
+                              <span>Applicants</span>
+                              <span className="text-primary">
+                                {item.applications} / {item.positions}
+                              </span>
+                            </div>
+                            <Progress
+                              percent={Math.min(Math.round((item.applications / item.positions) * 100), 100)}
+                              size="small"
+                              strokeColor={token.colorSuccess}
+                              railColor="rgba(var(--color-border), 0.1)"
+                              showInfo={false}
+                              className="!m-0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
                   <div className="p-12 text-center flex flex-col items-center">

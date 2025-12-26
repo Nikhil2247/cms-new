@@ -287,7 +287,7 @@ export class MonthlyReportService {
             approved,
             rejected,
             needsRevision,
-            submissionRate: total > 0 ? ((approved + needsRevision) / total) * 100 : 0,
+            submissionRate: total > 0 ? Math.round((approved / total) * 100) : 0,
           };
         },
         this.CACHE_TTL,

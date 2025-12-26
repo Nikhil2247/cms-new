@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Avatar, Typography, Tag, Progress, Empty, Tooltip, Badge, Space } from 'antd';
+import { Card, Avatar, Typography, Tag, Progress, Empty, Tooltip, Badge, Space } from 'antd';
 import {
   TrophyOutlined,
   CrownOutlined,
@@ -40,7 +40,7 @@ const PerformerItem = ({ item, rank, type }) => {
   const stats = item.stats || {};
 
   return (
-    <List.Item className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
+    <div className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
       <div className="flex items-center w-full gap-3">
         <div
           className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${getRankClass(rank)}`}
@@ -95,7 +95,7 @@ const PerformerItem = ({ item, rank, type }) => {
           </Text>
         </div>
       </div>
-    </List.Item>
+    </div>
   );
 };
 
@@ -119,13 +119,11 @@ const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) =
         styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
       >
         {topPerformers.length > 0 ? (
-          <List
-            dataSource={topPerformers.slice(0, 5)}
-            renderItem={(item, index) => (
-              <PerformerItem item={item} rank={index} type="top" />
-            )}
-            split={false}
-          />
+          <div className="flex flex-col">
+            {topPerformers.slice(0, 5).map((item, index) => (
+              <PerformerItem key={item.id || index} item={item} rank={index} type="top" />
+            ))}
+          </div>
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -152,13 +150,11 @@ const TopPerformers = ({ topPerformers = [], bottomPerformers = [], loading }) =
         styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
       >
         {bottomPerformers.length > 0 ? (
-          <List
-            dataSource={bottomPerformers.slice(0, 5)}
-            renderItem={(item, index) => (
-              <PerformerItem item={item} rank={index} type="bottom" />
-            )}
-            split={false}
-          />
+          <div className="flex flex-col">
+            {bottomPerformers.slice(0, 5).map((item, index) => (
+              <PerformerItem key={item.id || index} item={item} rank={index} type="bottom" />
+            ))}
+          </div>
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}

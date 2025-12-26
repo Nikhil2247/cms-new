@@ -100,6 +100,11 @@ class MetricsSocketService {
           this.emit('backupProgress', data);
         });
 
+        this.socket.on('restoreProgress', (data) => {
+          console.log('[MetricsSocket] Restore progress:', data);
+          this.emit('restoreProgress', data);
+        });
+
         this.socket.on('bulkOperationProgress', (data) => {
           console.log('[MetricsSocket] Bulk operation progress:', data);
           this.emit('bulkOperationProgress', data);

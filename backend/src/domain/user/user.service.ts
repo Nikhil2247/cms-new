@@ -13,8 +13,9 @@ import * as bcrypt from 'bcryptjs';
 export interface CreateStudentData {
   name: string;
   email: string;
-  phone?: string;
-  enrollmentNumber: string;
+  phoneNo?: string;
+  rollNumber?: string;
+  admissionNumber?: string;
   batchId: string;
   branchId?: string;
   branchName?: string;
@@ -22,7 +23,6 @@ export interface CreateStudentData {
   dateOfBirth?: string;
   gender?: string;
   address?: string;
-  rollNumber?: string;
   parentName?: string;
   parentContact?: string;
   tenthPercentage?: number;
@@ -33,7 +33,7 @@ export interface CreateStudentData {
 export interface CreateStaffData {
   name: string;
   email: string;
-  phone?: string;
+  phoneNo?: string;
   designation?: string;
   role: Role;
   departmentId?: string;
@@ -146,10 +146,10 @@ export class UserService {
         throw new BadRequestException(`User with email ${data.email} already exists`);
       }
 
-      // Check enrollment number uniqueness
-      if (await this.enrollmentExists(data.enrollmentNumber)) {
+      // Check admission number uniqueness (if provided)
+      if (data.admissionNumber && await this.enrollmentExists(data.admissionNumber)) {
         throw new BadRequestException(
-          `Student with enrollment number ${data.enrollmentNumber} already exists`,
+          `Student with admission number ${data.admissionNumber} already exists`,
         );
       }
 
@@ -162,7 +162,7 @@ export class UserService {
     // Generate password
     const temporaryPassword =
       options?.password ||
-      this.generateTemporaryPassword(data.name, data.enrollmentNumber);
+      this.generateTemporaryPassword(data.name, data.admissionNumber || data.rollNumber || data.email);
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
     // Create user and student in transaction
@@ -174,7 +174,7 @@ export class UserService {
           email: data.email.toLowerCase(),
           password: hashedPassword,
           role: Role.STUDENT,
-          phoneNo: data.phone,
+          phoneNo: data.phoneNo,
           dob: data.dateOfBirth,
           rollNumber: data.rollNumber,
           institutionId,
@@ -189,9 +189,9 @@ export class UserService {
           userId: user.id,
           name: data.name,
           email: data.email.toLowerCase(),
-          admissionNumber: data.enrollmentNumber,
+          admissionNumber: data.admissionNumber,
           rollNumber: data.rollNumber,
-          contact: data.phone,
+          contact: data.phoneNo,
           address: data.address,
           dob: data.dateOfBirth,
           gender: data.gender,
@@ -237,11 +237,12 @@ export class UserService {
       category: AuditCategory.ADMINISTRATIVE,
       severity: AuditSeverity.MEDIUM,
       institutionId,
-      description: `Student created: ${data.name} (${data.enrollmentNumber})`,
+      description: `Student created: ${data.name} (${data.admissionNumber || data.rollNumber})`,
       newValues: {
         name: data.name,
         email: data.email,
-        enrollmentNumber: data.enrollmentNumber,
+        admissionNumber: data.admissionNumber,
+        rollNumber: data.rollNumber,
         batchId: data.batchId,
       },
     }).catch(() => {});
@@ -277,7 +278,7 @@ export class UserService {
         email: data.email.toLowerCase(),
         password: hashedPassword,
         role: data.role,
-        phoneNo: data.phone,
+        phoneNo: data.phoneNo,
         designation: data.designation,
         institutionId,
         active: true,
@@ -380,7 +381,7 @@ export class UserService {
       where: { id: studentId },
       data: {
         name: data.name,
-        contact: data.phone,
+        contact: data.phoneNo,
         address: data.address,
         gender: data.gender,
         rollNumber: data.rollNumber,

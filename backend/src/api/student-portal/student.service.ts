@@ -99,6 +99,7 @@ export class StudentService {
 
   /**
    * Helper: Get submission status for a report
+   * HIGH PRIORITY FIX 10.6: Case-insensitive status comparisons
    */
   private getReportSubmissionStatus(report: any): {
     status: ReportSubmissionStatus;
@@ -109,12 +110,17 @@ export class StudentService {
   } {
     const now = new Date();
 
+    // Normalize status for comparison (case-insensitive)
+    const normalizedStatus = report.status ?
+      (typeof report.status === 'string' ? report.status.toUpperCase() : report.status) :
+      null;
+
     // If report is already submitted/approved
-    if (report.status === MonthlyReportStatus.APPROVED || report.isApproved) {
+    if (normalizedStatus === MonthlyReportStatus.APPROVED || normalizedStatus === 'APPROVED' || report.isApproved) {
       return { status: 'APPROVED', label: 'Approved', color: 'green', canSubmit: false };
     }
 
-    if (report.status === MonthlyReportStatus.SUBMITTED) {
+    if (normalizedStatus === MonthlyReportStatus.SUBMITTED || normalizedStatus === 'SUBMITTED') {
       return { status: 'SUBMITTED', label: 'Submitted', color: 'blue', canSubmit: false };
     }
 
@@ -212,12 +218,17 @@ export class StudentService {
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        // Get current self-identified internship
+        // Get current self-identified internship - FIXED: Include ONGOING status
         const currentInternship = await this.prisma.internshipApplication.findFirst({
           where: {
             studentId,
             isSelfIdentified: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+            // Use OR condition to also check internshipStatus for ONGOING
+            OR: [
+              { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] } },
+              { internshipStatus: 'ONGOING' },
+            ],
           },
           include: {
             internship: {
@@ -255,9 +266,13 @@ export class StudentService {
           },
         });
 
-        // Get total self-identified applications count
+        // FIXED: Get total self-identified applications count - filter by appropriate status
         const totalApplications = await this.prisma.internshipApplication.count({
-          where: { studentId, isSelfIdentified: true },
+          where: {
+            studentId,
+            isSelfIdentified: true,
+            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
+          },
         });
 
         // Get upcoming deadlines
@@ -1114,10 +1129,46 @@ export class StudentService {
         id: reportDto.applicationId,
         studentId,
       },
+      select: {
+        id: true,
+        startDate: true,
+        joiningDate: true,
+        endDate: true,
+        completionDate: true,
+      },
     });
 
     if (!application) {
       throw new NotFoundException('Application not found');
+    }
+
+    // CRITICAL FIX 10.1: Monthly Report Timing Validation
+    // Validate report month is not before internship started
+    const internshipStartDate = application.startDate || application.joiningDate;
+    if (internshipStartDate) {
+      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
+      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+
+      if (reportDate < startDate) {
+        throw new BadRequestException(
+          `Cannot submit report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
+          `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
+        );
+      }
+    }
+
+    // Validate report month is not after internship ended
+    const internshipEndDate = application.endDate || application.completionDate;
+    if (internshipEndDate) {
+      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
+      const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+
+      if (reportDate > endDate) {
+        throw new BadRequestException(
+          `Cannot submit report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
+          `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
+        );
+      }
     }
 
     // Check if report for this month already exists
@@ -1517,6 +1568,7 @@ export class StudentService {
 
   /**
    * Get monthly reports
+   * CRITICAL FIX 10.3: Filter reports by valid internship period
    */
   async getMonthlyReports(userId: string, params: { page?: number; limit?: number; applicationId?: string }) {
     const { page = 1, limit = 10, applicationId } = params;
@@ -1567,12 +1619,38 @@ export class StudentService {
       this.prisma.monthlyReport.count({ where }),
     ]);
 
+    // CRITICAL FIX 10.3: Filter reports for valid internship period only
+    const validReports = reports.filter((report) => {
+      const application = report.application;
+      if (!application) return true; // Keep if no application data
+
+      const internshipStartDate = application.startDate || application.joiningDate;
+      const internshipEndDate = application.endDate || application.completionDate;
+
+      // If no start date, keep all reports
+      if (!internshipStartDate) return true;
+
+      const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
+      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+
+      // Filter out reports before internship started
+      if (reportDate < startDate) return false;
+
+      // Filter out reports after internship ended
+      if (internshipEndDate) {
+        const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+        if (reportDate > endDate) return false;
+      }
+
+      return true;
+    });
+
     return {
-      reports,
-      total,
+      reports: validReports,
+      total: validReports.length,
       page,
       limit,
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil(validReports.length / limit),
     };
   }
 
@@ -1902,22 +1980,46 @@ export class StudentService {
 
   /**
    * Helper: Format reports with submission status
+   * HIGH PRIORITY FIX 10.5: Progress calculated based on valid reports only
    */
   private formatReportsWithStatus(reports: any[], application: any) {
-    const reportsWithStatus = reports.map((report) => {
+    const internshipStartDate = application.startDate || application.joiningDate;
+    const internshipEndDate = application.endDate || application.completionDate;
+
+    // Filter for valid reports (within internship period)
+    const validReports = reports.filter((report) => {
+      if (!internshipStartDate) return true;
+
+      const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
+      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+
+      // Filter out reports before internship started
+      if (reportDate < startDate) return false;
+
+      // Filter out reports after internship ended
+      if (internshipEndDate) {
+        const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+        if (reportDate > endDate) return false;
+      }
+
+      return true;
+    });
+
+    const reportsWithStatus = validReports.map((report) => {
       const submissionStatus = this.getReportSubmissionStatus(report);
       return {
         ...report,
         submissionStatus,
+        autoApproved: report.isApproved && report.status === MonthlyReportStatus.APPROVED, // HIGH PRIORITY FIX 10.4
       };
     });
 
-    // Calculate progress
-    const total = reports.length;
-    const approved = reports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
-    const submitted = reports.filter((r) => r.status === MonthlyReportStatus.SUBMITTED).length;
-    const draft = reports.filter((r) => r.status === MonthlyReportStatus.DRAFT).length;
-    const overdue = reports.filter((r) => {
+    // Calculate progress - only for valid reports
+    const total = validReports.length;
+    const approved = validReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
+    const submitted = validReports.filter((r) => r.status === MonthlyReportStatus.SUBMITTED).length;
+    const draft = validReports.filter((r) => r.status === MonthlyReportStatus.DRAFT).length;
+    const overdue = validReports.filter((r) => {
       if (r.status === MonthlyReportStatus.APPROVED) return false;
       const status = this.getReportSubmissionStatus(r);
       return status.status === 'OVERDUE';
@@ -1943,6 +2045,7 @@ export class StudentService {
 
   /**
    * View a specific monthly report
+   * HIGH PRIORITY FIX 10.4: Include autoApproved flag in response
    */
   async viewMonthlyReport(userId: string, reportId: string) {
     const student = await this.prisma.student.findUnique({
@@ -1962,6 +2065,8 @@ export class StudentService {
             companyName: true,
             startDate: true,
             endDate: true,
+            joiningDate: true,
+            completionDate: true,
             internship: {
               include: {
                 industry: {
@@ -1983,6 +2088,7 @@ export class StudentService {
     return {
       ...report,
       submissionStatus,
+      autoApproved: report.isApproved && report.status === MonthlyReportStatus.APPROVED,
     };
   }
 
@@ -2010,10 +2116,44 @@ export class StudentService {
         id: reportDto.applicationId,
         studentId: student.id,
       },
+      select: {
+        id: true,
+        startDate: true,
+        joiningDate: true,
+        endDate: true,
+        completionDate: true,
+      },
     });
 
     if (!application) {
       throw new NotFoundException('Application not found');
+    }
+
+    // CRITICAL FIX 10.1: Validate report timing for upload as well
+    const internshipStartDate = application.startDate || application.joiningDate;
+    if (internshipStartDate) {
+      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
+      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+
+      if (reportDate < startDate) {
+        throw new BadRequestException(
+          `Cannot upload report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
+          `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
+        );
+      }
+    }
+
+    const internshipEndDate = application.endDate || application.completionDate;
+    if (internshipEndDate) {
+      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
+      const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+
+      if (reportDate > endDate) {
+        throw new BadRequestException(
+          `Cannot upload report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
+          `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
+        );
+      }
     }
 
     // Check if report exists

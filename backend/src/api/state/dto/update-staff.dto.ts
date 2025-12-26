@@ -60,5 +60,5 @@ export class UpdateStaffDto {
   @ApiPropertyOptional({ description: 'Active status' })
   @IsOptional()
   @IsBoolean()
-  active?: boolean;
+  isActive?: boolean;
 }

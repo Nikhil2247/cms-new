@@ -76,7 +76,29 @@
       "Bash(cmd.exe /c \"dir /s /b \"\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\*mongodump.exe\"\" 2>nul\")",
       "Bash(cmd.exe /c \"dir /s /b \"\"C:\\\\Program Files\\\\MongoDB\"\" 2>nul\")",
       "Bash(cmd.exe /c \"setx PATH \"\"%PATH%;C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\"\" /M\")",
-      "Bash(xargs cat:*)"
+      "Bash(xargs cat:*)",
+      "Bash(where:*)",
+      "Bash(mongorestore:*)",
+      "Bash(dir \"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\*\\\\bin\\\\mongorestore.exe\")",
+      "Bash(dir \"C:\\\\Program Files\\\\MongoDB\\\\Server\\\\*\\\\bin\\\\mongorestore.exe\")",
+      "Bash(powershell -Command \"Expand-Archive -Path ''mongodb-tools.zip'' -DestinationPath ''mongodb-tools'' -Force\")",
+      "Bash(tar:*)",
+      "Bash(\"C:\\\\Program Files\\\\7-Zip\\\\7z.exe\" x mongodb-tools.zip -y)",
+      "Bash(unzip:*)",
+      "Bash(\"D:\\\\Github\\\\New folder\\\\cms-new\\\\mongodb-database-tools-windows-x86_64-100.9.4\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb+srv://nikhil97798:nikhil123@college.ivcx6vv.mongodb.net/college\" --archive=\"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-25_18-00-01.gz\" --gzip --drop)",
+      "Bash(\"D:\\\\Github\\\\New folder\\\\cms-new\\\\mongodb-database-tools-windows-x86_64-100.9.4\\\\bin\\\\mongorestore.exe\" --archive=\"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-25_18-00-01.gz\" --gzip --dryRun)",
+      "Bash(gunzip:*)",
+      "Bash(xxd:*)",
+      "Bash(\"D:\\\\Github\\\\New folder\\\\cms-new\\\\mongodb-database-tools-windows-x86_64-100.9.4\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb+srv://nikhil97798:nikhil123@college.ivcx6vv.mongodb.net\" --archive=\"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-25_18-00-01.gz\" --gzip --nsFrom=\"internship.*\" --nsTo=\"college.*\" --drop)",
+      "WebFetch(domain:dte.punjab.gov.in)",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\fix-remaining-institutions.ts\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\list-institutions.ts\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\migrate-old-to-new-schema.ts\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\restore-and-migrate.ts\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\run-migration.ps1\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\run-migration.sh\")",
+      "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\backend\\\\scripts\\\\update-institutions.ts\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\\\scripts\\\\run-migration-pipeline.ps1\" \"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-26_03-14-07.gz\")"
     ]
   }
 }

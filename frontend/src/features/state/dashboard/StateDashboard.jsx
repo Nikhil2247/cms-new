@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, List, Button } from 'antd';
+import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, Button } from 'antd';
 import {
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -313,7 +313,7 @@ const StateDashboard = () => {
                       type="error"
                       showIcon
                       icon={<ExclamationCircleOutlined />}
-                      message={
+                      title={
                         <div className="flex items-center justify-between">
                           <span className="font-bold">Low Compliance Institutions ({criticalAlerts.alerts?.lowComplianceInstitutions.length})</span>
                           <Button type="link" size="small" className="text-error p-0 h-auto">View Details →</Button>
@@ -485,31 +485,32 @@ const StateDashboard = () => {
             loading={actionItemsLoading}
             styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '0' } }}
           >
-            <List
-              dataSource={actionItemsList.slice(0, 5)}
-              renderItem={(item) => (
-                <List.Item
-                  className="hover:bg-background-tertiary transition-colors px-6 py-4 border-b border-border/50 last:border-0"
+            <div className="flex flex-col">
+              {actionItemsList.slice(0, 5).map((item, index) => (
+                <div
+                  key={item.id || index}
+                  className={`
+                    hover:bg-background-tertiary transition-colors px-6 py-4 flex items-start gap-4 w-full
+                    ${index !== actionItemsList.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}
+                  `}
                 >
-                  <div className="flex items-start gap-4 w-full">
-                    <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                      item.priority === 'high' ? 'bg-error' :
-                      item.priority === 'medium' ? 'bg-warning' : 'bg-primary'
-                    }`} />
-                    <div className="flex-1">
-                      <Text strong className="block text-text-primary text-base mb-1">{item.title}</Text>
-                      <Text className="text-text-secondary text-sm block">{item.description}</Text>
-                    </div>
-                    <Tag className="m-0 rounded-md border-0 px-2 py-0.5 font-bold uppercase tracking-wider text-[10px]" color={
-                      item.priority === 'high' ? 'red' :
-                      item.priority === 'medium' ? 'orange' : 'blue'
-                    }>
-                      {item.priority}
-                    </Tag>
+                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
+                    item.priority === 'high' ? 'bg-error' :
+                    item.priority === 'medium' ? 'bg-warning' : 'bg-primary'
+                  }`} />
+                  <div className="flex-1">
+                    <Text strong className="block text-text-primary text-base mb-1">{item.title}</Text>
+                    <Text className="text-text-secondary text-sm block">{item.description}</Text>
                   </div>
-                </List.Item>
-              )}
-            />
+                  <Tag className="m-0 rounded-md border-0 px-2 py-0.5 font-bold uppercase tracking-wider text-[10px]" color={
+                    item.priority === 'high' ? 'red' :
+                    item.priority === 'medium' ? 'orange' : 'blue'
+                  }>
+                    {item.priority}
+                  </Tag>
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
       )}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, List, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
 import {
   FileTextOutlined,
   RightOutlined,
@@ -84,7 +84,25 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
     }
   };
 
-  const pendingCount = reports.filter(r => r.status === 'PENDING' || r.status === 'SUBMITTED').length;
+  // FIXED: Only count reports that are after internship start date
+  const pendingCount = reports.filter(r => {
+    const isPending = r.status === 'PENDING' || r.status === 'SUBMITTED';
+    if (!isPending) return false;
+
+    // Check if report is after internship start date
+    const internshipStartDate = r.application?.internship?.startDate ||
+                                 r.student?.activeInternship?.startDate;
+
+    if (internshipStartDate) {
+      // Report month should be >= internship start month
+      const startDate = new Date(internshipStartDate);
+      const reportDate = new Date(r.reportYear, r.reportMonth - 1, 1);
+      return reportDate >= new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+    }
+
+    // If no start date available, include the report
+    return true;
+  }).length;
 
   return (
     <>
@@ -107,80 +125,88 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
         styles={{ body: { padding: reports.length > 0 ? 0 : 24 } }}
       >
         {reports.length > 0 ? (
-          <List
-            loading={loading}
-            dataSource={reports.slice(0, 5)}
-            renderItem={(report) => {
+          <div className="flex flex-col">
+            {reports.slice(0, 5).map((report, index) => {
+              // FIXED: Filter out reports that are before internship start date
+              const internshipStartDate = report.application?.internship?.startDate ||
+                                           report.student?.activeInternship?.startDate;
+
+              if (internshipStartDate) {
+                const startDate = new Date(internshipStartDate);
+                const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
+                const internshipStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+                // Skip reports before internship start
+                if (reportDate < internshipStartMonth) {
+                  return null;
+                }
+              }
+
               const statusConfig = getStatusConfig(report.status);
               const monthName = dayjs().month(report.reportMonth - 1).format('MMMM');
 
               return (
-                <List.Item
-                  className="px-4 hover:bg-surface-hover"
-                  actions={[
-                    <Space key="actions" size="small">
-                      {report.reportFileUrl && (
-                        <Tooltip title="Download">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<DownloadOutlined />}
-                            onClick={() => handleDownload(report)}
-                          />
-                        </Tooltip>
-                      )}
-                      {(report.status === 'PENDING' || report.status === 'SUBMITTED') && (
-                        <>
-                          <Tooltip title="Approve">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CheckCircleOutlined className="text-green-500" />}
-                              onClick={() => setReviewModal({ visible: true, report, action: 'approve' })}
-                            />
-                          </Tooltip>
-                          <Tooltip title="Reject">
-                            <Button
-                              type="text"
-                              size="small"
-                              icon={<CloseCircleOutlined className="text-red-500" />}
-                              onClick={() => setReviewModal({ visible: true, report, action: 'reject' })}
-                            />
-                          </Tooltip>
-                        </>
-                      )}
-                    </Space>,
-                  ]}
+                <div
+                  key={report.id || index}
+                  className={`px-4 py-3 hover:bg-surface-hover flex items-start gap-4 ${index !== reports.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}
                 >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar icon={<UserOutlined />} className="bg-primary" />
-                    }
-                    title={
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{report.student?.name || 'Unknown Student'}</span>
-                        <Tag color={statusConfig.color} icon={statusConfig.icon}>
-                          {statusConfig.label}
-                        </Tag>
+                  <Avatar icon={<UserOutlined />} className="bg-primary shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium truncate mr-2">{report.student?.name || 'Unknown Student'}</span>
+                      <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
+                        {statusConfig.label}
+                      </Tag>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs text-text-secondary">
+                        {monthName} {report.reportYear}
                       </div>
-                    }
-                    description={
-                      <div className="space-y-1">
-                        <div className="text-xs text-text-secondary">
-                          {monthName} {report.reportYear}
+                      {report.submittedAt && (
+                        <div className="text-xs text-text-tertiary">
+                          Submitted: {dayjs(report.submittedAt).format('DD/MM/YYYY')}
                         </div>
-                        {report.submittedAt && (
-                          <div className="text-xs text-text-tertiary">
-                            Submitted: {dayjs(report.submittedAt).format('DD/MM/YYYY')}
-                          </div>
+                      )}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <Space size="small">
+                        {report.reportFileUrl && (
+                          <Tooltip title="Download">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<DownloadOutlined />}
+                              onClick={() => handleDownload(report)}
+                            />
+                          </Tooltip>
                         )}
-                      </div>
-                    }
-                  />
-                </List.Item>
+                        {(report.status === 'PENDING' || report.status === 'SUBMITTED') && (
+                          <>
+                            <Tooltip title="Approve">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CheckCircleOutlined className="text-green-500" />}
+                                onClick={() => setReviewModal({ visible: true, report, action: 'approve' })}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Reject">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<CloseCircleOutlined className="text-red-500" />}
+                                onClick={() => setReviewModal({ visible: true, report, action: 'reject' })}
+                              />
+                            </Tooltip>
+                          </>
+                        )}
+                      </Space>
+                    </div>
+                  </div>
+                </div>
               );
-            }}
-          />
+            })}
+          </div>
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}

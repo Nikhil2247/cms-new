@@ -62,7 +62,7 @@ import {
 import { useDebounce } from '../../../hooks/useDebounce';
 
 const { Title, Text } = Typography;
-const { Panel } = Collapse;
+const { Option } = Select;
 
 const CompaniesOverview = () => {
   const dispatch = useDispatch();
@@ -421,7 +421,7 @@ const CompaniesOverview = () => {
             onChange={setIndustryType}
             allowClear
             className="w-full md:w-48 h-10 rounded-lg"
-            dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
+            popupStyle={{ borderRadius: '12px', padding: '8px' }}
           >
             {summary?.industryTypes?.map((type) => (
               <Select.Option key={type} value={type}>{type}</Select.Option>
@@ -431,7 +431,7 @@ const CompaniesOverview = () => {
             value={sortBy}
             onChange={setSortBy}
             className="w-full md:w-48 h-10 rounded-lg"
-            dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
+            popupStyle={{ borderRadius: '12px', padding: '8px' }}
           >
             <Select.Option value="studentCount">Sort by Students</Select.Option>
             <Select.Option value="institutionCount">Sort by Institutions</Select.Option>
@@ -595,116 +595,233 @@ const CompaniesOverview = () => {
                 <Title level={5} className="!mb-0 !text-sm uppercase tracking-widest text-text-tertiary font-bold">Participating Institutions ({selectedCompanyDetails.institutions?.length || 0})</Title>
               </div>
               
-              <Collapse 
-                accordion 
-                ghost 
-                className="bg-transparent"
-                expandIconPosition="end"
-              >
-                {selectedCompanyDetails.institutions?.map((institution, idx) => (
-                  <Panel
-                    key={idx}
-                    header={
-                      <div className="flex items-center justify-between w-full pr-4 py-1">
-                        <div className="flex items-center gap-3">
-                          <Avatar size="small" className="bg-primary/10 text-primary border border-primary/20 font-bold">{institution.code?.[0] || 'I'}</Avatar>
-                          <div>
-                            <Text strong className="text-text-primary block">{institution.name}</Text>
-                            <Text type="secondary" className="text-xs font-mono">{institution.code}</Text>
-                          </div>
-                        </div>
-                        <Badge count={institution.studentCount} className="[&_.ant-badge-count]:!bg-primary [&_.ant-badge-count]:shadow-none" />
-                      </div>
-                    }
-                    className="mb-2 bg-surface border border-border rounded-xl overflow-hidden shadow-sm"
-                  >
-                    <div className="space-y-4 pt-2">
-                      {/* Branch Distribution */}
-                      {institution.branchWiseData?.length > 0 && (
-                        <div className="p-3 bg-background-tertiary/30 rounded-xl border border-border/50">
-                          <Text className="text-[10px] uppercase font-bold text-text-tertiary mb-2 block tracking-widest">Branch Distribution</Text>
-                          <div className="flex flex-wrap gap-2">
-                            {institution.branchWiseData.map((b, i) => (
-                              <Tag key={i} className="m-0 rounded-md border border-border bg-background text-text-secondary px-2 py-0.5">
-                                {b.branch}: <strong className="text-primary">{b.count}</strong>
-                              </Tag>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Students Table */}
-                      <div className="rounded-xl border border-border overflow-hidden">
-                        <Table
-                          dataSource={institution.students || []}
-                          columns={[
-                            {
-                              title: 'Student',
-                              key: 'student',
-                              render: (_, record) => (
-                                <div className="flex items-center gap-3">
-                                  <Avatar size="small" icon={<UserOutlined />} className="bg-background-tertiary text-text-secondary" />
-                                  <div>
-                                    <div className="font-bold text-sm text-text-primary">{record.name}</div>
-                                    <div className="text-xs text-text-tertiary">{record.email}</div>
+                            <Collapse 
+              
+                              accordion 
+              
+                              ghost 
+              
+                              className="bg-transparent"
+              
+                              expandIconPosition="end"
+              
+                              items={selectedCompanyDetails.institutions?.map((institution, idx) => ({
+              
+                                key: idx,
+              
+                                label: (
+              
+                                  <div className="flex items-center justify-between w-full pr-4 py-1">
+              
+                                    <div className="flex items-center gap-3">
+              
+                                      <Avatar size="small" className="bg-primary/10 text-primary border border-primary/20 font-bold">{institution.code?.[0] || 'I'}</Avatar>
+              
+                                      <div>
+              
+                                        <Text strong className="text-text-primary block">{institution.name}</Text>
+              
+                                        <Text type="secondary" className="text-xs font-mono">{institution.code}</Text>
+              
+                                      </div>
+              
+                                    </div>
+              
+                                    <Badge count={institution.studentCount} className="[&_.ant-badge-count]:!bg-primary [&_.ant-badge-count]:shadow-none" />
+              
                                   </div>
-                                </div>
-                              ),
-                            },
-                            { title: 'Roll No.', dataIndex: 'rollNumber', key: 'rollNumber', width: 120, render: (t) => <span className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded text-text-secondary">{t}</span> },
-                            {
-                              title: 'Branch',
-                              dataIndex: 'branch',
-                              key: 'branch',
-                              width: 140,
-                              render: (text) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{text || 'N/A'}</Tag>,
-                            },
-                            {
-                              title: 'Job Profile',
-                              dataIndex: 'jobProfile',
-                              key: 'jobProfile',
-                              width: 160,
-                              render: (text) => <Text className="text-sm">{text || '-'}</Text>,
-                            },
-                            {
-                              title: 'Status',
-                              dataIndex: 'status',
-                              key: 'status',
-                              width: 120,
-                              render: (status) => (
-                                <Tag 
-                                  color={status === 'JOINED' || status === 'COMPLETED' ? 'green' : 'blue'}
-                                  className="m-0 rounded-md border-0 font-bold text-[10px] px-2 py-0.5"
-                                >
-                                  {status}
-                                </Tag>
-                              ),
-                            },
-                            {
-                              title: 'Letter',
-                              dataIndex: 'hasJoiningLetter',
-                              key: 'hasJoiningLetter',
-                              width: 100,
-                              align: 'center',
-                              render: (val) => val ? (
-                                <Tooltip title="Joining Letter Uploaded">
-                                  <CheckCircleOutlined className="text-success text-lg" />
-                                </Tooltip>
-                              ) : (
-                                <Text type="secondary" className="text-xs">-</Text>
-                              ),
-                            },
-                          ]}
-                          rowKey="id"
-                          pagination={{ pageSize: 5, size: 'small', className: "px-4" }}
-                          size="small"
-                          className="custom-table"
-                        />
-                      </div>
-                    </div>
-                  </Panel>
-                ))}
-              </Collapse>
+              
+                                ),
+              
+                                className: "mb-2 bg-surface border border-border rounded-xl overflow-hidden shadow-sm",
+              
+                                children: (
+              
+                                  <div className="space-y-4 pt-2">
+              
+                                    {/* Branch Distribution */}
+              
+                                    {institution.branchWiseData?.length > 0 && (
+              
+                                      <div className="p-3 bg-background-tertiary/30 rounded-xl border border-border/50">
+              
+                                        <Text className="text-[10px] uppercase font-bold text-text-tertiary mb-2 block tracking-widest">Branch Distribution</Text>
+              
+                                        <div className="flex flex-wrap gap-2">
+              
+                                          {institution.branchWiseData.map((b, i) => (
+              
+                                            <Tag key={i} className="m-0 rounded-md border border-border bg-background text-text-secondary px-2 py-0.5">
+              
+                                              {b.branch}: <strong className="text-primary">{b.count}</strong>
+              
+                                            </Tag>
+              
+                                          ))}
+              
+                                        </div>
+              
+                                      </div>
+              
+                                    )}
+              
+              
+              
+                                    {/* Students Table */}
+              
+                                    <div className="rounded-xl border border-border overflow-hidden">
+              
+                                      <Table
+              
+                                        dataSource={institution.students || []}
+              
+                                        pagination={{ pageSize: 5 }}
+              
+                                        size="small"
+              
+                                        columns={[
+              
+                                          {
+              
+                                            title: 'Student',
+              
+                                            key: 'student',
+              
+                                            render: (_, record) => (
+              
+                                              <div className="flex items-center gap-3">
+              
+                                                <Avatar size="small" icon={<UserOutlined />} className="bg-background-tertiary text-text-secondary" />
+              
+                                                <div>
+              
+                                                  <div className="font-bold text-sm text-text-primary">{record.name}</div>
+              
+                                                  <div className="text-xs text-text-tertiary">{record.email}</div>
+              
+                                                </div>
+              
+                                              </div>
+              
+                                            ),
+              
+                                          },
+              
+                                          {
+              
+                                            title: 'Roll No.',
+              
+                                            dataIndex: 'rollNumber',
+              
+                                            key: 'rollNumber',
+              
+                                            width: 120,
+              
+                                            render: (t) => <span className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded text-text-secondary">{t}</span>
+              
+                                          },
+              
+                                          {
+              
+                                            title: 'Branch',
+              
+                                            dataIndex: 'branch',
+              
+                                            key: 'branch',
+              
+                                            width: 140,
+              
+                                            render: (text) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{text || 'N/A'}</Tag>,
+              
+                                          },
+              
+                                          {
+              
+                                            title: 'Job Profile',
+              
+                                            dataIndex: 'jobProfile',
+              
+                                            key: 'jobProfile',
+              
+                                            width: 160,
+              
+                                            render: (text) => <Text className="text-sm">{text || '-'}</Text>,
+              
+                                          },
+              
+                                          {
+              
+                                            title: 'Status',
+              
+                                            dataIndex: 'status',
+              
+                                            key: 'status',
+              
+                                            width: 120,
+              
+                                            render: (status) => (
+              
+                                              <Tag 
+              
+                                                color={status === 'JOINED' || status === 'COMPLETED' ? 'green' : 'blue'}
+              
+                                                className="m-0 rounded-md border-0 font-bold text-[10px] px-2 py-0.5"
+              
+                                              >
+              
+                                                {status}
+              
+                                              </Tag>
+              
+                                            ),
+              
+                                          },
+              
+                                          {
+              
+                                            title: 'Letter',
+              
+                                            dataIndex: 'hasJoiningLetter',
+              
+                                            key: 'hasJoiningLetter',
+              
+                                            width: 100,
+              
+                                            align: 'center',
+              
+                                            render: (val) => val ? (
+              
+                                              <Tooltip title="Joining Letter Uploaded">
+              
+                                                <CheckCircleOutlined className="text-success" />
+              
+                                              </Tooltip>
+              
+                                            ) : (
+              
+                                              <Tooltip title="Not Uploaded">
+              
+                                                <ClockCircleOutlined className="text-text-tertiary" />
+              
+                                              </Tooltip>
+              
+                                            ),
+              
+                                          }
+              
+                                        ]}
+              
+                                      />
+              
+                                    </div>
+              
+                                  </div>
+              
+                                )
+              
+                              }))}
+              
+                            />
               {(!selectedCompanyDetails.institutions || selectedCompanyDetails.institutions.length === 0) && (
                 <Empty description="No institutions found" className="py-8 bg-surface rounded-xl border border-border" />
               )}

@@ -32,7 +32,7 @@ export class BulkStudentService {
       const students: BulkStudentRowDto[] = rawData.map((row: any) => ({
         name: this.cleanString(row['Name'] || row['name'] || row['Student Name']),
         email: this.cleanString(row['Email'] || row['email'])?.toLowerCase(),
-        phone: this.cleanString(row['Phone'] || row['phone'] || row['Contact']),
+        phoneNo: this.cleanString(row['Phone'] || row['phone'] || row['Contact']),
         enrollmentNumber: this.cleanString(
           row['Enrollment Number'] || row['enrollmentNumber'] || row['Admission Number'],
         ),
@@ -399,12 +399,12 @@ export class BulkStudentService {
     const studentData: CreateStudentData = {
       name: studentDto.name,
       email: studentDto.email,
-      phone: studentDto.phone,
-      enrollmentNumber: studentDto.enrollmentNumber,
+      phoneNo: studentDto.phoneNo,
+      admissionNumber: studentDto.enrollmentNumber,
+      rollNumber: studentDto.rollNumber,
       batchId,
       branchId,
       branchName: studentDto.branchName,
-      rollNumber: studentDto.rollNumber,
       dateOfBirth: studentDto.dateOfBirth,
       gender: studentDto.gender,
       address: studentDto.address,

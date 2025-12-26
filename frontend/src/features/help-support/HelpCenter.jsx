@@ -31,7 +31,6 @@ import { helpSupportService, SUPPORT_CATEGORIES, TICKET_PRIORITY } from '../../s
 import { useAuth } from '../../hooks/useAuth';
 
 const { Title, Text, Paragraph } = Typography;
-const { Panel } = Collapse;
 const { TextArea } = Input;
 
 // Enhanced markdown-like text to HTML converter
@@ -333,72 +332,99 @@ const HelpCenter = () => {
                     expandIconPosition="end"
                     ghost
                     className="custom-collapse"
-                  >
-                    {displayFAQs.map((faq) => (
-                      <Panel
-                        key={faq.id}
-                        header={
-                          <div className="py-3">
-                            <div className="flex items-start gap-3">
-                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                                <QuestionCircleOutlined className="text-primary text-sm" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <Text strong className="text-text-primary text-[15px] block mb-1.5 leading-snug">{faq.title}</Text>
-                                <Space size={8} wrap>
-                                  <Tag color={getCategoryInfo(faq.category).color} className="rounded-md border-0 font-bold uppercase tracking-wider text-[10px] m-0">
-                                    {getCategoryInfo(faq.category).label}
-                                  </Tag>
-                                  <Text className="text-text-tertiary text-xs flex items-center gap-1">
-                                    <EyeOutlined /> {faq.viewCount} views
-                                  </Text>
-                                  <Text className="text-text-tertiary text-xs flex items-center gap-1">
-                                    <LikeOutlined /> {faq.helpfulCount || 0} found helpful
-                                  </Text>
-                                </Space>
-                              </div>
+                    items={displayFAQs.map((faq) => ({
+                      key: faq.id,
+                      header: (
+                        <div className="py-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <QuestionCircleOutlined className="text-primary text-sm" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <Text strong className="text-text-primary text-[15px] block mb-1.5 leading-snug">{faq.title}</Text>
+                              <Space size={8} wrap>
+                                <Tag color={getCategoryInfo(faq.category).color} className="rounded-md border-0 font-bold uppercase tracking-wider text-[10px] m-0">
+                                  {getCategoryInfo(faq.category).label}
+                                </Tag>
+                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
+                                  <EyeOutlined /> {faq.viewCount} views
+                                </Text>
+                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
+                                  <LikeOutlined /> {faq.helpfulCount || 0} found helpful
+                                </Text>
+                              </Space>
                             </div>
                           </div>
-                        }
-                        className="border-b border-border last:border-0 hover:bg-background-secondary/30 transition-colors"
-                      >
+                        </div>
+                      ),
+                      className: "border-b border-border last:border-0 hover:bg-background-secondary/30 transition-colors",
+                      label: (
+                        <div className="py-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <QuestionCircleOutlined className="text-primary text-sm" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <Text strong className="text-text-primary text-[15px] block mb-1.5 leading-snug">{faq.title}</Text>
+                              <Space size={8} wrap>
+                                <Tag color={getCategoryInfo(faq.category).color} className="rounded-md border-0 font-bold uppercase tracking-wider text-[10px] m-0">
+                                  {getCategoryInfo(faq.category).label}
+                                </Tag>
+                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
+                                  <EyeOutlined /> {faq.viewCount} views
+                                </Text>
+                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
+                                  <LikeOutlined /> {faq.helpfulCount || 0} found helpful
+                                </Text>
+                              </Space>
+                            </div>
+                          </div>
+                        </div>
+                      ),
+                      children: (
                         <div className="pb-5 pl-11 pr-4">
                           {faq.summary && (
                             <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-3 mb-4">
                               <Text className="text-text-secondary text-sm italic">{faq.summary}</Text>
                             </div>
                           )}
-                          <div
-                            className="faq-content prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{ __html: renderMarkdown(faq.content) }}
-                          />
-
-                          {faq.tags && faq.tags.length > 0 && (
-                            <div className="mt-5 pt-4 border-t border-border/50">
-                              <Text className="text-text-tertiary text-xs mr-2">Related topics:</Text>
-                              {faq.tags.map((tag) => (
-                                <Tag key={tag} className="rounded-full bg-background-tertiary border-0 text-text-secondary text-xs mb-1">{tag}</Tag>
-                              ))}
-                            </div>
-                          )}
-
-                          <div className="bg-background-tertiary/50 rounded-xl p-3 mt-5 flex items-center justify-between">
-                            <Text className="text-text-tertiary text-sm">Was this article helpful?</Text>
-                            <Button
-                              type="primary"
-                              ghost
-                              size="small"
-                              icon={<LikeOutlined />}
-                              onClick={() => handleMarkHelpful(faq.id)}
-                              className="rounded-lg"
-                            >
-                              Yes, this helped
-                            </Button>
+                          <Paragraph className="text-text-secondary leading-relaxed mb-6">
+                            {faq.content}
+                          </Paragraph>
+                          
+                          <Divider className="my-4 border-border/50" />
+                          
+                          <div className="flex items-center justify-between">
+                            <Text className="text-xs text-text-tertiary font-medium">Was this helpful?</Text>
+                            <Space>
+                              <Button 
+                                size="small" 
+                                icon={<LikeOutlined />} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVote(faq.id, 'up');
+                                }}
+                                className="rounded-md text-xs hover:text-success hover:border-success"
+                              >
+                                Yes
+                              </Button>
+                              <Button 
+                                size="small" 
+                                icon={<DislikeOutlined />} 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleVote(faq.id, 'down');
+                                }}
+                                className="rounded-md text-xs hover:text-error hover:border-error"
+                              >
+                                No
+                              </Button>
+                            </Space>
                           </div>
                         </div>
-                      </Panel>
-                    ))}
-                  </Collapse>
+                      )
+                    }))}
+                  />
                 </Card>
               </>
             )}

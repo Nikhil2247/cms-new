@@ -96,11 +96,35 @@ export const useFacultyDashboard = () => {
   // Calculate statistics from dashboard data
   const stats = useMemo(() => {
     const dashboardStats = dashboard.stats || {};
+
+    // FIXED: Only count completed visits that are both:
+    // 1. In the past (visitDate < now)
+    // 2. After the internship start date (if available)
+    const now = new Date();
+    const completedVisitsCount = visitLogs.list.filter(visit => {
+      const visitDate = new Date(visit.visitDate);
+
+      // Visit must be in the past
+      if (visitDate >= now) return false;
+
+      // Check if visit is after internship start date
+      const internshipStartDate = visit.application?.internship?.startDate ||
+                                   visit.student?.activeInternship?.startDate;
+
+      if (internshipStartDate) {
+        const startDate = new Date(internshipStartDate);
+        return visitDate >= startDate;
+      }
+
+      // If no start date available, count the visit
+      return true;
+    }).length;
+
     return {
       totalStudents: dashboardStats.totalStudents || students.total || 0,
       activeStudents: dashboardStats.activeInternships || 0,
       totalVisits: dashboardStats.totalVisits || visitLogs.total || 0,
-      completedVisits: visitLogs.list.filter(v => new Date(v.visitDate) < new Date()).length,
+      completedVisits: completedVisitsCount,
       pendingReports: dashboardStats.pendingReports || 0,
       pendingApprovals: dashboardStats.pendingApprovals || applications.total || 0,
       totalApplications: applications.total || 0,

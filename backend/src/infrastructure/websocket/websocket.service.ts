@@ -12,6 +12,7 @@ import {
   SessionUpdatePayload,
   ServiceAlertPayload,
   BackupProgressPayload,
+  RestoreProgressPayload,
   BulkOperationProgressPayload,
 } from './dto';
 
@@ -146,7 +147,19 @@ export class WebSocketService {
       timestamp: new Date(),
     };
     this.sendToAdminChannel(AdminChannel.BACKUP, WebSocketEvent.BACKUP_PROGRESS, payload);
-    this.logger.debug(`Sent backup progress: ${data.status}`);
+    this.logger.debug(`Sent backup progress: ${data.status} - ${data.progress}%`);
+  }
+
+  /**
+   * Send restore progress update
+   */
+  sendRestoreProgress(data: Omit<RestoreProgressPayload, 'timestamp'>): void {
+    const payload: RestoreProgressPayload = {
+      ...data,
+      timestamp: new Date(),
+    };
+    this.sendToAdminChannel(AdminChannel.BACKUP, WebSocketEvent.RESTORE_PROGRESS, payload);
+    this.logger.debug(`Sent restore progress: ${data.stage} - ${data.progress}%`);
   }
 
   /**

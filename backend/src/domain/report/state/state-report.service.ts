@@ -38,7 +38,10 @@ export class StateReportService {
               },
             }),
             this.prisma.user.count({
-              where: { role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] } },
+              where: {
+                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                active: true,
+              },
             }),
           ]);
 
@@ -83,6 +86,7 @@ export class StateReportService {
                   where: {
                     institutionId: institution.id,
                     role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                    active: true,
                   },
                 }),
                 // Only count self-identified internships
@@ -173,7 +177,7 @@ export class StateReportService {
             pending,
             rejected,
             needsRevision,
-            submissionRate: total > 0 ? (approved / total) * 100 : 0,
+            submissionRate: total > 0 ? Math.round((approved / total) * 100) : 0,
             institutionCount: uniqueStudents.size,
           };
         },

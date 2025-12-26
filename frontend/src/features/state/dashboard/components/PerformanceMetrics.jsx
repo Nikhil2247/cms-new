@@ -50,15 +50,17 @@ const PerformanceMetrics = ({ stats }) => {
   if (!stats) return null;
 
   // Use the detailed stats if available, otherwise fallback
+  // Use studentsWithInternships as fallback (students with active internships)
   const assignments = stats.assignments || {
-    total: stats.students?.active || 0,
+    total: stats.assignments?.studentsWithInternships || 0,
     assigned: 0,
-    unassigned: stats.students?.active || 0
+    unassigned: stats.assignments?.studentsWithInternships || 0,
+    studentsWithInternships: stats.assignments?.studentsWithInternships || 0
   };
 
   const visits = stats.facultyVisits || {
     expectedThisMonth: 0,
-    completed: 0,
+    thisMonth: 0,
     pendingThisMonth: 0
   };
 
@@ -111,8 +113,8 @@ const PerformanceMetrics = ({ stats }) => {
           
           <MetricItem
             label="Faculty Visits"
-            value={visits.completed || visits.thisMonth}
-            total={visits.expectedThisMonth || (visits.completed + visits.pendingThisMonth)}
+            value={visits.thisMonth || 0}
+            total={visits.expectedThisMonth || (visits.thisMonth + visits.pendingThisMonth) || 0}
             color="rgb(var(--color-info))"
             icon={<CalendarOutlined className="text-info" />}
             tooltip="Completed visits vs expected for this month"

@@ -858,6 +858,7 @@ export class GrievanceService {
       const [
         total,
         pending,
+        submitted,
         underReview,
         inProgress,
         escalated,
@@ -867,6 +868,7 @@ export class GrievanceService {
       ] = await Promise.all([
         this.prisma.grievance.count({ where: whereClause }),
         this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.PENDING } }),
+        this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.SUBMITTED } }),
         this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.UNDER_REVIEW } }),
         this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.IN_PROGRESS } }),
         this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.ESCALATED } }),
@@ -898,7 +900,7 @@ export class GrievanceService {
       return {
         total,
         byStatus: {
-          pending: pending + (await this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.SUBMITTED } })),
+          pending: pending + submitted, // Combine PENDING and SUBMITTED (both are unassigned/new grievances)
           underReview,
           inProgress,
           escalated,
@@ -920,7 +922,7 @@ export class GrievanceService {
         },
         // Summary for quick view
         summary: {
-          active: pending + underReview + inProgress + escalated + (await this.prisma.grievance.count({ where: { ...whereClause, status: GrievanceStatus.SUBMITTED } })),
+          active: pending + submitted + underReview + inProgress + escalated,
           resolved: resolved + closed,
           rejected,
         },

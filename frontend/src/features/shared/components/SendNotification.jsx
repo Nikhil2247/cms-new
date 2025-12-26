@@ -185,7 +185,7 @@ const SendNotification = () => {
     return (
       <Card>
         <Alert
-          message="Not Available"
+          title="Not Available"
           description="You don't have permission to send notifications."
           type="info"
           showIcon

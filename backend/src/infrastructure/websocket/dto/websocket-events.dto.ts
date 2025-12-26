@@ -23,6 +23,7 @@ export enum WebSocketEvent {
 
   // Admin Operations events
   BACKUP_PROGRESS = 'backupProgress',
+  RESTORE_PROGRESS = 'restoreProgress',
   BULK_OPERATION_PROGRESS = 'bulkOperationProgress',
   USER_ACTIVITY = 'userActivity',
 }
@@ -123,6 +124,18 @@ export interface ServiceAlertPayload {
 export interface BackupProgressPayload {
   backupId: string;
   status: 'in_progress' | 'completed' | 'failed';
+  progress?: number;
+  message?: string;
+  timestamp: Date;
+}
+
+/**
+ * Restore progress payload
+ */
+export interface RestoreProgressPayload {
+  backupId: string;
+  status: 'in_progress' | 'completed' | 'failed';
+  stage: 'initializing' | 'downloading' | 'restoring' | 'finalizing' | 'done';
   progress?: number;
   message?: string;
   timestamp: Date;

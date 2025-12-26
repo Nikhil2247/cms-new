@@ -856,23 +856,42 @@ export const selectRecentApplications = createSelector(
 
 /**
  * Monthly reports with internship info from applications
+ * FIXED: Only include reports that are after the internship start date
  * @param {Object} state - Redux root state
  * @returns {Array} Array of monthly reports enriched with application data
  */
 export const selectMonthlyReportsWithInfo = createSelector(
   [selectNormalizedApplicationsList],
-  (applications) => applications.flatMap(app =>
-    (app.monthlyReports || []).map(report => ({
-      ...report,
-      applicationId: app.id,
-      internshipTitle: app.internship?.title || app.title,
-      companyName: app.internship?.industry?.companyName || app.companyName,
-    }))
-  )
+  (applications) => applications.flatMap(app => {
+    const internshipStartDate = app.internship?.startDate;
+
+    return (app.monthlyReports || [])
+      .filter(report => {
+        // FIXED: Exclude reports before internship start date
+        if (internshipStartDate) {
+          const startDate = new Date(internshipStartDate);
+          const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
+          const internshipStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+
+          // Only include reports >= internship start month
+          return reportDate >= internshipStartMonth;
+        }
+
+        // If no start date, include the report
+        return true;
+      })
+      .map(report => ({
+        ...report,
+        applicationId: app.id,
+        internshipTitle: app.internship?.title || app.title,
+        companyName: app.internship?.industry?.companyName || app.companyName,
+      }));
+  })
 );
 
 /**
  * Dashboard statistics calculated from current data
+ * FIXED: Ensure self-identified count is consistent
  * @param {Object} state - Redux root state
  * @returns {Object} Statistics object with counts
  */
@@ -883,22 +902,30 @@ export const selectCalculatedStats = createSelector(
     selectInternshipsList,
     selectNormalizedGrievancesList,
   ],
-  (applications, selfIdentified, internships, grievances) => ({
-    totalApplications: applications.length,
-    activeApplications: applications.filter(app =>
-      ['APPLIED', 'SHORTLISTED', 'UNDER_REVIEW'].includes(app.status)
-    ).length,
-    selectedApplications: applications.filter(app =>
-      app.status === 'SELECTED' || app.status === 'APPROVED'
-    ).length,
-    completedInternships: applications.filter(app => app.status === 'COMPLETED').length,
-    totalInternships: internships.length,
-    grievances: grievances.length,
-    selfIdentifiedCount: selfIdentified.length,
-    ongoingInternships: applications.filter(app =>
-      ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status)
-    ).length,
-  })
+  (applications, selfIdentified, internships, grievances) => {
+    // FIXED: Use a consistent definition for self-identified internships
+    // Count applications where isSelfIdentified is true OR internship.isSelfIdentified is true
+    const selfIdentifiedCount = applications.filter(app =>
+      app.isSelfIdentified === true || app.internship?.isSelfIdentified === true
+    ).length;
+
+    return {
+      totalApplications: applications.length,
+      activeApplications: applications.filter(app =>
+        ['APPLIED', 'SHORTLISTED', 'UNDER_REVIEW'].includes(app.status)
+      ).length,
+      selectedApplications: applications.filter(app =>
+        app.status === 'SELECTED' || app.status === 'APPROVED'
+      ).length,
+      completedInternships: applications.filter(app => app.status === 'COMPLETED').length,
+      totalInternships: internships.length,
+      grievances: grievances.length,
+      selfIdentifiedCount: selfIdentifiedCount,
+      ongoingInternships: applications.filter(app =>
+        ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status)
+      ).length,
+    };
+  }
 );
 
 /**

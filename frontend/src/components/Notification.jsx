@@ -3,7 +3,6 @@ import {
   Dropdown,
   Badge,
   Button,
-  List,
   Typography,
   Empty,
   Space,
@@ -11,7 +10,7 @@ import {
   Avatar,
   Tooltip,
   Popconfirm,
-  message,
+  App,
   Drawer,
   Spin,
   Input,
@@ -42,6 +41,7 @@ const { Text, Title } = Typography;
 
 const NotificationDropdown = () => {
   const { token } = theme.useToken();
+  const { message } = App.useApp();
   const [open, setOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -147,85 +147,6 @@ const NotificationDropdown = () => {
     );
   }, [notifications, searchText]);
 
-  const renderNotificationItem = (item) => (
-    <List.Item
-      key={item.id}
-      className={`notification-item cursor-pointer transition-all duration-200 border-b border-border/50 ${
-        !item.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''
-      }`}
-      style={{
-        padding: '12px 16px',
-      }}
-      onClick={() => {
-        if (!item.read) handleMarkAsRead(item.id);
-      }}
-    >
-      <List.Item.Meta
-        avatar={
-          <Avatar
-            size={40}
-            className="bg-background-tertiary flex items-center justify-center"
-          >
-            {getNotificationIcon(item.type)}
-          </Avatar>
-        }
-        title={
-          <div className="flex items-center justify-between">
-            <Text strong className={!item.read ? 'text-primary' : ''}>
-              {item.title}
-            </Text>
-            {!item.read && (
-              <span className="w-2 h-2 bg-primary rounded-full" />
-            )}
-          </div>
-        }
-        description={
-          <div>
-            <Text
-              type="secondary"
-              className="text-sm line-clamp-2 block mb-1"
-            >
-              {item.body}
-            </Text>
-            <div className="flex items-center justify-between mt-1">
-              <Text type="secondary" className="text-xs">
-                {formatTimeAgo(item.createdAt || item.timestamp)}
-              </Text>
-              <Space size="small">
-                {!item.read && (
-                  <Tooltip title="Mark as read">
-                    <Button
-                      type="text"
-                      size="small"
-                      icon={<CheckOutlined />}
-                      onClick={(e) => handleMarkAsRead(item.id, e)}
-                    />
-                  </Tooltip>
-                )}
-                <Tooltip title="Delete">
-                  <Popconfirm
-                    title="Delete notification?"
-                    onConfirm={(e) => handleDelete(item.id, e)}
-                    okText="Yes"
-                    cancelText="No"
-                  >
-                    <Button
-                      type="text"
-                      size="small"
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </Popconfirm>
-                </Tooltip>
-              </Space>
-            </div>
-          </div>
-        }
-      />
-    </List.Item>
-  );
-
   const dropdownContent = (
     <div
       className={`notification-dropdown ${darkMode ? 'dark' : ''} w-[380px] max-h-[480px] bg-background rounded-xl shadow-soft-lg overflow-hidden`}
@@ -277,16 +198,82 @@ const NotificationDropdown = () => {
       </div>
 
       {/* Notification List */}
-      <div className="max-h-[360px] overflow-y-auto">
+      <div className="max-h-[360px] overflow-y-auto flex flex-col">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Spin />
           </div>
         ) : notifications.length > 0 ? (
-          <List
-            dataSource={notifications.slice(0, 5)}
-            renderItem={renderNotificationItem}
-          />
+          notifications.slice(0, 5).map((item, index) => (
+            <div
+              key={item.id || index}
+              className={`
+                notification-item cursor-pointer transition-all duration-200 border-b border-border/50 flex items-start gap-4 p-4
+                ${!item.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''}
+              `}
+              onClick={() => {
+                if (!item.read) handleMarkAsRead(item.id);
+              }}
+            >
+              <Avatar
+                size={40}
+                className="bg-background-tertiary flex items-center justify-center shrink-0"
+              >
+                {getNotificationIcon(item.type)}
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1 gap-2">
+                  <Text strong className={`text-sm truncate ${!item.read ? 'text-primary' : ''}`}>
+                    {item.title}
+                  </Text>
+                  {!item.read && (
+                    <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                  )}
+                </div>
+                <Text
+                  type="secondary"
+                  className="text-xs line-clamp-2 block mb-2"
+                >
+                  {item.body}
+                </Text>
+                <div className="flex items-center justify-between">
+                  <Text type="secondary" className="text-[10px]">
+                    {formatTimeAgo(item.createdAt || item.timestamp)}
+                  </Text>
+                  <Space size="small">
+                    {!item.read && (
+                      <Tooltip title="Mark as read">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<CheckOutlined className="text-[10px]" />}
+                          onClick={(e) => handleMarkAsRead(item.id, e)}
+                          className="h-auto p-0"
+                        />
+                      </Tooltip>
+                    )}
+                    <Tooltip title="Delete">
+                      <Popconfirm
+                        title="Delete notification?"
+                        onConfirm={(e) => handleDelete(item.id, e)}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined className="text-[10px]" />}
+                          onClick={(e) => e.stopPropagation()}
+                          className="h-auto p-0"
+                        />
+                      </Popconfirm>
+                    </Tooltip>
+                  </Space>
+                </div>
+              </div>
+            </div>
+          ))
         ) : (
           <Empty
             image={<InboxOutlined className="text-5xl text-text-tertiary" />}
@@ -363,7 +350,7 @@ const NotificationDropdown = () => {
         }
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        width={420}
+        styles={{ wrapper: { width: 420 } }}
         placement="right"
       >
         <Input
@@ -379,10 +366,78 @@ const NotificationDropdown = () => {
             <Spin />
           </div>
         ) : filteredNotifications.length > 0 ? (
-          <List
-            dataSource={filteredNotifications}
-            renderItem={renderNotificationItem}
-          />
+          <div className="flex flex-col gap-2">
+            {filteredNotifications.map((item, index) => (
+              <div
+                key={item.id || index}
+                className={`
+                  notification-item cursor-pointer transition-all duration-200 border-b border-border/50 flex items-start gap-4 p-4
+                  ${!item.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''}
+                `}
+                onClick={() => {
+                  if (!item.read) handleMarkAsRead(item.id);
+                }}
+              >
+                <Avatar
+                  size={40}
+                  className="bg-background-tertiary flex items-center justify-center shrink-0"
+                >
+                  {getNotificationIcon(item.type)}
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1 gap-2">
+                    <Text strong className={`text-sm truncate ${!item.read ? 'text-primary' : ''}`}>
+                      {item.title}
+                    </Text>
+                    {!item.read && (
+                      <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                    )}
+                  </div>
+                  <Text
+                    type="secondary"
+                    className="text-xs line-clamp-2 block mb-2"
+                  >
+                    {item.body}
+                  </Text>
+                  <div className="flex items-center justify-between">
+                    <Text type="secondary" className="text-[10px]">
+                      {formatTimeAgo(item.createdAt || item.timestamp)}
+                    </Text>
+                    <Space size="small">
+                      {!item.read && (
+                        <Tooltip title="Mark as read">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<CheckOutlined className="text-[10px]" />}
+                            onClick={(e) => handleMarkAsRead(item.id, e)}
+                            className="h-auto p-0"
+                          />
+                        </Tooltip>
+                      )}
+                      <Tooltip title="Delete">
+                        <Popconfirm
+                          title="Delete notification?"
+                          onConfirm={(e) => handleDelete(item.id, e)}
+                          okText="Yes"
+                          cancelText="No"
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined className="text-[10px]" />}
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-auto p-0"
+                          />
+                        </Popconfirm>
+                      </Tooltip>
+                    </Space>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         ) : (
           <Empty
             image={<InboxOutlined style={{ fontSize: 48, color: token.colorTextDisabled }} />}

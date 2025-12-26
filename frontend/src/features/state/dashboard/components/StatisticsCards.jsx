@@ -193,7 +193,7 @@ const StatisticsCards = ({ stats }) => {
     {
       title: 'Active Internships',
       value: activeInternships,
-      subtitle: `${totalInternships} total self-identified`,
+      subtitle: `${totalInternships} students with approved internships`,
       icon: <BookOutlined />,
       bgClass: 'bg-pink-500/10',
       colorClass: 'text-pink-500',
@@ -224,10 +224,12 @@ const StatisticsCards = ({ stats }) => {
       badgeStatus: 'warning',
       alertMessage: assignments?.unassigned > 0 ? `${assignments.unassigned} students need mentor assignment` : null,
       details: [
-        { label: 'Total Assignments', value: assignments?.total || 0, icon: <TeamOutlined /> },
-        { label: 'Active Assignments', value: assignments?.active || 0, icon: <CheckCircleOutlined /> },
-        { label: 'Students with Internships', value: assignments?.studentsWithInternships || 0, icon: <BookOutlined /> },
-        { label: 'Unassigned Students', value: assignments?.unassigned || 0, icon: <WarningOutlined />, highlight: (assignments?.unassigned || 0) > 0 },
+        { label: 'Total Students', value: assignments?.totalStudents || totalStudents || 0, icon: <TeamOutlined /> },
+        { label: 'Students with Mentors', value: assignments?.assigned || 0, icon: <CheckCircleOutlined /> },
+        { label: 'Students with no Mentor', value: assignments?.unassigned || 0, icon: <WarningOutlined />, highlight: (assignments?.unassigned || 0) > 0 },
+        { label: 'Total Internships', value: assignments?.studentsWithInternships || 0, icon: <BookOutlined /> },
+        { label: 'Internships with Mentors', value: assignments?.internshipsWithMentors || 0, icon: <CheckCircleOutlined /> },
+        { label: 'Internships without Mentors', value: assignments?.internshipsWithoutMentors || 0, icon: <WarningOutlined />, highlight: (assignments?.internshipsWithoutMentors || 0) > 0 },
       ],
     },
     {

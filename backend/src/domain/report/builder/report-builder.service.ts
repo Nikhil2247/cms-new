@@ -50,7 +50,7 @@ export class ReportBuilderService {
   };
 
   constructor(
-    @InjectQueue('report-generation') private reportQueue: Queue,
+    @InjectQueue('{report-generation}') private reportQueue: Queue,
     private prisma: PrismaService,
   ) {}
 

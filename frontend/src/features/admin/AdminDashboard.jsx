@@ -24,6 +24,7 @@ const AdminDashboard = () => {
     metrics,
     sessionStats,
     backupProgress,
+    restoreProgress,
     bulkOperationProgress,
     connected,
     loading,
@@ -76,7 +77,7 @@ const AdminDashboard = () => {
           Database Management
         </span>
       ),
-      children: <DatabaseManagement backupProgress={backupProgress} connected={connected} />,
+      children: <DatabaseManagement backupProgress={backupProgress} restoreProgress={restoreProgress} connected={connected} />,
     },
     {
       key: 'users',

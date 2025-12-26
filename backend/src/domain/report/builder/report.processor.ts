@@ -15,7 +15,7 @@ import {
 } from './interfaces/report.interface';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 
-@Processor('report-generation')
+@Processor('{report-generation}')
 @Injectable()
 export class ReportProcessor extends WorkerHost {
   private readonly logger = new Logger(ReportProcessor.name);

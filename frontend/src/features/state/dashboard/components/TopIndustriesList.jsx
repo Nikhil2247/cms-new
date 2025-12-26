@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, List, Avatar, Typography, Tag, Empty, Tooltip } from 'antd';
+import { Card, Avatar, Typography, Tag, Empty, Tooltip } from 'antd';
 import {
   ShopOutlined,
   TeamOutlined,
@@ -26,7 +26,7 @@ const CompanyItem = ({ item, rank }) => {
   };
 
   return (
-    <List.Item className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
+    <div className="!px-3 !py-2 rounded-xl hover:bg-background-tertiary transition-colors mb-1 border-b border-border/50 last:border-0">
       <div className="flex items-center w-full gap-3">
         <div
           className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 ${getRankClass(rank)}`}
@@ -81,7 +81,7 @@ const CompanyItem = ({ item, rank }) => {
           </Tag>
         </div>
       </div>
-    </List.Item>
+    </div>
   );
 };
 
@@ -108,13 +108,11 @@ const TopIndustriesList = ({ industries = [], loading, onViewAll }) => {
       styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '16px 20px' }, body: { padding: '12px' } }}
     >
       {industries.length > 0 ? (
-        <List
-          dataSource={industries.slice(0, 5)}
-          renderItem={(item, index) => (
-            <CompanyItem item={item} rank={index} />
-          )}
-          split={false}
-        />
+        <div className="flex flex-col">
+          {industries.slice(0, 5).map((item, index) => (
+            <CompanyItem key={item.id || index} item={item} rank={index} />
+          ))}
+        </div>
       ) : (
         <Empty
           image={Empty.PRESENTED_IMAGE_SIMPLE}

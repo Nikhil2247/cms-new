@@ -8,6 +8,7 @@ import {
 import { Observable } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
 import { Request, Response } from 'express';
+import { getClientIp, getUserId } from '../utils/request.utils';
 
 /**
  * Logging Interceptor
@@ -26,88 +27,43 @@ export class LoggingInterceptor implements NestInterceptor {
 
     const { method, url, headers } = request;
     const userAgent = headers['user-agent'] || 'unknown';
-
-    // Get client IP (handle proxies)
-    const clientIp = this.getClientIp(request);
-
-    // Start timer
+    const clientIp = getClientIp(request);
     const startTime = Date.now();
 
-    // Log incoming request (user not yet available - JWT guard hasn't run)
-    this.logger.log(
-      `Incoming Request: ${method} ${url} - IP: ${clientIp}`,
-    );
+    // Log incoming request (user not available yet - JWT guard hasn't run)
+    this.logger.log(`Incoming Request: ${method} ${url} - IP: ${clientIp}`);
 
     return next.handle().pipe(
       tap(() => {
-        // Calculate duration
         const duration = Date.now() - startTime;
         const statusCode = response.statusCode;
+        const userId = getUserId(request); // Read after guards have run
 
-        // Get user AFTER guards have run (request.user is now populated)
-        const user = (request as any).user;
-        const userId = user?.userId || user?.id || 'anonymous';
-
-        // Log successful response
         this.logger.log(
           `${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId} - Agent: ${this.truncate(userAgent, 50)}`,
         );
 
-        // Log slow requests (> 1 second)
         if (duration > 1000) {
-          this.logger.warn(
-            `Slow Request Detected: ${method} ${url} took ${duration}ms`,
-          );
+          this.logger.warn(`Slow Request Detected: ${method} ${url} took ${duration}ms`);
         }
       }),
       catchError((error) => {
-        // Calculate duration
         const duration = Date.now() - startTime;
         const statusCode = error.status || 500;
+        const userId = getUserId(request);
 
-        // Get user AFTER guards have run
-        const user = (request as any).user;
-        const userId = user?.userId || user?.id || 'anonymous';
-
-        // Log error
         this.logger.error(
           `${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId} - Error: ${error.message}`,
           error.stack,
         );
 
-        // Re-throw error to be handled by exception filter
         throw error;
       }),
     );
   }
 
-  /**
-   * Get client IP address (handle proxies and load balancers)
-   */
-  private getClientIp(request: Request): string {
-    // Check X-Forwarded-For header (added by proxies)
-    const forwarded = request.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string') {
-      return forwarded.split(',')[0].trim();
-    }
-
-    // Check X-Real-IP header
-    const realIp = request.headers['x-real-ip'];
-    if (realIp) {
-      return realIp as string;
-    }
-
-    // Fall back to direct connection IP
-    return request.ip || request.socket?.remoteAddress || 'unknown';
-  }
-
-  /**
-   * Truncate string to specified length
-   */
   private truncate(str: string, maxLength: number): string {
-    if (!str || str.length <= maxLength) {
-      return str;
-    }
+    if (!str || str.length <= maxLength) return str;
     return str.substring(0, maxLength) + '...';
   }
 }

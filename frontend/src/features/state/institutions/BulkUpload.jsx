@@ -444,7 +444,7 @@ const BulkUpload = () => {
 
             {uploadResult.errors && uploadResult.errors.length > 0 && (
               <Alert
-                message="Some institutions failed to upload"
+                title="Some institutions failed to upload"
                 description={
                   <div className="mt-2">
                     <ul className="list-disc pl-4 space-y-1 text-sm">

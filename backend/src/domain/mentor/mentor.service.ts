@@ -57,10 +57,7 @@ export class MentorService {
         throw new BadRequestException('Mentor must be a faculty supervisor');
       }
 
-      // Check if mentor and student belong to same institution
-      if (student.institutionId !== mentor.institutionId) {
-        throw new BadRequestException('Mentor and student must belong to the same institution');
-      }
+      // Note: Cross-institution mentoring is allowed - faculty can mentor students from other institutions
 
       // Deactivate existing assignment(s)
       await this.prisma.mentorAssignment.updateMany({

@@ -15,12 +15,12 @@ export class CreateStudentDto {
   @ApiProperty({ description: 'Student phone number', required: false })
   @IsString()
   @IsOptional()
-  phone?: string;
+  phoneNo?: string;
 
-  @ApiProperty({ description: 'Student enrollment number' })
+  @ApiProperty({ description: 'Student roll number' })
   @IsString()
   @IsNotEmpty()
-  enrollmentNumber: string;
+  rollNumber: string;
 
   @ApiProperty({ description: 'Batch ID' })
   @IsString()
