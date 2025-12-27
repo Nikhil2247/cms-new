@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -ExecutionPolicy Bypass -File \".\\\\scripts\\\\run-migration-pipeline.ps1\" \"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-26_03-14-07.gz\")",
+      "Bash(npx ts-node:*)",
+      "Bash(node -e:*)",
+      "Bash(mongorestore:*)",
+      "Bash(set SKIP_RESTORE=true)",
+      "Bash(mongosh \"mongodb://admin:admin123@147.93.106.69:27017/cms_db?authSource=admin\" --eval \"db.User.countDocuments\\(\\)\")",
+      "Bash(where:*)"
+    ]
+  }
+}
