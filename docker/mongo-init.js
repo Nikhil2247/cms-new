@@ -9,18 +9,18 @@ db = db.getSiblingDB('admin');
 
 // Authenticate as root user
 db.auth(
-  process.env.MONGO_INITDB_ROOT_USERNAME || 'admin',
-  process.env.MONGO_INITDB_ROOT_PASSWORD || 'admin123'
+  process.env.MONGO_ROOT_USER || 'admin',
+  process.env.MONGO_ROOT_PASSWORD || 'Admin@1234'
 );
 
 // Switch to application database
-const dbName = process.env.MONGO_INITDB_DATABASE || 'cms';
+const dbName = process.env.MONGO_DATABASE || 'cms_db';
 db = db.getSiblingDB(dbName);
 
 // Create application user with read/write permissions
 // Password is read from environment variable for security
 const appUser = process.env.MONGO_APP_USER || 'cmsuser';
-const appPassword = process.env.MONGO_APP_PASSWORD || process.env.MONGO_INITDB_ROOT_PASSWORD || 'changeme';
+const appPassword = process.env.MONGO_APP_PASSWORD || process.env.MONGO_ROOT_PASSWORD || 'changeme';
 
 try {
   db.createUser({
