@@ -24,9 +24,6 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Use lowercase for repository paths to avoid registry errors
-  FRONTEND_IMAGE: ${{ github.repository }}/frontend
-  BACKEND_IMAGE: ${{ github.repository }}/backend
   NODE_VERSION: '20'
 
 concurrency:
@@ -116,7 +113,14 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+
+      # FIX: Convert repository name to lowercase for Docker Registry compatibility
+      - name: Set lower case owner and repo name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> ${GITHUB_ENV}
+
       - uses: docker/setup-buildx-action@v3
+      
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -124,22 +128,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Backend Build
+      # Backend Build using Lowercase Repo Name
       - name: Build and push Backend
         uses: docker/build-push-action@v6
         with:
           context: ./backend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/backend:latest
           platforms: linux/amd64
 
-      # Frontend Build
+      # Frontend Build using Lowercase Repo Name
       - name: Build and push Frontend
         uses: docker/build-push-action@v6
         with:
           context: ./frontend
           push: true
-          tags: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE }}:latest
+          tags: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}/frontend:latest
           platforms: linux/amd64
           build-args: |
             VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL || 'https://api.sukeerat.com' }}
@@ -161,24 +165,25 @@ jobs:
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
             set -e
+            # Ensure this matches your VPS path
             cd ${{ vars.DEPLOY_PATH || '/root/punjabinternship/cms-new' }}
             
             # Login to registry on VPS
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
-            # Pull and restart services
+            # Pull new images and restart
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             
-            # Updated Health Check for Port 8000
+            # Health Check for your NestJS Backend on Port 8000
             echo "Running health checks on port 8000..."
             for i in {1..12}; do
               if curl -sf http://localhost:8000/health > /dev/null; then
-                echo "Deployment Successful: Backend is Healthy!"
+                echo "Success: PlaceIntern Backend is Online!"
                 exit 0
               fi
-              echo "Waiting for backend... attempt $i"
+              echo "Waiting for container startup... attempt $i"
               sleep 10
             done
-            echo "Health check failed!"
+            echo "Critical: Health check failed after 2 minutes."
             exit 1
