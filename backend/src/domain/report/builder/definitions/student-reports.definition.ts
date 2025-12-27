@@ -23,7 +23,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'createdAt', label: 'Registered On', type: 'date', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
         { label: '1st Year', value: 1 },
@@ -61,7 +61,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'visitsCompleted', label: 'Visits Completed', type: 'number', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'internshipStatus', label: 'Internship Status', type: 'select', required: false, options: [
         { label: 'Not Started', value: 'NOT_STARTED' },
@@ -94,7 +94,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'complianceScore', label: 'Compliance %', type: 'number', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'complianceLevel', label: 'Compliance Level', type: 'select', required: false, options: [
         { label: 'Compliant (80%+)', value: 'high' },
@@ -124,7 +124,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'avgComplianceScore', label: 'Avg Compliance %', type: 'number', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'academicYear', label: 'Academic Year', type: 'select', dynamic: true, required: false },
     ],
     groupBy: ['institutionName'],

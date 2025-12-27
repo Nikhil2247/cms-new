@@ -48,7 +48,7 @@ const NotificationItem = ({
         flex items-start gap-4 ${compact ? 'p-4' : 'p-5'}
         ${!read 
           ? 'bg-blue-50/40 dark:bg-blue-900/10' 
-          : 'bg-white dark:bg-slate-900 hover:bg-gray-50 dark:hover:bg-slate-800'}
+          : 'bg-surface hover:bg-surface-hover'}
         ${selectable ? 'select-none' : ''}
         ${selected ? 'ring-2 ring-blue-500 ring-inset' : ''}
         group
@@ -60,7 +60,7 @@ const NotificationItem = ({
           className={`
             w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-1
             transition-all duration-200
-            ${selected ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-200' : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 group-hover:border-blue-400'}
+            ${selected ? 'bg-blue-600 border-blue-600 shadow-sm shadow-blue-200' : 'border-border bg-surface group-hover:border-blue-400'}
           `}
         >
           {selected && <CheckOutlined className="text-white text-[10px] font-bold" />}
@@ -71,7 +71,7 @@ const NotificationItem = ({
       <div className="relative shrink-0">
         <div className={`
           w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110 duration-300
-          ${!read ? 'bg-blue-100 text-blue-600 shadow-sm' : 'bg-gray-100 dark:bg-slate-800 text-gray-500'}
+          ${!read ? 'bg-blue-100 text-blue-600 shadow-sm' : 'bg-background-secondary text-gray-500'}
         `}>
           {getNotificationIcon(type, 18)}
         </div>
@@ -97,7 +97,7 @@ const NotificationItem = ({
                 </Text>
               </Tooltip>
               {showType && type && (
-                <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400 border border-gray-200 dark:border-slate-700`}>
+                <span className={`text-[9px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-background-secondary text-gray-500 dark:text-slate-400 border border-border`}>
                   {type.replace(/_/g, ' ')}
                 </span>
               )}

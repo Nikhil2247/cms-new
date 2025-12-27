@@ -8,7 +8,7 @@ import {
 
 const { Title, Paragraph } = Typography;
 
-const DashboardHeader = ({ facultyName, stats, onRefresh, loading }) => {
+const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }) => {
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -23,9 +23,16 @@ const DashboardHeader = ({ facultyName, stats, onRefresh, loading }) => {
           <IdcardOutlined className="text-lg" />
         </div>
         <div>
-          <Title level={2} className="mb-0 text-text-primary text-2xl">
-            Faculty Dashboard
-          </Title>
+          <div className="flex items-center gap-3">
+            <Title level={2} className="mb-0 text-text-primary text-2xl">
+              Faculty Dashboard
+            </Title>
+            {lastFetched && (
+              <span className="text-xs text-text-tertiary">
+                Updated {new Date(lastFetched).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
           <Paragraph className="text-text-secondary text-sm mb-0">
             Welcome back, <span className="font-semibold text-primary">{facultyName || 'Faculty'}</span> • {currentDate}
           </Paragraph>

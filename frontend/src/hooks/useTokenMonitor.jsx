@@ -77,7 +77,7 @@ export const useTokenMonitor = (options = {}) => {
     window.location.href = '/login';
   }, []);
 
-  // Refresh token
+  // Refresh token (for automatic/proactive refresh)
   const refreshToken = useCallback(async () => {
     const refreshTokenValue = tokenStorage.getRefreshToken();
     if (!refreshTokenValue) {
@@ -107,6 +107,38 @@ export const useTokenMonitor = (options = {}) => {
 
     return false;
   }, [logout]);
+
+  // Extend session (for explicit user action - tracks session for admin panel)
+  const extendSessionRequest = useCallback(async () => {
+    const refreshTokenValue = tokenStorage.getRefreshToken();
+    if (!refreshTokenValue) {
+      logout(LogoutReason.TOKEN_EXPIRED);
+      return false;
+    }
+
+    try {
+      const response = await api.post('/auth/extend-session', {
+        refresh_token: refreshTokenValue,
+      });
+
+      const newToken = response.data?.access_token || response.data?.accessToken || response.data?.token;
+      const newRefreshToken = response.data?.refresh_token || response.data?.refreshToken;
+
+      if (newToken) {
+        tokenStorage.setToken(newToken);
+        if (newRefreshToken) tokenStorage.setRefreshToken(newRefreshToken);
+        warningShownRef.current = false;
+        setShowExpiryWarning(false);
+        return true;
+      }
+    } catch (error) {
+      console.error('Extend session failed:', error);
+      // Fall back to regular refresh
+      return refreshToken();
+    }
+
+    return false;
+  }, [logout, refreshToken]);
 
   // Track user activity
   useEffect(() => {
@@ -175,13 +207,13 @@ export const useTokenMonitor = (options = {}) => {
     };
   }, [enabled, warningMinutes, showWarning, getRemainingTime, formatTime, logout]);
 
-  // Handle warning modal actions
+  // Handle warning modal actions (uses extend-session for proper tracking)
   const extendSession = useCallback(async () => {
-    const success = await refreshToken();
+    const success = await extendSessionRequest();
     if (success) {
       setShowExpiryWarning(false);
     }
-  }, [refreshToken]);
+  }, [extendSessionRequest]);
 
   return {
     logout,

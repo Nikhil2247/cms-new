@@ -33,7 +33,7 @@ const StatCard = ({
               {title}
             </Text>
             {suffix && (
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-gray-50 text-gray-400 border border-gray-100`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-bold bg-background-secondary text-gray-400 border border-gray-100`}>
                 {suffix}
               </span>
             )}

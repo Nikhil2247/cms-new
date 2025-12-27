@@ -22,7 +22,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'visitsDue', label: 'Visits Due', type: 'number', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
       { id: 'urgency', label: 'Urgency', type: 'select', required: false, options: [
         { label: 'Critical (>30 days)', value: 'critical' },
@@ -55,7 +55,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'totalPendingReports', label: 'Total Pending', type: 'number', default: true, sortable: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
       { id: 'month', label: 'Month', type: 'select', required: false, options: [
@@ -99,7 +99,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'institutionName', label: 'Institution', type: 'string', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
       { id: 'urgency', label: 'Urgency', type: 'select', required: false, options: [
@@ -132,7 +132,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'daysPending', label: 'Days Pending', type: 'number', default: true, sortable: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
         { label: '1st Year', value: 1 },

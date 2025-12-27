@@ -1101,6 +1101,19 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
+    // Handle branchId/departmentId (departmentId is an alias for branchId)
+    const branchId = createStudentDto.branchId || createStudentDto.departmentId;
+    let branchName: string | undefined;
+
+    // Look up branch name if branchId is provided
+    if (branchId) {
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: branchId },
+        select: { name: true },
+      });
+      branchName = branch?.name;
+    }
+
     // Delegate to domain UserService for student creation
     const result = await this.userService.createStudent(principal.institutionId, {
       name: createStudentDto.name,
@@ -1108,9 +1121,13 @@ export class PrincipalService {
       phoneNo: createStudentDto.phoneNo,
       rollNumber: createStudentDto.rollNumber,
       batchId: createStudentDto.batchId,
+      branchId,
+      branchName,
       dateOfBirth: createStudentDto.dateOfBirth,
       gender: createStudentDto.gender,
       address: createStudentDto.address,
+      parentName: createStudentDto.parentName,
+      parentContact: createStudentDto.parentPhone,
     });
 
     // Log student creation
@@ -1165,12 +1182,55 @@ export class PrincipalService {
       throw new NotFoundException('Student not found');
     }
 
+    // Prepare update data, handling branchId/departmentId mapping
+    const updateData: any = { ...updateStudentDto };
+
+    // Handle departmentId as alias for branchId
+    if (updateData.departmentId !== undefined) {
+      updateData.branchId = updateData.departmentId;
+      delete updateData.departmentId;
+    }
+
+    // Look up branch name if branchId is being updated
+    if (updateData.branchId) {
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: updateData.branchId },
+        select: { name: true },
+      });
+      if (branch) {
+        updateData.branchName = branch.name;
+      }
+    }
+
+    // Handle parentPhone -> parentContact mapping
+    if (updateData.parentPhone !== undefined) {
+      updateData.parentContact = updateData.parentPhone;
+      delete updateData.parentPhone;
+    }
+
+    // Handle phoneNo -> contact mapping for student model
+    if (updateData.phoneNo !== undefined) {
+      updateData.contact = updateData.phoneNo;
+      delete updateData.phoneNo;
+    }
+
+    // Handle dateOfBirth -> dob mapping for student model
+    if (updateData.dateOfBirth !== undefined) {
+      updateData.dob = updateData.dateOfBirth;
+      delete updateData.dateOfBirth;
+    }
+
+    // Remove fields not in Prisma schema
+    delete updateData.bloodGroup;
+    delete updateData.semesterId; // Not used, semester is managed through batch
+    delete updateData.gender; // Gender is not directly on student model
+
     // If isActive is being updated, also sync the user's active field
-    if (typeof updateStudentDto.isActive === 'boolean' && student.userId) {
+    if (typeof updateData.isActive === 'boolean' && student.userId) {
       const [updatedStudent] = await this.prisma.$transaction([
         this.prisma.student.update({
           where: { id: studentId },
-          data: updateStudentDto,
+          data: updateData,
           include: {
             user: true,
             batch: true,
@@ -1179,7 +1239,7 @@ export class PrincipalService {
         }),
         this.prisma.user.update({
           where: { id: student.userId },
-          data: { active: updateStudentDto.isActive },
+          data: { active: updateData.isActive },
         }),
       ]);
 
@@ -1190,7 +1250,7 @@ export class PrincipalService {
 
     const updated = await this.prisma.student.update({
       where: { id: studentId },
-      data: updateStudentDto,
+      data: updateData,
       include: {
         user: true,
         batch: true,
@@ -1225,37 +1285,48 @@ export class PrincipalService {
       throw new NotFoundException('Student not found in your institution');
     }
 
-    // Soft delete - deactivate both student profile and user account
+    // Store info for audit before deletion
+    const studentInfo = {
+      studentId,
+      userId: student.userId,
+      email: student.user?.email,
+      name: student.user?.name,
+      rollNumber: student.rollNumber,
+    };
+
+    // Hard delete - delete all related records first, then student and user
     await this.prisma.$transaction([
-      this.prisma.student.update({
-        where: { id: studentId },
-        data: { isActive: false },
-      }),
-      this.prisma.user.update({
-        where: { id: student.userId },
-        data: { active: false },
-      }),
+      // Delete related records that reference the student
+      this.prisma.mentorAssignment.deleteMany({ where: { studentId } }),
+      this.prisma.monthlyReport.deleteMany({ where: { studentId } }),
+      this.prisma.monthlyFeedback.deleteMany({ where: { studentId } }),
+      this.prisma.complianceRecord.deleteMany({ where: { studentId } }),
+      this.prisma.grievance.deleteMany({ where: { studentId } }),
+      this.prisma.internshipApplication.deleteMany({ where: { studentId } }),
+      this.prisma.placement.deleteMany({ where: { studentId } }),
+      this.prisma.document.deleteMany({ where: { studentId } }),
+      this.prisma.fee.deleteMany({ where: { studentId } }),
+      this.prisma.examResult.deleteMany({ where: { studentId } }),
+      this.prisma.internshipPreference.deleteMany({ where: { studentId } }),
+      // Delete student record
+      this.prisma.student.delete({ where: { id: studentId } }),
+      // Delete the user account
+      this.prisma.user.delete({ where: { id: student.userId } }),
     ]);
 
     // Log student deletion
     this.auditService.log({
-      action: AuditAction.USER_DEACTIVATION,
+      action: AuditAction.USER_DELETION,
       entityType: 'Student',
       entityId: studentId,
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Student deactivated: ${student.user.name} (${student.user.email})`,
+      description: `Student permanently deleted: ${studentInfo.name} (${studentInfo.email})`,
       category: AuditCategory.ADMINISTRATIVE,
-      severity: AuditSeverity.HIGH,
+      severity: AuditSeverity.CRITICAL,
       institutionId: principal.institutionId,
-      oldValues: {
-        studentId,
-        userId: student.userId,
-        email: student.user.email,
-        name: student.user.name,
-        rollNumber: student.rollNumber,
-      },
+      oldValues: studentInfo,
     }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`]);
@@ -1387,6 +1458,7 @@ export class PrincipalService {
     limit?: number | string;
     search?: string;
     role?: string;
+    active?: string | boolean;
   }) {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
@@ -1399,7 +1471,7 @@ export class PrincipalService {
     // Parse page and limit as numbers (query params come as strings)
     const page = Number(query.page) || 1;
     const limit = Number(query.limit) || 10;
-    const { search, role } = query;
+    const { search, role, active } = query;
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = {
@@ -1418,6 +1490,11 @@ export class PrincipalService {
       where.role = role as Role;
     }
 
+    // Handle active filter - support both string and boolean
+    if (active !== undefined && active !== '') {
+      where.active = active === true || active === 'true';
+    }
+
     const [staff, total] = await Promise.all([
       this.prisma.user.findMany({
         where,
@@ -1430,6 +1507,7 @@ export class PrincipalService {
           phoneNo: true,
           role: true,
           designation: true,
+          branchName: true,
           active: true,
           createdAt: true,
         },
@@ -1438,8 +1516,14 @@ export class PrincipalService {
       this.prisma.user.count({ where }),
     ]);
 
+    // Map branchName to department for frontend compatibility
+    const transformedStaff = staff.map((s: any) => ({
+      ...s,
+      department: s.branchName, // Alias for frontend
+    }));
+
     return {
-      data: staff,
+      data: transformedStaff,
       total,
       page,
       limit,
@@ -1488,6 +1572,7 @@ export class PrincipalService {
         active: true,
         phoneNo: createStaffDto.phoneNo,
         designation: createStaffDto.designation,
+        branchName: createStaffDto.department, // Save department as branchName
         Institution: { connect: { id: principal.institutionId } },
       },
     });
@@ -1522,7 +1607,7 @@ export class PrincipalService {
   /**
    * Update staff member
    */
-  async updateStaff(principalId: string, staffId: string, updateData: Prisma.UserUpdateInput) {
+  async updateStaff(principalId: string, staffId: string, updateData: any) {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
     });
@@ -1542,9 +1627,16 @@ export class PrincipalService {
       throw new NotFoundException('Staff member not found');
     }
 
+    // Map department to branchName for the database
+    const prismaData: Prisma.UserUpdateInput = { ...updateData };
+    if (updateData.department !== undefined) {
+      prismaData.branchName = updateData.department;
+      delete (prismaData as any).department;
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: staffId },
-      data: updateData,
+      data: prismaData,
     });
 
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
@@ -1553,7 +1645,7 @@ export class PrincipalService {
   }
 
   /**
-   * Delete staff member (soft delete)
+   * Delete staff member (hard delete)
    */
   async deleteStaff(principalId: string, staffId: string) {
     const principal = await this.prisma.user.findUnique({
@@ -1575,34 +1667,47 @@ export class PrincipalService {
       throw new NotFoundException('Staff member not found');
     }
 
-    const deleted = await this.prisma.user.update({
-      where: { id: staffId },
-      data: { active: false },
-    });
+    // Store info for audit before deletion
+    const staffInfo = {
+      staffId,
+      email: staff.email,
+      name: staff.name,
+      role: staff.role,
+    };
+
+    // Hard delete - delete all related records first, then the user
+    await this.prisma.$transaction([
+      // Delete related records that reference the user
+      this.prisma.mentorAssignment.deleteMany({ where: { mentorId: staffId } }),
+      this.prisma.mentorAssignment.deleteMany({ where: { assignedBy: staffId } }),
+      this.prisma.facultyVisitLog.deleteMany({ where: { facultyId: staffId } }),
+      this.prisma.classAssignment.deleteMany({ where: { teacherId: staffId } }),
+      this.prisma.grievanceStatusHistory.deleteMany({ where: { changedById: staffId } }),
+      this.prisma.notification.deleteMany({ where: { userId: staffId } }),
+      this.prisma.notificationSettings.deleteMany({ where: { userId: staffId } }),
+      this.prisma.technicalQuery.deleteMany({ where: { userId: staffId } }),
+      // Delete the user
+      this.prisma.user.delete({ where: { id: staffId } }),
+    ]);
 
     // Log staff deletion
     this.auditService.log({
-      action: AuditAction.USER_DEACTIVATION,
+      action: AuditAction.USER_DELETION,
       entityType: 'Staff',
       entityId: staffId,
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Staff member deactivated: ${staff.name} (${staff.email})`,
+      description: `Staff member permanently deleted: ${staffInfo.name} (${staffInfo.email})`,
       category: AuditCategory.ADMINISTRATIVE,
-      severity: AuditSeverity.HIGH,
+      severity: AuditSeverity.CRITICAL,
       institutionId: principal.institutionId,
-      oldValues: {
-        staffId,
-        email: staff.email,
-        name: staff.name,
-        role: staff.role,
-      },
+      oldValues: staffInfo,
     }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
 
-    return deleted;
+    return { success: true, message: 'Staff member deleted successfully' };
   }
 
   /**

@@ -12,6 +12,11 @@ export const authService = {
     return response.data;
   },
 
+  logoutAllDevices: async () => {
+    const response = await apiClient.post('/auth/logout-all-devices');
+    return response.data;
+  },
+
   getProfile: async () => {
     const response = await apiClient.get(API_ENDPOINTS.PROFILE);
     return response.data;
@@ -19,6 +24,11 @@ export const authService = {
 
   refreshToken: async (refreshToken) => {
     const response = await apiClient.post(API_ENDPOINTS.REFRESH, { refresh_token: refreshToken });
+    return response.data;
+  },
+
+  extendSession: async (refreshToken) => {
+    const response = await apiClient.post('/auth/extend-session', { refresh_token: refreshToken });
     return response.data;
   },
 

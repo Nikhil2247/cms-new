@@ -6,23 +6,23 @@ export interface QueueJobData {
   [key: string]: any;
 }
 
-// Queue names with hash tags for Redis Cluster compatibility
+// Queue names - simple names for DragonflyDB compatibility
 const QUEUE_NAMES = {
-  EMAIL: '{email}',
-  NOTIFICATIONS: '{notifications}',
-  FILE_PROCESSING: '{file-processing}',
-  DATA_SYNC: '{data-sync}',
-  BULK_OPERATIONS: '{bulk-operations}',
+  EMAIL: 'email',
+  NOTIFICATIONS: 'notifications',
+  FILE_PROCESSING: 'file-processing',
+  DATA_SYNC: 'data-sync',
+  BULK_OPERATIONS: 'bulk-operations',
 } as const;
 
 @Injectable()
 export class QueueService {
   constructor(
-    @InjectQueue('{email}') private emailQueue: Queue,
-    @InjectQueue('{notifications}') private notificationsQueue: Queue,
-    @InjectQueue('{file-processing}') private fileProcessingQueue: Queue,
-    @InjectQueue('{data-sync}') private dataSyncQueue: Queue,
-    @InjectQueue('{bulk-operations}') private bulkOperationsQueue: Queue,
+    @InjectQueue('email') private emailQueue: Queue,
+    @InjectQueue('notifications') private notificationsQueue: Queue,
+    @InjectQueue('file-processing') private fileProcessingQueue: Queue,
+    @InjectQueue('data-sync') private dataSyncQueue: Queue,
+    @InjectQueue('bulk-operations') private bulkOperationsQueue: Queue,
   ) {}
 
   async addEmailJob(data: QueueJobData, options?: JobsOptions): Promise<Job> {

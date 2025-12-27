@@ -46,6 +46,7 @@ services:
       --logtostderr
       --cache_mode=true
       --maxmemory=256mb
+      --default_lua_flags=allow-undeclared-keys
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 15s

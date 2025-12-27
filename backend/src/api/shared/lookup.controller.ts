@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { LookupService } from './lookup.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 
@@ -8,8 +8,9 @@ export class LookupController {
   constructor(private readonly lookupService: LookupService) {}
 
   @Get('institutions')
-  async getInstitutions() {
-    return this.lookupService.getInstitutions();
+  async getInstitutions(@Query('includeInactive') includeInactive?: string) {
+    // For reports, pass ?includeInactive=true to get all institutions
+    return this.lookupService.getInstitutions(includeInactive === 'true');
   }
 
   @Get('batches')

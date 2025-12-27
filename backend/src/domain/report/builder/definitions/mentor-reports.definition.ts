@@ -21,7 +21,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'isActive', label: 'Active', type: 'boolean', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'department', label: 'Department', type: 'select', dynamic: true, required: false },
       { id: 'hasAssignments', label: 'Has Assignments', type: 'select', required: false, options: [
         { label: 'Yes', value: true },
@@ -53,7 +53,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'reportsReviewed', label: 'Reports Reviewed', type: 'number', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'isActive', label: 'Active Only', type: 'boolean', required: false },
@@ -82,7 +82,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'avgResponseTime', label: 'Avg Response (days)', type: 'number', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'utilizationLevel', label: 'Utilization Level', type: 'select', required: false, options: [
         { label: 'Under-utilized (<50%)', value: 'low' },
         { label: 'Optimal (50-80%)', value: 'medium' },
@@ -113,7 +113,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'daysUnassigned', label: 'Days Unassigned', type: 'number', default: true, sortable: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
         { label: '1st Year', value: 1 },

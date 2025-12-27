@@ -73,9 +73,12 @@ export const facultyService = {
     return response.data;
   },
 
-  // Quick Visit Log - Fast visit creation with GPS and photos
-  async quickLogVisit(formData) {
-    const response = await API.post('/faculty/visit-logs/quick', formData, {
+  // Upload visit document (photo or signed document)
+  async uploadVisitDocument(file, documentType = 'visit-photo') {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('documentType', documentType);
+    const response = await API.post('/faculty/visit-logs/upload-document', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

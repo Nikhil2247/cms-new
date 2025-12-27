@@ -29,6 +29,44 @@ export class ReportBuilderController {
     private fileStorageService: FileStorageService,
   ) {}
 
+  /**
+   * Transform filters to normalize dateRange arrays to startDate/endDate
+   * Handles frontend DatePicker ranges which come as arrays
+   */
+  private transformFilters(filters: Record<string, unknown>): Record<string, unknown> {
+    if (!filters) return {};
+
+    const transformed = { ...filters };
+
+    // Transform dateRange arrays to startDate/endDate
+    if (Array.isArray(filters.dateRange) && filters.dateRange.length === 2) {
+      const [start, end] = filters.dateRange;
+      // Handle both ISO strings and date objects
+      transformed.startDate = typeof start === 'string' ? start : start?.toISOString?.() || start;
+      transformed.endDate = typeof end === 'string' ? end : end?.toISOString?.() || end;
+      delete transformed.dateRange;
+    }
+
+    // Also handle any other date range fields
+    Object.keys(transformed).forEach((key) => {
+      const value = transformed[key];
+      if (Array.isArray(value) && value.length === 2) {
+        const [start, end] = value;
+        // Check if both elements look like dates
+        const isDateArray = (start instanceof Date || (typeof start === 'string' && /^\d{4}-\d{2}/.test(start))) &&
+                           (end instanceof Date || (typeof end === 'string' && /^\d{4}-\d{2}/.test(end)));
+        if (isDateArray && key.toLowerCase().includes('date')) {
+          const baseName = key.replace(/Range$/i, '');
+          transformed[`${baseName}Start`] = typeof start === 'string' ? start : start?.toISOString?.() || start;
+          transformed[`${baseName}End`] = typeof end === 'string' ? end : end?.toISOString?.() || end;
+          delete transformed[key];
+        }
+      }
+    });
+
+    return transformed;
+  }
+
   // ==================== Health Check ====================
 
   /**
@@ -190,13 +228,16 @@ export class ReportBuilderController {
       ? (dto.format as 'excel' | 'csv' | 'pdf' | 'json')
       : 'excel';
 
+    // Transform filters (handle dateRange arrays, etc.)
+    const transformedFilters = this.transformFilters(dto.filters || {});
+
     // Build config from DTO
     const config = {
       type: dto.type,
       columns: dto.columns || [],
       filters: {
-        ...dto.filters,
-        institutionId: dto.filters?.institutionId || institutionId,
+        ...transformedFilters,
+        institutionId: transformedFilters.institutionId || institutionId,
       } as Record<string, unknown>,
       groupBy: dto.groupBy,
       sortBy: dto.sortBy,
@@ -233,12 +274,15 @@ export class ReportBuilderController {
       ? (dto.format as 'excel' | 'csv' | 'pdf' | 'json')
       : 'excel';
 
+    // Transform filters (handle dateRange arrays, etc.)
+    const transformedFilters = this.transformFilters(dto.filters || {});
+
     const config = {
       type: dto.type,
       columns: dto.columns || [],
       filters: {
-        ...dto.filters,
-        institutionId: dto.filters?.institutionId || institutionId,
+        ...transformedFilters,
+        institutionId: transformedFilters.institutionId || institutionId,
       } as Record<string, unknown>,
       groupBy: dto.groupBy,
       sortBy: dto.sortBy,

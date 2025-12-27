@@ -134,23 +134,43 @@ export class TokenBlacklistService {
       const key = `${this.USER_INVALIDATION_PREFIX}${userId}`;
       const invalidationTime = await this.cache.get<number>(key);
 
-      // If invalidation timestamp exists and token was issued before it
+      // If invalidation timestamp exists and token was issued before it, reject
       if (invalidationTime && tokenIssuedAt < invalidationTime / 1000) {
         return true;
       }
 
-      // Also check database for user session invalidation
-      const session = await this.prisma.userSession.findFirst({
-        where: {
-          userId,
-          invalidatedAt: {
-            not: null,
-            gte: new Date(tokenIssuedAt * 1000),
-          },
-        },
-      });
+      // Fallback: Check if ALL user sessions were invalidated at the same time
+      // This indicates a "logout all devices" or password change event
+      // We only reject if ALL sessions were bulk-invalidated after token issuance
+      const tokenIssuedDate = new Date(tokenIssuedAt * 1000);
 
-      return !!session;
+      // Count active sessions and invalidated sessions after token issuance
+      const [activeSessions, bulkInvalidatedSessions] = await Promise.all([
+        this.prisma.userSession.count({
+          where: {
+            userId,
+            invalidatedAt: null,
+            expiresAt: { gt: new Date() },
+          },
+        }),
+        this.prisma.userSession.count({
+          where: {
+            userId,
+            invalidatedAt: {
+              not: null,
+              gt: tokenIssuedDate, // Session invalidated AFTER token was issued
+            },
+          },
+        }),
+      ]);
+
+      // If there are no active sessions and there were bulk invalidations
+      // after this token was issued, consider it invalidated
+      if (activeSessions === 0 && bulkInvalidatedSessions > 0) {
+        return true;
+      }
+
+      return false;
     } catch (error) {
       this.logger.error('Failed to check user token invalidation', error);
       // On error, assume not invalidated to avoid blocking legitimate users

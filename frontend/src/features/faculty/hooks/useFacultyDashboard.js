@@ -21,6 +21,7 @@ import {
   selectApplications,
   selectMonthlyReports,
   selectJoiningLetters,
+  selectMostRecentFetch,
 } from '../store/facultySlice';
 import { useSWR } from '../../../hooks/useSWR';
 
@@ -45,6 +46,7 @@ export const useFacultyDashboard = () => {
   const applications = useSelector(selectApplications);
   const monthlyReports = useSelector(selectMonthlyReports);
   const joiningLetters = useSelector(selectJoiningLetters);
+  const mostRecentFetch = useSelector(selectMostRecentFetch);
 
   // SWR state for tracking background revalidation
   const [isRevalidating, setIsRevalidating] = useState(false);
@@ -206,6 +208,7 @@ export const useFacultyDashboard = () => {
     // State
     isLoading,
     isRevalidating, // NEW: Shows subtle indicator during background refresh
+    lastFetched: mostRecentFetch, // Timestamp of most recent data fetch
     dashboard: {
       ...dashboard.stats,
       monthlyReports: monthlyReports.list,

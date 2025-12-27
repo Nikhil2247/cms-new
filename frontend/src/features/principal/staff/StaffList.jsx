@@ -1,19 +1,28 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStaff, deleteStaff, updateStaff, resetUserPassword } from '../store/principalSlice';
+import {
+  fetchStaff,
+  updateStaff,
+  deleteStaff,
+  resetUserPassword,
+  optimisticallyUpdateStaff,
+  optimisticallyDeleteStaff,
+  rollbackStaffOperation,
+} from '../store/principalSlice';
 import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
   EditOutlined,
+  DeleteOutlined,
   UserOutlined,
   SearchOutlined,
   PlusOutlined,
-  DeleteOutlined,
   MoreOutlined,
   CheckCircleOutlined,
   StopOutlined,
   KeyOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { getImageUrl } from '../../../utils/imageUtils';
 import StaffModal from './StaffModal';
@@ -24,6 +33,7 @@ const { Option } = Select;
 const StaffList = () => {
   const dispatch = useDispatch();
   const { list, loading, pagination } = useSelector((state) => state.principal.staff);
+  const lastFetched = useSelector((state) => state.principal.lastFetched.staff);
   const [filters, setFilters] = useState({
     search: '',
     role: '',
@@ -33,6 +43,7 @@ const StaffList = () => {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleOpenModal = (staffId = null) => {
     setEditingStaffId(staffId);
@@ -48,6 +59,18 @@ const StaffList = () => {
     dispatch(fetchStaff({ ...filters, forceRefresh: true }));
   };
 
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await dispatch(fetchStaff({ ...filters, forceRefresh: true })).unwrap();
+      message.success('Data refreshed successfully');
+    } catch (error) {
+      message.error('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch, filters]);
+
   useEffect(() => {
     dispatch(fetchStaff(filters));
   }, [dispatch, filters]);
@@ -60,28 +83,11 @@ const StaffList = () => {
     handleOpenModal(record.id);
   };
 
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: 'Delete Staff Member',
-      content: `Are you sure you want to delete ${record.name}? This will deactivate their account.`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        try {
-          await dispatch(deleteStaff(record.id)).unwrap();
-          message.success('Staff member deleted successfully');
-          dispatch(fetchStaff({ ...filters, forceRefresh: true }));
-        } catch (error) {
-          message.error(error || 'Failed to delete staff member');
-        }
-      },
-    });
-  };
-
   const handleToggleStatus = async (record) => {
     // Staff records use 'active' boolean field
     const isCurrentlyActive = record.active === true;
     const actionText = isCurrentlyActive ? 'deactivate' : 'activate';
+    const previousList = [...list];
 
     Modal.confirm({
       title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
@@ -89,14 +95,18 @@ const StaffList = () => {
       okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
       okType: isCurrentlyActive ? 'danger' : 'primary',
       onOk: async () => {
+        // Optimistic update - update UI immediately
+        dispatch(optimisticallyUpdateStaff({ id: record.id, data: { active: !isCurrentlyActive } }));
+        message.success(`Staff member ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully`);
+
         try {
           await dispatch(updateStaff({
             id: record.id,
             data: { active: !isCurrentlyActive }
           })).unwrap();
-          message.success(`Staff member ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully`);
-          dispatch(fetchStaff({ ...filters, forceRefresh: true }));
         } catch (error) {
+          // Rollback on failure
+          dispatch(rollbackStaffOperation({ list: previousList }));
           message.error(error || `Failed to ${actionText} staff member`);
         }
       },
@@ -150,6 +160,30 @@ const StaffList = () => {
     });
   };
 
+  const handleDelete = (record) => {
+    const previousList = [...list];
+
+    Modal.confirm({
+      title: 'Delete Staff Member',
+      content: `Are you sure you want to delete ${record.name}? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        // Optimistic delete - remove from UI immediately
+        dispatch(optimisticallyDeleteStaff(record.id));
+        message.success('Staff member deleted successfully');
+
+        try {
+          await dispatch(deleteStaff(record.id)).unwrap();
+        } catch (error) {
+          // Rollback on failure
+          dispatch(rollbackStaffOperation({ list: previousList }));
+          message.error(error || 'Failed to delete staff member');
+        }
+      },
+    });
+  };
+
   const getActionMenuItems = (record) => {
     const isActive = record.active === true;
     return [
@@ -180,6 +214,9 @@ const StaffList = () => {
         icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
         onClick: () => handleToggleStatus(record),
         danger: isActive,
+      },
+      {
+        type: 'divider',
       },
       {
         key: 'delete',
@@ -277,15 +314,32 @@ const StaffList = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-text-primary">Staff Members</h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-          className="rounded-lg shadow-md shadow-primary/20"
-        >
-          Add Staff
-        </Button>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-text-primary">Staff Members</h1>
+          {lastFetched && (
+            <span className="text-xs text-text-tertiary">
+              Updated {new Date(lastFetched).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            icon={<ReloadOutlined spin={isRefreshing} />}
+            onClick={handleRefresh}
+            loading={isRefreshing}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+            className="rounded-lg shadow-md shadow-primary/20"
+          >
+            Add Staff
+          </Button>
+        </div>
       </div>
 
       <Card className="rounded-xl border-border shadow-sm">

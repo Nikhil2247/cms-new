@@ -458,6 +458,7 @@ export class FileStorageService implements OnModuleInit {
 
   /**
    * Get file as buffer
+   * Note: For large files (>50MB), consider using getFileStream() instead
    */
   async getFile(key: string): Promise<Buffer> {
     await this.ensureConnectedAsync();
@@ -491,6 +492,92 @@ export class FileStorageService implements OnModuleInit {
 
       throw new Error(`Failed to retrieve file from storage: ${error.message}`);
     }
+  }
+
+  /**
+   * Get file as a readable stream with backpressure support
+   * Use this for large files to avoid memory issues
+   * @param key The file key in storage
+   * @returns Object containing the stream and metadata
+   */
+  async getFileStream(key: string): Promise<{
+    stream: Readable;
+    contentType?: string;
+    contentLength?: number;
+  }> {
+    await this.ensureConnectedAsync();
+
+    try {
+      this.logger.log(`Opening stream for file: ${key}`);
+
+      const response = await this.s3Client.send(
+        new GetObjectCommand({ Bucket: this.bucket, Key: key }),
+      );
+
+      if (!response.Body) {
+        throw new Error('Empty response body from MinIO');
+      }
+
+      return {
+        stream: response.Body as Readable,
+        contentType: response.ContentType,
+        contentLength: response.ContentLength,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to open stream for file: ${key}`);
+      this.logger.error(`Error details: ${error.name} - ${error.message}`);
+
+      if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
+        throw new Error(`File not found in storage: ${key}`);
+      }
+
+      throw new Error(`Failed to retrieve file stream from storage: ${error.message}`);
+    }
+  }
+
+  /**
+   * Stream a large file to a writable destination with backpressure
+   * This is the preferred method for downloading large files
+   * @param key The file key in storage
+   * @param destination The writable stream destination (e.g., HTTP response, file write stream)
+   * @param options Optional settings for the transfer
+   */
+  async streamFileTo(
+    key: string,
+    destination: NodeJS.WritableStream,
+    options?: { onProgress?: (bytesTransferred: number) => void },
+  ): Promise<void> {
+    const { stream, contentLength } = await this.getFileStream(key);
+
+    return new Promise((resolve, reject) => {
+      let bytesTransferred = 0;
+
+      stream.on('data', (chunk: Buffer) => {
+        bytesTransferred += chunk.length;
+        if (options?.onProgress) {
+          options.onProgress(bytesTransferred);
+        }
+      });
+
+      stream.on('error', (error) => {
+        this.logger.error(`Stream error for file ${key}: ${error.message}`);
+        reject(error);
+      });
+
+      destination.on('error', (error) => {
+        this.logger.error(`Destination stream error for file ${key}: ${error.message}`);
+        stream.destroy();
+        reject(error);
+      });
+
+      stream.on('end', () => {
+        this.logger.log(`Stream completed for file ${key}: ${bytesTransferred} bytes transferred`);
+        resolve();
+      });
+
+      // Pipe with automatic backpressure handling
+      stream.pipe(destination, { end: false });
+    });
   }
 
   /**

@@ -48,8 +48,19 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
 
   useEffect(() => {
     if (open && staffMember) {
+      // Find matching department ID from the department name
+      let departmentId = null;
+      if (staffMember.department || staffMember.branchName) {
+        const deptName = staffMember.department || staffMember.branchName;
+        const matchingDept = departments?.list?.find(d =>
+          d.name === deptName || d.shortName === deptName
+        );
+        departmentId = matchingDept?.id || null;
+      }
+
       form.setFieldsValue({
         ...staffMember,
+        departmentId, // Set the department ID for the select
         dateOfJoining: staffMember.dateOfJoining ? dayjs(staffMember.dateOfJoining) : null,
         profileImage: transformImageToFileList(staffMember.profileImage, 'Profile Image'),
         signature: transformImageToFileList(staffMember.signature, 'Signature'),
@@ -57,7 +68,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
     } else if (open && !isEditMode) {
       form.resetFields();
     }
-  }, [staffMember, form, open, isEditMode]);
+  }, [staffMember, form, open, isEditMode, departments]);
 
   const handleClose = () => {
     form.resetFields();
@@ -67,10 +78,20 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
+      // Transform departmentId to department name
+      let departmentName = null;
+      if (values.departmentId) {
+        const selectedDept = departments?.list?.find(d => d.id === values.departmentId);
+        departmentName = selectedDept?.name || null;
+      }
+
       const formattedValues = {
         ...values,
+        department: departmentName, // Send department name, not ID
         dateOfJoining: values.dateOfJoining ? values.dateOfJoining.format('YYYY-MM-DD') : null,
       };
+      // Remove departmentId as backend expects 'department' string
+      delete formattedValues.departmentId;
 
       if (isEditMode) {
         await dispatch(updateStaff({ id: staffId, data: formattedValues })).unwrap();
@@ -126,7 +147,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               <Form.Item
                 name="employeeId"
                 label="Employee ID"
-                rules={[{ required: true, message: 'Please enter employee ID' }]}
               >
                 <Input placeholder="Enter employee ID" />
               </Form.Item>
@@ -148,11 +168,10 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 name="phoneNo"
                 label="Phone Number"
                 rules={[
-                  { required: true, message: 'Please enter phone number' },
-                  { pattern: /^[0-9]{10}$/, message: 'Please enter valid 10-digit phone number' }
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input placeholder="Enter phone number" maxLength={10} />
+                <Input placeholder="Enter phone number" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -188,9 +207,8 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               <Form.Item
                 name="departmentId"
                 label="Department"
-                rules={[{ required: true, message: 'Please select department' }]}
               >
-                <Select placeholder="Select department">
+                <Select placeholder="Select department" allowClear>
                   {departments?.list?.map(dept => (
                     <Select.Option key={dept.id} value={dept.id}>
                       {dept.name}
@@ -203,7 +221,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               <Form.Item
                 name="designation"
                 label="Designation"
-                rules={[{ required: true, message: 'Please enter designation' }]}
               >
                 <Input placeholder="Enter designation (e.g., Assistant Professor)" />
               </Form.Item>
@@ -212,7 +229,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               <Form.Item
                 name="dateOfJoining"
                 label="Date of Joining"
-                rules={[{ required: true, message: 'Please select date of joining' }]}
               >
                 <DatePicker
                   style={{ width: '100%' }}

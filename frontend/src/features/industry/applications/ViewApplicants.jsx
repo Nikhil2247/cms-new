@@ -1178,7 +1178,7 @@ const ViewApplicants = () => {
                             ))}
                         </div>
                       ) : (
-                        <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <div className="text-center py-12 bg-background-secondary rounded-lg">
                           <CalendarOutlined className="text-4xl text-gray-300 mb-4" />
                           <Title level={5} className="text-gray-500 mb-2">
                             No Monthly Feedbacks Yet
@@ -1571,7 +1571,7 @@ const ViewApplicants = () => {
                           </div>
                         </>
                       ) : (
-                        <div className="text-center py-12 bg-gray-50 rounded-lg">
+                        <div className="text-center py-12 bg-background-secondary rounded-lg">
                           <TrophyOutlined className="text-4xl text-gray-300 mb-4" />
                           <Title level={5} className="text-gray-500 mb-2">
                             No Completion Feedback Yet

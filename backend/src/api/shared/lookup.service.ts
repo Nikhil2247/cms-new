@@ -22,17 +22,20 @@ export class LookupService {
   ) {}
 
   /**
-   * Get all active institutions (cached)
+   * Get institutions (cached)
+   * @param includeInactive - If true, includes inactive institutions (useful for reports)
    */
-  async getInstitutions() {
-    const cacheKey = 'lookup:institutions';
+  async getInstitutions(includeInactive = false) {
+    const cacheKey = includeInactive ? 'lookup:institutions:all' : 'lookup:institutions:active';
 
     return this.cache.getOrSet(
       cacheKey,
       async () => {
         try {
+          const where = includeInactive ? {} : { isActive: true };
+
           const institutions = await this.prisma.institution.findMany({
-            where: { isActive: true },
+            where,
             select: {
               id: true,
               name: true,
@@ -41,6 +44,7 @@ export class LookupService {
               type: true,
               city: true,
               state: true,
+              isActive: true,
             },
             orderBy: { name: 'asc' },
           });

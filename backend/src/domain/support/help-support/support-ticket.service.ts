@@ -599,57 +599,67 @@ export class SupportTicketService {
 
   /**
    * Get ticket statistics
+   * OPTIMIZED: Uses groupBy aggregations instead of multiple count queries
    */
   async getStatistics() {
     try {
-      const [
-        total,
-        open,
-        assigned,
-        inProgress,
-        pendingUser,
-        resolved,
-        closed,
-      ] = await Promise.all([
-        this.prisma.supportTicket.count(),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.OPEN } }),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.ASSIGNED } }),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.IN_PROGRESS } }),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.PENDING_USER } }),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.RESOLVED } }),
-        this.prisma.supportTicket.count({ where: { status: SupportTicketStatus.CLOSED } }),
-      ]);
+      // Use groupBy to get status counts in a single query
+      const statusCounts = await this.prisma.supportTicket.groupBy({
+        by: ['status'],
+        _count: { status: true },
+      });
 
-      // Get by priority
-      const [low, medium, high, urgent] = await Promise.all([
-        this.prisma.supportTicket.count({ where: { priority: SupportTicketPriority.LOW } }),
-        this.prisma.supportTicket.count({ where: { priority: SupportTicketPriority.MEDIUM } }),
-        this.prisma.supportTicket.count({ where: { priority: SupportTicketPriority.HIGH } }),
-        this.prisma.supportTicket.count({ where: { priority: SupportTicketPriority.URGENT } }),
-      ]);
+      // Use groupBy to get priority counts in a single query
+      const priorityCounts = await this.prisma.supportTicket.groupBy({
+        by: ['priority'],
+        _count: { priority: true },
+      });
 
-      // Get by category
-      const categoryStats = await Promise.all(
-        Object.values(SupportCategory).map(async (category) => ({
-          category,
-          count: await this.prisma.supportTicket.count({ where: { category } }),
-        }))
-      );
+      // Use groupBy to get category counts in a single query
+      const categoryCounts = await this.prisma.supportTicket.groupBy({
+        by: ['category'],
+        _count: { category: true },
+      });
 
-      // Get recent tickets (last 7 days)
+      // Get recent tickets (last 7 days) and unassigned in parallel
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const recentCount = await this.prisma.supportTicket.count({
-        where: { createdAt: { gte: sevenDaysAgo } },
-      });
 
-      // Get unassigned tickets
-      const unassigned = await this.prisma.supportTicket.count({
-        where: {
-          assignedToId: null,
-          status: { in: [SupportTicketStatus.OPEN] },
-        },
-      });
+      const [recentCount, unassigned] = await Promise.all([
+        this.prisma.supportTicket.count({
+          where: { createdAt: { gte: sevenDaysAgo } },
+        }),
+        this.prisma.supportTicket.count({
+          where: {
+            assignedToId: null,
+            status: { in: [SupportTicketStatus.OPEN] },
+          },
+        }),
+      ]);
+
+      // Build status map
+      const statusMap = new Map(
+        statusCounts.map(s => [s.status, s._count.status])
+      );
+
+      // Build priority map
+      const priorityMap = new Map(
+        priorityCounts.map(p => [p.priority, p._count.priority])
+      );
+
+      // Build category map
+      const categoryMap = new Map(
+        categoryCounts.map(c => [c.category, c._count.category])
+      );
+
+      // Extract values with defaults
+      const open = statusMap.get(SupportTicketStatus.OPEN) || 0;
+      const assigned = statusMap.get(SupportTicketStatus.ASSIGNED) || 0;
+      const inProgress = statusMap.get(SupportTicketStatus.IN_PROGRESS) || 0;
+      const pendingUser = statusMap.get(SupportTicketStatus.PENDING_USER) || 0;
+      const resolved = statusMap.get(SupportTicketStatus.RESOLVED) || 0;
+      const closed = statusMap.get(SupportTicketStatus.CLOSED) || 0;
+      const total = open + assigned + inProgress + pendingUser + resolved + closed;
 
       return {
         total,
@@ -662,13 +672,13 @@ export class SupportTicketService {
           closed,
         },
         byPriority: {
-          low,
-          medium,
-          high,
-          urgent,
+          low: priorityMap.get(SupportTicketPriority.LOW) || 0,
+          medium: priorityMap.get(SupportTicketPriority.MEDIUM) || 0,
+          high: priorityMap.get(SupportTicketPriority.HIGH) || 0,
+          urgent: priorityMap.get(SupportTicketPriority.URGENT) || 0,
         },
-        byCategory: categoryStats.reduce((acc, { category, count }) => {
-          acc[category] = count;
+        byCategory: Object.values(SupportCategory).reduce((acc, category) => {
+          acc[category] = categoryMap.get(category) || 0;
           return acc;
         }, {} as Record<string, number>),
         summary: {

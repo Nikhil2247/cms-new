@@ -201,6 +201,7 @@ services:
       --maxmemory=512mb
       --keys_output_limit=12288
       --proactor_threads=2
+      --default_lua_flags=allow-undeclared-keys
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
       interval: 15s

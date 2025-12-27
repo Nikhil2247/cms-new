@@ -148,8 +148,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
                 name="phone"
                 label="Phone Number"
                 rules={[
-                  { required: true, message: 'Please enter phone number' },
-                  { pattern: /^[0-9]{10}$/, message: 'Please enter a valid 10-digit phone number' }
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
                 <Input placeholder="Enter phone number" />

@@ -6,6 +6,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
@@ -127,6 +128,18 @@ export class AuthService {
     const accessToken = this.tokenService.generateAccessToken(payload);
     const refreshToken = this.tokenService.generateRefreshToken(payload);
 
+    // Create session record for admin tracking (non-blocking)
+    const sessionExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days (matches refresh token)
+    this.createUserSession(
+      user.id,
+      refreshToken,
+      sessionExpiresAt,
+      ipAddress,
+      userAgent,
+    ).catch((err) => {
+      this.logger.warn(`Failed to create session for user ${user.id}: ${err.message}`);
+    });
+
     // Log successful login
     this.auditService.log({
       action: AuditAction.USER_LOGIN,
@@ -153,6 +166,60 @@ export class AuthService {
       refresh_token: refreshToken,
       user,
     };
+  }
+
+  /**
+   * Create a user session record for admin tracking
+   */
+  private async createUserSession(
+    userId: string,
+    refreshToken: string,
+    expiresAt: Date,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    const refreshTokenHash = this.hashToken(refreshToken);
+    const deviceInfo = this.parseUserAgent(userAgent);
+
+    return this.prisma.userSession.create({
+      data: {
+        userId,
+        ipAddress: ipAddress || null,
+        userAgent: userAgent || null,
+        deviceInfo,
+        expiresAt,
+        refreshTokenHash,
+        lastActivityAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Hash a token for storage (security - don't store raw tokens)
+   */
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /**
+   * Parse user agent to extract device info
+   */
+  private parseUserAgent(userAgent?: string): string {
+    if (!userAgent) return 'Unknown Device';
+
+    // Simple parsing for common patterns
+    if (userAgent.includes('Mobile')) {
+      if (userAgent.includes('Android')) return 'Android Mobile';
+      if (userAgent.includes('iPhone')) return 'iPhone';
+      if (userAgent.includes('iPad')) return 'iPad';
+      return 'Mobile Device';
+    }
+
+    if (userAgent.includes('Windows')) return 'Windows Desktop';
+    if (userAgent.includes('Mac OS')) return 'Mac Desktop';
+    if (userAgent.includes('Linux')) return 'Linux Desktop';
+
+    return 'Desktop Browser';
   }
 
   /**
@@ -488,7 +555,7 @@ export class AuthService {
   }
 
   /**
-   * Logout user - blacklist the current token
+   * Logout user - blacklist the current token and invalidate session
    */
   async logout(token: string, userId: string, ipAddress?: string, userAgent?: string): Promise<void> {
     try {
@@ -500,8 +567,28 @@ export class AuthService {
 
       const expiresAt = new Date(decoded.exp * 1000);
 
-      // Blacklist the token
+      // Blacklist the access token
       await this.tokenBlacklistService.blacklistToken(token, expiresAt);
+
+      // Invalidate the session record for this user/device combination
+      // We match by userId + IP/userAgent since we don't have the refresh token
+      // This finds the most recent active session matching this device
+      const sessionToInvalidate = await this.prisma.userSession.findFirst({
+        where: {
+          userId,
+          invalidatedAt: null,
+          ...(ipAddress && { ipAddress }),
+          ...(userAgent && { userAgent }),
+        },
+        orderBy: { lastActivityAt: 'desc' },
+      });
+
+      if (sessionToInvalidate) {
+        await this.prisma.userSession.update({
+          where: { id: sessionToInvalidate.id },
+          data: { invalidatedAt: new Date() },
+        });
+      }
 
       // Get user details for audit
       const user = await this.prisma.user.findUnique({
@@ -533,11 +620,85 @@ export class AuthService {
   }
 
   /**
+   * Extend session - called when user explicitly extends their session
+   * Returns new tokens and updates session expiry
+   */
+  async extendSession(
+    refreshToken: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    // Use the token service to refresh tokens (includes all security checks)
+    const newTokens = await this.tokenService.refreshTokens(refreshToken);
+
+    // Update the session record with new expiry and token hash
+    const oldTokenHash = this.hashToken(refreshToken);
+    const newTokenHash = this.hashToken(newTokens.refresh_token);
+    const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Find and update the session, or create new one if not found
+    const existingSession = await this.prisma.userSession.findFirst({
+      where: {
+        refreshTokenHash: oldTokenHash,
+        invalidatedAt: null,
+      },
+    });
+
+    if (existingSession) {
+      await this.prisma.userSession.update({
+        where: { id: existingSession.id },
+        data: {
+          refreshTokenHash: newTokenHash,
+          expiresAt: newExpiresAt,
+          lastActivityAt: new Date(),
+          ipAddress: ipAddress || existingSession.ipAddress,
+          userAgent: userAgent || existingSession.userAgent,
+        },
+      });
+    }
+
+    return newTokens;
+  }
+
+  /**
+   * Update session activity - called on token refresh to track activity
+   */
+  async updateSessionActivity(refreshToken: string): Promise<void> {
+    try {
+      const tokenHash = this.hashToken(refreshToken);
+      await this.prisma.userSession.updateMany({
+        where: {
+          refreshTokenHash: tokenHash,
+          invalidatedAt: null,
+        },
+        data: {
+          lastActivityAt: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.warn('Failed to update session activity', error);
+      // Non-blocking - don't fail the request
+    }
+  }
+
+  /**
    * Logout from all devices - invalidate all tokens for the user
    */
   async logoutAllDevices(userId: string): Promise<void> {
     try {
       await this.tokenBlacklistService.invalidateUserTokens(userId);
+
+      // Invalidate all session records for this user
+      await this.prisma.userSession.updateMany({
+        where: {
+          userId,
+          invalidatedAt: null,
+        },
+        data: {
+          invalidatedAt: new Date(),
+        },
+      });
+
       this.logger.log(`All sessions invalidated for user ${userId}`);
     } catch (error) {
       this.logger.error(`Failed to logout all devices for user ${userId}`, error);
@@ -567,6 +728,17 @@ export class AuthService {
 
       // Invalidate all tokens for the target user
       await this.tokenBlacklistService.invalidateUserTokens(targetUserId);
+
+      // Invalidate all session records for this user
+      await this.prisma.userSession.updateMany({
+        where: {
+          userId: targetUserId,
+          invalidatedAt: null,
+        },
+        data: {
+          invalidatedAt: new Date(),
+        },
+      });
 
       // Log force logout
       this.auditService.log({

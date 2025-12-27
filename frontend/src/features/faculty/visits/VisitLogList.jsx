@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Descriptions, Drawer, Typography } from 'antd';
-import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined } from '@ant-design/icons';
-import { fetchVisitLogs, deleteVisitLog } from '../store/facultySlice';
-import VisitLogModal from './VisitLogModal';
+import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Descriptions, Drawer, Typography, Segmented } from 'antd';
+import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined } from '@ant-design/icons';
+import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
+import UnifiedVisitLogModal from './UnifiedVisitLogModal';
 import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -14,33 +14,61 @@ const CARD_BODY_STYLE = { padding: '16px' };
 const TABLE_CARD_BODY_STYLE = { padding: 0 };
 const DRAWER_MASK_STYLE = { backdropFilter: 'blur(4px)' };
 
+const STATUS_FILTERS = [
+  { value: 'all', label: 'All Visits' },
+  { value: 'DRAFT', label: 'Drafts' },
+  { value: 'COMPLETED', label: 'Completed' },
+  { value: 'SCHEDULED', label: 'Scheduled' },
+];
+
 const VisitLogList = React.memo(() => {
   const dispatch = useDispatch();
-  const { visitLogs } = useSelector((state) => state.faculty);
+  const { visitLogs, lastFetched, students } = useSelector((state) => state.faculty);
   const { list: visitLogsList = [], loading } = visitLogs || {};
+  const assignedStudents = students?.list || [];
+  const visitLogsLastFetched = lastFetched?.visitLogs;
   const [searchText, setSearchText] = useState('');
   const [dateRange, setDateRange] = useState(null);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [detailDrawer, setDetailDrawer] = useState(false);
   const [selectedLog, setSelectedLog] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingVisitLogId, setEditingVisitLogId] = useState(null);
+  const [editingVisitData, setEditingVisitData] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleOpenModal = (visitLogId = null) => {
+  const handleOpenModal = (visitLogId = null, visitData = null) => {
     setEditingVisitLogId(visitLogId);
+    setEditingVisitData(visitData);
     setModalOpen(true);
   };
 
   const handleCloseModal = () => {
     setModalOpen(false);
     setEditingVisitLogId(null);
+    setEditingVisitData(null);
   };
 
   const handleModalSuccess = () => {
-    dispatch(fetchVisitLogs());
+    dispatch(fetchVisitLogs({ forceRefresh: true }));
+    handleCloseModal();
   };
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await dispatch(fetchVisitLogs({ forceRefresh: true })).unwrap();
+      message.success('Data refreshed successfully');
+    } catch (error) {
+      message.error('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchVisitLogs());
+    dispatch(fetchAssignedStudents());
   }, [dispatch]);
 
   const handleDelete = useCallback((id) => {
@@ -50,21 +78,31 @@ const VisitLogList = React.memo(() => {
       okText: 'Delete',
       okType: 'danger',
       onOk: async () => {
+        // Store previous state for rollback
+        const previousList = [...visitLogsList];
+        const previousTotal = visitLogs?.total || 0;
+
+        // Optimistic update - immediately remove from UI
+        dispatch(optimisticallyDeleteVisitLog(id));
+        message.success('Visit log deleted successfully');
+
         try {
           await dispatch(deleteVisitLog(id)).unwrap();
-          message.success('Visit log deleted successfully');
         } catch (error) {
+          // Rollback on failure
+          dispatch(rollbackVisitLogOperation({ list: previousList, total: previousTotal }));
           message.error(error?.message || 'Failed to delete visit log');
         }
       },
     });
-  }, [dispatch]);
+  }, [dispatch, visitLogsList, visitLogs?.total]);
 
   const filteredLogs = useMemo(() => {
     return visitLogsList?.filter(log => {
       const matchesSearch = !searchText ||
         log.student?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
         log.company?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        log.visitLocation?.toLowerCase().includes(searchText.toLowerCase()) ||
         log.purpose?.toLowerCase().includes(searchText.toLowerCase());
 
       const matchesDate = !dateRange || (
@@ -72,9 +110,17 @@ const VisitLogList = React.memo(() => {
         dayjs(log.visitDate).isBefore(dateRange[1])
       );
 
-      return matchesSearch && matchesDate;
+      const matchesStatus = statusFilter === 'all' ||
+        log.status?.toUpperCase() === statusFilter;
+
+      return matchesSearch && matchesDate && matchesStatus;
     }) || [];
-  }, [visitLogsList, searchText, dateRange]);
+  }, [visitLogsList, searchText, dateRange, statusFilter]);
+
+  // Count drafts for the badge
+  const draftCount = useMemo(() => {
+    return visitLogsList?.filter(log => log.status?.toUpperCase() === 'DRAFT').length || 0;
+  }, [visitLogsList]);
 
   const columns = useMemo(() => [
     {
@@ -108,56 +154,92 @@ const VisitLogList = React.memo(() => {
       ellipsis: true,
     },
     {
+      title: 'Type',
+      dataIndex: 'visitType',
+      key: 'visitType',
+      render: (type) => {
+        const typeConfig = {
+          PHYSICAL: { color: 'green', icon: <EnvironmentOutlined /> },
+          VIRTUAL: { color: 'blue', icon: null },
+          TELEPHONIC: { color: 'orange', icon: null },
+        };
+        const config = typeConfig[type] || { color: 'default' };
+        return (
+          <Tag color={config.color}>
+            {config.icon} {type}
+          </Tag>
+        );
+      },
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => {
+      render: (status, record) => {
         const colors = {
-          scheduled: 'blue',
-          completed: 'green',
-          cancelled: 'red',
+          DRAFT: 'orange',
+          SCHEDULED: 'blue',
+          IN_PROGRESS: 'processing',
+          COMPLETED: 'green',
+          CANCELLED: 'red',
         };
-        return <Tag color={colors[status] || 'default'}>{status?.toUpperCase()}</Tag>;
+        const statusUpper = status?.toUpperCase();
+        return (
+          <Space>
+            <Tag color={colors[statusUpper] || 'default'}>{statusUpper}</Tag>
+            {record.signedDocumentUrl && (
+              <Tag icon={<FileTextOutlined />} color="cyan">Signed</Tag>
+            )}
+            {record.visitPhotos?.length > 0 && (
+              <Tag icon={<FileImageOutlined />} color="purple">{record.visitPhotos.length}</Tag>
+            )}
+          </Space>
+        );
       },
       filters: [
-        { text: 'Scheduled', value: 'scheduled' },
-        { text: 'Completed', value: 'completed' },
-        { text: 'Cancelled', value: 'cancelled' },
+        { text: 'Draft', value: 'DRAFT' },
+        { text: 'Scheduled', value: 'SCHEDULED' },
+        { text: 'Completed', value: 'COMPLETED' },
+        { text: 'Cancelled', value: 'CANCELLED' },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => record.status?.toUpperCase() === value,
     },
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Space>
-          <Button
-            icon={<EyeOutlined />}
-            onClick={() => {
-              setSelectedLog(record);
-              setDetailDrawer(true);
-            }}
-            size="small"
-          >
-            View
-          </Button>
-          <Button
-            icon={<EditOutlined />}
-            onClick={() => handleOpenModal(record.id)}
-            size="small"
-          >
-            Edit
-          </Button>
-          <Button
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record.id)}
-            size="small"
-          >
-            Delete
-          </Button>
-        </Space>
-      ),
+      render: (_, record) => {
+        const isDraft = record.status?.toUpperCase() === 'DRAFT';
+        return (
+          <Space>
+            <Button
+              icon={<EyeOutlined />}
+              onClick={() => {
+                setSelectedLog(record);
+                setDetailDrawer(true);
+              }}
+              size="small"
+            >
+              View
+            </Button>
+            <Button
+              type={isDraft ? 'primary' : 'default'}
+              icon={<EditOutlined />}
+              onClick={() => handleOpenModal(record.id, record)}
+              size="small"
+            >
+              {isDraft ? 'Complete' : 'Edit'}
+            </Button>
+            <Button
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record.id)}
+              size="small"
+            >
+              Delete
+            </Button>
+          </Space>
+        );
+      },
     },
   ], [handleDelete]);
 
@@ -171,30 +253,65 @@ const VisitLogList = React.memo(() => {
               <CalendarOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Visit Logs
-              </Title>
+              <div className="flex items-center gap-3">
+                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                  Visit Logs
+                </Title>
+                {visitLogsLastFetched && (
+                  <span className="text-xs text-text-tertiary">
+                    Updated {new Date(visitLogsLastFetched).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <Paragraph className="text-text-secondary text-sm mb-0">
                 Track and manage industrial visits for assigned students
               </Paragraph>
             </div>
           </div>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => handleOpenModal()}
-            className="h-10 rounded-xl font-bold shadow-lg shadow-primary/20"
-          >
-            Add Visit Log
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              icon={<ReloadOutlined spin={isRefreshing} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+              disabled={loading}
+            >
+              Refresh
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => handleOpenModal()}
+              className="h-10 rounded-xl font-bold shadow-lg shadow-primary/20"
+            >
+              Add Visit Log
+            </Button>
+          </div>
         </div>
+
+        {/* Status Tabs */}
+        <Segmented
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={STATUS_FILTERS.map(f => ({
+            value: f.value,
+            label: (
+              <Space>
+                {f.label}
+                {f.value === 'DRAFT' && draftCount > 0 && (
+                  <Tag color="orange" className="ml-1">{draftCount}</Tag>
+                )}
+              </Space>
+            ),
+          }))}
+          className="bg-surface"
+        />
 
         {/* Filters */}
         <Card className="rounded-xl border-border shadow-sm" styles={{ body: CARD_BODY_STYLE }}>
           <div className="flex flex-wrap items-center gap-4">
             <Input
-              placeholder="Search by student, company..."
+              placeholder="Search by student, company, location..."
               prefix={<SearchOutlined className="text-text-tertiary" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
@@ -283,35 +400,79 @@ const VisitLogList = React.memo(() => {
             </section>
 
             <section>
-              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Company Information</Title>
+              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Visit Details</Title>
               <div className="bg-background-tertiary/30 rounded-xl border border-border overflow-hidden">
                 <Descriptions column={1} size="small" bordered className="custom-descriptions">
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Company</span>}>
-                    <Text strong className="text-text-primary">{selectedLog.company?.name || 'N/A'}</Text>
+                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Type</span>}>
+                    <Tag color={selectedLog.visitType === 'PHYSICAL' ? 'green' : 'blue'}>
+                      {selectedLog.visitType}
+                    </Tag>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Contact Person</span>}>
-                    {selectedLog.contactPerson || 'N/A'}
+                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Location</span>}>
+                    <Space>
+                      <EnvironmentOutlined />
+                      {selectedLog.visitLocation || 'N/A'}
+                    </Space>
+                  </Descriptions.Item>
+                  {selectedLog.latitude && selectedLog.longitude && (
+                    <Descriptions.Item label={<span className="text-text-tertiary font-medium">GPS Coordinates</span>}>
+                      <Text code>{selectedLog.latitude.toFixed(6)}, {selectedLog.longitude.toFixed(6)}</Text>
+                      {selectedLog.gpsAccuracy && (
+                        <Text type="secondary" className="ml-2">(±{selectedLog.gpsAccuracy.toFixed(0)}m)</Text>
+                      )}
+                    </Descriptions.Item>
+                  )}
+                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Company</span>}>
+                    <Text strong className="text-text-primary">{selectedLog.company?.name || selectedLog.application?.internship?.industry?.companyName || 'N/A'}</Text>
                   </Descriptions.Item>
                 </Descriptions>
               </div>
             </section>
 
             <section>
-              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Visit Findings</Title>
+              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Notes & Observations</Title>
               <div className="space-y-4">
                 <div className="bg-surface p-4 rounded-xl border border-border">
-                  <Text className="text-xs uppercase font-bold text-text-tertiary block mb-2">Observations</Text>
-                  <Paragraph className="text-text-primary text-sm mb-0">{selectedLog.observations || 'No observations recorded'}</Paragraph>
-                </div>
-                <div className="bg-surface p-4 rounded-xl border border-border">
-                  <Text className="text-xs uppercase font-bold text-text-tertiary block mb-2">Feedback</Text>
-                  <Paragraph className="text-text-primary text-sm mb-0">{selectedLog.feedback || 'No feedback provided'}</Paragraph>
+                  <Paragraph className="text-text-primary text-sm mb-0">
+                    {selectedLog.observationsAboutStudent || selectedLog.notes || selectedLog.observations || 'No notes recorded'}
+                  </Paragraph>
                 </div>
               </div>
             </section>
 
+            {/* Documents Section */}
+            {(selectedLog.signedDocumentUrl || selectedLog.visitPhotos?.length > 0) && (
+              <section>
+                <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Documents</Title>
+                <div className="space-y-3">
+                  {selectedLog.signedDocumentUrl && (
+                    <Button
+                      icon={<FileTextOutlined />}
+                      onClick={() => window.open(selectedLog.signedDocumentUrl, '_blank')}
+                      className="w-full justify-start"
+                    >
+                      View Signed Document
+                    </Button>
+                  )}
+                  {selectedLog.visitPhotos?.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedLog.visitPhotos.map((url, idx) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`Visit photo ${idx + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg cursor-pointer border border-border"
+                          onClick={() => window.open(url, '_blank')}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
+
             <div className="pt-6 flex justify-end gap-3 border-t border-border">
-              <Button 
+              <Button
                 onClick={() => setDetailDrawer(false)}
                 className="rounded-xl px-6 h-10 font-medium"
               >
@@ -322,22 +483,24 @@ const VisitLogList = React.memo(() => {
                 icon={<EditOutlined />}
                 onClick={() => {
                   setDetailDrawer(false);
-                  handleOpenModal(selectedLog.id);
+                  handleOpenModal(selectedLog.id, selectedLog);
                 }}
                 className="rounded-xl px-6 h-10 font-bold bg-primary border-0"
               >
-                Edit Log
+                {selectedLog.status?.toUpperCase() === 'DRAFT' ? 'Complete Visit' : 'Edit Log'}
               </Button>
             </div>
           </div>
         )}
       </Drawer>
 
-      <VisitLogModal
-        open={modalOpen}
+      <UnifiedVisitLogModal
+        visible={modalOpen}
         onClose={handleCloseModal}
-        visitLogId={editingVisitLogId}
         onSuccess={handleModalSuccess}
+        students={assignedStudents}
+        visitLogId={editingVisitLogId}
+        existingData={editingVisitData}
       />
     </div>
   );

@@ -1,24 +1,19 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space, Modal, Form, DatePicker, Select, message } from 'antd';
+import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space } from 'antd';
 import {
   TeamOutlined,
   SearchOutlined,
   EyeOutlined,
   CheckCircleOutlined,
   ClockCircleOutlined,
-  CloseCircleOutlined,
   MinusCircleOutlined,
   EnvironmentOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import {
-  getExpectedReportsAsOfToday,
-  getExpectedVisitsAsOfToday,
-} from '../../../../utils/monthlyCycle';
+import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
+import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
 
 const { Text } = Typography;
-const { TextArea } = Input;
-const { Option } = Select;
 
 const AssignedStudentsList = ({
   students = [],
@@ -30,7 +25,6 @@ const AssignedStudentsList = ({
   const [searchText, setSearchText] = useState('');
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [visitForm] = Form.useForm();
 
   // Helper to extract company name from student record
   const getCompanyName = (student) => {
@@ -55,40 +49,20 @@ const AssignedStudentsList = ({
     });
   }, [students, searchText]);
 
-  // Handle Log Visit button click
+  // Handle Log Visit button click - open UnifiedVisitLogModal
   const handleLogVisit = (student, e) => {
     e.stopPropagation();
     setSelectedStudent(student);
-    visitForm.resetFields();
-    visitForm.setFieldsValue({
-      studentId: student.id,
-      applicationId: student.applicationId || student.id,
-      visitDate: dayjs(),
-    });
     setVisitModalVisible(true);
   };
 
-  // Handle visit form submission
-  const handleVisitSubmit = async () => {
-    try {
-      const values = await visitForm.validateFields();
-      const visitData = {
-        ...values,
-        visitDate: values.visitDate.toISOString(),
-      };
-
-      if (onScheduleVisit) {
-        await onScheduleVisit(visitData);
-        message.success('Visit log created successfully');
-      }
-
-      setVisitModalVisible(false);
-      visitForm.resetFields();
-    } catch (err) {
-      if (err.errorFields) {
-        return; // Form validation error
-      }
-      message.error('Failed to create visit log');
+  // Handle visit modal success
+  const handleVisitSuccess = () => {
+    setVisitModalVisible(false);
+    setSelectedStudent(null);
+    // Trigger refresh if callback is provided
+    if (onScheduleVisit) {
+      onScheduleVisit();
     }
   };
 
@@ -101,43 +75,31 @@ const AssignedStudentsList = ({
   };
 
   /**
-   * Calculate expected reports using monthly cycles.
-   * Reports are due on the 5th of the next month.
+   * Calculate total expected reports using monthly cycles.
+   * Returns total for entire internship period (not just as of today).
+   * Always calculates dynamically based on dates to reflect date changes.
    */
   const calculateExpectedReports = (internshipApp) => {
-    if (internshipApp?.totalExpectedReports) {
-      return internshipApp.totalExpectedReports;
-    }
-
     if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
 
     const startDate = new Date(internshipApp.startDate);
     const endDate = new Date(internshipApp.endDate);
-    const now = new Date();
 
-    if (startDate > now) return 0;
-
-    return getExpectedReportsAsOfToday(startDate, endDate);
+    return getTotalExpectedCount(startDate, endDate);
   };
 
   /**
-   * Calculate expected visits using monthly cycles.
-   * Visits are aligned with report cycles - 1 visit per month.
+   * Calculate total expected visits using monthly cycles.
+   * Returns total for entire internship period (not just as of today).
+   * Always calculates dynamically based on dates to reflect date changes.
    */
   const calculateExpectedVisits = (internshipApp) => {
-    if (internshipApp?.totalExpectedVisits) {
-      return internshipApp.totalExpectedVisits;
-    }
-
     if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
 
     const startDate = new Date(internshipApp.startDate);
     const endDate = new Date(internshipApp.endDate);
-    const now = new Date();
 
-    if (startDate > now) return 0;
-
-    return getExpectedVisitsAsOfToday(startDate, endDate);
+    return getTotalExpectedCount(startDate, endDate);
   };
 
   // Get visit status with done/expected
@@ -483,55 +445,17 @@ const AssignedStudentsList = ({
         />
       </Card>
 
-      {/* Quick Visit Log Modal */}
-      <Modal
-        title={`Log Visit - ${selectedStudent?.name || selectedStudent?.student?.name || ''}`}
-        open={visitModalVisible}
-        onOk={handleVisitSubmit}
-        onCancel={() => {
+      {/* Unified Visit Log Modal */}
+      <UnifiedVisitLogModal
+        visible={visitModalVisible}
+        onClose={() => {
           setVisitModalVisible(false);
-          visitForm.resetFields();
+          setSelectedStudent(null);
         }}
-        okText="Create Visit Log"
-        width={600}
-      >
-        <Form form={visitForm} layout="vertical" className="mt-4">
-          <Form.Item name="studentId" hidden>
-            <Input />
-          </Form.Item>
-          <Form.Item name="applicationId" hidden>
-            <Input />
-          </Form.Item>
-
-          <Form.Item
-            name="visitDate"
-            label="Visit Date"
-            rules={[{ required: true, message: 'Please select a date' }]}
-          >
-            <DatePicker className="w-full" showTime />
-          </Form.Item>
-
-          <Form.Item
-            name="visitType"
-            label="Visit Type"
-            rules={[{ required: true, message: 'Please select visit type' }]}
-          >
-            <Select placeholder="Select visit type">
-              <Option value="PHYSICAL">Physical Visit</Option>
-              <Option value="VIRTUAL">Virtual Visit</Option>
-              <Option value="PHONE">Phone Call</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="visitLocation" label="Visit Location">
-            <Input placeholder="Enter visit location" />
-          </Form.Item>
-
-          <Form.Item name="notes" label="Notes">
-            <TextArea rows={3} placeholder="Add any notes about this visit" />
-          </Form.Item>
-        </Form>
-      </Modal>
+        onSuccess={handleVisitSuccess}
+        selectedStudent={selectedStudent}
+        students={students}
+      />
     </>
   );
 };

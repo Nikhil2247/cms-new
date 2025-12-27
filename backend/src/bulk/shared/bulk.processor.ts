@@ -9,7 +9,7 @@ import { BulkJobService } from './bulk-job.service';
 import { BulkOperationJobData } from './bulk-queue.service';
 import { BulkJobType } from '@prisma/client';
 
-@Processor('{bulk-operations}', {
+@Processor('bulk-operations', {
   concurrency: 2, // Process 2 jobs at a time
 })
 export class BulkProcessor extends WorkerHost {

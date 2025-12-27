@@ -470,6 +470,26 @@ export class NotificationsService {
           if (!dto.userIds || dto.userIds.length === 0) {
             throw new BadRequestException('userIds is required for users target');
           }
+          // Use async queue for bulk operations (non-blocking)
+          if (dto.userIds.length > 10) {
+            const asyncResult = await this.notificationSender.sendBulkAsync({
+              userIds: dto.userIds,
+              type: 'ANNOUNCEMENT',
+              title,
+              body,
+              data,
+              sendEmail,
+              initiatedBy: user.userId,
+            });
+            return {
+              success: true,
+              message: asyncResult.message,
+              jobId: asyncResult.jobId,
+              totalUsers: asyncResult.totalUsers,
+              async: true,
+            };
+          }
+          // For small batches, use synchronous sending
           result = await this.notificationSender.sendBulk({
             userIds: dto.userIds,
             type: 'ANNOUNCEMENT',
@@ -488,13 +508,22 @@ export class NotificationsService {
           if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
             throw new ForbiddenException('Only State/Admin can send to roles');
           }
-          result = await this.notificationSender.sendToRole(dto.role, {
+          // Use async queue for role-based notifications (non-blocking)
+          const roleAsyncResult = await this.notificationSender.sendToRoleAsync(dto.role, {
             type: 'ANNOUNCEMENT',
             title,
             body,
             data,
             sendEmail,
+            initiatedBy: user.userId,
           });
+          return {
+            success: true,
+            message: roleAsyncResult.message,
+            jobId: roleAsyncResult.jobId,
+            totalUsers: roleAsyncResult.totalUsers,
+            async: true,
+          };
           break;
 
         case NotificationTarget.INSTITUTION:
@@ -506,11 +535,19 @@ export class NotificationsService {
           if (user.role === Role.PRINCIPAL && institutionId !== user.institutionId) {
             throw new ForbiddenException('Principals can only send to their own institution');
           }
-          result = await this.notificationSender.sendToInstitution(
+          // Use async queue for institution notifications (non-blocking)
+          const instAsyncResult = await this.notificationSender.sendToInstitutionAsync(
             institutionId,
-            { type: 'ANNOUNCEMENT', title, body, data, sendEmail },
+            { type: 'ANNOUNCEMENT', title, body, data, sendEmail, initiatedBy: user.userId },
             dto.roleFilter,
           );
+          return {
+            success: true,
+            message: instAsyncResult.message,
+            jobId: instAsyncResult.jobId,
+            totalUsers: instAsyncResult.totalUsers,
+            async: true,
+          };
           break;
 
         case NotificationTarget.MY_STUDENTS:
@@ -530,15 +567,16 @@ export class NotificationsService {
           if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
             throw new ForbiddenException('Only State/Admin can broadcast');
           }
-          // Broadcast via WebSocket AND save to database for all active users
+          // Broadcast via WebSocket immediately for real-time delivery
           this.notificationSender.broadcast('ANNOUNCEMENT', title, body, data);
 
+          // Queue database saves for all active users (non-blocking)
           const allUsers = await this.prisma.user.findMany({
             where: { active: true },
             select: { id: true },
           });
 
-          const broadcastResult = await this.notificationSender.sendBulk({
+          const broadcastAsyncResult = await this.notificationSender.sendBulkAsync({
             userIds: allUsers.map((u) => u.id),
             type: 'ANNOUNCEMENT',
             title,
@@ -546,13 +584,16 @@ export class NotificationsService {
             data,
             sendEmail,
             sendRealtime: false, // Already broadcast via WebSocket
+            initiatedBy: user.userId,
           });
 
-          let broadcastSent = 0;
-          for (const r of broadcastResult.values()) {
-            if (r.success) broadcastSent++;
-          }
-          result = { sentCount: broadcastSent, skippedCount: allUsers.length - broadcastSent };
+          return {
+            success: true,
+            message: `Broadcast sent immediately. ${broadcastAsyncResult.message}`,
+            jobId: broadcastAsyncResult.jobId,
+            totalUsers: broadcastAsyncResult.totalUsers,
+            async: true,
+          };
           break;
 
         default:
@@ -629,6 +670,40 @@ export class NotificationsService {
         };
       }
 
+      // Use async queue for larger batches (non-blocking)
+      if (studentIds.length > 10) {
+        const asyncResult = await this.notificationSender.sendBulkAsync({
+          userIds: studentIds,
+          type: 'ANNOUNCEMENT',
+          title: dto.title,
+          body: dto.body,
+          data: { ...dto.data, fromFaculty: user.userId },
+          sendEmail: dto.sendEmail,
+          initiatedBy: user.userId,
+        });
+
+        // Audit log
+        await this.auditService.log({
+          userId: user.userId,
+          userRole: user.role,
+          action: AuditAction.BULK_OPERATION,
+          entityType: 'Notification',
+          description: `Student reminder queued: ${dto.title}`,
+          newValues: { type: 'student_reminder', title: dto.title, totalStudents: studentIds.length },
+        });
+
+        this.logger.log(`Faculty ${user.userId} queued reminder for ${studentIds.length} students`);
+
+        return {
+          success: true,
+          message: asyncResult.message,
+          jobId: asyncResult.jobId,
+          totalStudents: asyncResult.totalUsers,
+          async: true,
+        };
+      }
+
+      // For small batches, use synchronous sending
       const result = await this.notificationSender.sendBulk({
         userIds: studentIds,
         type: 'ANNOUNCEMENT',
@@ -668,7 +743,7 @@ export class NotificationsService {
   }
 
   /**
-   * Principal: Send announcement to institution
+   * Principal: Send announcement to institution (async, non-blocking)
    */
   async sendInstitutionAnnouncement(user: UserContext, dto: SendInstitutionAnnouncementDto) {
     if (user.role !== Role.PRINCIPAL) {
@@ -680,7 +755,8 @@ export class NotificationsService {
     }
 
     try {
-      const result = await this.notificationSender.sendToInstitution(
+      // Use async queue for institution announcements (non-blocking)
+      const asyncResult = await this.notificationSender.sendToInstitutionAsync(
         user.institutionId,
         {
           type: 'ANNOUNCEMENT',
@@ -688,6 +764,7 @@ export class NotificationsService {
           body: dto.body,
           data: { ...dto.data, fromPrincipal: user.userId },
           sendEmail: dto.sendEmail,
+          initiatedBy: user.userId,
         },
         dto.targetRoles,
       );
@@ -698,22 +775,25 @@ export class NotificationsService {
         userRole: user.role,
         action: AuditAction.BULK_OPERATION,
         entityType: 'Notification',
-        description: `Institution announcement sent: "${dto.title}" to ${result.sentCount} recipients`,
+        description: `Institution announcement queued: "${dto.title}" for ${asyncResult.totalUsers} recipients`,
         newValues: {
           type: 'institution_announcement',
           institutionId: user.institutionId,
           title: dto.title,
-          sentCount: result.sentCount,
+          totalUsers: asyncResult.totalUsers,
           targetRoles: dto.targetRoles,
+          jobId: asyncResult.jobId,
         },
       });
 
-      this.logger.log(`Principal ${user.userId} sent announcement to institution: ${result.sentCount} recipients`);
+      this.logger.log(`Principal ${user.userId} queued announcement for institution: ${asyncResult.totalUsers} recipients`);
 
       return {
         success: true,
-        message: `Announcement sent to ${result.sentCount} users`,
-        ...result,
+        message: asyncResult.message,
+        jobId: asyncResult.jobId,
+        totalUsers: asyncResult.totalUsers,
+        async: true,
       };
     } catch (error) {
       this.logger.error(`Failed to send institution announcement`, error.stack);
@@ -722,7 +802,7 @@ export class NotificationsService {
   }
 
   /**
-   * State/Admin: Send system-wide announcement
+   * State/Admin: Send system-wide announcement (async, non-blocking)
    */
   async sendSystemAnnouncement(user: UserContext, dto: SendSystemAnnouncementDto) {
     if (!([Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN] as Role[]).includes(user.role)) {
@@ -730,41 +810,38 @@ export class NotificationsService {
     }
 
     try {
-      let result: { sentCount: number; skippedCount: number };
+      const jobIds: string[] = [];
+      let totalUsers = 0;
 
       if (dto.targetRoles && dto.targetRoles.length > 0) {
-        // Send to specific roles
-        let totalSent = 0;
-        let totalSkipped = 0;
-
+        // Send to specific roles asynchronously
         for (const role of dto.targetRoles) {
-          const roleResult = await this.notificationSender.sendToRole(role, {
+          const roleResult = await this.notificationSender.sendToRoleAsync(role, {
             type: 'SYSTEM_ALERT',
             title: dto.title,
             body: dto.body,
             data: { ...dto.data, fromAdmin: user.userId },
             sendEmail: dto.sendEmail,
             force: dto.force,
+            initiatedBy: user.userId,
           });
-          totalSent += roleResult.sentCount;
-          totalSkipped += roleResult.skippedCount;
+          jobIds.push(roleResult.jobId);
+          totalUsers += roleResult.totalUsers;
         }
-
-        result = { sentCount: totalSent, skippedCount: totalSkipped };
       } else {
-        // Broadcast to all
+        // Broadcast to all immediately via WebSocket
         this.notificationSender.broadcast('SYSTEM_ALERT', dto.title, dto.body, {
           ...dto.data,
           fromAdmin: user.userId,
         });
 
-        // Also save to database for all active users
+        // Queue database saves for all active users (non-blocking)
         const users = await this.prisma.user.findMany({
           where: { active: true },
           select: { id: true },
         });
 
-        const bulkResult = await this.notificationSender.sendBulk({
+        const asyncResult = await this.notificationSender.sendBulkAsync({
           userIds: users.map((u) => u.id),
           type: 'SYSTEM_ALERT',
           title: dto.title,
@@ -772,16 +849,12 @@ export class NotificationsService {
           data: { ...dto.data, fromAdmin: user.userId },
           sendEmail: dto.sendEmail,
           force: dto.force,
+          sendRealtime: false, // Already broadcast via WebSocket
+          initiatedBy: user.userId,
         });
 
-        let sentCount = 0;
-        let skippedCount = 0;
-        for (const r of bulkResult.values()) {
-          if (r.success) sentCount++;
-          else skippedCount++;
-        }
-
-        result = { sentCount, skippedCount };
+        jobIds.push(asyncResult.jobId);
+        totalUsers = asyncResult.totalUsers;
       }
 
       // Audit log
@@ -790,25 +863,44 @@ export class NotificationsService {
         userRole: user.role,
         action: AuditAction.BULK_OPERATION,
         entityType: 'Notification',
-        description: `System announcement sent: "${dto.title}" to ${result.sentCount} recipients`,
+        description: `System announcement queued: "${dto.title}" for ${totalUsers} recipients`,
         newValues: {
           type: 'system_announcement',
           title: dto.title,
-          sentCount: result.sentCount,
+          totalUsers,
           targetRoles: dto.targetRoles,
           force: dto.force,
+          jobIds,
         },
       });
 
-      this.logger.log(`System announcement sent by ${user.userId}: ${result.sentCount} recipients`);
+      this.logger.log(`System announcement queued by ${user.userId}: ${totalUsers} recipients`);
 
       return {
         success: true,
-        message: `System announcement sent to ${result.sentCount} users`,
-        ...result,
+        message: `System announcement queued for ${totalUsers} users`,
+        jobIds,
+        totalUsers,
+        async: true,
       };
     } catch (error) {
       this.logger.error(`Failed to send system announcement`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Get status of a bulk notification job
+   */
+  async getBulkNotificationStatus(jobId: string) {
+    try {
+      const status = await this.notificationSender.getBulkJobStatus(jobId);
+      return {
+        success: true,
+        ...status,
+      };
+    } catch (error) {
+      this.logger.error(`Failed to get bulk notification status for job ${jobId}`, error.stack);
       throw error;
     }
   }

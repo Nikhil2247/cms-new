@@ -15,7 +15,7 @@ import {
 } from './interfaces/report.interface';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 
-@Processor('{report-generation}')
+@Processor('report-generation')
 @Injectable()
 export class ReportProcessor extends WorkerHost {
   private readonly logger = new Logger(ReportProcessor.name);
@@ -37,6 +37,7 @@ export class ReportProcessor extends WorkerHost {
     // Extract format from config or use default
     const formatStr = jobConfig?.format || job.data.format || 'excel';
     const filters = jobConfig?.filters || job.data.filters || {};
+    const selectedColumns = jobConfig?.columns || [];
 
     // Convert string format to ExportFormat enum
     const formatMap: Record<string, ExportFormat> = {
@@ -50,6 +51,7 @@ export class ReportProcessor extends WorkerHost {
     this.logger.log(
       `Processing report generation job ${job.id} for user ${userId}`,
     );
+    this.logger.log(`Selected columns: ${selectedColumns.length > 0 ? selectedColumns.join(', ') : 'all'}`);
 
     try {
       // Update status to processing
@@ -66,8 +68,8 @@ export class ReportProcessor extends WorkerHost {
         throw new Error('No data found for the given filters');
       }
 
-      // Get report configuration
-      const config = this.getExportConfig(reportType, data, filters, userId, format);
+      // Get report configuration with selected columns
+      const config = this.getExportConfig(reportType, data, filters, userId, format, selectedColumns);
 
       // Generate file based on format
       this.logger.log(`Generating ${format} file`);
@@ -224,6 +226,7 @@ export class ReportProcessor extends WorkerHost {
     filters: any,
     userId: string,
     format: ExportFormat,
+    selectedColumns: string[] = [],
   ): ExportConfig {
     // Normalize report type for matching
     const normalizedType = reportType.toLowerCase().replace(/-/g, '_');
@@ -347,6 +350,31 @@ export class ReportProcessor extends WorkerHost {
         { field: 'value', header: 'Value', type: 'number' as const, width: 15 },
         { field: 'category', header: 'Category', type: 'string' as const, width: 15 },
       ],
+      // Compliance reports - matches generateStudentComplianceReport output
+      'student_compliance': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'joiningReportStatus', header: 'Joining Report', type: 'string' as const, width: 15 },
+        { field: 'monthlyReportsSubmitted', header: 'Reports Submitted', type: 'number' as const, width: 15 },
+        { field: 'monthlyReportsPending', header: 'Reports Pending', type: 'number' as const, width: 15 },
+        { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
+        { field: 'complianceScore', header: 'Compliance Score', type: 'number' as const, width: 15 },
+        { field: 'complianceLevel', header: 'Compliance Level', type: 'string' as const, width: 15 },
+      ],
+      'compliance': [
+        { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'joiningReportStatus', header: 'Joining Report', type: 'string' as const, width: 15 },
+        { field: 'monthlyReportsSubmitted', header: 'Reports Submitted', type: 'number' as const, width: 15 },
+        { field: 'monthlyReportsPending', header: 'Reports Pending', type: 'number' as const, width: 15 },
+        { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
+        { field: 'complianceScore', header: 'Compliance Score', type: 'number' as const, width: 15 },
+        { field: 'complianceLevel', header: 'Compliance Level', type: 'string' as const, width: 15 },
+      ],
     };
 
     // Get columns for this report type
@@ -365,6 +393,33 @@ export class ReportProcessor extends WorkerHost {
         }));
       } else {
         columns = [];
+      }
+    }
+
+    // Filter columns based on user selection (if provided)
+    if (selectedColumns && selectedColumns.length > 0) {
+      this.logger.log(`Filtering to selected columns: ${selectedColumns.join(', ')}`);
+
+      // Filter to only include selected columns while preserving order
+      const filteredColumns = selectedColumns
+        .map(colId => columns.find(c => c.field === colId))
+        .filter(Boolean);
+
+      // Only use filtered columns if at least one matched
+      if (filteredColumns.length > 0) {
+        columns = filteredColumns;
+
+        // Also filter the data to only include selected fields
+        const selectedFields = new Set(selectedColumns);
+        data = data.map(row => {
+          const filteredRow: Record<string, unknown> = {};
+          for (const field of selectedFields) {
+            if (field in row) {
+              filteredRow[field] = row[field];
+            }
+          }
+          return filteredRow;
+        });
       }
     }
 

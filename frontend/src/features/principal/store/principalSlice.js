@@ -106,8 +106,24 @@ const initialState = {
   },
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Cache duration configuration per endpoint type
+const CACHE_CONFIG = {
+  // Master data - very stable, rarely changes
+  MASTER_DATA: 30 * 60 * 1000, // 30 minutes (batches, departments)
+  // Dashboard stats - frequently updated
+  DASHBOARD: 5 * 60 * 1000, // 5 minutes
+  // Lists with pagination - users expect fresh data
+  LISTS: 3 * 60 * 1000, // 3 minutes (students, staff)
+  // Metrics and analytics - calculated values
+  METRICS: 10 * 60 * 1000, // 10 minutes (compliance, coverage)
+  // Time-sensitive data
+  ALERTS: 2 * 60 * 1000, // 2 minutes (alerts, joining letters)
+  // Default fallback
+  DEFAULT: 5 * 60 * 1000, // 5 minutes
+};
+
+// Legacy constant for backward compatibility
+const CACHE_DURATION = CACHE_CONFIG.DEFAULT;
 
 export const fetchPrincipalDashboard = createAsyncThunk(
   'principal/fetchDashboard',
@@ -153,11 +169,12 @@ export const fetchStudents = createAsyncThunk(
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.principal.lastFetched.studentsKey;
 
+      // Use LISTS cache duration - users expect relatively fresh data
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
       ) {
         return { cached: true };
       }
@@ -188,15 +205,17 @@ export const fetchStaff = createAsyncThunk(
         search: params?.search ?? '',
         role: params?.role ?? '',
         department: params?.department ?? '',
+        active: params?.active ?? '',
       };
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.principal.lastFetched.staffKey;
 
+      // Use LISTS cache duration - users expect relatively fresh data
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
       ) {
         return { cached: true };
       }
@@ -243,7 +262,8 @@ export const fetchBatches = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.batches;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use MASTER_DATA cache duration - batches rarely change
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.MASTER_DATA) {
         return { cached: true };
       }
 
@@ -266,7 +286,8 @@ export const fetchDepartments = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.departments;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use MASTER_DATA cache duration - departments rarely change
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.MASTER_DATA) {
         return { cached: true };
       }
 
@@ -631,7 +652,8 @@ export const fetchMentorCoverage = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.mentorCoverage;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use METRICS cache duration - calculated analytics data
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.METRICS) {
         return { cached: true };
       }
 
@@ -655,7 +677,8 @@ export const fetchComplianceMetrics = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.complianceMetrics;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use METRICS cache duration - calculated analytics data
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.METRICS) {
         return { cached: true };
       }
 
@@ -679,7 +702,8 @@ export const fetchAlertsEnhanced = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.alertsEnhanced;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use ALERTS cache duration - time-sensitive data
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS) {
         return { cached: true };
       }
 
@@ -703,7 +727,8 @@ export const fetchJoiningLetterStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.joiningLetterStats;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use ALERTS cache duration - time-sensitive pending items
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS) {
         return { cached: true };
       }
 
@@ -736,12 +761,12 @@ export const fetchJoiningLetters = createAsyncThunk(
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.principal.lastFetched.joiningLettersKey;
 
-      // Check cache
+      // Use ALERTS cache duration - time-sensitive pending items
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS
       ) {
         return { cached: true };
       }
@@ -1043,11 +1068,15 @@ const principalSlice = createSlice({
       })
       .addCase(updateStudent.fulfilled, (state, action) => {
         state.students.loading = false;
-        const index = state.students.list.findIndex(s => s.id === action.payload.id);
-        if (index !== -1) {
-          state.students.list[index] = action.payload;
+        const updatedStudent = action.payload;
+        if (updatedStudent?.id) {
+          // Use .map() to create new array for proper React re-renders
+          state.students.list = state.students.list.map(s =>
+            s.id === updatedStudent.id ? { ...s, ...updatedStudent } : s
+          );
         }
-        state.lastFetched.students = Date.now();
+        state.lastFetched.students = null; // Invalidate cache to trigger refresh
+        state.lastFetched.studentsKey = null;
       })
       .addCase(updateStudent.rejected, (state, action) => {
         state.students.loading = false;
@@ -1059,8 +1088,14 @@ const principalSlice = createSlice({
       })
       .addCase(deleteStudent.fulfilled, (state, action) => {
         state.students.loading = false;
-        state.students.list = state.students.list.filter(s => s.id !== action.payload.id);
-        state.lastFetched.students = Date.now();
+        // Hard delete - remove from list entirely
+        // The action.meta.arg contains the studentId passed to the thunk
+        const studentId = action.meta?.arg;
+        if (studentId) {
+          state.students.list = state.students.list.filter(s => s.id !== studentId);
+        }
+        state.lastFetched.students = null; // Invalidate cache to trigger refresh
+        state.lastFetched.studentsKey = null;
       })
       .addCase(deleteStudent.rejected, (state, action) => {
         state.students.loading = false;
@@ -1142,11 +1177,15 @@ const principalSlice = createSlice({
       })
       .addCase(updateStaff.fulfilled, (state, action) => {
         state.staff.loading = false;
-        const index = state.staff.list.findIndex(s => s.id === action.payload.id);
-        if (index !== -1) {
-          state.staff.list[index] = action.payload;
+        const updatedStaff = action.payload;
+        if (updatedStaff?.id) {
+          // Use .map() to create new array for proper React re-renders
+          state.staff.list = state.staff.list.map(s =>
+            s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s
+          );
         }
-        state.lastFetched.staff = Date.now();
+        state.lastFetched.staff = null; // Invalidate cache to trigger refresh
+        state.lastFetched.staffKey = null;
       })
       .addCase(updateStaff.rejected, (state, action) => {
         state.staff.loading = false;
@@ -1158,8 +1197,14 @@ const principalSlice = createSlice({
       })
       .addCase(deleteStaff.fulfilled, (state, action) => {
         state.staff.loading = false;
-        state.staff.list = state.staff.list.filter(s => s.id !== action.payload.id);
-        state.lastFetched.staff = Date.now();
+        // Hard delete - remove from list entirely
+        // The action.meta.arg contains the staffId passed to the thunk
+        const staffId = action.meta?.arg;
+        if (staffId) {
+          state.staff.list = state.staff.list.filter(s => s.id !== staffId);
+        }
+        state.lastFetched.staff = null; // Invalidate cache to trigger refresh
+        state.lastFetched.staffKey = null;
       })
       .addCase(deleteStaff.rejected, (state, action) => {
         state.staff.loading = false;

@@ -1,6 +1,5 @@
 // FilterBuilder Component - Dynamic Filter Configuration
-import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   Form,
   Select,
@@ -25,19 +24,13 @@ import {
 } from "@ant-design/icons";
 import { getFilterValues } from "../../services/reportBuilderApi";
 import { formatLabel } from "../../utils/reportBuilderUtils";
-import {
-  fetchInstitutions,
-  forceRefreshInstitutions,
-  selectInstitutions,
-  selectInstitutionsLoading,
-  selectInstitutionsError,
-} from "../../features/state/store/stateSlice";
+import lookupService from "../../services/lookup.service";
 
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 const { Text } = Typography;
 
-// Filter IDs that should use Redux institution data (lowercase for comparison)
+// Filter IDs that should use lookup service institution data (lowercase for comparison)
 const INSTITUTION_FILTER_IDS = ["institutionid", "institution", "instituteid", "institute"];
 
 const FilterBuilder = ({
@@ -49,16 +42,15 @@ const FilterBuilder = ({
   disabled = false,
   compact = false,
 }) => {
-  const dispatch = useDispatch();
   const [dynamicOptions, setDynamicOptions] = useState({});
   const [loadingOptions, setLoadingOptions] = useState({});
   const [errorOptions, setErrorOptions] = useState({}); // Track filter load errors
   const [pendingRequests, setPendingRequests] = useState({}); // Prevent duplicate requests
 
-  // Redux institution data
-  const institutions = useSelector(selectInstitutions);
-  const institutionsLoading = useSelector(selectInstitutionsLoading);
-  const institutionsError = useSelector(selectInstitutionsError);
+  // Institution data from lookup service (includes all institutions for reports)
+  const [institutions, setInstitutions] = useState([]);
+  const [institutionsLoading, setInstitutionsLoading] = useState(false);
+  const [institutionsError, setInstitutionsError] = useState(null);
 
   // Transform institutions to filter options format
   const institutionOptions = useMemo(() => {
@@ -75,29 +67,60 @@ const FilterBuilder = ({
     );
   }, [filters]);
 
-  // Fetch institutions from Redux if needed
+  // Fetch institutions from lookup service (includes inactive for reports)
   useEffect(() => {
     if (needsInstitutions && institutions.length === 0 && !institutionsLoading) {
-      dispatch(fetchInstitutions());
+      setInstitutionsLoading(true);
+      setInstitutionsError(null);
+
+      lookupService.getInstitutions(true) // includeInactive=true for reports
+        .then((response) => {
+          setInstitutions(response?.institutions || []);
+        })
+        .catch((error) => {
+          console.error('Failed to fetch institutions for filters:', error);
+          setInstitutionsError(error.message || 'Failed to load institutions');
+        })
+        .finally(() => {
+          setInstitutionsLoading(false);
+        });
     }
-  }, [needsInstitutions, institutions.length, institutionsLoading, dispatch]);
+  }, [needsInstitutions, institutions.length, institutionsLoading]);
 
   // Handle retry for institution loading
   const handleRetryInstitutions = useCallback(() => {
-    dispatch(forceRefreshInstitutions());
-  }, [dispatch]);
+    setInstitutions([]);
+    setInstitutionsLoading(true);
+    setInstitutionsError(null);
+
+    lookupService.getInstitutions(true)
+      .then((response) => {
+        setInstitutions(response?.institutions || []);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch institutions for filters:', error);
+        setInstitutionsError(error.message || 'Failed to load institutions');
+      })
+      .finally(() => {
+        setInstitutionsLoading(false);
+      });
+  }, []);
 
   // Define dependent filters - when parent changes, reload child filters
   const FILTER_DEPENDENCIES = useMemo(() => ({
     branchId: 'institutionId',
     departmentId: 'institutionId',
     batchId: 'institutionId',
+    mentorId: 'institutionId',
   }), []);
+
+  // Track previous institutionId to detect changes
+  const prevInstitutionIdRef = useRef(values?.institutionId);
 
   // Load dynamic filter options when filters change
   useEffect(() => {
     filters.forEach((filter) => {
-      // Skip institution filters - they use Redux
+      // Skip institution filters - they use lookup service
       if (INSTITUTION_FILTER_IDS.includes(filter.id.toLowerCase())) {
         return;
       }
@@ -108,16 +131,49 @@ const FilterBuilder = ({
   }, [filters, reportType]);
 
   // Reload dependent filters when parent filter value changes
+  // AND clear the dependent filter values to prevent stale selections
   useEffect(() => {
     const institutionId = values?.institutionId;
-    if (institutionId) {
-      // Reload filters that depend on institutionId
-      filters.forEach((filter) => {
-        const dependency = FILTER_DEPENDENCIES[filter.id];
-        if (dependency === 'institutionId' && filter.dynamic) {
-          loadDynamicOptions(filter.id, institutionId);
-        }
-      });
+    const prevInstitutionId = prevInstitutionIdRef.current;
+
+    // Only process if institutionId actually changed
+    if (institutionId !== prevInstitutionId) {
+      prevInstitutionIdRef.current = institutionId;
+
+      // Clear dependent filter values when institutionId changes
+      const dependentFilterIds = Object.entries(FILTER_DEPENDENCIES)
+        .filter(([_, parentId]) => parentId === 'institutionId')
+        .map(([filterId]) => filterId);
+
+      // Check if any dependent filters have values that should be cleared
+      const hasStaleValues = dependentFilterIds.some((filterId) => values?.[filterId]);
+
+      if (hasStaleValues && prevInstitutionId !== undefined) {
+        // Clear dependent filter values (only if there was a previous selection)
+        const clearedValues = { ...values };
+        dependentFilterIds.forEach((filterId) => {
+          delete clearedValues[filterId];
+        });
+        // Clear dynamic options for dependent filters
+        setDynamicOptions((prev) => {
+          const updated = { ...prev };
+          dependentFilterIds.forEach((filterId) => {
+            delete updated[filterId];
+          });
+          return updated;
+        });
+        onChange?.(clearedValues);
+      }
+
+      if (institutionId) {
+        // Reload filters that depend on institutionId
+        filters.forEach((filter) => {
+          const dependency = FILTER_DEPENDENCIES[filter.id];
+          if (dependency === 'institutionId' && filter.dynamic) {
+            loadDynamicOptions(filter.id, institutionId);
+          }
+        });
+      }
     }
   }, [values?.institutionId, filters, FILTER_DEPENDENCIES]);
 
@@ -167,14 +223,28 @@ const FilterBuilder = ({
   }, [values?.institutionId, reportType]);
 
   const handleFilterChange = (filterId, value) => {
+    // Serialize dateRange Dayjs arrays to ISO strings for proper API transmission
+    let serializedValue = value;
+
+    if (Array.isArray(value) && value.length === 2) {
+      // Check if it's a date range (Dayjs objects or Date objects)
+      const [start, end] = value;
+      if (start && end && (start.$d instanceof Date || start instanceof Date || typeof start?.toISOString === 'function')) {
+        serializedValue = [
+          start.toISOString ? start.toISOString() : start,
+          end.toISOString ? end.toISOString() : end,
+        ];
+      }
+    }
+
     onChange?.({
       ...values,
-      [filterId]: value,
+      [filterId]: serializedValue,
     });
   };
 
   const getFilterOptions = (filter) => {
-    // Use Redux institutions for institution filters
+    // Use lookup service institutions for institution filters
     if (INSTITUTION_FILTER_IDS.includes(filter.id.toLowerCase())) {
       return institutionOptions;
     }

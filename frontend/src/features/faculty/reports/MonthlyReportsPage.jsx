@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -56,9 +56,11 @@ const MonthlyReportsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list: reports, loading, total, page, totalPages } = useSelector(selectMonthlyReports);
+  const lastFetched = useSelector((state) => state.faculty.lastFetched?.monthlyReports);
 
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [isRefreshing, setIsRefreshing] = useState(false);
   // Removed: Auto-approval implemented - review modal state no longer needed
   // const [reviewModal, setReviewModal] = useState({ visible: false, report: null, action: null });
   // const [remarks, setRemarks] = useState('');
@@ -67,12 +69,20 @@ const MonthlyReportsPage = () => {
   const [selectedReport, setSelectedReport] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchMonthlyReports({ forceRefresh: true }));
+    dispatch(fetchMonthlyReports());
   }, [dispatch]);
 
-  const handleRefresh = () => {
-    dispatch(fetchMonthlyReports({ forceRefresh: true }));
-  };
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await dispatch(fetchMonthlyReports({ forceRefresh: true })).unwrap();
+      message.success('Data refreshed successfully');
+    } catch (error) {
+      message.error('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch]);
 
   // Removed: Auto-approval implemented - handleApprove and handleReject no longer needed
   // Reports are now automatically approved upon submission
@@ -277,9 +287,16 @@ const MonthlyReportsPage = () => {
               <FileTextOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Monthly Reports
-              </Title>
+              <div className="flex items-center gap-3">
+                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                  Monthly Reports
+                </Title>
+                {lastFetched && (
+                  <span className="text-xs text-text-tertiary">
+                    Updated {new Date(lastFetched).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <Text className="text-text-secondary text-sm">
                 View student monthly internship reports
               </Text>
@@ -287,9 +304,10 @@ const MonthlyReportsPage = () => {
           </div>
 
           <Button
-            icon={<ReloadOutlined />}
+            icon={<ReloadOutlined spin={isRefreshing} />}
             onClick={handleRefresh}
-            loading={loading}
+            loading={isRefreshing}
+            disabled={loading}
             className="rounded-lg"
           >
             Refresh

@@ -37,7 +37,7 @@ const ActiveInternshipCard = ({
     return (
       <Card bordered={false} className="h-full rounded-2xl border border-gray-100 shadow-sm bg-white hover:shadow-md transition-all duration-300">
         <div className="flex flex-col items-center justify-center h-full py-12 px-6">
-          <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-6">
+          <div className="w-20 h-20 bg-background-secondary rounded-full flex items-center justify-center mb-6">
             <TrophyOutlined className="text-3xl text-gray-300" />
           </div>
           <Title level={4} className="!mb-2 text-center text-gray-900">No Active Internship</Title>
@@ -126,7 +126,7 @@ const ActiveInternshipCard = ({
       </div>
 
       {/* Progress Section */}
-      <div className="bg-gray-50/80 rounded-xl p-5 mb-6 border border-gray-100">
+      <div className="bg-background-secondary/80 rounded-xl p-5 mb-6 border border-gray-100">
         <div className="flex justify-between items-end mb-3">
           <div>
             <Text className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-1">Progress</Text>

@@ -140,7 +140,7 @@ const GenerateReportDrawer = ({
       format,
     };
 
-    const validation = validateReportConfig(payload);
+    const validation = validateReportConfig(payload, reportConfig);
     if (!validation.valid) {
       validation.errors.forEach((err) => message.error(err));
       return;

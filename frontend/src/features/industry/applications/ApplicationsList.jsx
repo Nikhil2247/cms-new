@@ -417,7 +417,7 @@ const ApplicationsList = () => {
             {selectedApp.status === 'REJECTED' && selectedApp.rejectionReason && (
               <div>
                 <Divider plain className="!text-error uppercase text-[10px] tracking-widest font-bold">Rejection Reason</Divider>
-                <Alert title={selectedApp.rejectionReason} type="error" className="rounded-xl border-error/20" />
+                <Alert message={selectedApp.rejectionReason} type="error" className="rounded-xl border-error/20" />
               </div>
             )}
 

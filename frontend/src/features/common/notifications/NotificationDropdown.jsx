@@ -75,10 +75,10 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
   // Dropdown content
   const dropdownContent = (
     <div
-      className={`notification-dropdown ${darkMode ? 'dark' : ''} w-[380px] max-h-[520px] bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-800 overflow-hidden animate-fade-in`}
+      className={`notification-dropdown ${darkMode ? 'dark' : ''} w-[380px] max-h-[520px] bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fade-in`}
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-gray-100 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10">
+      <div className="px-5 py-4 border-b border-border bg-surface sticky top-0 z-10">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <Title level={5} className="!m-0 !text-gray-900 dark:!text-white">
@@ -123,7 +123,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
       </div>
 
       {/* Notification List */}
-      <div className="max-h-[380px] overflow-y-auto flex flex-col bg-white dark:bg-slate-900">
+      <div className="max-h-[380px] overflow-y-auto flex flex-col bg-surface">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16 gap-3">
             <Spin size="small" />
@@ -141,7 +141,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
           ))
         ) : (
           <div className="py-16 flex flex-col items-center justify-center px-6">
-            <div className="w-16 h-16 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-background-secondary rounded-full flex items-center justify-center mb-4">
               <InboxOutlined className="text-3xl text-gray-300 dark:text-slate-600" />
             </div>
             <Text className="text-gray-500 dark:text-slate-400 font-medium">All caught up!</Text>
@@ -152,7 +152,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
 
       {/* Footer */}
       {notifications.length > 0 && (
-        <div className="px-5 py-3 border-t border-gray-100 dark:border-slate-800 bg-gray-50/50 dark:bg-slate-900/50 text-center">
+        <div className="px-5 py-3 border-t border-border bg-background-secondary/50 text-center">
           <Button 
             type="link" 
             onClick={handleViewAll}
@@ -184,7 +184,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
           <Button
             type="text"
             icon={<BellOutlined className="text-xl" />}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-600 dark:text-gray-300 shadow-sm hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900/50 transition-all duration-200"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-gray-600 dark:text-gray-300 shadow-sm hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900/50 transition-all duration-200"
           />
         </Badge>
       </Dropdown>
@@ -228,18 +228,18 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
           content: { background: darkMode ? '#0f172a' : '#ffffff', borderRadius: '24px 0 0 24px' }
         }}
       >
-        <div className="p-5 bg-gray-50/50 dark:bg-slate-900 sticky top-0 z-10 border-b border-gray-100 dark:border-slate-800">
+        <div className="p-5 bg-background-secondary/50 dark:bg-surface sticky top-0 z-10 border-b border-border">
           <Input
             placeholder="Search notifications..."
             prefix={<SearchOutlined className="text-gray-400" />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
-            className="rounded-xl h-10 bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700"
+            className="rounded-xl h-10 bg-surface border-border"
           />
         </div>
 
-        <div className="flex flex-col bg-white dark:bg-slate-900 min-h-full">
+        <div className="flex flex-col bg-surface min-h-full">
           {loading ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3">
               <Spin />
@@ -268,7 +268,7 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
             </div>
           ) : (
             <div className="py-24 flex flex-col items-center justify-center px-8 text-center">
-              <div className="w-20 h-20 bg-gray-50 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
+              <div className="w-20 h-20 bg-background-secondary rounded-full flex items-center justify-center mb-6">
                 <InboxOutlined className="text-4xl text-gray-300 dark:text-slate-600" />
               </div>
               <Title level={5} className="!mb-2 dark:!text-white">

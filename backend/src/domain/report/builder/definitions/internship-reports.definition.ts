@@ -24,7 +24,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'status', label: 'Status', type: 'select', required: false, options: [
         { label: 'Draft', value: 'DRAFT' },
@@ -88,7 +88,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'isVerified', label: 'Verified', type: 'boolean', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'industryType', label: 'Industry Type', type: 'select', dynamic: true, required: false },
       { id: 'city', label: 'City', type: 'select', dynamic: true, required: false },
       { id: 'isVerified', label: 'Verified Only', type: 'boolean', required: false },
@@ -119,7 +119,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'verificationStatus', label: 'Verification Status', type: 'select', required: false, options: [
         { label: 'Pending', value: 'PENDING' },

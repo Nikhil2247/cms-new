@@ -21,7 +21,7 @@ export class MailService {
   private templateCache: Map<string, handlebars.TemplateDelegate> = new Map();
 
   constructor(
-    @InjectQueue('{mail}') private mailQueue: Queue,
+    @InjectQueue('mail') private mailQueue: Queue,
     private configService: ConfigService,
   ) {
     this.transporter = nodemailer.createTransport({

@@ -47,6 +47,7 @@ import {
   uploadJoiningLetter,
   fetchAssignedStudents,
   selectJoiningLetters,
+  selectLastFetched,
   optimisticallyUpdateJoiningLetter,
   rollbackJoiningLetterOperation,
 } from '../store/facultySlice';
@@ -69,6 +70,8 @@ const JoiningLettersPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list: letters, loading, total } = useSelector(selectJoiningLetters);
+  const lastFetched = useSelector(selectLastFetched);
+  const joiningLettersLastFetched = lastFetched?.joiningLetters;
 
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -480,9 +483,16 @@ const JoiningLettersPage = () => {
               <FileProtectOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Joining Letters
-              </Title>
+              <div className="flex items-center gap-3">
+                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                  Joining Letters
+                </Title>
+                {joiningLettersLastFetched && (
+                  <span className="text-xs text-text-tertiary">
+                    Updated {new Date(joiningLettersLastFetched).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <Text className="text-text-secondary text-sm">
                 Verify and review student joining letter documents
               </Text>
@@ -499,7 +509,7 @@ const JoiningLettersPage = () => {
               Upload Letter
             </Button>
             <Button
-              icon={<ReloadOutlined />}
+              icon={<ReloadOutlined spin={loading} />}
               onClick={handleRefresh}
               loading={loading}
               className="rounded-lg"

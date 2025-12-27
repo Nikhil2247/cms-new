@@ -299,29 +299,52 @@ export class AuditService {
   }
 
   /**
-   * Get audit trail for a specific entity
+   * Get audit trail for a specific entity with pagination
    */
-  async getEntityAuditTrail(entityType: string, entityId: string) {
+  async getEntityAuditTrail(
+    entityType: string,
+    entityId: string,
+    options: { page?: number; limit?: number } = {},
+  ): Promise<{
+    logs: any[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }> {
     try {
-      const logs = await this.prisma.auditLog.findMany({
-        where: {
-          entityType,
-          entityId,
-        },
-        orderBy: { timestamp: 'desc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-              role: true,
+      const { page = 1, limit = 50 } = options;
+
+      const where = {
+        entityType,
+        entityId,
+      };
+
+      const [logs, total] = await Promise.all([
+        this.prisma.auditLog.findMany({
+          where,
+          orderBy: { timestamp: 'desc' },
+          skip: (page - 1) * limit,
+          take: limit,
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                role: true,
+              },
             },
           },
-        },
-      });
+        }),
+        this.prisma.auditLog.count({ where }),
+      ]);
 
-      return logs;
+      return {
+        logs,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      };
     } catch (error) {
       this.logger.error('Failed to get entity audit trail', error);
       throw error;

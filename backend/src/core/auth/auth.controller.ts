@@ -78,7 +78,32 @@ export class AuthController {
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.tokenService.refreshTokens(refreshTokenDto.refresh_token);
+    const tokens = await this.tokenService.refreshTokens(refreshTokenDto.refresh_token);
+
+    // Update session activity (non-blocking) - tracks that user is still active
+    this.authService.updateSessionActivity(refreshTokenDto.refresh_token).catch(() => {});
+
+    return tokens;
+  }
+
+  /**
+   * Extend session endpoint - explicitly extends the user's session
+   * Called when user clicks "Extend Session" in the session expiry modal
+   */
+  @Public()
+  @Post('extend-session')
+  @HttpCode(HttpStatus.OK)
+  async extendSession(
+    @Body() refreshTokenDto: RefreshTokenDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.extendSession(
+      refreshTokenDto.refresh_token,
+      ipAddress,
+      userAgent,
+    );
   }
 
   /**
@@ -155,6 +180,18 @@ export class AuthController {
     }
 
     return { message: 'Logged out successfully' };
+  }
+
+  /**
+   * Logout from all devices endpoint
+   * Allows users to invalidate all their sessions across all devices
+   */
+  @Post('logout-all-devices')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async logoutAllDevices(@CurrentUser() user: any) {
+    await this.authService.logoutAllDevices(user.userId);
+    return { message: 'Logged out from all devices successfully' };
   }
 
   /**

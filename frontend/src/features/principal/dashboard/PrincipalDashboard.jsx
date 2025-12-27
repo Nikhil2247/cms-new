@@ -33,6 +33,7 @@ import {
   SolutionOutlined,
   AuditOutlined,
   AlertOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import NoticeFormModal from '../../../components/modals/NoticeFormModal';
 import {
@@ -52,6 +53,7 @@ import {
   selectAlertsEnhanced,
   selectAlertsEnhancedLoading,
   selectAlertsEnhancedError,
+  selectMostRecentFetch,
 } from '../store/principalSlice';
 import InternshipCompaniesCard from './components/InternshipCompaniesCard';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
@@ -116,6 +118,7 @@ const PrincipalDashboard = () => {
   const [editingNotice, setEditingNotice] = useState(null);
   const [instituteName, setInstituteName] = useState('');
   const [alertDetailModal, setAlertDetailModal] = useState({ visible: false, type: null, title: '', data: [] });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Redux selectors for dashboard data
   const dashboardStats = useSelector(selectDashboardStats);
@@ -130,6 +133,7 @@ const PrincipalDashboard = () => {
   const alertsEnhanced = useSelector(selectAlertsEnhanced);
   const alertsEnhancedLoading = useSelector(selectAlertsEnhancedLoading);
   const alertsEnhancedError = useSelector(selectAlertsEnhancedError);
+  const lastFetched = useSelector(selectMostRecentFetch);
 
   // Memoized stats derived from Redux data
   const stats = useMemo(() => {
@@ -205,11 +209,18 @@ const PrincipalDashboard = () => {
     setModalVisible(true);
   }, []);
 
-  const refreshData = useCallback(() => {
-    dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
-    dispatch(fetchMentorCoverage({ forceRefresh: true }));
-    dispatch(fetchComplianceMetrics({ forceRefresh: true }));
-    dispatch(fetchAlertsEnhanced({ forceRefresh: true }));
+  const refreshData = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        dispatch(fetchPrincipalDashboard({ forceRefresh: true })),
+        dispatch(fetchMentorCoverage({ forceRefresh: true })),
+        dispatch(fetchComplianceMetrics({ forceRefresh: true })),
+        dispatch(fetchAlertsEnhanced({ forceRefresh: true })),
+      ]);
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [dispatch]);
 
   // Memoized values - must be called before any conditional returns to follow Rules of Hooks
@@ -269,7 +280,7 @@ const PrincipalDashboard = () => {
       <div className="p-8 max-w-md mx-auto">
         <Alert
           type="error"
-          title="Failed to load dashboard data"
+          message="Failed to load dashboard data"
           description={dashboardError}
           showIcon
           action={
@@ -300,23 +311,42 @@ const PrincipalDashboard = () => {
               <BankOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Principal Dashboard
-              </Title>
+              <div className="flex items-center gap-3">
+                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                  Principal Dashboard
+                </Title>
+                {lastFetched && (
+                  <span className="text-xs text-text-tertiary">
+                    Updated {new Date(lastFetched).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <Paragraph className="text-text-secondary text-sm mb-0">
                 Welcome back, <span className="font-semibold text-primary">{principalName}</span> • {currentDate}
               </Paragraph>
             </div>
           </div>
 
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setModalVisible(true)}
-            className="h-10 rounded-xl font-bold shadow-lg shadow-primary/20"
-          >
-            Create Notice
-          </Button>
+          <div className="flex items-center gap-2">
+            <Tooltip title="Refresh all dashboard data">
+              <Button
+                icon={<ReloadOutlined spin={isRefreshing} />}
+                onClick={refreshData}
+                loading={isRefreshing}
+                disabled={dashboardLoading}
+              >
+                Refresh
+              </Button>
+            </Tooltip>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => setModalVisible(true)}
+              className="h-10 rounded-xl font-bold shadow-lg shadow-primary/20"
+            >
+              Create Notice
+            </Button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -519,7 +549,7 @@ const PrincipalDashboard = () => {
               {mentorCoverageError ? (
                 <Alert
                   type="error"
-                  title="Failed to load mentor coverage"
+                  message="Failed to load mentor coverage"
                   description={mentorCoverageError}
                   showIcon
                   action={
@@ -590,7 +620,7 @@ const PrincipalDashboard = () => {
               {complianceMetricsError ? (
                 <Alert
                   type="error"
-                  title="Failed to load compliance metrics"
+                  message="Failed to load compliance metrics"
                   description={complianceMetricsError}
                   showIcon
                   action={
@@ -692,7 +722,7 @@ const PrincipalDashboard = () => {
                     type="error"
                     showIcon
                     icon={<ExclamationCircleOutlined />}
-                    title={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
+                    message={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
                     description="Pending grievances that require immediate attention"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -709,7 +739,7 @@ const PrincipalDashboard = () => {
                     type="warning"
                     showIcon
                     icon={<FileTextOutlined />}
-                    title={`${alertsEnhanced.summary.overdueReportsCount} Overdue Reports`}
+                    message={`${alertsEnhanced.summary.overdueReportsCount} Overdue Reports`}
                     description="Students with overdue monthly reports"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -726,7 +756,7 @@ const PrincipalDashboard = () => {
                     type="info"
                     showIcon
                     icon={<EyeOutlined />}
-                    title={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
+                    message={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
                     description="Students without recent faculty visits (30+ days)"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -743,7 +773,7 @@ const PrincipalDashboard = () => {
                     type="warning"
                     showIcon
                     icon={<TeamOutlined />}
-                    title={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
+                    message={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
                     description="Active internship students without assigned mentors"
                     className="cursor-pointer hover:shadow-md transition-shadow"
                     onClick={() => setAlertDetailModal({
@@ -751,6 +781,23 @@ const PrincipalDashboard = () => {
                       type: 'unassigned',
                       title: 'Unassigned Students',
                       data: alertsEnhanced.alerts?.unassignedStudents || []
+                    })}
+                    action={<Button type="link" size="small">View Details →</Button>}
+                  />
+                )}
+                {alertsEnhanced.summary.pendingJoiningLettersCount > 0 && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    icon={<FileTextOutlined />}
+                    message={`${alertsEnhanced.summary.pendingJoiningLettersCount} Pending Joining Letters`}
+                    description="Students with internships awaiting joining letter submission"
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setAlertDetailModal({
+                      visible: true,
+                      type: 'joiningLetters',
+                      title: 'Pending Joining Letters',
+                      data: alertsEnhanced.alerts?.pendingJoiningLetters || []
                     })}
                     action={<Button type="link" size="small">View Details →</Button>}
                   />

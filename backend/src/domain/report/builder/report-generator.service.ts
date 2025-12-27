@@ -72,14 +72,27 @@ export class ReportGeneratorService {
       where.branchId = filters.departmentId;
     }
 
+    // Handle year filter - support both 'year' and 'currentYear' filter names
     if (filters?.year) {
       where.currentYear = Number(filters.year);
+    } else if (filters?.currentYear) {
+      where.currentYear = Number(filters.currentYear);
     } else if (filters?.academicYear) {
-      where.currentYear = Number(filters.academicYear);
+      // For academicYear like "2024-2025", extract first year
+      const yearStr = String(filters.academicYear);
+      const yearMatch = yearStr.match(/^(\d{4})/);
+      if (yearMatch) {
+        where.currentYear = Number(yearMatch[1]);
+      }
     }
 
-    if (filters?.semester) {
-      where.currentSemester = Number(filters.semester);
+    if (filters?.semester || filters?.currentSemester) {
+      where.currentSemester = Number(filters.semester || filters.currentSemester);
+    }
+
+    // Handle isActive filter - boolean filter
+    if (filters?.isActive !== undefined && filters?.isActive !== null) {
+      where.isActive = filters.isActive === true || filters.isActive === 'true';
     }
 
     const students = await this.prisma.student.findMany({
@@ -108,29 +121,55 @@ export class ReportGeneratorService {
   }
 
   /**
-   * Generate Internship Report (self-identified only)
+   * Generate Internship Report
+   * Supports filtering by isSelfIdentified, mentorId, status, date range, and verificationStatus
    */
   async generateInternshipReport(filters: any): Promise<any[]> {
-    // Only include self-identified internships by default
-    const where: Record<string, unknown> = {
-      isSelfIdentified: true,
-    };
+    const where: Record<string, unknown> = {};
 
-    if (filters?.institutionId) {
-      where.student = { institutionId: filters.institutionId };
+    // Handle isSelfIdentified filter - default to showing all if not specified
+    if (filters?.isSelfIdentified !== undefined && filters?.isSelfIdentified !== null) {
+      where.isSelfIdentified = filters.isSelfIdentified === true || filters.isSelfIdentified === 'true';
     }
 
+    // Handle institution filter with proper nesting for student relation
+    const studentWhere: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      studentWhere.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      studentWhere.branchId = filters.branchId;
+    }
+    if (Object.keys(studentWhere).length > 0) {
+      where.student = studentWhere;
+    }
+
+    // Handle status filter
     if (filters?.status) {
       where.status = filters.status;
     }
 
-    if (filters?.startDate && filters?.endDate) {
-      where.internship = {
-        startDate: {
-          gte: new Date(filters.startDate),
-          lte: new Date(filters.endDate),
-        },
-      };
+    // Handle mentor filter
+    if (filters?.mentorId) {
+      where.mentorId = filters.mentorId;
+    }
+
+    // Handle verification status filter
+    if (filters?.verificationStatus) {
+      where.verificationStatus = filters.verificationStatus;
+    }
+
+    // Handle date range filter (startDate and endDate from transformed dateRange)
+    if (filters?.startDate || filters?.endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.startDate) {
+        dateFilter.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        dateFilter.lte = new Date(filters.endDate);
+      }
+      // Apply to application's start date
+      where.startDate = dateFilter;
     }
 
     const applications = await this.prisma.internshipApplication.findMany({
@@ -142,6 +181,7 @@ export class ReportGeneratorService {
             name: true,
             rollNumber: true,
             branchName: true,
+            institutionId: true,
           },
         },
         internship: {
@@ -166,11 +206,13 @@ export class ReportGeneratorService {
       branch: application.student.branchName,
       companyName:
         application.internship?.industry.companyName ?? application.companyName,
+      companyCity: application.internship?.industry.city ?? '',
       jobProfile: application.jobProfile,
       startDate: application.internship?.startDate ?? application.startDate,
       endDate: application.internship?.endDate ?? application.endDate,
       duration: application.internship?.duration ?? application.internshipDuration,
       status: application.status,
+      verificationStatus: (application as any).verificationStatus ?? 'N/A',
       mentorName: application.mentor?.name ?? 'N/A',
       reportsSubmitted: application._count.monthlyReports,
       location: application.internship?.workLocation ?? application.companyAddress,
@@ -184,19 +226,36 @@ export class ReportGeneratorService {
   async generateFacultyVisitReport(filters: any): Promise<any[]> {
     const where: Record<string, unknown> = {};
 
+    // Handle institution filter through application -> student relation
     if (filters?.institutionId) {
       where.application = { student: { institutionId: filters.institutionId } };
     }
 
-    if (filters?.facultyId) {
-      where.facultyId = filters.facultyId;
+    // Handle faculty/mentor filter
+    if (filters?.facultyId || filters?.mentorId) {
+      where.facultyId = filters.facultyId || filters.mentorId;
     }
 
-    if (filters?.startDate && filters?.endDate) {
-      where.visitDate = {
-        gte: new Date(filters.startDate),
-        lte: new Date(filters.endDate),
-      };
+    // Handle date range filter (from transformed dateRange or direct startDate/endDate)
+    if (filters?.startDate || filters?.endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.startDate) {
+        dateFilter.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        dateFilter.lte = new Date(filters.endDate);
+      }
+      where.visitDate = dateFilter;
+    }
+
+    // Handle visit type filter
+    if (filters?.visitType) {
+      where.visitType = filters.visitType;
+    }
+
+    // Handle follow-up required filter
+    if (filters?.followUpRequired !== undefined && filters?.followUpRequired !== null) {
+      where.followUpRequired = filters.followUpRequired === true || filters.followUpRequired === 'true';
     }
 
     const visits = await this.prisma.facultyVisitLog.findMany({
@@ -429,6 +488,79 @@ export class ReportGeneratorService {
   }
 
   /**
+   * Generate Student Compliance Report
+   * Tracks student compliance with reporting requirements
+   */
+  async generateStudentComplianceReport(filters: any): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
+    }
+
+    // Fetch students with their internship applications and monthly reports
+    const students = await this.prisma.student.findMany({
+      where,
+      include: {
+        branch: { select: { name: true } },
+        internshipApplications: {
+          where: { status: { in: ['APPROVED', 'SELECTED'] } },
+          include: {
+            mentor: { select: { name: true } },
+            monthlyReports: {
+              select: { status: true, submittedAt: true },
+              orderBy: { submittedAt: 'desc' },
+            },
+          },
+        },
+      },
+    });
+
+    const results = students.map((student) => {
+      const activeApplications = student.internshipApplications;
+      const allReports = activeApplications.flatMap((app) => app.monthlyReports);
+      const submittedReports = allReports.filter((r) => r.status === MonthlyReportStatus.APPROVED || r.status === MonthlyReportStatus.SUBMITTED);
+      const pendingReports = allReports.filter((r) => r.status === MonthlyReportStatus.DRAFT || r.status === MonthlyReportStatus.UNDER_REVIEW || r.status === MonthlyReportStatus.REVISION_REQUIRED);
+
+      // Calculate expected reports (assume 1 per month of active internship)
+      const expectedReports = Math.max(activeApplications.length * 3, 1); // At least 3 months expected
+      const complianceScore = expectedReports > 0 ? Math.round((submittedReports.length / expectedReports) * 100) : 0;
+
+      const lastReport = allReports[0];
+      const mentorName = activeApplications[0]?.mentor?.name ?? 'N/A';
+
+      // Determine compliance level
+      let complianceLevel = 'low';
+      if (complianceScore >= 80) complianceLevel = 'high';
+      else if (complianceScore >= 50) complianceLevel = 'medium';
+
+      return {
+        rollNumber: student.rollNumber,
+        name: student.name,
+        branchName: student.branch?.name ?? student.branchName,
+        mentorName,
+        joiningReportStatus: activeApplications.length > 0 ? 'Submitted' : 'Not Started',
+        monthlyReportsSubmitted: submittedReports.length,
+        monthlyReportsPending: pendingReports.length,
+        lastReportDate: lastReport?.submittedAt ?? null,
+        complianceScore,
+        complianceLevel,
+      };
+    });
+
+    // Apply complianceLevel filter if specified
+    if (filters?.complianceLevel) {
+      return results.filter((r) => r.complianceLevel === filters.complianceLevel);
+    }
+
+    return results;
+  }
+
+  /**
    * Generate report based on type
    * @param type - Report type
    * @param filters - Filter parameters including institutionId
@@ -449,12 +581,17 @@ export class ReportGeneratorService {
       `Generating report: ${type}, institutionId: ${filters?.institutionId || 'N/A'}`,
     );
 
+    // Compliance reports - check this before generic student reports
+    if (typeStr.includes('compliance')) {
+      return this.generateStudentComplianceReport(filters);
+    }
+
     // Student reports
     if (typeStr.includes('student') || typeStr === ReportType.STUDENT_PROGRESS) {
       return this.generateStudentProgressReport(filters);
     }
 
-    // Internship reports
+    // Internship reports (including self-identified)
     if (typeStr.includes('internship') || typeStr === ReportType.INTERNSHIP) {
       return this.generateInternshipReport(filters);
     }
@@ -479,11 +616,8 @@ export class ReportGeneratorService {
       return this.generateInstitutionPerformanceReport(filters);
     }
 
-    // Compliance reports - use faculty visit or monthly as base
-    if (typeStr.includes('compliance') || typeStr.includes('pending')) {
-      if (typeStr.includes('visit')) {
-        return this.generateFacultyVisitReport(filters);
-      }
+    // Pending reports - use monthly report data
+    if (typeStr.includes('pending')) {
       return this.generateMonthlyReport(filters);
     }
 

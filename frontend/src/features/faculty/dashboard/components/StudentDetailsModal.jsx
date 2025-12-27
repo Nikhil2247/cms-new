@@ -45,10 +45,8 @@ import {
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
 import { getImageUrl } from '../../../../utils/imageUtils';
-import {
-  getExpectedReportsAsOfToday,
-  getExpectedVisitsAsOfToday,
-} from '../../../../utils/monthlyCycle';
+import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
+import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -65,7 +63,6 @@ const StudentDetailsModal = ({
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditingInternship, setIsEditingInternship] = useState(false);
   const [editForm] = Form.useForm();
-  const [visitForm] = Form.useForm();
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
@@ -118,11 +115,12 @@ const StudentDetailsModal = ({
     return colors[status] || 'default';
   };
 
-  // Calculate duration
+  // Calculate duration (use effectiveInternship for optimistic updates)
   const getDuration = () => {
-    if (!internshipApp?.startDate || !internshipApp?.endDate) return 'N/A';
-    const start = dayjs(internshipApp.startDate);
-    const end = dayjs(internshipApp.endDate);
+    const app = localInternshipData || internshipApp;
+    if (!app?.startDate || !app?.endDate) return 'N/A';
+    const start = dayjs(app.startDate);
+    const end = dayjs(app.endDate);
     const months = end.diff(start, 'month');
     const days = end.diff(start.add(months, 'month'), 'day');
     if (months > 0 && days > 0) return `${months} months ${days} days`;
@@ -131,52 +129,72 @@ const StudentDetailsModal = ({
   };
 
   /**
-   * Calculate expected reports using monthly cycles.
-   * Reports are due on the 5th of the next month for each internship month.
+   * Calculate total expected reports using monthly cycles.
+   * Returns total for entire internship period (not just as of today).
+   * Always calculates dynamically based on dates to reflect date changes.
    */
   const getExpectedReports = () => {
-    if (internshipApp?.totalExpectedReports) return internshipApp.totalExpectedReports;
     if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
 
     const startDate = new Date(internshipApp.startDate);
     const endDate = new Date(internshipApp.endDate);
-    const now = new Date();
 
-    if (startDate > now) return 0;
-
-    return getExpectedReportsAsOfToday(startDate, endDate);
+    return getTotalExpectedCount(startDate, endDate);
   };
 
   /**
-   * Calculate expected visits using monthly cycles.
-   * Visits are due on the last day of each internship month.
+   * Calculate total expected visits using monthly cycles.
+   * Returns total for entire internship period (not just as of today).
+   * Always calculates dynamically based on dates to reflect date changes.
    */
   const getExpectedVisits = () => {
-    if (internshipApp?.totalExpectedVisits) return internshipApp.totalExpectedVisits;
     if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
 
     const startDate = new Date(internshipApp.startDate);
     const endDate = new Date(internshipApp.endDate);
-    const now = new Date();
 
-    if (startDate > now) return 0;
-
-    return getExpectedVisitsAsOfToday(startDate, endDate);
+    return getTotalExpectedCount(startDate, endDate);
   };
+
+  // Local state for optimistic updates
+  const [localInternshipData, setLocalInternshipData] = useState(null);
+
+  // Reset local state when modal opens with new student
+  useEffect(() => {
+    if (visible && internshipApp) {
+      setLocalInternshipData(null); // Reset to use original data
+    }
+  }, [visible, internshipApp?.id]);
+
+  // Get effective internship data (local optimistic or original)
+  const effectiveInternship = localInternshipData || internshipApp;
 
   // Handle edit internship
   const handleEditInternship = () => {
+    const app = effectiveInternship;
     editForm.setFieldsValue({
-      companyName: internshipApp?.companyName,
-      startDate: internshipApp?.startDate ? dayjs(internshipApp.startDate) : null,
-      endDate: internshipApp?.endDate ? dayjs(internshipApp.endDate) : null,
-      stipend: internshipApp?.stipend,
-      location: internshipApp?.location || internshipApp?.city,
+      // Company Info
+      companyName: app?.companyName,
+      companyAddress: app?.companyAddress || app?.location,
+      companyContact: app?.companyContact,
+      companyEmail: app?.companyEmail,
+      // HR Info
+      hrName: app?.hrName,
+      hrDesignation: app?.hrDesignation,
+      hrContact: app?.hrContact,
+      hrEmail: app?.hrEmail,
+      // Internship Details
+      startDate: app?.startDate ? dayjs(app.startDate) : null,
+      endDate: app?.endDate ? dayjs(app.endDate) : null,
+      stipend: app?.stipend ? Number(app.stipend) : null,
+      jobProfile: app?.jobProfile,
+      // Notes
+      notes: app?.notes,
     });
     setIsEditingInternship(true);
   };
 
-  // Save internship changes
+  // Save internship changes with optimistic update
   const handleSaveInternship = async () => {
     try {
       const values = await editForm.validateFields();
@@ -184,45 +202,59 @@ const StudentDetailsModal = ({
 
       const updateData = {
         companyName: values.companyName,
+        companyAddress: values.companyAddress,
+        companyContact: values.companyContact,
+        companyEmail: values.companyEmail,
+        hrName: values.hrName,
+        hrDesignation: values.hrDesignation,
+        hrContact: values.hrContact,
+        hrEmail: values.hrEmail,
         startDate: values.startDate?.toISOString(),
         endDate: values.endDate?.toISOString(),
         stipend: values.stipend,
-        location: values.location,
+        jobProfile: values.jobProfile,
+        notes: values.notes,
+        location: values.companyAddress, // Alias for backend compatibility
       };
 
-      await facultyService.updateInternship(internshipApp.id, updateData);
-      message.success('Internship details updated successfully');
+      // Optimistic update - immediately update local state
+      const optimisticData = {
+        ...effectiveInternship,
+        ...updateData,
+        startDate: values.startDate?.toISOString(),
+        endDate: values.endDate?.toISOString(),
+        _isOptimistic: true,
+      };
+      setLocalInternshipData(optimisticData);
       setIsEditingInternship(false);
-      onRefresh?.();
+      message.success('Internship details updated successfully');
+
+      // API call in background
+      try {
+        const response = await facultyService.updateInternship(internshipApp.id, updateData);
+        // Update with server response
+        if (response?.data) {
+          setLocalInternshipData(response.data);
+        }
+        // Refresh parent data in background (non-blocking)
+        onRefresh?.();
+      } catch (apiError) {
+        // Revert optimistic update on failure
+        setLocalInternshipData(null);
+        message.error(apiError.message || 'Failed to save changes. Please try again.');
+        setIsEditingInternship(true); // Re-open edit form
+      }
     } catch (error) {
-      message.error(error.message || 'Failed to update internship details');
+      message.error(error.message || 'Please fill in required fields');
     } finally {
       setSaving(false);
     }
   };
 
-  // Handle visit form submission
-  const handleVisitSubmit = async () => {
-    try {
-      const values = await visitForm.validateFields();
-      const visitData = {
-        ...values,
-        applicationId: internshipApp?.id || student?.applicationId || student?.id,
-        visitDate: values.visitDate.toISOString(),
-      };
-
-      if (onScheduleVisit) {
-        await onScheduleVisit(visitData);
-        message.success('Visit logged successfully');
-        setVisitModalVisible(false);
-        visitForm.resetFields();
-        onRefresh?.();
-      }
-    } catch (err) {
-      if (!err.errorFields) {
-        message.error('Failed to create visit log');
-      }
-    }
+  // Handle visit log success (from UnifiedVisitLogModal)
+  const handleVisitSuccess = () => {
+    setVisitModalVisible(false);
+    onRefresh?.();
   };
 
   // Handle joining letter upload
@@ -362,17 +394,44 @@ const StudentDetailsModal = ({
           >
             {isEditingInternship ? (
               <Form form={editForm} layout="vertical" size="small">
+                <Divider orientation="left" className="!text-sm !my-2">Company Information</Divider>
                 <div className="grid grid-cols-2 gap-4">
                   <Form.Item
                     name="companyName"
                     label="Company Name"
                     rules={[{ required: true, message: 'Required' }]}
                   >
-                    <Input />
+                    <Input placeholder="Enter company name" />
                   </Form.Item>
-                  <Form.Item name="location" label="Location">
-                    <Input />
+                  <Form.Item name="companyAddress" label="Address/Location">
+                    <Input placeholder="Enter company address" />
                   </Form.Item>
+                  <Form.Item name="companyContact" label="Company Contact">
+                    <Input placeholder="Enter contact number" />
+                  </Form.Item>
+                  <Form.Item name="companyEmail" label="Company Email">
+                    <Input placeholder="Enter company email" type="email" />
+                  </Form.Item>
+                </div>
+
+                <Divider orientation="left" className="!text-sm !my-2">HR/Supervisor Details</Divider>
+                <div className="grid grid-cols-2 gap-4">
+                  <Form.Item name="hrName" label="HR/Supervisor Name">
+                    <Input placeholder="Enter HR name" />
+                  </Form.Item>
+                  <Form.Item name="hrDesignation" label="Designation">
+                    <Input placeholder="Enter designation" />
+                  </Form.Item>
+                  <Form.Item name="hrContact" label="HR Contact">
+                    <Input placeholder="Enter HR contact" />
+                  </Form.Item>
+                  <Form.Item name="hrEmail" label="HR Email">
+                    <Input placeholder="Enter HR email" type="email" />
+                  </Form.Item>
+                </div>
+
+                <Divider orientation="left" className="!text-sm !my-2">Internship Details</Divider>
+                <div className="grid grid-cols-2 gap-4">
                   <Form.Item
                     name="startDate"
                     label="Start Date"
@@ -387,41 +446,78 @@ const StudentDetailsModal = ({
                   >
                     <DatePicker className="w-full" />
                   </Form.Item>
-                  <Form.Item name="stipend" label="Stipend (₹)">
-                    <InputNumber className="w-full" min={0} />
+                  <Form.Item name="stipend" label="Stipend (₹/month)">
+                    <InputNumber className="w-full" min={0} placeholder="Enter stipend amount" />
+                  </Form.Item>
+                  <Form.Item name="jobProfile" label="Job Profile/Role">
+                    <Input placeholder="Enter job profile" />
+                  </Form.Item>
+                  <Form.Item name="notes" label="Notes" className="col-span-2">
+                    <TextArea rows={2} placeholder="Any additional notes..." />
                   </Form.Item>
                 </div>
               </Form>
             ) : (
-              <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-                <Descriptions.Item label="Company">
-                  <Text strong>{internshipApp?.companyName || 'Not Assigned'}</Text>
-                </Descriptions.Item>
-                <Descriptions.Item label="Status">
-                  <Tag color={getStatusColor(internshipApp?.status)}>
-                    {internshipApp?.status || 'N/A'}
-                  </Tag>
-                </Descriptions.Item>
-                <Descriptions.Item label="Start Date">
-                  {internshipApp?.startDate
-                    ? dayjs(internshipApp.startDate).format('DD MMM YYYY')
-                    : 'N/A'}
-                </Descriptions.Item>
-                <Descriptions.Item label="End Date">
-                  {internshipApp?.endDate
-                    ? dayjs(internshipApp.endDate).format('DD MMM YYYY')
-                    : 'N/A'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Duration">
-                  {getDuration()}
-                </Descriptions.Item>
-                <Descriptions.Item label="Location">
-                  {internshipApp?.location || internshipApp?.city || 'N/A'}
-                </Descriptions.Item>
-                <Descriptions.Item label="Stipend">
-                  {internshipApp?.stipend ? `₹${internshipApp.stipend}` : 'N/A'}
-                </Descriptions.Item>
-              </Descriptions>
+              <>
+                <Descriptions column={{ xs: 1, sm: 2 }} size="small">
+                  <Descriptions.Item label="Company">
+                    <Text strong>{effectiveInternship?.companyName || 'Not Assigned'}</Text>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Status">
+                    <Tag color={getStatusColor(effectiveInternship?.status)}>
+                      {effectiveInternship?.status || 'N/A'}
+                    </Tag>
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Start Date">
+                    {effectiveInternship?.startDate
+                      ? dayjs(effectiveInternship.startDate).format('DD MMM YYYY')
+                      : 'N/A'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="End Date">
+                    {effectiveInternship?.endDate
+                      ? dayjs(effectiveInternship.endDate).format('DD MMM YYYY')
+                      : 'N/A'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Duration">
+                    {getDuration()}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Location">
+                    {effectiveInternship?.companyAddress || effectiveInternship?.location || 'N/A'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Stipend">
+                    {effectiveInternship?.stipend ? `₹${effectiveInternship.stipend}` : 'N/A'}
+                  </Descriptions.Item>
+                  <Descriptions.Item label="Job Profile">
+                    {effectiveInternship?.jobProfile || 'N/A'}
+                  </Descriptions.Item>
+                </Descriptions>
+                {(effectiveInternship?.hrName || effectiveInternship?.hrContact) && (
+                  <>
+                    <Divider className="!my-2" />
+                    <Descriptions column={{ xs: 1, sm: 2 }} size="small" title={<Text type="secondary" className="text-xs">HR/Supervisor</Text>}>
+                      <Descriptions.Item label="Name">
+                        {effectiveInternship?.hrName || 'N/A'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Designation">
+                        {effectiveInternship?.hrDesignation || 'N/A'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Contact">
+                        {effectiveInternship?.hrContact || 'N/A'}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Email">
+                        {effectiveInternship?.hrEmail || 'N/A'}
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </>
+                )}
+                {effectiveInternship?.notes && (
+                  <>
+                    <Divider className="!my-2" />
+                    <Text type="secondary" className="text-xs">Notes: </Text>
+                    <Text>{effectiveInternship.notes}</Text>
+                  </>
+                )}
+              </>
             )}
           </Card>
 
@@ -688,49 +784,14 @@ const StudentDetailsModal = ({
         </Spin>
       </Modal>
 
-      {/* Quick Visit Log Modal */}
-      <Modal
-        title={`Log Visit - ${studentData?.name || ''}`}
-        open={visitModalVisible}
-        onOk={handleVisitSubmit}
-        onCancel={() => {
-          setVisitModalVisible(false);
-          visitForm.resetFields();
-        }}
-        okText="Create Visit Log"
-        width={500}
-      >
-        <Form form={visitForm} layout="vertical" className="mt-4">
-          <Form.Item
-            name="visitDate"
-            label="Visit Date"
-            rules={[{ required: true, message: 'Please select a date' }]}
-            initialValue={dayjs()}
-          >
-            <DatePicker className="w-full" showTime />
-          </Form.Item>
-
-          <Form.Item
-            name="visitType"
-            label="Visit Type"
-            rules={[{ required: true, message: 'Please select visit type' }]}
-          >
-            <Select placeholder="Select visit type">
-              <Option value="PHYSICAL">Physical Visit</Option>
-              <Option value="VIRTUAL">Virtual Visit</Option>
-              <Option value="PHONE">Phone Call</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="visitLocation" label="Visit Location">
-            <Input placeholder="Enter visit location" />
-          </Form.Item>
-
-          <Form.Item name="notes" label="Notes">
-            <TextArea rows={3} placeholder="Add any notes about this visit" />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* Unified Visit Log Modal */}
+      <UnifiedVisitLogModal
+        visible={visitModalVisible}
+        onClose={() => setVisitModalVisible(false)}
+        onSuccess={handleVisitSuccess}
+        selectedStudent={studentData}
+        students={[{ student: studentData, ...student }]}
+      />
     </>
   );
 };

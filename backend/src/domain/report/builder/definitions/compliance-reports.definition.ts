@@ -21,7 +21,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'nextScheduledVisit', label: 'Next Scheduled', type: 'date', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'month', label: 'Month', type: 'select', required: false, options: [
         { label: 'January', value: 1 },
         { label: 'February', value: 2 },
@@ -69,7 +69,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'lastSubmissionDate', label: 'Last Submission', type: 'date', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
       { id: 'month', label: 'Month', type: 'select', required: false, options: [
@@ -113,7 +113,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'joiningLetterStatus', label: 'Status', type: 'select', required: false, options: [
         { label: 'Pending', value: 'PENDING' },

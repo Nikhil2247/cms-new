@@ -1,10 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { Role, Prisma } from '@prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { NotificationService } from './notification.service';
 import { WebSocketService } from '../websocket/websocket.service';
 import { MailService } from '../mail/mail.service';
 import { NotificationPayload } from '../websocket/dto';
+import { BulkNotificationJobData } from './notification.processor';
 
 /**
  * Notification types supported by the system
@@ -111,6 +114,7 @@ export class NotificationSenderService {
   private readonly logger = new Logger(NotificationSenderService.name);
 
   constructor(
+    @InjectQueue('notifications') private readonly notificationQueue: Queue,
     private readonly prisma: PrismaService,
     private readonly notificationService: NotificationService,
     private readonly wsService: WebSocketService,
@@ -225,7 +229,8 @@ export class NotificationSenderService {
   }
 
   /**
-   * Send notifications to multiple users
+   * Send notifications to multiple users (synchronous - blocks until complete)
+   * Use sendBulkAsync for non-blocking bulk notifications
    */
   async sendBulk(options: BulkNotificationOptions): Promise<Map<string, NotificationResult>> {
     const { userIds, ...notificationOptions } = options;
@@ -247,7 +252,69 @@ export class NotificationSenderService {
   }
 
   /**
-   * Send notification to all users with a specific role
+   * Queue bulk notifications for async processing (non-blocking)
+   * Returns immediately with job ID - notifications are processed in the background
+   */
+  async sendBulkAsync(
+    options: BulkNotificationOptions & { initiatedBy?: string },
+  ): Promise<{ jobId: string; totalUsers: number; message: string }> {
+    const { userIds, initiatedBy, ...notificationOptions } = options;
+
+    const jobData: BulkNotificationJobData = {
+      userIds,
+      type: notificationOptions.type,
+      title: notificationOptions.title,
+      body: notificationOptions.body,
+      data: notificationOptions.data,
+      sendEmail: notificationOptions.sendEmail,
+      emailTemplate: notificationOptions.emailTemplate,
+      emailContext: notificationOptions.emailContext,
+      saveToDatabase: notificationOptions.saveToDatabase,
+      sendRealtime: notificationOptions.sendRealtime,
+      force: notificationOptions.force,
+      respectUserSettings: notificationOptions.respectUserSettings,
+      initiatedBy,
+    };
+
+    const job = await this.notificationQueue.add('bulk-notification', jobData, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 2000 },
+    });
+
+    this.logger.log(`Queued bulk notification job ${job.id} for ${userIds.length} users`);
+
+    return {
+      jobId: job.id as string,
+      totalUsers: userIds.length,
+      message: `Notification queued for ${userIds.length} users`,
+    };
+  }
+
+  /**
+   * Get the status of a bulk notification job
+   */
+  async getBulkJobStatus(jobId: string): Promise<{
+    status: string;
+    progress: number;
+    result?: any;
+  }> {
+    const job = await this.notificationQueue.getJob(jobId);
+    if (!job) {
+      return { status: 'not_found', progress: 0 };
+    }
+
+    const state = await job.getState();
+    const progress = job.progress as number || 0;
+
+    return {
+      status: state,
+      progress,
+      result: job.returnvalue,
+    };
+  }
+
+  /**
+   * Send notification to all users with a specific role (synchronous)
    */
   async sendToRole(
     role: Role,
@@ -280,7 +347,31 @@ export class NotificationSenderService {
   }
 
   /**
-   * Send notification to all users in an institution
+   * Queue notification to all users with a specific role (async, non-blocking)
+   */
+  async sendToRoleAsync(
+    role: Role,
+    options: Omit<SendNotificationOptions, 'userId'> & { initiatedBy?: string },
+  ): Promise<{ jobId: string; totalUsers: number; message: string }> {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: { role, active: true },
+        select: { id: true },
+      });
+
+      return this.sendBulkAsync({
+        ...options,
+        userIds: users.map((u) => u.id),
+        initiatedBy: options.initiatedBy,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to queue notification to role ${role}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Send notification to all users in an institution (synchronous)
    */
   async sendToInstitution(
     institutionId: string,
@@ -315,6 +406,37 @@ export class NotificationSenderService {
       return { sentCount, skippedCount };
     } catch (error) {
       this.logger.error(`Failed to send notification to institution ${institutionId}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
+   * Queue notification to all users in an institution (async, non-blocking)
+   */
+  async sendToInstitutionAsync(
+    institutionId: string,
+    options: Omit<SendNotificationOptions, 'userId'> & { initiatedBy?: string },
+    roleFilter?: Role[],
+  ): Promise<{ jobId: string; totalUsers: number; message: string }> {
+    try {
+      const whereClause: Prisma.UserWhereInput = {
+        institutionId,
+        active: true,
+        ...(roleFilter && roleFilter.length > 0 ? { role: { in: roleFilter } } : {}),
+      };
+
+      const users = await this.prisma.user.findMany({
+        where: whereClause,
+        select: { id: true },
+      });
+
+      return this.sendBulkAsync({
+        ...options,
+        userIds: users.map((u) => u.id),
+        initiatedBy: options.initiatedBy,
+      });
+    } catch (error) {
+      this.logger.error(`Failed to queue notification to institution ${institutionId}`, error.stack);
       throw error;
     }
   }

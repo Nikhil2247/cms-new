@@ -120,7 +120,12 @@
       "Bash(del \"D:\\\\Github\\\\New folder\\\\cms-new\\\\frontend\\\\src\\\\features\\\\common\\\\notifications\\\\notificationUtils.js\")",
       "Bash(ss:*)",
       "Bash(git rm:*)",
-      "Bash(echo:*)"
+      "Bash(echo:*)",
+      "Bash(docker-compose:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker ps:*)",
+      "Bash(xargs:*)",
+      "Bash(docker inspect:*)"
     ]
   }
 }

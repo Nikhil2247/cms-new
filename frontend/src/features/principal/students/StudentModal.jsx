@@ -147,16 +147,18 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               <Form.Item
                 name="phoneNo"
                 label="Phone Number"
-                rules={[{ pattern: /^[0-9]{10}$/, message: 'Please enter valid 10-digit phone number' }]}
+                rules={[
+                  { required: true, message: 'Please enter phone number' },
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
+                ]}
               >
-                <Input placeholder="Enter phone number" maxLength={10} />
+                <Input placeholder="Enter phone number" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="dateOfBirth"
                 label="Date of Birth"
-                rules={[{ required: true, message: 'Please select date of birth' }]}
               >
                 <DatePicker
                   style={{ width: '100%' }}
@@ -169,9 +171,8 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               <Form.Item
                 name="gender"
                 label="Gender"
-                rules={[{ required: true, message: 'Please select gender' }]}
               >
-                <Select placeholder="Select gender">
+                <Select placeholder="Select gender" allowClear>
                   <Select.Option value="MALE">Male</Select.Option>
                   <Select.Option value="FEMALE">Female</Select.Option>
                   <Select.Option value="OTHER">Other</Select.Option>
@@ -187,9 +188,8 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               <Form.Item
                 name="batchId"
                 label="Batch"
-                rules={[{ required: true, message: 'Please select batch' }]}
               >
-                <Select placeholder="Select batch">
+                <Select placeholder="Select batch" allowClear>
                   {batches?.list?.map(batch => (
                     <Select.Option key={batch.id} value={batch.id}>
                       {batch.name} ({batch.year})
@@ -200,11 +200,10 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="departmentId"
-                label="Department"
-                rules={[{ required: true, message: 'Please select department' }]}
+                name="branchId"
+                label="Department/Branch"
               >
-                <Select placeholder="Select department">
+                <Select placeholder="Select department/branch" allowClear>
                   {departments?.list?.map(dept => (
                     <Select.Option key={dept.id} value={dept.id}>
                       {dept.name}
@@ -215,7 +214,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="bloodGroup" label="Blood Group">
-                <Select placeholder="Select blood group">
+                <Select placeholder="Select blood group" allowClear>
                   <Select.Option value="A+">A+</Select.Option>
                   <Select.Option value="A-">A-</Select.Option>
                   <Select.Option value="B+">B+</Select.Option>
@@ -241,9 +240,9 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
               <Form.Item
                 name="parentPhone"
                 label="Parent/Guardian Phone"
-                rules={[{ pattern: /^[0-9]{10}$/, message: 'Please enter valid 10-digit phone number' }]}
+                rules={[{ pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }]}
               >
-                <Input placeholder="Enter parent/guardian phone" maxLength={10} />
+                <Input placeholder="Enter parent/guardian phone" />
               </Form.Item>
             </Col>
             <Col xs={24}>

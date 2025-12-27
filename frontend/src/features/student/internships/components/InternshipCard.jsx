@@ -47,17 +47,17 @@ const InternshipCard = ({ internship, isApplied, onViewDetails }) => {
             : `linear-gradient(135deg, ${token.colorPrimary} 0%, ${token.colorPrimaryBg} 100%)`
         }}
       >
-        <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-10 translate-x-10"></div>
+        <div className="absolute top-0 right-0 w-20 h-20 bg-surface/10 rounded-full -translate-y-10 translate-x-10"></div>
         <div className="relative z-10">
           <div className="flex items-center justify-between mb-4">
             <Avatar
               size={50}
               icon={<BankOutlined />}
-              className="bg-white/20 border-2 border-white/30"
+              className="bg-surface/20 border-2 border-white/30"
             />
             <div className="flex flex-col items-end gap-2">
               {isApplied ? (
-                <Tag className="border-white/30 text-success-800 px-3 py-1 rounded-full font-medium bg-white/90">
+                <Tag className="border-white/30 text-success-800 px-3 py-1 rounded-full font-medium bg-surface/90">
                   <CheckCircleOutlined className="mr-1" />
                   Applied
                 </Tag>

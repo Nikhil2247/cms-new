@@ -306,4 +306,43 @@ export class FacultyController {
 
     return this.facultyService.uploadJoiningLetter(applicationId, result.url, req.user.userId);
   }
+
+  @Post('visit-logs/upload-document')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: 'Upload a document for visit log (photo or signed document)' })
+  @ApiResponse({ status: 200, description: 'Document uploaded successfully' })
+  async uploadVisitDocument(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { documentType: string },
+    @Req() req,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+    if (!allowedTypes.includes(file.mimetype)) {
+      throw new BadRequestException('Invalid file type. Allowed: JPEG, PNG, GIF, PDF');
+    }
+
+    // Max 10MB
+    if (file.size > 10 * 1024 * 1024) {
+      throw new BadRequestException('File size must be less than 10MB');
+    }
+
+    // Get faculty for determining storage path
+    const faculty = await this.facultyService.getProfile(req.user.userId);
+    const docType = body.documentType || 'visit-photo';
+
+    // Upload to MinIO using 'other' type for visit documents
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionId: faculty?.institutionId || 'default',
+      studentId: 'visit-logs',
+      documentType: 'other',
+      customName: docType, // Store the actual type in customName for reference
+    });
+
+    return { url: result.url, documentType: docType };
+  }
 }

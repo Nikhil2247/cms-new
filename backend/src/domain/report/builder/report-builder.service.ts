@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { PrismaService } from '../../../core/database/prisma.service';
+import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import {
   ReportType,
   ReportConfig,
@@ -18,6 +19,9 @@ import {
   allReportDefinitions,
   reportCategories,
 } from './definitions';
+
+// Cache TTL for report templates (1 hour)
+const TEMPLATE_CACHE_TTL = 60 * 60 * 1000;
 
 @Injectable()
 export class ReportBuilderService {
@@ -50,8 +54,9 @@ export class ReportBuilderService {
   };
 
   constructor(
-    @InjectQueue('{report-generation}') private reportQueue: Queue,
+    @InjectQueue('report-generation') private reportQueue: Queue,
     private prisma: PrismaService,
+    private cache: LruCacheService,
   ) {}
 
   /**
@@ -501,7 +506,7 @@ export class ReportBuilderService {
 
     const config = data.configuration || {};
 
-    return this.prisma.reportTemplate.create({
+    const result = await this.prisma.reportTemplate.create({
       data: {
         name: data.name,
         description: data.description,
@@ -515,50 +520,66 @@ export class ReportBuilderService {
         createdBy: userId,
       },
     });
+
+    // Invalidate cache for this user's templates
+    await this.cache.invalidateByTags([`user:${userId}`, 'report-templates']);
+
+    return result;
   }
 
   /**
    * Get user's templates
+   * OPTIMIZED: Uses caching with 1-hour TTL
    */
   async getTemplates(userId: string, reportType?: string) {
-    const where: Record<string, unknown> = {
-      OR: [{ createdBy: userId }, { isPublic: true }],
-    };
+    const cacheKey = reportType
+      ? `report:templates:${userId}:${reportType}`
+      : `report:templates:${userId}:all`;
 
-    if (reportType) {
-      where.reportType = reportType;
-    }
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const where: Record<string, unknown> = {
+          OR: [{ createdBy: userId }, { isPublic: true }],
+        };
 
-    const templates = await this.prisma.reportTemplate.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        reportType: true,
-        columns: true,
-        filters: true,
-        groupBy: true,
-        sortBy: true,
-        sortOrder: true,
-        isPublic: true,
-        createdBy: true,
-        createdAt: true,
+        if (reportType) {
+          where.reportType = reportType;
+        }
+
+        const templates = await this.prisma.reportTemplate.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            reportType: true,
+            columns: true,
+            filters: true,
+            groupBy: true,
+            sortBy: true,
+            sortOrder: true,
+            isPublic: true,
+            createdBy: true,
+            createdAt: true,
+          },
+        });
+
+        // Transform to include configuration object for frontend compatibility
+        return templates.map((t) => ({
+          ...t,
+          configuration: {
+            columns: t.columns,
+            filters: t.filters,
+            groupBy: t.groupBy,
+            sortBy: t.sortBy,
+            sortOrder: t.sortOrder,
+          },
+        }));
       },
-    });
-
-    // Transform to include configuration object for frontend compatibility
-    return templates.map((t) => ({
-      ...t,
-      configuration: {
-        columns: t.columns,
-        filters: t.filters,
-        groupBy: t.groupBy,
-        sortBy: t.sortBy,
-        sortOrder: t.sortOrder,
-      },
-    }));
+      { ttl: TEMPLATE_CACHE_TTL, tags: ['report-templates', `user:${userId}`] },
+    );
   }
 
   /**
@@ -577,9 +598,14 @@ export class ReportBuilderService {
       throw new BadRequestException('You can only delete your own templates');
     }
 
-    return this.prisma.reportTemplate.delete({
+    const result = await this.prisma.reportTemplate.delete({
       where: { id: templateId },
     });
+
+    // Invalidate cache for this user's templates
+    await this.cache.invalidateByTags([`user:${userId}`, 'report-templates']);
+
+    return result;
   }
 
   /**

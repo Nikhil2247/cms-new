@@ -448,7 +448,7 @@ const CompaniesOverview = () => {
       </Card>
 
       {/* Error Alert */}
-      {error && <Alert type="error" title="Error" description={error} showIcon closable className="rounded-xl border-error/20 bg-error/5" />}
+      {error && <Alert type="error" message="Error" description={error} showIcon closable className="rounded-xl border-error/20 bg-error/5" />}
 
       {/* Companies Table */}
       <Card className="rounded-2xl border-border shadow-soft bg-surface overflow-hidden" styles={{ body: { padding: 0 } }}>

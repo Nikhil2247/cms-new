@@ -4,6 +4,7 @@ import {
   BadRequestException,
   NotFoundException,
   InternalServerErrorException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../../core/database/prisma.service';
@@ -13,7 +14,7 @@ import { WebSocketService } from '../../../infrastructure/websocket/websocket.se
 import { AuditAction, AuditCategory, AuditSeverity, BackupStatus, Role } from '@prisma/client';
 import { CreateBackupDto, StorageType } from '../dto/backup.dto';
 import { spawn } from 'child_process';
-import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 
 // Timeout constants (in milliseconds)
@@ -21,12 +22,19 @@ const BACKUP_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes for backup
 const RESTORE_TIMEOUT_MS = 60 * 60 * 1000; // 60 minutes for restore
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes for file download
 
+// Initialization states
+type InitState = 'pending' | 'initializing' | 'ready' | 'failed';
+
 @Injectable()
-export class BackupService {
+export class BackupService implements OnModuleInit {
   private readonly logger = new Logger(BackupService.name);
   private readonly backupDir: string;
   private readonly localBackupDir: string;
   private mongoToolsAvailable: boolean = false;
+  private mongoToolPaths: { mongodump: string; mongorestore: string } | null = null;
+  private initState: InitState = 'pending';
+  private initError: Error | null = null;
+  private initPromise: Promise<void> | null = null;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -44,31 +52,76 @@ export class BackupService {
       this.localBackupDir = process.env.BACKUP_DIR || '/app/backups';
     }
     this.ensureDirectories();
-    this.verifyMongoTools();
   }
 
-  private verifyMongoTools() {
-    const mongodumpPath = this.getMongoToolPath('mongodump');
-    const mongorestorePath = this.getMongoToolPath('mongorestore');
+  /**
+   * Initialize async operations after module is ready
+   */
+  async onModuleInit() {
+    this.initPromise = this.verifyMongoToolsAsync();
+    await this.initPromise;
+  }
 
-    // Check if tools exist on Windows
-    if (process.platform === 'win32') {
-      const dumpExists = fs.existsSync(mongodumpPath);
-      const restoreExists = fs.existsSync(mongorestorePath);
-      this.mongoToolsAvailable = dumpExists && restoreExists;
-
-      if (!this.mongoToolsAvailable) {
-        this.logger.warn('MongoDB tools not found at expected Windows path. Backup/restore may fail.');
-        this.logger.warn(`Expected path: C:\\Program Files\\MongoDB\\Tools\\100\\bin\\`);
-      } else {
-        this.logger.log('MongoDB tools verified successfully');
-      }
-    } else {
-      // On Unix, assume tools are in PATH (will fail at runtime if not)
-      this.mongoToolsAvailable = true;
+  /**
+   * Ensure initialization is complete before operations
+   * Call this at the start of any backup/restore operation
+   */
+  private async ensureInitialized(): Promise<void> {
+    // If still initializing, wait for it
+    if (this.initPromise && this.initState !== 'ready' && this.initState !== 'failed') {
+      await this.initPromise;
     }
 
-    this.logger.log(`Backup service initialized. Temp: ${this.backupDir}, Local: ${this.localBackupDir}`);
+    // Check final state
+    if (this.initState === 'failed') {
+      throw new InternalServerErrorException(
+        `Backup service initialization failed: ${this.initError?.message || 'Unknown error'}`
+      );
+    }
+
+    if (this.initState !== 'ready') {
+      throw new InternalServerErrorException('Backup service not initialized');
+    }
+  }
+
+  /**
+   * Verify MongoDB tools exist asynchronously on startup
+   */
+  private async verifyMongoToolsAsync(): Promise<void> {
+    this.initState = 'initializing';
+
+    try {
+      const mongodumpPath = await this.resolveMongoToolPath('mongodump');
+      const mongorestorePath = await this.resolveMongoToolPath('mongorestore');
+
+      // Check if tools exist on Windows
+      if (process.platform === 'win32') {
+        const dumpExists = await this.fileExists(mongodumpPath);
+        const restoreExists = await this.fileExists(mongorestorePath);
+        this.mongoToolsAvailable = dumpExists && restoreExists;
+
+        if (this.mongoToolsAvailable) {
+          // Cache the resolved paths
+          this.mongoToolPaths = { mongodump: mongodumpPath, mongorestore: mongorestorePath };
+          this.logger.log('MongoDB tools verified successfully');
+        } else {
+          this.logger.warn('MongoDB tools not found at expected Windows path. Backup/restore may fail.');
+          this.logger.warn(`Expected path: C:\\Program Files\\MongoDB\\Tools\\100\\bin\\`);
+        }
+      } else {
+        // On Unix, assume tools are in PATH (will fail at runtime if not)
+        this.mongoToolsAvailable = true;
+        this.mongoToolPaths = { mongodump: 'mongodump', mongorestore: 'mongorestore' };
+      }
+
+      this.initState = 'ready';
+      this.logger.log(`Backup service initialized. Temp: ${this.backupDir}, Local: ${this.localBackupDir}`);
+    } catch (error) {
+      this.initState = 'failed';
+      this.initError = error as Error;
+      this.logger.error('Failed to initialize backup service', (error as Error).stack);
+      // Don't throw - allow the service to start, but operations will fail gracefully
+    }
   }
 
   /**
@@ -77,8 +130,8 @@ export class BackupService {
   private async validatePreFlight(operation: 'backup' | 'restore'): Promise<void> {
     // Check MongoDB tools availability
     if (!this.mongoToolsAvailable) {
-      const mongodumpPath = this.getMongoToolPath('mongodump');
-      if (process.platform === 'win32' && !fs.existsSync(mongodumpPath)) {
+      const mongodumpPath = await this.resolveMongoToolPath('mongodump');
+      if (process.platform === 'win32' && !(await this.fileExists(mongodumpPath))) {
         throw new BadRequestException(
           'MongoDB tools not installed. Please install MongoDB Database Tools from https://www.mongodb.com/try/download/database-tools'
         );
@@ -95,9 +148,12 @@ export class BackupService {
     // Check disk space for backup
     if (operation === 'backup') {
       try {
+        // Ensure directories exist
+        await this.ensureDirectoriesAsync();
+
         const testFile = path.join(this.backupDir, '.space-check');
-        fs.writeFileSync(testFile, 'test');
-        fs.unlinkSync(testFile);
+        await fsPromises.writeFile(testFile, 'test');
+        await fsPromises.unlink(testFile);
       } catch (error) {
         throw new BadRequestException(`Cannot write to backup directory: ${this.backupDir}`);
       }
@@ -111,17 +167,22 @@ export class BackupService {
     }
   }
 
-  private ensureDirectories() {
+  private async ensureDirectoriesAsync(): Promise<void> {
     try {
-      if (!fs.existsSync(this.backupDir)) {
-        fs.mkdirSync(this.backupDir, { recursive: true });
-      }
-      if (!fs.existsSync(this.localBackupDir)) {
-        fs.mkdirSync(this.localBackupDir, { recursive: true });
-      }
+      await fsPromises.mkdir(this.backupDir, { recursive: true });
+      await fsPromises.mkdir(this.localBackupDir, { recursive: true });
     } catch (error) {
       this.logger.warn('Could not create backup directories', error);
     }
+  }
+
+  /**
+   * Synchronous directory check for constructor - only checks existence
+   * Actual creation is done asynchronously before operations
+   */
+  private ensureDirectories(): void {
+    // Just log - actual creation will be done async before operations
+    this.logger.debug(`Backup directories configured: temp=${this.backupDir}, local=${this.localBackupDir}`);
   }
 
   async createBackup(
@@ -129,6 +190,9 @@ export class BackupService {
     userId: string,
     userRole: Role,
   ) {
+    // Ensure service is initialized
+    await this.ensureInitialized();
+
     // Pre-flight validation
     await this.validatePreFlight('backup');
 
@@ -182,8 +246,8 @@ export class BackupService {
 
       await this.executeMongoDump(dbUrl, tempPath, onDumpProgress);
 
-      // Get file size
-      const stats = fs.statSync(tempPath);
+      // Get file size (async)
+      const stats = await fsPromises.stat(tempPath);
       const size = stats.size;
 
       this.wsService.sendBackupProgress({
@@ -207,7 +271,7 @@ export class BackupService {
             message: 'Uploading to MinIO...',
           });
 
-          const buffer = fs.readFileSync(tempPath);
+          const buffer = await fsPromises.readFile(tempPath);
           const uploadResult = await this.fileStorageService.uploadBuffer(
             buffer,
             filename,
@@ -243,7 +307,7 @@ export class BackupService {
           });
 
           localPath = path.join(this.localBackupDir, filename);
-          fs.copyFileSync(tempPath, localPath);
+          await fsPromises.copyFile(tempPath, localPath);
           storageLocations.push('local');
           this.logger.log(`Backup stored locally: ${localPath}`);
 
@@ -278,10 +342,8 @@ export class BackupService {
         },
       });
 
-      // Cleanup temp file
-      if (fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
-      }
+      // Cleanup temp file (async, non-blocking)
+      await this.safeUnlink(tempPath);
 
       const duration = Math.round((Date.now() - startTime) / 1000);
 
@@ -330,14 +392,8 @@ export class BackupService {
         this.logger.error('Failed to update backup record status', dbError);
       }
 
-      // Cleanup temp file if exists
-      try {
-        if (fs.existsSync(tempPath)) {
-          fs.unlinkSync(tempPath);
-        }
-      } catch (cleanupError) {
-        this.logger.warn(`Failed to cleanup temp file: ${cleanupError.message}`);
-      }
+      // Cleanup temp file if exists (async, non-blocking)
+      await this.safeUnlink(tempPath);
 
       this.logger.error('Backup creation failed', error);
       throw new InternalServerErrorException(`Backup failed: ${error.message}`);
@@ -392,12 +448,15 @@ export class BackupService {
 
     // Fallback to local
     if (backup.localPath && backup.storageLocations.includes('local')) {
-      if (fs.existsSync(backup.localPath)) {
+      try {
+        await fsPromises.access(backup.localPath);
         return {
           localPath: backup.localPath,
           filename: backup.filename,
           source: 'local',
         };
+      } catch {
+        // File doesn't exist, continue to throw
       }
     }
 
@@ -410,6 +469,9 @@ export class BackupService {
     userRole: Role,
     dropExisting: boolean = true,
   ) {
+    // Ensure service is initialized
+    await this.ensureInitialized();
+
     const startTime = Date.now();
 
     // Pre-flight validation
@@ -455,31 +517,36 @@ export class BackupService {
       if (backup.minioKey && backup.storageLocations.includes('minio')) {
         this.logger.log(`Downloading backup from MinIO: ${backup.minioKey}`);
         const buffer = await this.fileStorageService.getFile(backup.minioKey);
-        fs.writeFileSync(tempPath, buffer);
+        await fsPromises.writeFile(tempPath, buffer);
         this.logger.log(`Backup downloaded: ${this.formatBytes(buffer.length)}`);
       } else if (backup.localPath && backup.storageLocations.includes('local')) {
-        if (!fs.existsSync(backup.localPath)) {
+        try {
+          await fsPromises.access(backup.localPath);
+        } catch {
           throw new NotFoundException(`Local backup file not found: ${backup.localPath}`);
         }
         this.logger.log(`Copying local backup: ${backup.localPath}`);
-        fs.copyFileSync(backup.localPath, tempPath);
+        await fsPromises.copyFile(backup.localPath, tempPath);
       } else {
         throw new NotFoundException('Backup file not available in any storage location');
       }
 
-      // Verify file was retrieved
-      if (!fs.existsSync(tempPath)) {
+      // Verify file was retrieved (async)
+      let fileSize: number;
+      try {
+        const fileStats = await fsPromises.stat(tempPath);
+        fileSize = fileStats.size;
+        this.logger.log(`Backup file ready: ${this.formatBytes(fileSize)}`);
+      } catch {
         throw new Error('Failed to retrieve backup file');
       }
-      const fileStats = fs.statSync(tempPath);
-      this.logger.log(`Backup file ready: ${this.formatBytes(fileStats.size)}`);
 
       this.wsService.sendRestoreProgress({
         backupId,
         status: 'in_progress',
         stage: 'downloading',
         progress: 30,
-        message: `Backup file retrieved (${this.formatBytes(fileStats.size)})`,
+        message: `Backup file retrieved (${this.formatBytes(fileSize)})`,
       });
 
       // Stage 2: Execute mongorestore with progress tracking
@@ -529,10 +596,8 @@ export class BackupService {
         },
       });
 
-      // Cleanup temp file
-      if (fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
-      }
+      // Cleanup temp file (async)
+      await this.safeUnlink(tempPath);
 
       const duration = Math.round((Date.now() - startTime) / 1000);
 
@@ -564,14 +629,8 @@ export class BackupService {
         duration: `${duration}s`,
       };
     } catch (error) {
-      // Cleanup temp file if exists
-      if (fs.existsSync(tempPath)) {
-        try {
-          fs.unlinkSync(tempPath);
-        } catch (cleanupError) {
-          this.logger.warn(`Failed to cleanup temp file: ${cleanupError.message}`);
-        }
-      }
+      // Cleanup temp file if exists (async)
+      await this.safeUnlink(tempPath);
 
       // Emit failure
       this.wsService.sendRestoreProgress({
@@ -608,9 +667,10 @@ export class BackupService {
       );
       storageLocations.push('minio');
 
-      // Also store locally
+      // Also store locally (async)
       const localPath = path.join(this.localBackupDir, filename);
-      fs.writeFileSync(localPath, file.buffer);
+      await this.ensureDirectoriesAsync();
+      await fsPromises.writeFile(localPath, file.buffer);
       storageLocations.push('local');
 
       // Create backup record
@@ -671,13 +731,16 @@ export class BackupService {
       }
     }
 
-    // Delete from local
-    if (backup.localPath && fs.existsSync(backup.localPath)) {
+    // Delete from local (async)
+    if (backup.localPath) {
       try {
-        fs.unlinkSync(backup.localPath);
+        await fsPromises.unlink(backup.localPath);
         deletedFrom.push('local');
       } catch (error) {
-        this.logger.warn(`Failed to delete local backup: ${error.message}`);
+        // File may not exist - only warn for other errors
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+          this.logger.warn(`Failed to delete local backup: ${error.message}`);
+        }
       }
     }
 
@@ -791,11 +854,11 @@ export class BackupService {
 
     for (const backup of staleBackups) {
       try {
-        // Check if files actually exist
+        // Check if files actually exist (async)
         const hasMinioFile = backup.minioKey ?
           await this.checkMinioFileExists(backup.minioKey) : false;
         const hasLocalFile = backup.localPath ?
-          fs.existsSync(backup.localPath) : false;
+          await this.fileExists(backup.localPath) : false;
 
         if (hasMinioFile || hasLocalFile) {
           // Files exist, mark as COMPLETED
@@ -851,11 +914,31 @@ export class BackupService {
     }
   }
 
+  /**
+   * Get cached MongoDB tool path (sync, uses pre-resolved paths)
+   */
   private getMongoToolPath(tool: 'mongodump' | 'mongorestore'): string {
-    // On Windows, use full path if not in PATH
+    // Return cached path if available
+    if (this.mongoToolPaths) {
+      return this.mongoToolPaths[tool];
+    }
+    // Fallback to tool name (will be resolved via PATH)
+    return tool;
+  }
+
+  /**
+   * Resolve MongoDB tool path asynchronously
+   */
+  private async resolveMongoToolPath(tool: 'mongodump' | 'mongorestore'): Promise<string> {
+    // Return cached path if available
+    if (this.mongoToolPaths) {
+      return this.mongoToolPaths[tool];
+    }
+
+    // On Windows, check full path
     if (process.platform === 'win32') {
       const windowsPath = `C:\\Program Files\\MongoDB\\Tools\\100\\bin\\${tool}.exe`;
-      if (fs.existsSync(windowsPath)) {
+      if (await this.fileExists(windowsPath)) {
         return windowsPath;
       }
     }
@@ -992,5 +1075,31 @@ export class BackupService {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  /**
+   * Safely delete a file asynchronously, suppressing errors if file doesn't exist
+   */
+  private async safeUnlink(filePath: string): Promise<void> {
+    try {
+      await fsPromises.unlink(filePath);
+    } catch (error) {
+      // Only log if it's not a "file not found" error
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        this.logger.warn(`Failed to cleanup file ${filePath}: ${(error as Error).message}`);
+      }
+    }
+  }
+
+  /**
+   * Check if a file exists asynchronously
+   */
+  private async fileExists(filePath: string): Promise<boolean> {
+    try {
+      await fsPromises.access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 }

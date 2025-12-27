@@ -20,7 +20,7 @@ export class BulkQueueService {
   private readonly logger = new Logger(BulkQueueService.name);
 
   constructor(
-    @InjectQueue('{bulk-operations}') private readonly bulkQueue: Queue,
+    @InjectQueue('bulk-operations') private readonly bulkQueue: Queue,
     private readonly bulkJobService: BulkJobService,
     private readonly prisma: PrismaService,
   ) {}

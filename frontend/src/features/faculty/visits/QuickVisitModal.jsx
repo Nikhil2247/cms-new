@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useDispatch } from 'react-redux';
 import {
   Modal,
   Form,
@@ -21,6 +22,8 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import PropTypes from 'prop-types';
+import { createVisitLog } from '../store/facultySlice';
+import facultyService from '../../../services/faculty.service';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -31,12 +34,14 @@ const SPACE_COMPACT_STYLE = { width: '100%' };
 const IMG_WINDOW_STYLE = { width: '100%' };
 
 const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, loading }) => {
+  const dispatch = useDispatch();
   const [form] = Form.useForm();
   const [visitType, setVisitType] = useState(null);
   const [capturing, setCapturing] = useState(false);
   const [location, setLocation] = useState(null);
   const [fileList, setFileList] = useState([]);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedApplicationId, setSelectedApplicationId] = useState(null);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -45,8 +50,31 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       setVisitType(null);
       setLocation(null);
       setFileList([]);
+      setSelectedApplicationId(null);
     }
   }, [visible, form]);
+
+  // Handle student selection - extract applicationId from nested structure
+  const handleStudentSelect = useCallback((studentId) => {
+    // Find student in the list (handle both flat and nested structures)
+    const found = students.find(s =>
+      s.student?.id === studentId || s.id === studentId
+    );
+
+    if (found) {
+      // Get applications from the found item (could be at top level or nested under student)
+      const applications = found.internshipApplications ||
+                           found.student?.internshipApplications ||
+                           [];
+
+      if (applications.length > 0) {
+        setSelectedApplicationId(applications[0].id);
+      } else {
+        setSelectedApplicationId(null);
+        message.warning('No active internship found for this student');
+      }
+    }
+  }, [students]);
 
   // Handle GPS location capture
   const captureLocation = () => {
@@ -135,52 +163,62 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
+
+      // Validate applicationId is available
+      if (!selectedApplicationId) {
+        message.error('No active internship application found for this student. Cannot log visit.');
+        return;
+      }
+
       setSubmitting(true);
 
-      const formData = new FormData();
-
-      // Append basic fields
-      formData.append('studentId', values.studentId);
-      formData.append('visitType', values.visitType);
-
-      // Append location data
-      if (values.visitType === 'PHYSICAL') {
-        formData.append('visitLocation', values.visitLocation);
-
-        // If GPS coordinates were captured, include them
-        if (location) {
-          formData.append('latitude', location.latitude);
-          formData.append('longitude', location.longitude);
-          formData.append('accuracy', location.accuracy);
+      // Upload photos first if any
+      const photoUrls = [];
+      if (fileList.length > 0) {
+        for (const file of fileList) {
+          if (file.originFileObj) {
+            try {
+              const result = await facultyService.uploadVisitDocument(file.originFileObj, 'visit-photo');
+              photoUrls.push(result.url);
+            } catch (error) {
+              console.error('Photo upload error:', error);
+            }
+          }
         }
       }
 
-      // Append optional notes
-      if (values.notes) {
-        formData.append('notes', values.notes);
-      }
+      // Prepare visit data with applicationId
+      const visitData = {
+        applicationId: selectedApplicationId,
+        visitType: values.visitType,
+        visitDate: new Date().toISOString(),
+        status: 'COMPLETED',
+        // Location for physical visits
+        ...(values.visitType === 'PHYSICAL' && {
+          visitLocation: values.visitLocation,
+          // GPS coordinates if captured
+          ...(location && {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            gpsAccuracy: location.accuracy,
+          }),
+        }),
+        // Optional notes
+        ...(values.notes && { notes: values.notes, observationsAboutStudent: values.notes }),
+        // Photos
+        ...(photoUrls.length > 0 && { visitPhotos: photoUrls }),
+      };
 
-      // Set visit date to current time
-      formData.append('visitDate', new Date().toISOString());
-
-      // Set status as completed (since it's a quick log of a visit that already happened)
-      formData.append('status', 'completed');
-
-      // Append photos
-      fileList.forEach((file) => {
-        if (file.originFileObj) {
-          formData.append('photos', file.originFileObj);
-        }
-      });
-
-      await onSubmit(formData);
+      // Use Redux thunk for creating visit
+      await dispatch(createVisitLog(visitData)).unwrap();
       message.success('Visit logged successfully!');
+      onSubmit?.(); // Notify parent (for refresh)
       onClose();
     } catch (error) {
       if (error.errorFields) {
         message.error('Please fill in all required fields');
       } else {
-        message.error('Failed to log visit. Please try again.');
+        message.error(error?.message || error || 'Failed to log visit. Please try again.');
       }
     } finally {
       setSubmitting(false);
@@ -234,15 +272,20 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             showSearch
             loading={loading}
             filterOption={(input, option) =>
-              option.children.toLowerCase().includes(input.toLowerCase())
+              option.children?.toLowerCase?.().includes(input.toLowerCase())
             }
+            onChange={handleStudentSelect}
             size="large"
           >
-            {students?.map((student) => (
-              <Option key={student.id} value={student.id}>
-                {student.name} {student.rollNumber ? `(${student.rollNumber})` : ''}
-              </Option>
-            ))}
+            {students?.map((item) => {
+              // Handle both nested (MentorAssignment) and flat student structures
+              const student = item.student || item;
+              return (
+                <Option key={student.id} value={student.id}>
+                  {student.name} {student.rollNumber ? `(${student.rollNumber})` : ''}
+                </Option>
+              );
+            })}
           </Select>
         </Form.Item>
 

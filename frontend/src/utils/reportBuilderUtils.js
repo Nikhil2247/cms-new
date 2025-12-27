@@ -340,10 +340,11 @@ export const applyTemplate = (template, setFormValues) => {
 
 /**
  * Validate report configuration
- * @param {Object} config - Report configuration
+ * @param {Object} config - Report configuration (payload)
+ * @param {Object} [reportDef] - Report definition with filter requirements
  * @returns {{ valid: boolean, errors: string[] }} Validation result
  */
-export const validateReportConfig = (config) => {
+export const validateReportConfig = (config, reportDef = null) => {
   const errors = [];
 
   if (!config.reportType) {
@@ -356,6 +357,17 @@ export const validateReportConfig = (config) => {
 
   if (!config.format) {
     errors.push("Export format is required");
+  }
+
+  // Validate required filters if report definition is provided
+  if (reportDef?.filters) {
+    const requiredFilters = reportDef.filters.filter((f) => f.required);
+    for (const filter of requiredFilters) {
+      const filterValue = config.filters?.[filter.id];
+      if (filterValue === undefined || filterValue === null || filterValue === "") {
+        errors.push(`${filter.label || formatLabel(filter.id)} is required`);
+      }
+    }
   }
 
   return {

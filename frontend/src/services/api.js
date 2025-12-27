@@ -75,8 +75,12 @@ const handleLogout = (message) => {
 // Request interceptor
 API.interceptors.request.use(
   async (config) => {
-    // Skip token handling for auth endpoints
-    if (config.url?.includes('/auth/login') || config.url?.includes('/auth/refresh')) {
+    // Skip token handling for auth endpoints (prevents interference during auth flows)
+    if (
+      config.url?.includes('/auth/login') ||
+      config.url?.includes('/auth/refresh') ||
+      config.url?.includes('/auth/extend-session')
+    ) {
       return config;
     }
 
@@ -128,7 +132,15 @@ const unwrapResponse = (data) => {
 
 // Check if request is for auth endpoints (login, refresh, etc.)
 const isAuthEndpoint = (url) => {
-  const authPaths = ['/auth/login', '/auth/refresh', '/auth/student-login', '/auth/register', '/auth/forgot-password', '/auth/reset-password'];
+  const authPaths = [
+    '/auth/login',
+    '/auth/refresh',
+    '/auth/extend-session',
+    '/auth/student-login',
+    '/auth/register',
+    '/auth/forgot-password',
+    '/auth/reset-password',
+  ];
   return authPaths.some(path => url?.includes(path));
 };
 

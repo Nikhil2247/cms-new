@@ -15,7 +15,7 @@ const DashboardHeader = ({ studentName, instituteName, mentorName, onRefresh, lo
   return (
     <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 animate-fade-in">
       <div className="flex items-center group">
-        <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-blue-600 shadow-sm mr-5 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
+        <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-surface border border-gray-100 text-blue-600 shadow-sm mr-5 group-hover:scale-105 group-hover:shadow-md transition-all duration-300">
           <ReadOutlined className="text-2xl" />
         </div>
         <div>
@@ -30,7 +30,7 @@ const DashboardHeader = ({ studentName, instituteName, mentorName, onRefresh, lo
 
       <div className="flex items-center gap-4 w-full lg:w-auto">
         {mentorName && (
-          <div className="hidden md:flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex-1 lg:flex-none">
+          <div className="hidden md:flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 flex-1 lg:flex-none">
             <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
               <UserOutlined />
             </div>

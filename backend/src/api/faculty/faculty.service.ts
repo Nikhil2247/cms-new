@@ -21,6 +21,76 @@ export class FacultyService {
   ) {}
 
   /**
+   * Build optional fields object using only valid Prisma FacultyVisitLog schema fields
+   * This ensures type safety and prevents unknown field errors
+   */
+  private buildVisitLogFields(dto: any): Partial<Prisma.FacultyVisitLogUncheckedUpdateInput> {
+    const fields: Partial<Prisma.FacultyVisitLogUncheckedUpdateInput> = {};
+
+    // Core visit fields
+    if (dto.visitLocation !== undefined) fields.visitLocation = dto.visitLocation;
+    if (dto.visitType !== undefined) fields.visitType = dto.visitType;
+    if (dto.status !== undefined) fields.status = dto.status;
+    if (dto.visitDate !== undefined) fields.visitDate = dto.visitDate ? new Date(dto.visitDate) : null;
+    if (dto.signedDocumentUrl !== undefined) fields.signedDocumentUrl = dto.signedDocumentUrl;
+
+    // GPS fields
+    if (dto.latitude !== undefined) fields.latitude = dto.latitude !== null ? parseFloat(String(dto.latitude)) : null;
+    if (dto.longitude !== undefined) fields.longitude = dto.longitude !== null ? parseFloat(String(dto.longitude)) : null;
+    if (dto.gpsAccuracy !== undefined) fields.gpsAccuracy = dto.gpsAccuracy !== null ? parseFloat(String(dto.gpsAccuracy)) : null;
+
+    // String observation fields
+    if (dto.visitDuration !== undefined) fields.visitDuration = dto.visitDuration;
+    if (dto.studentPerformance !== undefined) fields.studentPerformance = dto.studentPerformance;
+    if (dto.workEnvironment !== undefined) fields.workEnvironment = dto.workEnvironment;
+    if (dto.industrySupport !== undefined) fields.industrySupport = dto.industrySupport;
+    if (dto.skillsDevelopment !== undefined) fields.skillsDevelopment = dto.skillsDevelopment;
+    if (dto.attendanceStatus !== undefined) fields.attendanceStatus = dto.attendanceStatus;
+    if (dto.workQuality !== undefined) fields.workQuality = dto.workQuality;
+    if (dto.organisationFeedback !== undefined) fields.organisationFeedback = dto.organisationFeedback;
+    if (dto.projectTopics !== undefined) fields.projectTopics = dto.projectTopics;
+    if (dto.titleOfProjectWork !== undefined) fields.titleOfProjectWork = dto.titleOfProjectWork;
+    if (dto.assistanceRequiredFromInstitute !== undefined) fields.assistanceRequiredFromInstitute = dto.assistanceRequiredFromInstitute;
+    if (dto.responseFromOrganisation !== undefined) fields.responseFromOrganisation = dto.responseFromOrganisation;
+    if (dto.remarksOfOrganisationSupervisor !== undefined) fields.remarksOfOrganisationSupervisor = dto.remarksOfOrganisationSupervisor;
+    if (dto.significantChangeInPlan !== undefined) fields.significantChangeInPlan = dto.significantChangeInPlan;
+    if (dto.observationsAboutStudent !== undefined) fields.observationsAboutStudent = dto.observationsAboutStudent;
+    if (dto.feedbackSharedWithStudent !== undefined) fields.feedbackSharedWithStudent = dto.feedbackSharedWithStudent;
+    if (dto.issuesIdentified !== undefined) fields.issuesIdentified = dto.issuesIdentified;
+    if (dto.recommendations !== undefined) fields.recommendations = dto.recommendations;
+    if (dto.actionRequired !== undefined) fields.actionRequired = dto.actionRequired;
+    if (dto.filesUrl !== undefined) fields.filesUrl = dto.filesUrl;
+    if (dto.meetingMinutes !== undefined) fields.meetingMinutes = dto.meetingMinutes;
+    if (dto.reportSubmittedTo !== undefined) fields.reportSubmittedTo = dto.reportSubmittedTo;
+
+    // Integer rating fields (1-5 scale)
+    if (dto.studentProgressRating !== undefined) fields.studentProgressRating = dto.studentProgressRating !== null ? Number(dto.studentProgressRating) : null;
+    if (dto.industryCooperationRating !== undefined) fields.industryCooperationRating = dto.industryCooperationRating !== null ? Number(dto.industryCooperationRating) : null;
+    if (dto.workEnvironmentRating !== undefined) fields.workEnvironmentRating = dto.workEnvironmentRating !== null ? Number(dto.workEnvironmentRating) : null;
+    if (dto.mentoringSupportRating !== undefined) fields.mentoringSupportRating = dto.mentoringSupportRating !== null ? Number(dto.mentoringSupportRating) : null;
+    if (dto.overallSatisfactionRating !== undefined) fields.overallSatisfactionRating = dto.overallSatisfactionRating !== null ? Number(dto.overallSatisfactionRating) : null;
+
+    // Boolean fields
+    if (dto.followUpRequired !== undefined) fields.followUpRequired = Boolean(dto.followUpRequired);
+    if (dto.isMonthlyVisit !== undefined) fields.isMonthlyVisit = Boolean(dto.isMonthlyVisit);
+
+    // Date fields
+    if (dto.nextVisitDate !== undefined) fields.nextVisitDate = dto.nextVisitDate ? new Date(dto.nextVisitDate) : null;
+    if (dto.requiredByDate !== undefined) fields.requiredByDate = dto.requiredByDate ? new Date(dto.requiredByDate) : null;
+
+    // Integer fields
+    if (dto.visitNumber !== undefined) fields.visitNumber = dto.visitNumber !== null ? Number(dto.visitNumber) : null;
+    if (dto.visitMonth !== undefined) fields.visitMonth = dto.visitMonth !== null ? Number(dto.visitMonth) : null;
+    if (dto.visitYear !== undefined) fields.visitYear = dto.visitYear !== null ? Number(dto.visitYear) : null;
+
+    // Array fields
+    if (dto.visitPhotos !== undefined) fields.visitPhotos = dto.visitPhotos;
+    if (dto.attendeesList !== undefined) fields.attendeesList = dto.attendeesList;
+
+    return fields;
+  }
+
+  /**
    * Calculate expected months (reports/visits) using monthly cycles
    * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V (Q47-49)
    *
@@ -497,37 +567,47 @@ export class FacultyService {
       visitLocation,
       latitude,
       longitude,
+      gpsAccuracy,
       visitPhotos,
+      signedDocumentUrl,
       status,
-      ...visitData
     } = createVisitLogDto;
+
+    // Filter to only valid Prisma schema fields (excludes unknown fields like 'notes')
+    const filteredVisitData = this.buildVisitLogFields(createVisitLogDto);
 
     // Validate required fields
     if (!visitType) {
       throw new BadRequestException('visitType is required');
     }
 
-    if (!visitLocation) {
-      throw new BadRequestException('visitLocation is required');
+    // Location is required only for PHYSICAL visits (unless saving as draft)
+    if (visitType === 'PHYSICAL' && !visitLocation && status !== 'DRAFT') {
+      throw new BadRequestException('visitLocation is required for physical visits');
     }
 
     // Find application - support both applicationId and studentId
     let application;
+    let targetStudentId: string | null = null;
 
     if (applicationId) {
-      // Direct application ID provided
+      // Direct application ID provided - find the application first
       application = await this.prisma.internshipApplication.findFirst({
         where: {
           id: applicationId,
-          mentorId: facultyId,
+          status: { in: ['JOINED', 'APPROVED'] },
         },
       });
+
+      if (application) {
+        targetStudentId = application.studentId;
+      }
     } else if (studentId) {
       // Find active application by student ID
+      targetStudentId = studentId;
       application = await this.prisma.internshipApplication.findFirst({
         where: {
           studentId,
-          mentorId: facultyId,
           status: { in: ['JOINED', 'APPROVED'] },
         },
         orderBy: { createdAt: 'desc' },
@@ -537,6 +617,22 @@ export class FacultyService {
     }
 
     if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    // Verify authorization: Check if faculty is assigned to this student via MentorAssignment
+    // OR is the mentor on the application directly
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId: targetStudentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    const isMentorOnApplication = application.mentorId === facultyId;
+
+    if (!isAuthorized && !isMentorOnApplication) {
       throw new NotFoundException('Application not found or you are not the assigned mentor');
     }
 
@@ -565,18 +661,22 @@ export class FacultyService {
       internshipId: application.internshipId,
       visitNumber: visitCount + 1,
       visitType,
-      visitLocation,
       // Use the already validated visit date
       visitDate: visitDateToUse,
-      // Auto-set status to COMPLETED for quick logs if not provided
+      // Auto-set status to COMPLETED for quick logs if not provided (unless DRAFT)
       status: status || 'COMPLETED',
+      // Include location if provided
+      ...(visitLocation && { visitLocation }),
       // Include GPS coordinates if provided
-      ...(latitude !== undefined && { latitude }),
-      ...(longitude !== undefined && { longitude }),
+      ...(latitude !== undefined && { latitude: parseFloat(String(latitude)) }),
+      ...(longitude !== undefined && { longitude: parseFloat(String(longitude)) }),
+      ...(gpsAccuracy !== undefined && { gpsAccuracy: parseFloat(String(gpsAccuracy)) }),
+      // Include signed document URL if provided
+      ...(signedDocumentUrl && { signedDocumentUrl }),
       // Include photo URLs if provided
       ...(visitPhotos && visitPhotos.length > 0 && { visitPhotos }),
-      // Include any additional optional fields provided
-      ...visitData,
+      // Include any additional optional fields provided (filtered to valid schema fields)
+      ...filteredVisitData,
     };
 
     const visitLog = await this.prisma.facultyVisitLog.create({
@@ -628,6 +728,9 @@ export class FacultyService {
 
   /**
    * Update visit log
+   *
+   * IMPORTANT: When visit is in DRAFT status, only document/photo uploads are allowed.
+   * Core visit details (GPS, location, student, dates) are locked after initial creation.
    */
   async updateVisitLog(id: string, updateVisitLogDto: any, facultyId?: string) {
     const visitLog = await this.prisma.facultyVisitLog.findUnique({
@@ -646,9 +749,88 @@ export class FacultyService {
       status: visitLog.status,
     };
 
+    // Filter to only valid Prisma schema fields (excludes unknown fields like 'notes')
+    let filteredUpdateData = this.buildVisitLogFields(updateVisitLogDto);
+
+    // When visit is in DRAFT status, restrict updates to only documents and photos
+    // Core details like GPS coordinates, location, student, visit date are locked
+    if (visitLog.status === 'DRAFT') {
+      // Fields that CAN be updated when in DRAFT (completing the visit report)
+      const allowedDraftUpdateFields = [
+        'signedDocumentUrl',
+        'visitPhotos',
+        'filesUrl',
+        'status', // Allow status change (DRAFT -> COMPLETED)
+        // Observation/report fields that are filled during visit completion
+        'visitDuration',
+        'studentPerformance',
+        'workEnvironment',
+        'industrySupport',
+        'skillsDevelopment',
+        'attendanceStatus',
+        'workQuality',
+        'organisationFeedback',
+        'projectTopics',
+        'titleOfProjectWork',
+        'assistanceRequiredFromInstitute',
+        'responseFromOrganisation',
+        'remarksOfOrganisationSupervisor',
+        'significantChangeInPlan',
+        'observationsAboutStudent',
+        'feedbackSharedWithStudent',
+        'studentProgressRating',
+        'industryCooperationRating',
+        'workEnvironmentRating',
+        'mentoringSupportRating',
+        'overallSatisfactionRating',
+        'issuesIdentified',
+        'recommendations',
+        'actionRequired',
+        'meetingMinutes',
+        'attendeesList',
+        'reportSubmittedTo',
+        'followUpRequired',
+        'nextVisitDate',
+      ];
+
+      // Fields that are LOCKED after draft creation (cannot be modified)
+      const lockedFields = [
+        'latitude',
+        'longitude',
+        'gpsAccuracy',
+        'visitLocation',
+        'visitDate',
+        'visitType',
+        'applicationId',
+        'studentId',
+        'internshipId',
+        'facultyId',
+        'visitNumber',
+      ];
+
+      // Check if user is trying to modify locked fields
+      const attemptedLockedFields = lockedFields.filter(
+        field => updateVisitLogDto[field] !== undefined
+      );
+
+      if (attemptedLockedFields.length > 0) {
+        throw new BadRequestException(
+          `Cannot modify locked fields in DRAFT visit: ${attemptedLockedFields.join(', ')}. ` +
+          `GPS coordinates, location, and visit details are captured at creation time and cannot be changed.`
+        );
+      }
+
+      // Filter to only allowed fields for draft updates
+      filteredUpdateData = Object.fromEntries(
+        Object.entries(filteredUpdateData).filter(([key]) =>
+          allowedDraftUpdateFields.includes(key)
+        )
+      ) as Partial<Prisma.FacultyVisitLogUncheckedUpdateInput>;
+    }
+
     const updated = await this.prisma.facultyVisitLog.update({
       where: { id },
-      data: updateVisitLogDto,
+      data: filteredUpdateData,
       include: {
         application: {
           include: {
@@ -675,7 +857,7 @@ export class FacultyService {
       severity: AuditSeverity.LOW,
       institutionId: faculty?.institutionId || undefined,
       oldValues,
-      newValues: updateVisitLogDto,
+      newValues: filteredUpdateData,
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['visits', `visit:${id}`]);
@@ -1190,19 +1372,51 @@ export class FacultyService {
       status: application.status,
       hasJoined: application.hasJoined,
       isSelected: application.isSelected,
+      companyName: application.companyName,
+      startDate: application.startDate,
+      endDate: application.endDate,
+      stipend: application.stipend,
     };
+
+    // Build update data - only include fields that are provided
+    const updateData: any = {
+      reviewedAt: new Date(),
+      reviewedBy: facultyId,
+    };
+
+    // Status fields
+    if (updateDto.status !== undefined) updateData.status = updateDto.status;
+    if (updateDto.hasJoined !== undefined) updateData.hasJoined = updateDto.hasJoined;
+    if (updateDto.isSelected !== undefined) updateData.isSelected = updateDto.isSelected;
+    if (updateDto.remarks !== undefined) updateData.reviewRemarks = updateDto.remarks;
+    if (updateDto.joiningDate) updateData.joiningDate = new Date(updateDto.joiningDate);
+
+    // Company/Industry info
+    if (updateDto.companyName !== undefined) updateData.companyName = updateDto.companyName;
+    if (updateDto.companyAddress !== undefined) updateData.companyAddress = updateDto.companyAddress;
+    if (updateDto.companyContact !== undefined) updateData.companyContact = updateDto.companyContact;
+    if (updateDto.companyEmail !== undefined) updateData.companyEmail = updateDto.companyEmail;
+    if (updateDto.location !== undefined) updateData.companyAddress = updateDto.location; // Alias
+
+    // HR info
+    if (updateDto.hrName !== undefined) updateData.hrName = updateDto.hrName;
+    if (updateDto.hrDesignation !== undefined) updateData.hrDesignation = updateDto.hrDesignation;
+    if (updateDto.hrContact !== undefined) updateData.hrContact = updateDto.hrContact;
+    if (updateDto.hrEmail !== undefined) updateData.hrEmail = updateDto.hrEmail;
+
+    // Internship details
+    if (updateDto.startDate) updateData.startDate = new Date(updateDto.startDate);
+    if (updateDto.endDate) updateData.endDate = new Date(updateDto.endDate);
+    if (updateDto.stipend !== undefined) updateData.stipend = String(updateDto.stipend);
+    if (updateDto.jobProfile !== undefined) updateData.jobProfile = updateDto.jobProfile;
+    if (updateDto.internshipDuration !== undefined) updateData.internshipDuration = updateDto.internshipDuration;
+
+    // Notes
+    if (updateDto.notes !== undefined) updateData.notes = updateDto.notes;
 
     const updated = await this.prisma.internshipApplication.update({
       where: { id },
-      data: {
-        status: updateDto.status,
-        hasJoined: updateDto.hasJoined,
-        isSelected: updateDto.isSelected,
-        reviewRemarks: updateDto.remarks,
-        joiningDate: updateDto.joiningDate ? new Date(updateDto.joiningDate) : undefined,
-        reviewedAt: new Date(),
-        reviewedBy: facultyId,
-      },
+      data: updateData,
       include: {
         student: true,
         internship: {

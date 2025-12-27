@@ -352,6 +352,7 @@ export class FAQService {
 
   /**
    * Get categories with article counts filtered by user role
+   * OPTIMIZED: Uses groupBy aggregation instead of N+1 count queries
    */
   async getCategoriesWithCounts(userRole?: string) {
     try {
@@ -360,21 +361,33 @@ export class FAQService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
-          const categories = await Promise.all(
-            Object.values(SupportCategory).map(async (category) => ({
-              category,
-              label: this.formatCategoryLabel(category),
-              count: await this.prisma.fAQArticle.count({
-                where: {
-                  category,
-                  isPublished: true,
-                  ...this.buildRoleFilter(userRole),
-                },
-              }),
-            }))
+          // Use groupBy to get all category counts in a single query
+          const categoryCounts = await this.prisma.fAQArticle.groupBy({
+            by: ['category'],
+            where: {
+              isPublished: true,
+              ...this.buildRoleFilter(userRole),
+            },
+            _count: {
+              category: true,
+            },
+          });
+
+          // Build a map for quick lookup
+          const countMap = new Map(
+            categoryCounts.map(c => [c.category, c._count.category])
           );
 
-          return categories.filter(c => c.count > 0);
+          // Build result array with all categories that have articles
+          const categories = Object.values(SupportCategory)
+            .map((category) => ({
+              category,
+              label: this.formatCategoryLabel(category),
+              count: countMap.get(category) || 0,
+            }))
+            .filter(c => c.count > 0);
+
+          return categories;
         },
         this.CACHE_TTL,
       );

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, Form, Input, Select, DatePicker, message, FloatButton, Layout } from 'antd';
+import { Row, Col, Spin, Alert, Modal, message, FloatButton, Layout } from 'antd';
 import { SyncOutlined, CameraOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -17,16 +17,12 @@ import {
   StudentDetailsModal,
 } from './components';
 import QuickVisitModal from '../visits/QuickVisitModal';
-import { facultyService } from '../../../services/faculty.service';
+import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
 
 dayjs.extend(isBetween);
 
-const { TextArea } = Input;
-const { Option } = Select;
-
 const FacultyDashboard = () => {
   const navigate = useNavigate();
-  const [visitForm] = Form.useForm();
 
   // Use custom hook for dashboard data with SWR
   const {
@@ -44,8 +40,6 @@ const FacultyDashboard = () => {
     upcomingVisits,
     error,
     refresh,
-    handleCreateVisitLog,
-    handleUpdateVisitLog,
     handleDeleteVisitLog,
     handleApproveApplication,
     handleRejectApplication,
@@ -55,62 +49,20 @@ const FacultyDashboard = () => {
 
   // Local UI state
   const [visitModalVisible, setVisitModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [editingVisit, setEditingVisit] = useState(null);
   const [quickVisitModalVisible, setQuickVisitModalVisible] = useState(false);
   const [studentDetailsModalVisible, setStudentDetailsModalVisible] = useState(false);
   const [selectedStudentForDetails, setSelectedStudentForDetails] = useState(null);
 
-  // Handle creating a new visit log
-  const handleNewVisit = useCallback((student = null) => {
-    setSelectedStudent(student);
-    setEditingVisit(null);
-    visitForm.resetFields();
-    if (student) {
-      visitForm.setFieldsValue({
-        studentId: student.id,
-        applicationId: student.applicationId,
-      });
-    }
+  // Handle creating a new visit log - opens UnifiedVisitLogModal
+  const handleNewVisit = useCallback(() => {
     setVisitModalVisible(true);
-  }, [visitForm]);
+  }, []);
 
-  // Handle editing an existing visit log
-  const handleEditVisit = useCallback((visit) => {
-    setEditingVisit(visit);
-    visitForm.setFieldsValue({
-      ...visit,
-      visitDate: dayjs(visit.visitDate),
-    });
-    setVisitModalVisible(true);
-  }, [visitForm]);
-
-  // Handle visit form submission
-  const handleVisitSubmit = useCallback(async () => {
-    try {
-      const values = await visitForm.validateFields();
-      const visitData = {
-        ...values,
-        visitDate: values.visitDate.toISOString(),
-      };
-
-      if (editingVisit) {
-        await handleUpdateVisitLog(editingVisit.id, visitData);
-        message.success('Visit log updated successfully');
-      } else {
-        await handleCreateVisitLog(visitData);
-        message.success('Visit log created successfully');
-      }
-
-      setVisitModalVisible(false);
-      visitForm.resetFields();
-    } catch (err) {
-      if (err.errorFields) {
-        return; // Form validation error
-      }
-      message.error('Failed to save visit log');
-    }
-  }, [visitForm, editingVisit, handleCreateVisitLog, handleUpdateVisitLog]);
+  // Handle visit modal success
+  const handleVisitSuccess = useCallback(() => {
+    setVisitModalVisible(false);
+    refresh();
+  }, [refresh]);
 
   // Handle deleting a visit log
   const handleDeleteVisit = useCallback(async (visitId) => {
@@ -185,16 +137,11 @@ const FacultyDashboard = () => {
     }
   }, [students]);
 
-  // Handle quick visit submission
-  const handleQuickVisitSubmit = useCallback(async (formData) => {
-    try {
-      await facultyService.quickLogVisit(formData);
-      // Refresh dashboard to show new visit
-      await refresh();
-      return true;
-    } catch (error) {
-      throw error;
-    }
+  // Handle quick visit submission - just refresh data (modal handles actual submission)
+  const handleQuickVisitSubmit = useCallback(async () => {
+    // Modal handles submission via Redux thunk, we just need to refresh
+    await refresh();
+    return true;
   }, [refresh]);
 
   // Show error state
@@ -255,9 +202,7 @@ const FacultyDashboard = () => {
                 students={students}
                 loading={isLoading}
                 onViewStudent={handleViewStudent}
-                onScheduleVisit={async (visitData) => {
-                  await handleCreateVisitLog(visitData);
-                }}
+                onScheduleVisit={refresh}
                 onViewAll={() => navigate('/assigned-students')}
               />
 
@@ -309,91 +254,13 @@ const FacultyDashboard = () => {
         </div>
       </Spin>
 
-      {/* Visit Log Modal */}
-      <Modal
-        title={
-          <div className="text-xl font-bold text-gray-900 pb-2 border-b border-gray-100">
-            {editingVisit ? 'Edit Visit Log' : 'Schedule New Visit'}
-          </div>
-        }
-        open={visitModalVisible}
-        onOk={handleVisitSubmit}
-        onCancel={() => {
-          setVisitModalVisible(false);
-          visitForm.resetFields();
-        }}
-        okText={editingVisit ? 'Update' : 'Create'}
-        width={600}
-        className="rounded-2xl overflow-hidden"
-        styles={{ content: { borderRadius: '24px', padding: '24px' } }}
-        centered
-      >
-        <Form form={visitForm} layout="vertical" className="mt-6">
-          {!selectedStudent && (
-            <Form.Item
-              name="applicationId"
-              label={<span className="font-medium text-gray-700">Select Student</span>}
-              rules={[{ required: true, message: 'Please select a student' }]}
-            >
-              <Select 
-                placeholder="Select a student" 
-                className="h-11 rounded-lg"
-                dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
-              >
-                {students.map((student) => {
-                  // Handle nested data structure from API
-                  const studentName = student.name || student.student?.name || 'Unknown';
-                  const internshipApp = student.student?.internshipApplications?.[0] || student.internshipApplications?.[0];
-                  const companyName = student.companyName || internshipApp?.companyName || 'Company';
-                  const applicationId = internshipApp?.id || student.applicationId || student.id;
-
-                  return (
-                    <Option key={applicationId} value={applicationId}>
-                      {studentName} - {companyName}
-                    </Option>
-                  );
-                })}
-              </Select>
-            </Form.Item>
-          )}
-
-          <Form.Item
-            name="visitDate"
-            label={<span className="font-medium text-gray-700">Visit Date & Time</span>}
-            rules={[{ required: true, message: 'Please select a date' }]}
-          >
-            <DatePicker className="w-full h-11 rounded-lg" showTime format="MMMM D, YYYY h:mm A" />
-          </Form.Item>
-
-          <Form.Item
-            name="visitType"
-            label={<span className="font-medium text-gray-700">Visit Type</span>}
-            rules={[{ required: true, message: 'Please select visit type' }]}
-          >
-            <Select 
-              placeholder="Select visit type" 
-              className="h-11 rounded-lg"
-              dropdownStyle={{ borderRadius: '12px', padding: '8px' }}
-            >
-              <Option value="PHYSICAL">Physical Visit</Option>
-              <Option value="VIRTUAL">Virtual Visit</Option>
-              <Option value="PHONE">Phone Call</Option>
-            </Select>
-          </Form.Item>
-
-          <Form.Item name="visitLocation" label={<span className="font-medium text-gray-700">Visit Location</span>}>
-            <Input placeholder="Enter visit location" className="h-11 rounded-lg" />
-          </Form.Item>
-
-          <Form.Item name="notes" label={<span className="font-medium text-gray-700">Notes / Observations</span>}>
-            <TextArea 
-              rows={4} 
-              placeholder="Add any notes about this visit..." 
-              className="rounded-lg bg-gray-50 border-gray-200 hover:bg-white focus:bg-white transition-colors" 
-            />
-          </Form.Item>
-        </Form>
-      </Modal>
+      {/* Unified Visit Log Modal */}
+      <UnifiedVisitLogModal
+        visible={visitModalVisible}
+        onClose={() => setVisitModalVisible(false)}
+        onSuccess={handleVisitSuccess}
+        students={students}
+      />
 
       {/* Quick Visit Modal */}
       <QuickVisitModal
@@ -428,7 +295,7 @@ const FacultyDashboard = () => {
           setStudentDetailsModalVisible(false);
           setSelectedStudentForDetails(null);
         }}
-        onScheduleVisit={handleCreateVisitLog}
+        onScheduleVisit={refresh}
         onRefresh={refresh}
         loading={isLoading}
       />

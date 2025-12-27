@@ -147,10 +147,10 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 name="phoneNo"
                 label="Phone Number"
                 rules={[
-                  { pattern: /^[0-9]{10}$/, message: 'Phone number must be 10 digits' },
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' },
                 ]}
               >
-                <Input placeholder="Enter 10-digit phone number" />
+                <Input placeholder="Enter phone number" />
               </Form.Item>
             </Col>
           </Row>

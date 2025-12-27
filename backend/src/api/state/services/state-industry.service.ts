@@ -142,10 +142,25 @@ export class StateIndustryService {
 
   /**
    * Get top industries by interns hired
+   * OPTIMIZED: Uses caching with 15-minute TTL
    */
   async getTopIndustries(params: { limit?: number }) {
     const { limit = 10 } = params;
+    const cacheKey = `state:top-industries:${limit}`;
 
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        return this._fetchTopIndustries(limit);
+      },
+      { ttl: 15 * 60 * 1000, tags: ['state', 'industries', 'top-industries'] },
+    );
+  }
+
+  /**
+   * Internal method to fetch top industries data
+   */
+  private async _fetchTopIndustries(limit: number) {
     // Get all approved self-identified applications with company info
     const applications = await this.prisma.internshipApplication.findMany({
       where: {

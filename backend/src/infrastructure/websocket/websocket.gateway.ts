@@ -9,7 +9,7 @@ import {
   ConnectedSocket,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger, Injectable } from '@nestjs/common';
+import { Logger, Injectable, OnModuleDestroy } from '@nestjs/common';
 import { Role } from '@prisma/client';
 import { TokenService } from '../../core/auth/services/token.service';
 import {
@@ -25,6 +25,8 @@ import {
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const RATE_LIMIT_MAX_EVENTS = 100; // Max events per window
+const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Cleanup every 5 minutes
+const RATE_LIMIT_ENTRY_TTL_MS = 2 * 60 * 1000; // Entries expire after 2 minutes of inactivity
 
 @WebSocketGateway({
   cors: {
@@ -36,7 +38,7 @@ const RATE_LIMIT_MAX_EVENTS = 100; // Max events per window
   pingTimeout: 20000, // Timeout after 20 seconds without pong
 })
 @Injectable()
-export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
   @WebSocketServer()
   server: Server;
 
@@ -51,10 +53,65 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
   // Rate limiting: socketId -> { count, windowStart }
   private rateLimitMap: Map<string, { count: number; windowStart: number }> = new Map();
 
+  // Interval for periodic cleanup of rate limit map
+  private rateLimitCleanupInterval: NodeJS.Timeout | null = null;
+
   constructor(private readonly tokenService: TokenService) {}
 
   afterInit(): void {
     this.logger.log('Unified WebSocket Gateway initialized');
+
+    // Start periodic cleanup of stale rate limit entries
+    this.startRateLimitCleanup();
+  }
+
+  /**
+   * Cleanup resources on module destroy
+   */
+  onModuleDestroy(): void {
+    if (this.rateLimitCleanupInterval) {
+      clearInterval(this.rateLimitCleanupInterval);
+      this.rateLimitCleanupInterval = null;
+    }
+    this.rateLimitMap.clear();
+    this.userSockets.clear();
+    this.subscribers.clear();
+    this.logger.log('WebSocket Gateway cleanup completed');
+  }
+
+  /**
+   * Start periodic cleanup of stale rate limit entries
+   * This prevents memory leaks from disconnected clients
+   */
+  private startRateLimitCleanup(): void {
+    this.rateLimitCleanupInterval = setInterval(() => {
+      this.cleanupStaleRateLimitEntries();
+    }, RATE_LIMIT_CLEANUP_INTERVAL_MS);
+  }
+
+  /**
+   * Remove rate limit entries for disconnected clients or expired entries
+   */
+  private cleanupStaleRateLimitEntries(): void {
+    const now = Date.now();
+    let cleanedCount = 0;
+
+    for (const [socketId, rateInfo] of this.rateLimitMap.entries()) {
+      // Remove entry if:
+      // 1. Socket is no longer connected, OR
+      // 2. Entry is older than TTL (stale)
+      const isConnected = this.subscribers.has(socketId);
+      const isStale = now - rateInfo.windowStart > RATE_LIMIT_ENTRY_TTL_MS;
+
+      if (!isConnected || isStale) {
+        this.rateLimitMap.delete(socketId);
+        cleanedCount++;
+      }
+    }
+
+    if (cleanedCount > 0) {
+      this.logger.debug(`Rate limit cleanup: removed ${cleanedCount} stale entries, ${this.rateLimitMap.size} remaining`);
+    }
   }
 
   /**
@@ -174,6 +231,9 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
 
     // Remove from subscribers
     this.subscribers.delete(client.id);
+
+    // Remove from rate limit map to prevent memory leak
+    this.rateLimitMap.delete(client.id);
 
     this.logger.log(`Client disconnected: ${client.id} (User: ${userId || 'unknown'})`);
   }

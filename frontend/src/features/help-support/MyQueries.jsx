@@ -280,7 +280,7 @@ const MyQueries = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-blue-600 shadow-sm">
+            <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-surface border border-border text-blue-600 shadow-sm">
               <MessageOutlined className="text-2xl" />
             </div>
             <div>
@@ -297,7 +297,7 @@ const MyQueries = () => {
             <Button
               icon={<ReloadOutlined />}
               onClick={fetchTickets}
-              className="rounded-xl h-11 px-4 border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 bg-white"
+              className="rounded-xl h-11 px-4 border-border text-text-secondary hover:text-text-primary hover:border-primary bg-surface"
             >
               Refresh
             </Button>
@@ -313,14 +313,14 @@ const MyQueries = () => {
         </div>
 
         {/* Filters */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm bg-white" styles={{ body: { padding: '16px' } }}>
+        <Card bordered={false} className="rounded-2xl border border-border shadow-sm bg-surface" styles={{ body: { padding: '16px' } }}>
           <Space wrap className="w-full">
             <Input
               placeholder="Search tickets..."
               prefix={<SearchOutlined className="text-gray-400" />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-64 rounded-xl h-11 bg-gray-50 border-gray-200 hover:bg-white focus:bg-white"
+              className="w-64 rounded-xl h-11 bg-background-secondary border-border hover:bg-surface focus:bg-surface"
               allowClear
             />
             <Select
@@ -355,7 +355,7 @@ const MyQueries = () => {
         </Card>
 
         {/* Tickets Table */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white" styles={{ body: { padding: 0 } }}>
+        <Card bordered={false} className="rounded-2xl border border-border shadow-sm overflow-hidden bg-surface" styles={{ body: { padding: 0 } }}>
           <Table
             columns={columns}
             dataSource={filteredTickets}
@@ -382,7 +382,7 @@ const MyQueries = () => {
               ),
             }}
             className="custom-table"
-            rowClassName="hover:bg-gray-50/50 transition-colors"
+            rowClassName="hover:bg-background-secondary/50 transition-colors"
           />
         </Card>
 
@@ -413,7 +413,7 @@ const MyQueries = () => {
           ) : selectedTicket ? (
             <div className="space-y-8">
               {/* Ticket Info */}
-              <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+              <div className="bg-background-secondary rounded-2xl p-6 border border-border">
                 <Title level={4} className="!mb-3 !text-gray-900 font-bold">{selectedTicket.subject}</Title>
                 <div className="flex flex-wrap gap-2 mb-4">
                   <Tag color={getCategoryInfo(selectedTicket.category).color} className="rounded-md border-0 m-0 font-bold px-2 py-0.5">
@@ -425,7 +425,7 @@ const MyQueries = () => {
                     {dayjs(selectedTicket.createdAt).format('MMM D, YYYY • h:mm A')}
                   </div>
                 </div>
-                <Paragraph className="text-gray-600 leading-relaxed mb-0 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                <Paragraph className="text-text-secondary leading-relaxed mb-0 bg-surface p-4 rounded-xl border border-border shadow-sm">
                   {selectedTicket.description}
                 </Paragraph>
                 {selectedTicket.assignedTo && (
@@ -444,7 +444,7 @@ const MyQueries = () => {
                   <Title level={5} className="!mb-3 flex items-center gap-2 text-green-700 font-bold">
                     <CheckCircleOutlined /> Resolution
                   </Title>
-                  <Paragraph className="mb-0 text-green-800 bg-white/50 p-4 rounded-xl border border-green-100/50">
+                  <Paragraph className="mb-0 text-green-800 bg-surface/50 p-4 rounded-xl border border-green-100/50">
                     {selectedTicket.resolution}
                   </Paragraph>
                 </div>
@@ -465,7 +465,7 @@ const MyQueries = () => {
                             <Avatar size="small" className={response.responder?.id === user?.userId ? 'bg-blue-600' : 'bg-green-600'} icon={<UserOutlined />} />
                           }
                         >
-                          <div className={`rounded-xl border p-4 mb-4 shadow-sm ${response.responder?.id === user?.userId ? 'bg-blue-50/30 border-blue-100' : 'bg-white border-gray-100'}`}>
+                        <Card size="small" className={`rounded-xl border mb-2 ${response.responder?.id === user?.userId ? 'bg-blue-50/30 border-blue-100' : 'bg-surface border-border'}`}>
                             <div className="flex justify-between items-center mb-2">
                               <Text strong className="text-gray-900">
                                 {response.responderName}
@@ -476,12 +476,12 @@ const MyQueries = () => {
                               </Text>
                             </div>
                             <Paragraph className="mb-0 text-gray-600 leading-relaxed">{response.message}</Paragraph>
-                          </div>
+                          </Card>
                         </Timeline.Item>
                       ))}
                   </Timeline>
                 ) : (
-                  <div className="py-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                  <div className="py-8 text-center bg-background-secondary rounded-xl border border-dashed border-border">
                     <Empty
                       image={Empty.PRESENTED_IMAGE_SIMPLE}
                       description={<span className="text-gray-400">No responses yet</span>}
@@ -492,7 +492,7 @@ const MyQueries = () => {
 
               {/* Reply Form (only for open tickets) */}
               {!['RESOLVED', 'CLOSED'].includes(selectedTicket.status) && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm sticky bottom-0">
+                <div className="bg-surface rounded-2xl border border-border p-6 shadow-sm sticky bottom-0">
                   <Text strong className="block mb-3 text-gray-900">Post a Reply</Text>
                   <Form form={replyForm} onFinish={handleSubmitReply}>
                     <Form.Item
@@ -503,7 +503,7 @@ const MyQueries = () => {
                       <TextArea
                         rows={4}
                         placeholder="Type your reply here..."
-                        className="rounded-xl border-gray-200 bg-gray-50 focus:bg-white p-4 text-base"
+                        className="rounded-xl border-border bg-background-secondary focus:bg-surface p-4 text-base"
                       />
                     </Form.Item>
                     <div className="flex justify-end">
@@ -558,7 +558,7 @@ const MyQueries = () => {
                 { min: 5, message: 'Subject must be at least 5 characters' },
               ]}
             >
-              <Input placeholder="Brief description of your issue" className="rounded-xl h-11 bg-gray-50 border-gray-200 focus:bg-white" />
+              <Input placeholder="Brief description of your issue" className="rounded-xl h-11 bg-background-secondary border-border focus:bg-surface" />
             </Form.Item>
 
             <div className="grid grid-cols-2 gap-4">
@@ -602,7 +602,7 @@ const MyQueries = () => {
               <TextArea
                 rows={6}
                 placeholder="Please describe your issue in detail..."
-                className="rounded-xl bg-gray-50 border-gray-200 focus:bg-white p-4"
+                className="rounded-xl bg-background-secondary border-border focus:bg-surface p-4"
               />
             </Form.Item>
 

@@ -43,7 +43,8 @@ import {
   optimisticApproveApplication,
   optimisticRejectApplication,
   rollbackApplicationUpdate,
-  selectApplications
+  selectApplications,
+  selectLastFetched,
 } from "../store/facultySlice";
 
 const { Title, Text, Paragraph } = Typography;
@@ -55,6 +56,8 @@ const SelfIdentifiedApproval = () => {
 
   // Get applications from Redux store
   const { list: applications, loading, error } = useSelector(selectApplications);
+  const lastFetched = useSelector(selectLastFetched);
+  const applicationsLastFetched = lastFetched?.applications;
 
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [approvalModalVisible, setApprovalModalVisible] = useState(false);
@@ -466,16 +469,23 @@ const SelfIdentifiedApproval = () => {
               <CheckCircleOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Self-Identified Internship Approvals
-              </Title>
+              <div className="flex items-center gap-3">
+                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                  Self-Identified Internship Approvals
+                </Title>
+                {applicationsLastFetched && (
+                  <span className="text-xs text-text-tertiary">
+                    Updated {new Date(applicationsLastFetched).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
               <Text className="text-text-secondary text-sm">
                 Review and approve self-identified internship applications from students
               </Text>
             </div>
           </div>
           <Button
-            icon={<ReloadOutlined />}
+            icon={<ReloadOutlined spin={loading} />}
             onClick={fetchSelfIdentifiedApplications}
             loading={loading}
             className="rounded-lg"

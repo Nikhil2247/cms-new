@@ -81,8 +81,8 @@ const InternshipList = () => {
             )}
           </div>
           <div>
-            <div className="font-bold text-gray-900 leading-tight">{record.title || text}</div>
-            <div className="text-xs font-medium text-gray-500">{record.company?.name || record.industry?.companyName}</div>
+            <div className="font-bold text-text-primary leading-tight">{record.title || text}</div>
+            <div className="text-xs font-medium text-text-secondary">{record.company?.name || record.industry?.companyName}</div>
           </div>
         </div>
       ),
@@ -92,12 +92,12 @@ const InternshipList = () => {
       key: 'details',
       render: (_, record) => (
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <EnvironmentOutlined className="text-gray-400" />
+          <div className="flex items-center gap-1 text-xs text-text-secondary">
+            <EnvironmentOutlined className="text-text-tertiary" />
             {record.location || record.workLocation}
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            <ClockCircleOutlined className="text-gray-400" />
+          <div className="flex items-center gap-1 text-xs text-text-secondary">
+            <ClockCircleOutlined className="text-text-tertiary" />
             {record.duration} months
           </div>
         </div>
@@ -108,8 +108,8 @@ const InternshipList = () => {
       dataIndex: 'stipend',
       key: 'stipend',
       render: (stipend, record) => (
-        <div className="font-medium text-gray-700 text-sm">
-          {record.stipendAmount || stipend ? `₹${(record.stipendAmount || stipend).toLocaleString()}` : <span className="text-gray-400">Unpaid</span>}
+        <div className="font-medium text-text-primary text-sm">
+          {record.stipendAmount || stipend ? `₹${(record.stipendAmount || stipend).toLocaleString()}` : <span className="text-text-tertiary">Unpaid</span>}
         </div>
       ),
     },
@@ -133,7 +133,7 @@ const InternshipList = () => {
       key: 'applicationDeadline',
       render: (date) => (
         <Tooltip title={dayjs(date).format('dddd, MMMM D, YYYY')}>
-          <span className="text-sm text-gray-600">{dayjs(date).format('MMM D, YYYY')}</span>
+          <span className="text-sm text-text-secondary">{dayjs(date).format('MMM D, YYYY')}</span>
         </Tooltip>
       ),
     },
@@ -152,7 +152,7 @@ const InternshipList = () => {
           
           return <Tag color={config.color} className="rounded-md font-bold uppercase text-[10px] tracking-wider">{config.label}</Tag>;
         }
-        return <Tag className="rounded-md text-gray-400 border-gray-200">Not Applied</Tag>;
+        return <Tag className="rounded-md text-text-tertiary border-border">Not Applied</Tag>;
       },
     },
     {
@@ -164,7 +164,7 @@ const InternshipList = () => {
           <Button
             type="default"
             size="small"
-            className="rounded-lg border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200"
+            className="rounded-lg border-border text-text-secondary hover:text-primary hover:border-primary"
             onClick={() => navigate(`/internships/${record.id}`)}
           >
             Details
@@ -197,14 +197,14 @@ const InternshipList = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-white border border-gray-100 text-blue-600 shadow-sm">
+            <div className="w-14 h-14 flex items-center justify-center rounded-2xl bg-surface border border-border text-blue-600 shadow-sm">
               <ShopOutlined className="text-2xl" />
             </div>
             <div>
-              <Title level={2} className="!mb-1 !text-gray-900 !text-2xl lg:!text-3xl tracking-tight">
+              <Title level={2} className="!mb-1 !text-text-primary !text-2xl lg:!text-3xl tracking-tight">
                 Internship Opportunities
               </Title>
-              <Paragraph className="!text-gray-500 !text-sm lg:!text-base !mb-0 font-medium">
+              <Paragraph className="!text-text-secondary !text-sm lg:!text-base !mb-0 font-medium">
                 Explore and apply for internships matching your profile
               </Paragraph>
             </div>
@@ -213,50 +213,50 @@ const InternshipList = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+          <Card bordered={false} className="rounded-2xl border border-border bg-surface shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-50 text-blue-600">
                 <ShopOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none mb-1">{stats.total}</div>
-                <div className="text-xs uppercase font-bold text-gray-400 tracking-wider">Available Positions</div>
+                <div className="text-2xl font-bold text-text-primary leading-none mb-1">{stats.total}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-wider">Available Positions</div>
               </div>
             </div>
           </Card>
 
-          <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+          <Card bordered={false} className="rounded-2xl border border-border bg-surface shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-purple-50 text-purple-600">
                 <SendOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none mb-1">{stats.applied}</div>
-                <div className="text-xs uppercase font-bold text-gray-400 tracking-wider">Applications Sent</div>
+                <div className="text-2xl font-bold text-text-primary leading-none mb-1">{stats.applied}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-wider">Applications Sent</div>
               </div>
             </div>
           </Card>
 
-          <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+          <Card bordered={false} className="rounded-2xl border border-border bg-surface shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-emerald-50 text-emerald-600">
                 <CheckCircleOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-gray-900 leading-none mb-1">{stats.selected}</div>
-                <div className="text-xs uppercase font-bold text-gray-400 tracking-wider">Selected</div>
+                <div className="text-2xl font-bold text-text-primary leading-none mb-1">{stats.selected}</div>
+                <div className="text-xs uppercase font-bold text-text-tertiary tracking-wider">Selected</div>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Filters */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm bg-white" styles={{ body: { padding: '16px' } }}>
+        <Card bordered={false} className="rounded-2xl border border-border shadow-sm bg-surface" styles={{ body: { padding: '16px' } }}>
           <div className="flex flex-wrap items-center gap-3">
             <Input
               placeholder="Search by position or company"
-              prefix={<SearchOutlined className="text-gray-400" />}
-              className="max-w-md rounded-xl h-11 bg-gray-50 border-gray-200 hover:bg-white focus:bg-white"
+              prefix={<SearchOutlined className="text-text-tertiary" />}
+              className="max-w-md rounded-xl h-11 bg-background-secondary border-border hover:bg-surface focus:bg-surface"
               onChange={(e) => handleSearch(e.target.value)}
               allowClear
             />
@@ -293,7 +293,7 @@ const InternshipList = () => {
         </Card>
 
         {/* Table Container */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white" styles={{ body: { padding: 0 } }}>
+        <Card bordered={false} className="rounded-2xl border border-border shadow-sm overflow-hidden bg-surface" styles={{ body: { padding: 0 } }}>
           <Table
             columns={columns}
             dataSource={internships.list}
@@ -302,13 +302,13 @@ const InternshipList = () => {
             pagination={{
               ...pagination,
               total: internships.total,
-              showTotal: (total) => <span className="text-gray-500">Total {total} opportunities</span>,
+              showTotal: (total) => <span className="text-text-secondary">Total {total} opportunities</span>,
               showSizeChanger: true,
               className: "px-6 py-6",
             }}
             onChange={handleTableChange}
             className="custom-table"
-            rowClassName="hover:bg-gray-50/50 transition-colors"
+            rowClassName="hover:bg-background-secondary/50 transition-colors"
           />
         </Card>
       </div>

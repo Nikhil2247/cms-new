@@ -20,7 +20,8 @@ export interface UpdateFeeStructureDto extends Partial<CreateFeeStructureDto> {}
 @Injectable()
 export class FeeStructureService {
   private readonly logger = new Logger(FeeStructureService.name);
-  private readonly CACHE_TTL = 600; // 10 minutes
+  // OPTIMIZED: Extended cache TTL to 1 hour for fee structures (rarely change)
+  private readonly CACHE_TTL = 3600; // 1 hour
 
   constructor(
     private readonly prisma: PrismaService,

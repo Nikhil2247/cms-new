@@ -81,8 +81,23 @@ const initialState = {
   },
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+// Cache duration configuration per endpoint type
+const CACHE_CONFIG = {
+  // Dashboard and profile - frequently accessed
+  DASHBOARD: 5 * 60 * 1000, // 5 minutes
+  PROFILE: 10 * 60 * 1000, // 10 minutes - rarely changes
+  // Lists with pagination - users expect fresh data
+  LISTS: 3 * 60 * 1000, // 3 minutes (students, visit logs, reports)
+  // Time-sensitive data
+  ALERTS: 2 * 60 * 1000, // 2 minutes (joining letters, applications)
+  // Individual resources
+  SINGLE_RESOURCE: 5 * 60 * 1000, // 5 minutes (single visit log, student progress)
+  // Default fallback
+  DEFAULT: 5 * 60 * 1000, // 5 minutes
+};
+
+// Legacy constant for backward compatibility
+const CACHE_DURATION = CACHE_CONFIG.DEFAULT;
 
 // Dashboard
 export const fetchFacultyDashboard = createAsyncThunk(
@@ -112,7 +127,8 @@ export const fetchProfile = createAsyncThunk(
       const state = getState();
       const lastFetched = state.faculty.lastFetched.profile;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      // Use PROFILE cache duration - profile rarely changes
+      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.PROFILE) {
         return { cached: true };
       }
 
@@ -145,11 +161,12 @@ export const fetchAssignedStudents = createAsyncThunk(
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.faculty.lastFetched.studentsKey;
 
+      // Use LISTS cache duration - users expect relatively fresh data
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
       ) {
         return { cached: true };
       }
@@ -203,11 +220,12 @@ export const fetchVisitLogs = createAsyncThunk(
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.faculty.lastFetched.visitLogsKey;
 
+      // Use LISTS cache duration - users expect relatively fresh data
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
       ) {
         return { cached: true };
       }
@@ -460,11 +478,12 @@ export const fetchJoiningLetters = createAsyncThunk(
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.faculty.lastFetched.joiningLettersKey;
 
+      // Use ALERTS cache duration - time-sensitive pending items
       if (
         lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS
       ) {
         return { cached: true };
       }
@@ -639,6 +658,18 @@ const facultySlice = createSlice({
     rollbackJoiningLetterOperation: (state, action) => {
       const { joiningLetters } = action.payload;
       state.joiningLetters.list = joiningLetters.list;
+    },
+    // Optimistic update: Delete visit log from list immediately
+    optimisticallyDeleteVisitLog: (state, action) => {
+      const id = action.payload;
+      state.visitLogs.list = state.visitLogs.list.filter(log => log.id !== id);
+      state.visitLogs.total = Math.max(0, state.visitLogs.total - 1);
+    },
+    // Rollback: Restore visit logs state on error
+    rollbackVisitLogOperation: (state, action) => {
+      const { list, total } = action.payload;
+      state.visitLogs.list = list;
+      state.visitLogs.total = total;
     },
   },
   extraReducers: (builder) => {
@@ -1075,7 +1106,9 @@ export const {
   optimisticRejectApplication,
   rollbackApplicationUpdate,
   optimisticallyUpdateJoiningLetter,
-  rollbackJoiningLetterOperation
+  rollbackJoiningLetterOperation,
+  optimisticallyDeleteVisitLog,
+  rollbackVisitLogOperation,
 } = facultySlice.actions;
 
 // Selectors
@@ -1091,5 +1124,24 @@ export const selectFeedbackHistory = (state) => state.faculty.feedbackHistory;
 // Backward compatibility selectors
 export const selectMentor = (state) => state.faculty.profile;
 export const selectGrievances = (state) => state.faculty.feedbackHistory;
+
+// Cache timestamp selectors
+export const selectLastFetched = (state) => state.faculty.lastFetched;
+
+export const selectMostRecentFetch = (state) => {
+  const { lastFetched } = state.faculty;
+  const timestamps = [
+    lastFetched.dashboard,
+    lastFetched.students,
+    lastFetched.visitLogs,
+    lastFetched.monthlyReports,
+    lastFetched.joiningLetters,
+    lastFetched.profile,
+    lastFetched.applications,
+    lastFetched.feedbackHistory,
+  ].filter(Boolean);
+
+  return timestamps.length > 0 ? Math.max(...timestamps) : null;
+};
 
 export default facultySlice.reducer;

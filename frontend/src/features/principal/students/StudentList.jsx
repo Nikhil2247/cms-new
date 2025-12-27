@@ -1,23 +1,33 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, message } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchStudents, deleteStudent, updateStudent, fetchDepartments, fetchBatches, optimisticallyDeleteStudent, rollbackStudentOperation, resetUserPassword } from '../store/principalSlice';
+import {
+  fetchStudents,
+  updateStudent,
+  deleteStudent,
+  fetchDepartments,
+  fetchBatches,
+  resetUserPassword,
+  optimisticallyUpdateStudent,
+  optimisticallyDeleteStudent,
+  rollbackStudentOperation,
+} from '../store/principalSlice';
 import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
   EditOutlined,
+  DeleteOutlined,
   UserOutlined,
   SearchOutlined,
   PlusOutlined,
-  DeleteOutlined,
   MoreOutlined,
   CheckCircleOutlined,
   StopOutlined,
   KeyOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
 import { getImageUrl } from '../../../utils/imageUtils';
-import { generateTxnId, snapshotManager, optimisticToast } from '../../../store/optimisticMiddleware';
 import StudentModal from './StudentModal';
 
 const { Search } = Input;
@@ -39,6 +49,7 @@ const StudentList = () => {
   const { list, loading, pagination } = useSelector((state) => state.principal.students);
   const departmentsFromStore = useSelector((state) => state.principal.departments.list);
   const batches = useSelector((state) => state.principal.batches?.list || []);
+  const lastFetched = useSelector((state) => state.principal.lastFetched.students);
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState({
     search: '',
@@ -50,6 +61,7 @@ const StudentList = () => {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Use store departments if available, otherwise use fallback
   const departments = departmentsFromStore?.length > 0 ? departmentsFromStore : DEFAULT_DEPARTMENTS;
@@ -67,6 +79,22 @@ const StudentList = () => {
   const handleModalSuccess = () => {
     dispatch(fetchStudents({ ...filters, forceRefresh: true }));
   };
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await dispatch(fetchStudents({ ...filters, forceRefresh: true })).unwrap();
+      await Promise.all([
+        dispatch(fetchDepartments({ forceRefresh: true })),
+        dispatch(fetchBatches({ forceRefresh: true })),
+      ]);
+      message.success('Data refreshed successfully');
+    } catch (error) {
+      message.error('Failed to refresh data');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [dispatch, filters]);
 
   // Debounced search effect - 300ms delay
   useEffect(() => {
@@ -94,6 +122,7 @@ const StudentList = () => {
   const handleToggleStatus = async (record) => {
     const newStatus = !record.isActive;
     const actionText = newStatus ? 'activate' : 'deactivate';
+    const previousList = [...list];
 
     Modal.confirm({
       title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
@@ -101,61 +130,19 @@ const StudentList = () => {
       okText: newStatus ? 'Activate' : 'Deactivate',
       okType: newStatus ? 'primary' : 'danger',
       onOk: async () => {
+        // Optimistic update - update UI immediately
+        dispatch(optimisticallyUpdateStudent({ id: record.id, data: { isActive: newStatus } }));
+        message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+
         try {
           await dispatch(updateStudent({
             id: record.id,
             data: { isActive: newStatus }
           })).unwrap();
-          message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
-          dispatch(fetchStudents({ ...filters, forceRefresh: true }));
         } catch (error) {
+          // Rollback on failure
+          dispatch(rollbackStudentOperation({ list: previousList }));
           message.error(error || `Failed to ${actionText} student`);
-        }
-      },
-    });
-  };
-
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: 'Delete Student',
-      content: `Are you sure you want to delete ${record.name}? This action cannot be undone.`,
-      okText: 'Delete',
-      okType: 'danger',
-      onOk: async () => {
-        const txnId = generateTxnId();
-
-        // Save snapshot of current state
-        const currentStudentsList = list;
-        snapshotManager.save(txnId, 'principal', { students: { list: currentStudentsList } });
-
-        // Show loading toast
-        optimisticToast.loading(txnId, 'Deleting student...');
-
-        // Optimistically remove from UI
-        dispatch(optimisticallyDeleteStudent(record.id));
-
-        try {
-          // Perform actual deletion
-          await dispatch(deleteStudent(record.id)).unwrap();
-
-          // Show success toast
-          optimisticToast.success(txnId, 'Student deleted successfully');
-
-          // Clean up snapshot
-          snapshotManager.delete(txnId);
-
-          // Refresh the list to ensure consistency
-          dispatch(fetchStudents({ ...filters, forceRefresh: true }));
-        } catch (error) {
-          // Show error toast
-          optimisticToast.error(txnId, error || 'Failed to delete student');
-
-          // Rollback the optimistic update
-          const snapshot = snapshotManager.get(txnId);
-          if (snapshot) {
-            dispatch(rollbackStudentOperation(snapshot.state.students));
-            snapshotManager.delete(txnId);
-          }
         }
       },
     });
@@ -213,6 +200,30 @@ const StudentList = () => {
     });
   };
 
+  const handleDelete = (record) => {
+    const previousList = [...list];
+
+    Modal.confirm({
+      title: 'Delete Student',
+      content: `Are you sure you want to delete ${record.name}? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
+      onOk: async () => {
+        // Optimistic delete - remove from UI immediately
+        dispatch(optimisticallyDeleteStudent(record.id));
+        message.success('Student deleted successfully');
+
+        try {
+          await dispatch(deleteStudent(record.id)).unwrap();
+        } catch (error) {
+          // Rollback on failure
+          dispatch(rollbackStudentOperation({ list: previousList }));
+          message.error(error || 'Failed to delete student');
+        }
+      },
+    });
+  };
+
   const getActionMenuItems = (record) => [
     {
       key: 'view',
@@ -241,6 +252,9 @@ const StudentList = () => {
       icon: record.isActive ? <StopOutlined /> : <CheckCircleOutlined />,
       onClick: () => handleToggleStatus(record),
       danger: record.isActive,
+    },
+    {
+      type: 'divider',
     },
     {
       key: 'delete',
@@ -332,15 +346,32 @@ const StudentList = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-text-primary">Students</h1>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => handleOpenModal()}
-          className="rounded-lg shadow-md shadow-primary/20"
-        >
-          Add Student
-        </Button>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-text-primary">Students</h1>
+          {lastFetched && (
+            <span className="text-xs text-text-tertiary">
+              Updated {new Date(lastFetched).toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            icon={<ReloadOutlined spin={isRefreshing} />}
+            onClick={handleRefresh}
+            loading={isRefreshing}
+            disabled={loading}
+          >
+            Refresh
+          </Button>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => handleOpenModal()}
+            className="rounded-lg shadow-md shadow-primary/20"
+          >
+            Add Student
+          </Button>
+        </div>
       </div>
 
       <Card className="rounded-xl border-border shadow-sm">

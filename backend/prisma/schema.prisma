@@ -749,6 +749,7 @@ enum AuditAction {
   PASSWORD_RESET
   USER_ACTIVATION
   USER_DEACTIVATION
+  USER_DELETION
 
   // Student Operations
   STUDENT_PROFILE_VIEW
@@ -1440,8 +1441,12 @@ model FacultyVisitLog {
   visitLocation String?
 
   // GPS Coordinates
-  latitude  Float?
-  longitude Float?
+  latitude    Float?
+  longitude   Float?
+  gpsAccuracy Float? // GPS accuracy in meters
+
+  // Signed Visit Document (official signed document)
+  signedDocumentUrl String? // URL to signed visit document (PDF/image)
 
   // Visit Details
   visitNumber   Int?
@@ -1899,6 +1904,7 @@ enum VisitType {
 }
 
 enum VisitLogStatus {
+  DRAFT
   SCHEDULED
   IN_PROGRESS
   COMPLETED

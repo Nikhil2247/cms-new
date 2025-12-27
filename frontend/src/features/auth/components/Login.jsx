@@ -149,7 +149,7 @@ function Login() {
       <div className="w-full max-w-md z-10">
         {/* Header */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white dark:bg-slate-800 shadow-xl shadow-blue-100/50 dark:shadow-none mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface shadow-xl shadow-blue-100/50 dark:shadow-none mb-6">
             <UserOutlined className="text-3xl text-blue-600 dark:text-blue-400" />
           </div>
           <Title level={2} className="!mb-2 !text-gray-900 dark:!text-white !font-bold tracking-tight">
@@ -163,7 +163,7 @@ function Login() {
         {/* Form Card */}
         <Card 
           bordered={false}
-          className="rounded-3xl shadow-2xl shadow-gray-200/50 dark:shadow-black/50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-white/20 overflow-hidden animate-slide-up"
+          className="rounded-3xl shadow-2xl shadow-gray-200/50 dark:shadow-black/50 bg-surface/80 backdrop-blur-xl border border-white/20 overflow-hidden animate-slide-up"
           styles={{ body: { padding: '32px' } }}
         >
           <Tabs
@@ -189,8 +189,7 @@ function Login() {
                     >
                       <Input
                         placeholder="Enter your email address"
-                        prefix={<MailOutlined className="text-gray-400" />}
-                        className="rounded-xl h-12 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-white focus:bg-white dark:focus:bg-slate-800 transition-all"
+                        className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                       />
                     </Form.Item>
 
@@ -199,13 +198,7 @@ function Login() {
                       label={<span className="font-medium text-gray-700 dark:text-slate-300">Password</span>}
                       rules={[
                         { required: true, message: "Please enter your password" },
-                        { min: 5, message: "Password must be at least 6 characters" },
-                      ]}
-                    >
-                      <Input.Password
-                        placeholder="Enter your password"
-                        prefix={<LockOutlined className="text-gray-400" />}
-                        className="rounded-xl h-12 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-white focus:bg-white dark:focus:bg-slate-800 transition-all"
+                        className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                       />
                     </Form.Item>
 
@@ -247,11 +240,7 @@ function Login() {
                       label={<span className="font-medium text-gray-700 dark:text-slate-300">Registration Number</span>}
                       rules={[{ required: true, message: "Please enter your registration number" }]}
                     >
-                      <Input
-                        placeholder="Enter your Registration Number"
-                        prefix={<IdcardOutlined className="text-gray-400" />}
-                        className="rounded-xl h-12 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-white focus:bg-white dark:focus:bg-slate-800 transition-all"
-                      />
+                        className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                     </Form.Item>
 
                     <Form.Item
@@ -265,7 +254,7 @@ function Login() {
                       <Input.Password
                         placeholder="Enter your password"
                         prefix={<LockOutlined className="text-gray-400" />}
-                        className="rounded-xl h-12 bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-700 hover:bg-white focus:bg-white dark:focus:bg-slate-800 transition-all"
+                        className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                       />
                     </Form.Item>
 

@@ -25,42 +25,45 @@ const defaultJobOptions = {
           password: configService.get<string>('REDIS_PASSWORD'),
           // Disable offline queue to prevent memory issues
           enableOfflineQueue: false,
-          // Don't use Redis Cluster mode for standalone Redis
+          // Required for BullMQ compatibility
           maxRetriesPerRequest: null,
         },
-        // Remove the prefix - use hash-tagged queue names instead for Redis Cluster compatibility
-        // Each queue name includes its own hash tag to ensure all keys go to the same slot
+        // Simple prefix for DragonflyDB compatibility
+        // DragonflyDB requires --cluster_mode= (empty) or --default_lua_flags=allow-undeclared-keys
+        prefix: 'bull',
       }),
     }),
-    // Queue names are wrapped in curly braces {} for Redis Cluster compatibility
-    // This ensures all keys for a queue hash to the same slot
+    // Queue registration with simple names for DragonflyDB compatibility
     BullModule.registerQueue(
       {
-        name: '{email}',
+        name: 'email',
         defaultJobOptions,
       },
       {
-        name: '{notifications}',
+        name: 'notifications',
+        defaultJobOptions: {
+          ...defaultJobOptions,
+          removeOnComplete: 50, // Keep fewer completed jobs for notifications
+        },
+      },
+      {
+        name: 'file-processing',
         defaultJobOptions,
       },
       {
-        name: '{file-processing}',
+        name: 'data-sync',
         defaultJobOptions,
       },
       {
-        name: '{data-sync}',
+        name: 'bulk-operations',
         defaultJobOptions,
       },
       {
-        name: '{bulk-operations}',
+        name: 'report-generation',
         defaultJobOptions,
       },
       {
-        name: '{report-generation}',
-        defaultJobOptions,
-      },
-      {
-        name: '{dead-letter}',
+        name: 'dead-letter',
         defaultJobOptions: {
           attempts: 1,
           removeOnComplete: false,
@@ -68,7 +71,7 @@ const defaultJobOptions = {
         },
       },
       {
-        name: '{mail}',
+        name: 'mail',
         defaultJobOptions,
       },
     ),

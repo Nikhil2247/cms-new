@@ -9,6 +9,11 @@ export interface CacheOptions {
   tags?: string[];
 }
 
+// Tag store configuration to prevent unbounded growth
+const TAG_STORE_MAX_TAGS = 10000; // Maximum number of unique tags
+const TAG_STORE_MAX_KEYS_PER_TAG = 5000; // Maximum keys per tag
+const TAG_STORE_CLEANUP_THRESHOLD = 0.9; // Cleanup when 90% full
+
 @Injectable()
 export class LruCacheService implements OnModuleInit {
   private readonly logger = new Logger(LruCacheService.name);
@@ -314,6 +319,12 @@ export class LruCacheService implements OnModuleInit {
    * Get cache statistics
    */
   getStats() {
+    // Calculate total keys across all tags
+    let totalTaggedKeys = 0;
+    for (const keys of this.tagStore.values()) {
+      totalTaggedKeys += keys.size;
+    }
+
     return {
       local: {
         size: this.localCache?.size ?? 0,
@@ -321,6 +332,10 @@ export class LruCacheService implements OnModuleInit {
       },
       tags: {
         count: this.tagStore.size,
+        maxTags: TAG_STORE_MAX_TAGS,
+        totalTaggedKeys,
+        maxKeysPerTag: TAG_STORE_MAX_KEYS_PER_TAG,
+        utilizationPercent: Math.round((this.tagStore.size / TAG_STORE_MAX_TAGS) * 100),
       },
     };
   }
@@ -348,14 +363,34 @@ export class LruCacheService implements OnModuleInit {
   }
 
   /**
-   * Set tags for a cache key
+   * Set tags for a cache key with size limits to prevent unbounded growth
    */
   private async setTags(key: string, tags: string[]): Promise<void> {
+    // Check if we need to cleanup before adding more tags
+    if (this.tagStore.size >= TAG_STORE_MAX_TAGS * TAG_STORE_CLEANUP_THRESHOLD) {
+      this.cleanupOrphanedTags();
+    }
+
     for (const tag of tags) {
+      // Enforce max tags limit
+      if (!this.tagStore.has(tag) && this.tagStore.size >= TAG_STORE_MAX_TAGS) {
+        this.logger.warn(`Tag store at capacity (${TAG_STORE_MAX_TAGS}), skipping new tag: ${tag}`);
+        continue;
+      }
+
       if (!this.tagStore.has(tag)) {
         this.tagStore.set(tag, new Set());
       }
-      this.tagStore.get(tag)!.add(key);
+
+      const tagKeys = this.tagStore.get(tag)!;
+
+      // Enforce max keys per tag limit
+      if (tagKeys.size >= TAG_STORE_MAX_KEYS_PER_TAG) {
+        this.logger.warn(`Tag '${tag}' at capacity (${TAG_STORE_MAX_KEYS_PER_TAG} keys), skipping key: ${key}`);
+        continue;
+      }
+
+      tagKeys.add(key);
     }
 
     // Store tags in Redis as well for distributed systems
@@ -370,6 +405,41 @@ export class LruCacheService implements OnModuleInit {
       } catch (error) {
         this.logger.warn('Redis set tags error:', error);
       }
+    }
+  }
+
+  /**
+   * Cleanup orphaned tags (tags with no valid cache keys)
+   * This prevents memory leaks from tags whose keys have been evicted
+   */
+  private cleanupOrphanedTags(): void {
+    const startSize = this.tagStore.size;
+    let cleanedTags = 0;
+    let cleanedKeys = 0;
+
+    for (const [tag, keys] of this.tagStore.entries()) {
+      // Remove keys that no longer exist in local cache
+      if (this.localCache && typeof this.localCache.has === 'function') {
+        for (const key of keys) {
+          if (!this.localCache.has(key)) {
+            keys.delete(key);
+            cleanedKeys++;
+          }
+        }
+      }
+
+      // Remove empty tags
+      if (keys.size === 0) {
+        this.tagStore.delete(tag);
+        cleanedTags++;
+      }
+    }
+
+    if (cleanedTags > 0 || cleanedKeys > 0) {
+      this.logger.log(
+        `Tag store cleanup: removed ${cleanedTags} orphaned tags, ${cleanedKeys} stale keys. ` +
+        `Size: ${startSize} -> ${this.tagStore.size}`
+      );
     }
   }
 
