@@ -16,8 +16,11 @@ async function cleanupAndVerify() {
   // =========================================================================
   console.log('STEP 1: Cleaning up orphaned joiningLetterUrl records...');
 
+  // Match both localhost:9000 and 147.93.106.69:9000 as valid MinIO URLs
+  const minioPattern = /(localhost:9000|147\.93\.106\.69:9000)/;
+
   const orphanedJoining = await db.collection('internship_applications').find({
-    joiningLetterUrl: { $exists: true, $ne: null, $not: /localhost:9000/ }
+    joiningLetterUrl: { $exists: true, $ne: null, $not: minioPattern }
   }).toArray();
 
   console.log(`  Found ${orphanedJoining.length} orphaned joiningLetterUrl records`);
@@ -46,7 +49,7 @@ async function cleanupAndVerify() {
   console.log('\nSTEP 2: Cleaning up orphaned profileImage records...');
 
   const orphanedProfiles = await db.collection('Student').find({
-    profileImage: { $exists: true, $ne: null, $not: /localhost:9000/ }
+    profileImage: { $exists: true, $ne: null, $not: minioPattern }
   }).toArray();
 
   console.log(`  Found ${orphanedProfiles.length} orphaned profileImage records`);
@@ -65,7 +68,7 @@ async function cleanupAndVerify() {
   console.log('\nSTEP 3: Cleaning up orphaned Document.fileUrl records...');
 
   const orphanedDocs = await db.collection('Document').find({
-    fileUrl: { $exists: true, $ne: null, $not: /localhost:9000/ }
+    fileUrl: { $exists: true, $ne: null, $not: minioPattern }
   }).toArray();
 
   console.log(`  Found ${orphanedDocs.length} orphaned Document records`);
@@ -99,7 +102,7 @@ async function cleanupAndVerify() {
     joiningLetterUrl: { $exists: true, $ne: null }
   });
   const joiningMinioCount = await db.collection('internship_applications').countDocuments({
-    joiningLetterUrl: /localhost:9000/
+    joiningLetterUrl: minioPattern
   });
   console.log(`  joiningLetterUrl: ${joiningMinioCount} MinIO URLs (${joiningLetterCount} total)`);
 
@@ -109,7 +112,7 @@ async function cleanupAndVerify() {
     profileImage: { $exists: true, $ne: null }
   });
   const profileMinioCount = await db.collection('Student').countDocuments({
-    profileImage: /localhost:9000/
+    profileImage: minioPattern
   });
   console.log(`  profileImage: ${profileMinioCount} MinIO URLs (${profileCount} total)`);
 
@@ -119,7 +122,7 @@ async function cleanupAndVerify() {
     fileUrl: { $exists: true, $ne: null }
   });
   const docMinioCount = await db.collection('Document').countDocuments({
-    fileUrl: /localhost:9000/
+    fileUrl: minioPattern
   });
   console.log(`  fileUrl: ${docMinioCount} MinIO URLs (${docCount} total)`);
 
@@ -129,7 +132,7 @@ async function cleanupAndVerify() {
     reportFileUrl: { $exists: true, $ne: null }
   });
   const reportMinioCount = await db.collection('monthly_reports').countDocuments({
-    reportFileUrl: /localhost:9000/
+    reportFileUrl: minioPattern
   });
   console.log(`  reportFileUrl: ${reportMinioCount} MinIO URLs (${reportCount} total)`);
 
@@ -186,7 +189,7 @@ async function cleanupAndVerify() {
   let totalNonMinio = 0;
   for (const { name, field } of collections) {
     const query = {};
-    query[field] = { $exists: true, $ne: null, $not: /localhost:9000/ };
+    query[field] = { $exists: true, $ne: null, $not: minioPattern };
 
     const count = await db.collection(name).countDocuments(query);
     if (count > 0) {

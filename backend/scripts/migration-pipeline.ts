@@ -42,10 +42,10 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const CONFIG = {
   // Database configuration
-  DATABASE_URL: process.env.DATABASE_URL || '',
+  DATABASE_URL: process.env.DATABASE_URL || 'mongodb://admin:Admin%401234@147.93.106.69:27017/cms_db?authSource=admin',
 
   // Default backup file path (can be overridden via command line)
-  DEFAULT_BACKUP_PATH: path.resolve(__dirname, '../../prisma backup/mongodb_backup_2025-12-25_18-00-01.gz'),
+  DEFAULT_BACKUP_PATH: path.resolve(__dirname, '../../prisma backup/mongodb_backup_2025-12-27_03-25-20.gz'),
 
   // MongoDB tools path (update if mongorestore is in a custom location)
   MONGORESTORE_PATHS: [
@@ -56,7 +56,7 @@ const CONFIG = {
 
   // Namespace mapping (old database -> new database)
   SOURCE_DATABASE: 'internship',
-  TARGET_DATABASE: 'college',
+  TARGET_DATABASE: 'cms_db',
 
   // Logging
   LOG_FILE: path.resolve(__dirname, '../logs/migration-pipeline.log'),
@@ -162,17 +162,21 @@ async function restoreBackup(backupFile: string): Promise<boolean> {
   }
 
   // Build mongorestore command
+  // IMPORTANT: Exclude admin database to prevent overwriting admin credentials
   const command = [
     `"${mongorestore}"`,
     `--uri="${dbUrl}"`,
     `--archive="${backupFile}"`,
     '--gzip',
+    `--nsInclude="${CONFIG.SOURCE_DATABASE}.*"`,
+    `--nsExclude="admin.*"`,
     `--nsFrom="${CONFIG.SOURCE_DATABASE}.*"`,
     `--nsTo="${CONFIG.TARGET_DATABASE}.*"`,
     '--drop',
   ].join(' ');
 
   log(`Executing: mongorestore with namespace mapping ${CONFIG.SOURCE_DATABASE}.* -> ${CONFIG.TARGET_DATABASE}.*`);
+  log(`  Excluding: admin.* (to preserve admin credentials)`);
 
   if (CONFIG.DRY_RUN) {
     log('DRY_RUN: Would execute mongorestore', 'WARN');
