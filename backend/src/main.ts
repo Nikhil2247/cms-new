@@ -142,6 +142,14 @@ async function bootstrap() {
 
   logger.log(`Starting server on port ${port}...`);
   await app.listen(port, '0.0.0.0');
+
+  // Signal PM2 (when using wait_ready: true) that the app is ready to accept connections.
+  // This prevents PM2 from considering the process still launching and reporting it unhealthy.
+  if (typeof process !== 'undefined' && typeof process.send === 'function') {
+    process.send('ready');
+    logger.log('PM2 readiness signal sent');
+  }
+
   logger.log(`Application is running on: http://localhost:${port}`);
   logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   logger.log(`Server is ready to accept connections`);
