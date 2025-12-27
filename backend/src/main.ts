@@ -25,6 +25,9 @@ async function bootstrap() {
         'https://placeintern.com',
         'https://www.placeintern.com',
         'https://api.placeintern.com',
+        'https://sukeerat.com',
+        'https://www.sukeerat.com',
+        'https://api.sukeerat.com',
       ];
 
   logger.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
