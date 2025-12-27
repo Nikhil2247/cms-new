@@ -91,6 +91,9 @@ model User {
   @@index([active])
   @@index([lastLoginAt])
   @@index([role, active])
+  @@index([institutionId, active])
+  @@index([institutionId, role, active])
+  @@index([role, active, createdAt])
 }
 
 enum Role {
@@ -1243,6 +1246,11 @@ model InternshipApplication {
   @@index([applicationDate])
   @@index([mentorId, appliedDate])
   @@index([isSelfIdentified, status, applicationDate])
+  @@index([studentId, internshipId])
+  @@index([internshipId, status, isSelfIdentified])
+  @@index([mentorId, isSelfIdentified, status])
+  @@index([applicationDate, status])
+  @@index([studentId, status, isSelfIdentified])
   @@map("internship_applications")
 }
 
@@ -1368,6 +1376,10 @@ model MonthlyReport {
   @@index([status])
   @@index([reportMonth, reportYear])
   @@index([dueDate])
+  @@index([applicationId, status])
+  @@index([studentId, status])
+  @@index([status, dueDate])
+  @@index([studentId, reportMonth, reportYear])
   @@map("monthly_reports")
 }
 
@@ -1498,6 +1510,10 @@ model FacultyVisitLog {
   @@index([applicationId, visitDate])
   @@index([facultyId, visitDate])
   @@index([visitMonth, visitYear])
+  @@index([applicationId, status])
+  @@index([facultyId, status])
+  @@index([visitMonth, visitYear, status])
+  @@index([applicationId, isMonthlyVisit, status])
   @@map("faculty_visit_logs")
 }
 

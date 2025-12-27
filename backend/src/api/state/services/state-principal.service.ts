@@ -252,6 +252,8 @@ export class StatePrincipalService {
       throw new NotFoundException(`Principal with ID ${id} not found`);
     }
 
+    // Delete notifications first (required relation without cascade)
+    await this.prisma.notification.deleteMany({ where: { userId: id } });
     await this.prisma.user.delete({
       where: { id },
     });

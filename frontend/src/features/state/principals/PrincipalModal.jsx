@@ -61,22 +61,26 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      const payload = {
-        name: values.name,
-        email: values.email,
-        phoneNo: values.phone,
-        institutionId: values.institutionId,
-        designation: values.designation || 'Principal',
-        dob: values.dateOfBirth?.format('YYYY-MM-DD'),
-        active: values.isActive !== false,
-      };
-
       if (isEdit) {
-        await dispatch(updatePrincipal({ id: principalId, data: payload })).unwrap();
+        // Update payload - exclude institutionId (can't change institution)
+        const updatePayload = {
+          name: values.name,
+          email: values.email,
+          phoneNo: values.phone,
+          designation: values.designation || 'Principal',
+          active: values.isActive !== false,
+        };
+        await dispatch(updatePrincipal({ id: principalId, data: updatePayload })).unwrap();
         message.success('Principal updated successfully');
       } else {
+        // Create payload - include institutionId and password
         const createPayload = {
-          ...payload,
+          name: values.name,
+          email: values.email,
+          phoneNo: values.phone,
+          institutionId: values.institutionId,
+          designation: values.designation || 'Principal',
+          active: values.isActive !== false,
           password: values.password || 'Principal@123',
         };
         await dispatch(createPrincipal(createPayload)).unwrap();

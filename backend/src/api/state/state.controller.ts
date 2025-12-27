@@ -104,6 +104,7 @@ export class StateController {
     @Query('reportStatus') reportStatus?: 'submitted' | 'pending' | 'not_submitted' | 'all',
     @Query('visitStatus') visitStatus?: 'visited' | 'pending' | 'all',
     @Query('selfIdentified') selfIdentified?: 'yes' | 'no' | 'all',
+    @Query('status') status?: 'active' | 'inactive' | 'all',
   ) {
     return this.stateService.getInstitutionStudents(id, {
       cursor,
@@ -115,6 +116,7 @@ export class StateController {
       reportStatus,
       visitStatus,
       selfIdentified,
+      status,
     });
   }
 
@@ -289,6 +291,12 @@ export class StateController {
   @ApiOperation({ summary: 'Delete staff member by ID' })
   async deleteStaff(@Param('id') id: string) {
     return this.stateService.deleteStaff(id);
+  }
+
+  @Delete('faculty/:id')
+  @ApiOperation({ summary: 'Delete faculty member by ID' })
+  async deleteFaculty(@Param('id') id: string) {
+    return this.stateService.deleteFaculty(id);
   }
 
   @Post('staff/:id/reset-password')

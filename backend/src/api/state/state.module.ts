@@ -20,6 +20,7 @@ import { AcademicModule } from '../../domain/academic/academic.module';
 import { InstitutionModule } from '../../domain/institution/institution.module';
 import { UserModule } from '../../domain/user/user.module';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
+import { SharedModule } from '../shared/shared.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
     InstitutionModule,
     UserModule,
     AuditModule,
+    SharedModule, // For LookupService
   ],
   controllers: [StateController],
   providers: [

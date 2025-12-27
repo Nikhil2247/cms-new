@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { LookupService } from '../../shared/lookup.service';
 import { Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
 
 @Injectable()
@@ -12,73 +13,83 @@ export class StateMentorService {
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
     private readonly auditService: AuditService,
+    private readonly lookupService: LookupService,
   ) {}
 
   /**
    * Get all faculty/mentors from all institutions
    * Used by state admin for cross-institution mentor assignment
+   * Cached for 5 minutes to reduce load
    */
   async getAllMentors(params?: { search?: string; institutionId?: string }) {
-    const [mentors, allAssignments, institutions] = await Promise.all([
-      this.prisma.user.findMany({
-        where: {
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
-          active: true,
-          ...(params?.institutionId ? { institutionId: params.institutionId } : {}),
-          ...(params?.search
-            ? {
-                OR: [
-                  { name: { contains: params.search, mode: 'insensitive' as const } },
-                  { email: { contains: params.search, mode: 'insensitive' as const } },
-                ],
-              }
-            : {}),
-        },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          role: true,
-          institutionId: true,
-        },
-        orderBy: [{ name: 'asc' }],
-      }),
-      // Get all active assignments to count unique students per mentor
-      this.prisma.mentorAssignment.findMany({
-        where: { isActive: true },
-        select: { mentorId: true, studentId: true },
-      }),
-      // Get all institutions for name lookup
-      this.prisma.institution.findMany({
-        select: { id: true, name: true, code: true },
-      }),
-    ]);
+    // Build cache key based on params
+    const cacheKey = `state:mentors:all:${params?.institutionId || 'all'}:${params?.search || ''}`;
 
-    // Build unique students per mentor map
-    const mentorStudentMap = new Map<string, Set<string>>();
-    for (const { mentorId, studentId } of allAssignments) {
-      if (!mentorStudentMap.has(mentorId)) {
-        mentorStudentMap.set(mentorId, new Set());
-      }
-      mentorStudentMap.get(mentorId)!.add(studentId);
-    }
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const [mentors, allAssignments, lookupData] = await Promise.all([
+          this.prisma.user.findMany({
+            where: {
+              role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+              active: true,
+              ...(params?.institutionId ? { institutionId: params.institutionId } : {}),
+              ...(params?.search
+                ? {
+                    OR: [
+                      { name: { contains: params.search, mode: 'insensitive' as const } },
+                      { email: { contains: params.search, mode: 'insensitive' as const } },
+                    ],
+                  }
+                : {}),
+            },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              institutionId: true,
+            },
+            orderBy: [{ name: 'asc' }],
+          }),
+          // Get all active assignments to count unique students per mentor
+          this.prisma.mentorAssignment.findMany({
+            where: { isActive: true },
+            select: { mentorId: true, studentId: true },
+          }),
+          // Get all institutions from cached LookupService
+          this.lookupService.getInstitutions(),
+        ]);
+        const institutions = lookupData.institutions;
 
-    // Build institution lookup map
-    const institutionMap = new Map(institutions.map(i => [i.id, { name: i.name, code: i.code }]));
+        // Build unique students per mentor map
+        const mentorStudentMap = new Map<string, Set<string>>();
+        for (const { mentorId, studentId } of allAssignments) {
+          if (!mentorStudentMap.has(mentorId)) {
+            mentorStudentMap.set(mentorId, new Set());
+          }
+          mentorStudentMap.get(mentorId)!.add(studentId);
+        }
 
-    return mentors.map(mentor => {
-      const institution = mentor.institutionId ? institutionMap.get(mentor.institutionId) : null;
-      return {
-        id: mentor.id,
-        name: mentor.name,
-        email: mentor.email,
-        role: mentor.role,
-        institutionId: mentor.institutionId,
-        institutionName: institution?.name || 'Unknown',
-        institutionCode: institution?.code || '',
-        activeAssignments: mentorStudentMap.get(mentor.id)?.size || 0,
-      };
-    });
+        // Build institution lookup map
+        const institutionMap = new Map(institutions.map(i => [i.id, { name: i.name, code: i.code }]));
+
+        return mentors.map(mentor => {
+          const institution = mentor.institutionId ? institutionMap.get(mentor.institutionId) : null;
+          return {
+            id: mentor.id,
+            name: mentor.name,
+            email: mentor.email,
+            role: mentor.role,
+            institutionId: mentor.institutionId,
+            institutionName: institution?.name || 'Unknown',
+            institutionCode: institution?.code || '',
+            activeAssignments: mentorStudentMap.get(mentor.id)?.size || 0,
+          };
+        });
+      },
+      { ttl: 5 * 60 * 1000, tags: ['state', 'mentors'] }, // 5 minutes cache
+    );
   }
 
   /**
@@ -191,7 +202,15 @@ export class StateMentorService {
         isActive: true,
       },
       include: {
-        mentor: { select: { id: true, name: true, email: true } },
+        mentor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            institutionId: true,
+            Institution: { select: { id: true, name: true, code: true } },
+          },
+        },
       },
     });
 
@@ -223,10 +242,14 @@ export class StateMentorService {
       this.cache.mdel(`state:institute:${student.institutionId}:students`),
     ]);
 
+    // Check if this is a cross-institution assignment
+    const isCrossInstitutionMentor = mentor.institutionId !== student.institutionId;
+
     return {
       success: true,
       message: `Mentor ${mentor.name} assigned to student ${student.name}`,
       assignment,
+      isCrossInstitutionMentor,
     };
   }
 
@@ -312,6 +335,11 @@ export class StateMentorService {
 
       // Delete the associated user account if exists
       if (student.user?.id) {
+        // Delete notifications first (required relation without cascade)
+        await tx.notification.deleteMany({
+          where: { userId: student.user.id },
+        });
+
         await tx.user.delete({
           where: { id: student.user.id },
         });

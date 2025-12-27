@@ -214,6 +214,7 @@ export class StateStaffService {
     branchName?: string;
     designation?: string;
     isActive?: boolean;
+    active?: boolean;
   }) {
     const staffRoles: Role[] = [
       Role.TEACHER,
@@ -264,6 +265,7 @@ export class StateStaffService {
     if (data.branchName !== undefined) updateData.branchName = data.branchName;
     if (data.designation !== undefined) updateData.designation = data.designation;
     if (data.isActive !== undefined) updateData.active = data.isActive;
+    if (data.active !== undefined) updateData.active = data.active;
 
     const staff = await this.prisma.user.update({
       where: { id },
@@ -301,10 +303,36 @@ export class StateStaffService {
       throw new NotFoundException(`Staff member with ID ${id} not found`);
     }
 
+    // Delete notifications first (required relation without cascade)
+    await this.prisma.notification.deleteMany({ where: { userId: id } });
     await this.prisma.user.delete({ where: { id } });
     await this.cache.invalidateByTags(['state', 'staff']);
 
     return { success: true, message: 'Staff member deleted successfully' };
+  }
+
+  /**
+   * Delete faculty member by ID (FACULTY_SUPERVISOR or TEACHER only)
+   */
+  async deleteFaculty(id: string) {
+    const facultyRoles: Role[] = [Role.TEACHER, Role.FACULTY_SUPERVISOR];
+
+    const existingFaculty = await this.prisma.user.findUnique({
+      where: { id, role: { in: facultyRoles } },
+    });
+
+    if (!existingFaculty) {
+      throw new NotFoundException(`Faculty member with ID ${id} not found`);
+    }
+
+    // Delete mentor assignments first
+    await this.prisma.mentorAssignment.deleteMany({ where: { mentorId: id } });
+    // Delete notifications (required relation without cascade)
+    await this.prisma.notification.deleteMany({ where: { userId: id } });
+    await this.prisma.user.delete({ where: { id } });
+    await this.cache.invalidateByTags(['state', 'staff', 'faculty']);
+
+    return { success: true, message: 'Faculty member deleted successfully' };
   }
 
   /**

@@ -5,6 +5,7 @@ import {
   IsOptional,
   MinLength,
   Matches,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -33,11 +34,16 @@ export class CreatePrincipalDto {
   @ApiPropertyOptional({ description: 'Phone number' })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Phone number must be 10 digits' })
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits' })
   phoneNo?: string;
 
   @ApiPropertyOptional({ description: 'Designation/Title' })
   @IsOptional()
   @IsString()
   designation?: string;
+
+  @ApiPropertyOptional({ description: 'Whether the principal account is active' })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

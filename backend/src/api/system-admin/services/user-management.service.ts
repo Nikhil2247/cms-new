@@ -306,7 +306,8 @@ export class UserManagementService {
     await this.tokenBlacklistService.invalidateUserTokens(userId);
 
     if (permanent) {
-      // Hard delete - cascade will handle related records
+      // Hard delete - delete notifications first (required relation without cascade)
+      await this.prisma.notification.deleteMany({ where: { userId } });
       await this.prisma.user.delete({
         where: { id: userId },
       });

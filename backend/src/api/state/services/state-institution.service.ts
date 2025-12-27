@@ -107,6 +107,7 @@ export class StateInstitutionService {
   /**
    * Get institutions with comprehensive statistics for dashboard
    * Includes: students, internships, assignments, visits, reports
+   * Cached for 5 minutes to reduce database load
    */
   async getInstitutionsWithStats(params: {
     page?: number;
@@ -116,6 +117,29 @@ export class StateInstitutionService {
     // Default to 100 to show all institutions (currently 23 in Punjab)
     const { page = 1, limit = 100, search } = params;
     const skip = (page - 1) * limit;
+
+    // Build cache key including pagination and search
+    const cacheKey = `state:institutions:stats:${page}:${limit}:${search || ''}`;
+
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        return this._getInstitutionsWithStatsInternal(page, limit, skip, search);
+      },
+      { ttl: 5 * 60 * 1000, tags: ['state', 'institutions', 'stats'] }, // 5 minutes cache
+    );
+  }
+
+  /**
+   * Internal implementation of getInstitutionsWithStats
+   * Separated for caching purposes
+   */
+  private async _getInstitutionsWithStatsInternal(
+    page: number,
+    limit: number,
+    skip: number,
+    search?: string,
+  ) {
 
     // Get current month info
     const now = new Date();
@@ -1057,9 +1081,10 @@ export class StateInstitutionService {
       reportStatus?: 'submitted' | 'pending' | 'not_submitted' | 'all';
       visitStatus?: 'visited' | 'pending' | 'all';
       selfIdentified?: 'yes' | 'no' | 'all';
+      status?: 'active' | 'inactive' | 'all';
     },
   ) {
-    const { cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified } = params;
+    const { cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, status } = params;
 
     // Verify institution exists
     const institution = await this.prisma.institution.findUnique({
@@ -1102,6 +1127,13 @@ export class StateInstitutionService {
     // Apply branch filter
     if (branch && branch !== 'all') {
       where.branchName = branch;
+    }
+
+    // Apply status filter (active/inactive)
+    if (status === 'active') {
+      where.isActive = true;
+    } else if (status === 'inactive') {
+      where.isActive = false;
     }
 
     // Apply company filter

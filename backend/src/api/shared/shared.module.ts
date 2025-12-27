@@ -20,6 +20,7 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
     FileStorageModule,
     NotificationModule,
     AuditModule,
+    // CacheModule is @Global so LruCacheService is available automatically
   ],
   controllers: [
     NotificationsController,

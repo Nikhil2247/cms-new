@@ -75,7 +75,7 @@ export class CreateInstitutionDto {
   @ApiPropertyOptional({ description: 'Contact phone number' })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Phone number must be 10 digits' })
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits, optionally with + prefix' })
   contactPhone?: string;
 
   @ApiPropertyOptional({ description: 'Alternate phone number' })

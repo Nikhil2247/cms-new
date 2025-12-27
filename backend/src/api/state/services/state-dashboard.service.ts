@@ -3,6 +3,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { ApplicationStatus, Role } from '@prisma/client';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { LookupService } from '../../shared/lookup.service';
 import {
   calculateExpectedMonths,
   getExpectedReportsAsOfToday,
@@ -18,6 +19,7 @@ export class StateDashboardService {
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
     private readonly auditService: AuditService,
+    private readonly lookupService: LookupService,
   ) {}
 
   /**
@@ -438,11 +440,8 @@ export class StateDashboardService {
             take: 20,
           }),
 
-          // 4. Get all institutions
-          this.prisma.institution.findMany({
-            where: { isActive: true },
-            select: { id: true, name: true, code: true },
-          }),
+          // 4. Get all institutions (cached via LookupService)
+          this.lookupService.getInstitutions().then(data => data.institutions),
 
           // 5. Get last visit per institution using raw aggregation - avoiding N+1
           this.prisma.facultyVisitLog.groupBy({

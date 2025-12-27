@@ -8,6 +8,7 @@ import { StateReportService } from '../../../domain/report/state/state-report.se
 import { PlacementService } from '../../../domain/placement/placement.service';
 import { FacultyVisitService } from '../../../domain/report/faculty-visit/faculty-visit.service';
 import { MonthlyReportService } from '../../../domain/report/monthly/monthly-report.service';
+import { LookupService } from '../../shared/lookup.service';
 
 @Injectable()
 export class StateReportsService {
@@ -20,6 +21,7 @@ export class StateReportsService {
     private readonly placementService: PlacementService,
     private readonly facultyVisitService: FacultyVisitService,
     private readonly monthlyReportService: MonthlyReportService,
+    private readonly lookupService: LookupService,
   ) {}
 
   /**
@@ -312,11 +314,8 @@ export class StateReportsService {
     const currentMonth = month ?? now.getMonth() + 1;
     const currentYear = year ?? now.getFullYear();
 
-    // Get all institutions
-    const institutions = await this.prisma.institution.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, code: true, city: true },
-    });
+    // Get all institutions from LookupService (cached)
+    const { institutions } = await this.lookupService.getInstitutions();
 
     // Get comprehensive stats for each institution using SAME queries as getInstitutionsWithStats
     const performanceWithStats = await Promise.all(
@@ -536,18 +535,16 @@ export class StateReportsService {
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        const [totalStudents, placements, institutions] = await Promise.all([
+        const [totalStudents, placements, lookupData] = await Promise.all([
           this.prisma.student.count({ where: { isActive: true } }),
           this.prisma.placement.findMany({
             include: {
               student: { include: { branch: true, Institution: true } },
             },
           }),
-          this.prisma.institution.findMany({
-            where: { isActive: true },
-            select: { id: true, name: true },
-          }),
+          this.lookupService.getInstitutions(),
         ]);
+        const institutions = lookupData.institutions;
 
         const placedStudents = new Set(placements.map(p => p.studentId)).size;
         const totalPlacements = placements.length;

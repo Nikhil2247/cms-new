@@ -6,6 +6,7 @@ import {
   MinLength,
   Matches,
   IsEnum,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -51,7 +52,7 @@ export class CreateStaffDto {
   @ApiPropertyOptional({ description: 'Phone number' })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Phone number must be 10 digits' })
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits' })
   phoneNo?: string;
 
   @ApiPropertyOptional({ description: 'Branch name' })
@@ -63,4 +64,9 @@ export class CreateStaffDto {
   @IsOptional()
   @IsString()
   designation?: string;
+
+  @ApiPropertyOptional({ description: 'Active status' })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

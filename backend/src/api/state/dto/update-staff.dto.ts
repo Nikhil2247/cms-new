@@ -44,7 +44,7 @@ export class UpdateStaffDto {
   @ApiPropertyOptional({ description: 'Phone number' })
   @IsOptional()
   @IsString()
-  @Matches(/^[0-9]{10}$/, { message: 'Phone number must be 10 digits' })
+  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits' })
   phoneNo?: string;
 
   @ApiPropertyOptional({ description: 'Branch name' })
@@ -61,4 +61,9 @@ export class UpdateStaffDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Active status (alias)' })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

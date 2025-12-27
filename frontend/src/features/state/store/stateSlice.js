@@ -796,13 +796,14 @@ export const fetchInstituteOverview = createAsyncThunk(
 
 export const fetchInstituteStudents = createAsyncThunk(
   'state/fetchInstituteStudents',
-  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, loadMore = false, forceRefresh = false }, { getState, rejectWithValue }) => {
+  async ({ institutionId, cursor, limit, search, filter, branch, companyId, reportStatus, visitStatus, selfIdentified, status, loadMore = false, forceRefresh = false }, { getState, rejectWithValue }) => {
     try {
       const state = getState();
       const lastFetched = state.state.lastFetched.instituteStudents?.[institutionId];
       const hasFilters = search || (filter && filter !== 'all') || (branch && branch !== 'all') ||
                         companyId || (reportStatus && reportStatus !== 'all') ||
-                        (visitStatus && visitStatus !== 'all') || (selfIdentified && selfIdentified !== 'all');
+                        (visitStatus && visitStatus !== 'all') || (selfIdentified && selfIdentified !== 'all') ||
+                        (status && status !== 'all');
 
       // Return cached data if available, fresh, not loading more, and no active filters
       if (lastFetched && !forceRefresh && !loadMore && !hasFilters && (Date.now() - lastFetched) < CACHE_DURATION) {
@@ -819,6 +820,7 @@ export const fetchInstituteStudents = createAsyncThunk(
         reportStatus,
         visitStatus,
         selfIdentified,
+        status,
       });
       return { ...response, loadMore, institutionId };
     } catch (error) {
@@ -1283,9 +1285,12 @@ const stateSlice = createSlice({
       })
       .addCase(updateInstitution.fulfilled, (state, action) => {
         state.institutions.loading = false;
-        const index = state.institutions.list.findIndex(i => i.id === action.payload.id);
-        if (index !== -1) {
-          state.institutions.list[index] = action.payload;
+        const updatedInstitution = action.payload?.data ?? action.payload;
+        if (updatedInstitution?.id) {
+          // Create new array to ensure React detects the change
+          state.institutions.list = state.institutions.list.map(i =>
+            i.id === updatedInstitution.id ? { ...i, ...updatedInstitution } : i
+          );
         }
         state.lastFetched.institutions = null; // Invalidate cache after mutation
         state.lastFetched.institutionsKey = null;
@@ -1365,9 +1370,11 @@ const stateSlice = createSlice({
       .addCase(updatePrincipal.fulfilled, (state, action) => {
         state.principals.loading = false;
         const updatedPrincipal = action.payload?.data ?? action.payload;
-        const index = state.principals.list.findIndex(p => p.id === updatedPrincipal.id);
-        if (index !== -1) {
-          state.principals.list[index] = updatedPrincipal;
+        if (updatedPrincipal?.id) {
+          // Create new array to ensure React detects the change
+          state.principals.list = state.principals.list.map(p =>
+            p.id === updatedPrincipal.id ? { ...p, ...updatedPrincipal } : p
+          );
         }
         state.currentPrincipal = null; // Clear current principal after update
         state.lastFetched.principals = null; // Invalidate cache after mutation
@@ -1458,9 +1465,11 @@ const stateSlice = createSlice({
       .addCase(updateStaff.fulfilled, (state, action) => {
         state.staff.loading = false;
         const updatedStaff = action.payload?.data ?? action.payload;
-        const index = state.staff.list.findIndex(s => s.id === updatedStaff.id);
-        if (index !== -1) {
-          state.staff.list[index] = updatedStaff;
+        if (updatedStaff?.id) {
+          // Create new array to ensure React detects the change
+          state.staff.list = state.staff.list.map(s =>
+            s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s
+          );
         }
         state.lastFetched.staff = null; // Invalidate cache
         state.lastFetched.staffKey = null;
@@ -1858,6 +1867,53 @@ const stateSlice = createSlice({
       .addCase(fetchAllMentors.rejected, (state, action) => {
         state.allMentors.loading = false;
         state.allMentors.error = action.payload;
+      })
+
+      // Assign Mentor to Student
+      .addCase(assignMentorToStudent.fulfilled, (state, action) => {
+        const { studentId, assignment, isCrossInstitutionMentor } = action.payload;
+        // Update the student in the list with the new mentor
+        const studentIndex = state.instituteStudents.list.findIndex(s => s.id === studentId);
+        if (studentIndex !== -1) {
+          const student = state.instituteStudents.list[studentIndex];
+          // Component expects mentorAssignments array with isActive and mentor
+          const newAssignment = {
+            ...assignment,
+            isActive: true,
+            mentor: assignment?.mentor || null,
+          };
+          // Deactivate existing assignments and add new one
+          const existingAssignments = (student.mentorAssignments || []).map(ma => ({
+            ...ma,
+            isActive: false,
+          }));
+          state.instituteStudents.list[studentIndex] = {
+            ...student,
+            mentor: assignment?.mentor || null,
+            mentorAssignments: [...existingAssignments, newAssignment],
+            isCrossInstitutionMentor: isCrossInstitutionMentor || false,
+          };
+        }
+      })
+
+      // Remove Mentor from Student
+      .addCase(removeMentorFromStudent.fulfilled, (state, action) => {
+        const { studentId } = action.payload;
+        // Update the student in the list to remove mentor
+        const studentIndex = state.instituteStudents.list.findIndex(s => s.id === studentId);
+        if (studentIndex !== -1) {
+          const student = state.instituteStudents.list[studentIndex];
+          // Deactivate all mentor assignments
+          const deactivatedAssignments = (student.mentorAssignments || []).map(ma => ({
+            ...ma,
+            isActive: false,
+          }));
+          state.instituteStudents.list[studentIndex] = {
+            ...student,
+            mentor: null,
+            mentorAssignments: deactivatedAssignments,
+          };
+        }
       })
 
       // Delete Student

@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../database/prisma.service';
 import { LruCacheService } from './lru-cache.service';
+import { LookupService } from '../../api/shared/lookup.service';
 
 @Injectable()
 export class CacheWarmerService implements OnModuleInit {
@@ -11,6 +12,8 @@ export class CacheWarmerService implements OnModuleInit {
   constructor(
     private prisma: PrismaService,
     private cache: LruCacheService,
+    @Inject(forwardRef(() => LookupService))
+    private lookupService: LookupService,
   ) {}
 
   async onModuleInit() {
@@ -51,36 +54,21 @@ export class CacheWarmerService implements OnModuleInit {
   }
 
   private async warmInstitutions(): Promise<void> {
-    const institutions = await this.prisma.institution.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, code: true, type: true },
-      orderBy: { name: 'asc' },
-    });
-
-    await this.cache.set('lookup:institutions', institutions, { ttl: 600000 }); // 10 min
-    this.logger.debug(`Warmed ${institutions.length} institutions`);
+    // Use LookupService which handles caching internally
+    const result = await this.lookupService.getInstitutions();
+    this.logger.debug(`Warmed ${result.total} institutions`);
   }
 
   private async warmBatches(): Promise<void> {
-    const batches = await this.prisma.batch.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, institutionId: true, createdAt: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    await this.cache.set('lookup:batches', batches, { ttl: 600000 });
-    this.logger.debug(`Warmed ${batches.length} batches`);
+    // Use LookupService which handles caching internally
+    const result = await this.lookupService.getBatches();
+    this.logger.debug(`Warmed ${result.total} batches`);
   }
 
   private async warmDepartments(): Promise<void> {
-    const departments = await this.prisma.department.findMany({
-      where: { isActive: true },
-      select: { id: true, name: true, code: true, institutionId: true },
-      orderBy: { name: 'asc' },
-    });
-
-    await this.cache.set('lookup:departments', departments, { ttl: 600000 });
-    this.logger.debug(`Warmed ${departments.length} departments`);
+    // Use LookupService which handles caching internally
+    const result = await this.lookupService.getDepartments();
+    this.logger.debug(`Warmed ${result.total} departments`);
   }
 
   private async warmDashboardStats(): Promise<void> {

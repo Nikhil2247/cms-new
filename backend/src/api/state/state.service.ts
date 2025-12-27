@@ -106,6 +106,7 @@ export class StateService {
       reportStatus?: 'all' | 'submitted' | 'pending' | 'not_submitted';
       visitStatus?: 'all' | 'visited' | 'pending';
       selfIdentified?: 'all' | 'yes' | 'no';
+      status?: 'active' | 'inactive' | 'all';
     },
   ) {
     return this.institutionService.getInstitutionStudents(institutionId, params);
@@ -164,6 +165,8 @@ export class StateService {
     phoneNo?: string;
     phone?: string;
     institutionId?: string;
+    active?: boolean;
+    designation?: string;
   }) {
     return this.principalService.updatePrincipal(id, data);
   }
@@ -215,12 +218,18 @@ export class StateService {
     role?: string;
     designation?: string;
     institutionId?: string;
+    isActive?: boolean;
+    active?: boolean;
   }) {
     return this.staffService.updateStaff(id, data);
   }
 
   async deleteStaff(id: string) {
     return this.staffService.deleteStaff(id);
+  }
+
+  async deleteFaculty(id: string) {
+    return this.staffService.deleteFaculty(id);
   }
 
   async resetStaffPassword(id: string) {

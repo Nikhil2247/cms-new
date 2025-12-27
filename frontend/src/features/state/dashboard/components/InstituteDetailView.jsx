@@ -603,6 +603,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     dispatch(fetchInstituteStudents({
       institutionId: selectedInstitute.id,
       limit: 20,
+      forceRefresh: true, // Always refresh when filters/search change
       search: debouncedStudentSearch || undefined,
       filter: studentFilter,
       branch: branchFilter !== 'all' ? branchFilter : undefined,
@@ -624,7 +625,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       return;
     }
 
-    dispatch(fetchInstituteCompanies({ institutionId: selectedInstitute.id, search: debouncedCompanySearch || undefined }));
+    dispatch(fetchInstituteCompanies({ institutionId: selectedInstitute.id, search: debouncedCompanySearch || undefined, forceRefresh: true }));
     // Note: activeTab is intentionally NOT in dependencies - tab switches are handled by fetchedTabsRef
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedCompanySearch, selectedInstitute?.id, dispatch]);
@@ -635,6 +636,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     dispatch(fetchInstituteStudents({
       institutionId: selectedInstitute.id,
       limit: 20,
+      forceRefresh: true,
       search: studentSearchInput || undefined,
       filter: studentFilter,
       branch: branchFilter !== 'all' ? branchFilter : undefined,
@@ -650,8 +652,10 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     setStatusFilter('all');
     setSelfIdentifiedFilter('all');
     setStudentSearchInput('');
+    // Reset the ref to prevent the debounced search useEffect from triggering with stale values
+    studentSearchInitializedRef.current = false;
     if (selectedInstitute?.id) {
-      dispatch(fetchInstituteStudents({ institutionId: selectedInstitute.id, limit: 20, filter: 'all' }));
+      dispatch(fetchInstituteStudents({ institutionId: selectedInstitute.id, limit: 20, filter: 'all', forceRefresh: true }));
     }
   }, [dispatch, selectedInstitute?.id]);
 
