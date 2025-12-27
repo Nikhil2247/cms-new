@@ -144,6 +144,7 @@ services:
     command: >
       --logtostderr
       --cache_mode=true
+<<<<<<< Updated upstream
       --maxmemory=512mb
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
