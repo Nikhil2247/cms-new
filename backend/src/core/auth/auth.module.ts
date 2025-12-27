@@ -34,7 +34,8 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
   ],
   controllers: [AuthController],
   providers: (() => {
-    const baseProviders = [
+    // Use a generic provider array type to allow conditionally pushing classes
+    const baseProviders: Array<any> = [
       PrismaService,
       LruCacheService,
       AuthService,
