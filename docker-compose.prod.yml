@@ -113,7 +113,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 40s
-    command: ["mongod", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
+    command: ["mongod","--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
+    
 
   # ===========================================
   # DragonflyDB - Redis-compatible Cache
