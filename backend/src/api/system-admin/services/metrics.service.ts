@@ -304,7 +304,7 @@ export class MetricsService {
     }
   }
 
-  private async getCpuMetrics() {
+  private async getCpuMetrics(): Promise<{ usage: number; cores: number; model: string; loadAverage: number[] }> {
     const cpus = os.cpus();
     const loadAverage = os.loadavg();
 
@@ -339,7 +339,7 @@ export class MetricsService {
     };
   }
 
-  private async getMemoryMetrics() {
+  private async getMemoryMetrics(): Promise<{ total: number; used: number; free: number; usagePercent: number; heapUsed: number; heapTotal: number; external: number }> {
     const totalMem = os.totalmem();
     const freeMem = os.freemem();
     const usedMem = totalMem - freeMem;
@@ -356,7 +356,7 @@ export class MetricsService {
     };
   }
 
-  private async getDiskMetrics() {
+  private async getDiskMetrics(): Promise<{ total: number; used: number; free: number; usagePercent: number }> {
     try {
       // Use Node.js native fs.statfs (available in Node 18.15+) - no shell commands needed
       const diskPath = process.platform === 'win32' ? process.cwd().split(path.sep)[0] + path.sep : '/';
