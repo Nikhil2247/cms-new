@@ -103,21 +103,18 @@ services:
     volumes:
       - mongodb-data:/data/db
       - mongodb-config:/data/configdb
-      # This script can be used to automate rs.initiate() if you prefer
-      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
     networks:
       - cms-network
     restart: unless-stopped
-    # 1. Simplified healthcheck: only checks if the database is accepting connections
+    # 1. Start with replica set flag
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    # 2. Simplified healthcheck: Does not require auth to check basic port readiness
     healthcheck:
       test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 15s
-    # 2. Command remains with the replSet flag
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--wiredTigerCacheSizeGB", "0.5"]
-
+      start_period: 20s
   # ===========================================
   # DragonflyDB - Redis-compatible Cache
   # ===========================================
