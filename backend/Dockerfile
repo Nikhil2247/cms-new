@@ -63,7 +63,7 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 # Expose port (default 8000 for production)
-EXPOSE 8000
+EXPOSE 6000
 
 # Health check using wget (available in alpine)
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
