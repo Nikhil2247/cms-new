@@ -41,8 +41,8 @@ export class HealthController {
 
   private async prismaPing(): Promise<HealthIndicatorResult> {
     try {
-      // MongoDB ping via Prisma
-      await this.prisma.$runCommandRaw({ ping: 1 } as any);
+      // PostgreSQL health check
+      await this.prisma.$queryRaw`SELECT 1`;
       return { database: { status: 'up' as const } };
     } catch (error) {
       throw new HealthCheckError('Database check failed', {

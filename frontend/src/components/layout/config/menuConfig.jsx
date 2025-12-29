@@ -32,7 +32,6 @@ import {
   MessageOutlined,
   HistoryOutlined,
   CloudUploadOutlined,
-  BellOutlined,
   SendOutlined,
 } from '@ant-design/icons';
 import React from 'react';
@@ -48,7 +47,6 @@ export const menuConfig = {
     items: [
       { key: 'state-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
       { key: 'report-builder', label: 'Report Builder', icon: <BarChartOutlined />, path: '/reports/builder' },
-      { key: 'send-announcement', label: 'Announcements', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
   STATE_INSTITUTIONS: {
@@ -86,6 +84,7 @@ export const menuConfig = {
     title: 'System',
     icon: <SettingOutlined />,
     items: [
+      { key: 'master-data', label: 'Master Data', icon: <DatabaseOutlined />, path: '/master-data' },
       { key: 'state-staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/state-staff' },
       { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/users/bulk-create' },
       { key: 'credentials-reset', label: 'Reset Credentials', icon: <LockOutlined />, path: '/users/reset-credentials' },
@@ -133,7 +132,6 @@ export const menuConfig = {
       { key: 'bulk-staff-upload', label: 'Bulk Upload', icon: <UploadOutlined />, path: '/bulk-upload' },
       { key: 'bulk-internship-upload', label: 'Bulk Internships', icon: <UploadOutlined />, path: '/bulk/self-internships' },
       { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
-      { key: 'send-announcement', label: 'Announcements', icon: <BellOutlined />, path: '/send-notification' },
     ],
   },
 
@@ -166,7 +164,6 @@ export const menuConfig = {
     icon: <SendOutlined />,
     items: [
       { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/faculty-grievances' },
-      { key: 'send-reminder', label: 'Send Reminder', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
 
@@ -248,7 +245,6 @@ export const menuConfig = {
     items: [
       { key: 'system-settings', label: 'System Settings', icon: <SettingOutlined />, path: '/admin/settings' },
       { key: 'feature-flags', label: 'Feature Flags', icon: <SwapOutlined />, path: '/admin/features' },
-      { key: 'send-system-notification', label: 'Announcements', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
   SYSTEM_ADMIN_SUPPORT: {
@@ -261,17 +257,6 @@ export const menuConfig = {
     ],
   },
 
-  // ==========================================
-  // NOTIFICATIONS (All Users)
-  // ==========================================
-  NOTIFICATIONS: {
-    key: 'notifications',
-    title: 'Notifications',
-    icon: <BellOutlined />,
-    items: [
-      { key: 'all-notifications', label: 'All Notifications', icon: <BellOutlined />, path: '/notifications' },
-    ],
-  },
 
   // ==========================================
   // SUPPORT (All Users)
@@ -353,11 +338,6 @@ export const getMenuSectionsForRole = (role) => {
 
     default:
       break;
-  }
-
-  // Add Notifications menu for all logged-in users
-  if (role) {
-    sections.push(menuConfig.NOTIFICATIONS);
   }
 
   // Add Support menu for all logged-in users

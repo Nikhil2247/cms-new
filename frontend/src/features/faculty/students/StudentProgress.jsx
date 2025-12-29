@@ -342,7 +342,7 @@ const StudentProgressPage = () => {
       };
       if (modalType === "feedback") {
         // Use faculty service for feedback submission
-        await facultyService.submitFeedback(body);
+        await facultyService.submitMonthlyFeedback(body);
       } else {
         // Use faculty service for assignment creation
         await facultyService.createAssignment(body);

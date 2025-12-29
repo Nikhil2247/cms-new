@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiClient } from '../../../services/api';
-import { API_ENDPOINTS } from '../../../utils/constants';
 import studentService from '../../../services/student.service';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   dashboard: {
@@ -68,9 +67,6 @@ const initialState = {
   },
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export const fetchStudentDashboard = createAsyncThunk(
   'student/fetchDashboard',
   async (params, { getState, rejectWithValue }) => {
@@ -78,12 +74,12 @@ export const fetchStudentDashboard = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.dashboard;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get(API_ENDPOINTS.STUDENT_DASHBOARD);
-      return response.data;
+      const response = await studentService.getDashboard();
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
     }
@@ -97,12 +93,12 @@ export const fetchStudentProfile = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.profile;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get(API_ENDPOINTS.STUDENT_PROFILE);
-      return response.data;
+      const response = await studentService.getProfile();
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
     }
@@ -116,7 +112,7 @@ export const fetchMyInternships = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.internships;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -135,7 +131,7 @@ export const fetchMyReports = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.reports;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -155,7 +151,7 @@ export const fetchEnrollments = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.enrollments;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -226,7 +222,7 @@ export const fetchAvailableInternships = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.availableInternships;
 
-      if (lastFetched && !filters?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!filters?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -246,7 +242,7 @@ export const fetchApplications = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.applications;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -280,7 +276,7 @@ export const fetchMentor = createAsyncThunk(
       const lastFetched = state.student.lastFetched.mentor;
 
       // Check cache first
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
         return { cached: true };
       }
 
@@ -292,8 +288,8 @@ export const fetchMentor = createAsyncThunk(
         return activeAssignment?.mentor || null;
       }
       // Only fetch profile if not already loaded
-      const response = await apiClient.get('/student/profile');
-      const activeAssignment = response.data?.mentorAssignments?.find(a => a.isActive);
+      const response = await studentService.getProfile();
+      const activeAssignment = response?.mentorAssignments?.find(a => a.isActive);
       return activeAssignment?.mentor || null;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch mentor');
@@ -309,12 +305,12 @@ export const fetchGrievances = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.grievances;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get('/student/grievances', { params });
-      return response.data;
+      const response = await studentService.getGrievances(params);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch grievances');
     }
@@ -325,8 +321,8 @@ export const createGrievance = createAsyncThunk(
   'student/createGrievance',
   async (grievanceData, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/student/grievances', grievanceData);
-      return response.data;
+      const response = await studentService.submitGrievance(grievanceData);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create grievance');
     }
@@ -341,12 +337,12 @@ export const fetchSelfIdentified = createAsyncThunk(
       const state = getState();
       const lastFetched = state.student.lastFetched.selfIdentified;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get('/student/self-identified', { params });
-      return response.data;
+      const response = await studentService.getSelfIdentified(params);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch self-identified internships');
     }
@@ -372,8 +368,8 @@ export const updateApplication = createAsyncThunk(
   async ({ id, data }, { rejectWithValue }) => {
     try {
       // Applications are managed via student portal
-      const response = await apiClient.put(`/student/applications/${id}`, data);
-      return response.data;
+      const response = await studentService.updateApplication(id, data);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update application');
     }
@@ -385,8 +381,8 @@ export const submitMonthlyReport = createAsyncThunk(
   'student/submitMonthlyReport',
   async ({ reportId, data }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.put(`/student/monthly-reports/${reportId}`, data);
-      return response.data;
+      const response = await studentService.updateMonthlyReport(reportId, data);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to submit report');
     }
@@ -395,12 +391,10 @@ export const submitMonthlyReport = createAsyncThunk(
 
 export const uploadReportFile = createAsyncThunk(
   'student/uploadReportFile',
-  async (formData, { rejectWithValue }) => {
+  async ({ file, documentData = {} }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/student/documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      return response.data;
+      const response = await studentService.uploadDocument(file, documentData);
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to upload report');
     }

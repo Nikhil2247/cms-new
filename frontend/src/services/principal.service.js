@@ -108,21 +108,7 @@ export const principalService = {
     return response.data;
   },
 
-  async downloadTemplate(type) {
-    const response = await API.get(`/bulk/templates/${type}`, {
-      responseType: 'blob',
-    });
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${type}-template.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
-    return response.data;
-  },
+  // Note: downloadTemplate moved to bulk.service.js
 
   // Staff
   async getStaff(params = {}) {
@@ -170,6 +156,11 @@ export const principalService = {
     const queryParams = new URLSearchParams(params).toString();
     const url = queryParams ? `/principal/mentors/assignments?${queryParams}` : '/principal/mentors/assignments';
     const response = await API.get(url);
+    return response.data;
+  },
+
+  async getMentorStats() {
+    const response = await API.get('/principal/mentors/stats');
     return response.data;
   },
 
@@ -261,11 +252,8 @@ export const principalService = {
     return response.data;
   },
 
-  // Reset user password (student or staff)
-  async resetUserPassword(userId) {
-    const response = await API.post('/auth/admin/reset-password', { userId });
-    return response.data;
-  },
+  // Note: resetUserPassword moved to credentialsService
+  // Use credentialsService.resetUserPassword(userId) instead
 };
 
 export default principalService;

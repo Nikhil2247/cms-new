@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { Modal, Form, Input, Button, Select, Switch, message, Spin, Row, Col, Divider } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
-import { createStaff, updateStaff, fetchInstitutions } from '../store/stateSlice';
+import { createStaff, updateStaff } from '../store/stateSlice';
 import stateService from '../../../services/state.service';
+import { useLookup } from '../../shared/hooks/useLookup';
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -13,12 +14,13 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
 
-  const { list: institutions } = useSelector((state) => state.state.institutions);
+  // Use global lookup data
+  const { activeInstitutions, activeBranches, isLoading: lookupLoading } = useLookup({
+    include: ['institutions', 'branches']
+  });
 
   useEffect(() => {
     if (open) {
-      dispatch(fetchInstitutions({ limit: 500 }));
-
       if (isEditMode) {
         loadStaffData();
       } else {
@@ -85,7 +87,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       width={600}
       destroyOnHidden
     >
-      {initialLoading ? (
+      {initialLoading || lookupLoading ? (
         <div className="flex justify-center items-center py-12">
           <Spin size="large" />
         </div>
@@ -191,7 +193,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                     option.children.toLowerCase().includes(input.toLowerCase())
                   }
                 >
-                  {institutions?.map(inst => (
+                  {activeInstitutions?.map(inst => (
                     <Select.Option key={inst.id} value={inst.id}>
                       {inst.name}
                     </Select.Option>
@@ -204,7 +206,13 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
           <Row gutter={16}>
             <Col xs={24} md={12}>
               <Form.Item name="branchName" label="Branch">
-                <Input placeholder="Enter branch (e.g., CSE, ECE, ME)" />
+                <Select placeholder="Select branch" allowClear showSearch optionFilterProp="children">
+                  {activeBranches?.map(branch => (
+                    <Select.Option key={branch.id} value={branch.shortName}>
+                      {branch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
 

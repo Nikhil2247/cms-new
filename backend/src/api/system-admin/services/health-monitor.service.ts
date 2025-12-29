@@ -306,8 +306,8 @@ export class HealthMonitorService implements OnModuleInit {
   private async checkDatabase(): Promise<ServiceStatus> {
     const start = Date.now();
     try {
-      // MongoDB health check - using ping command
-      await this.prisma.$runCommandRaw({ ping: 1 });
+      // PostgreSQL health check - simple query
+      await this.prisma.$queryRaw`SELECT 1`;
       const latency = Date.now() - start;
 
       let status: 'healthy' | 'degraded' = 'healthy';
@@ -322,7 +322,7 @@ export class HealthMonitorService implements OnModuleInit {
       }
 
       return {
-        name: 'Database (MongoDB)',
+        name: 'Database (PostgreSQL)',
         status,
         latency,
         lastChecked: new Date(),
@@ -330,7 +330,7 @@ export class HealthMonitorService implements OnModuleInit {
       };
     } catch (error) {
       return {
-        name: 'Database (MongoDB)',
+        name: 'Database (PostgreSQL)',
         status: 'unhealthy',
         lastChecked: new Date(),
         message: error.message,

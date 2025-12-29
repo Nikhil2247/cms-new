@@ -224,11 +224,7 @@ export const facultyService = {
     return response.data;
   },
 
-  // Submit feedback for a student
-  async submitFeedback(data) {
-    const response = await API.post('/faculty/feedback/monthly', data);
-    return response.data;
-  },
+  // Note: submitFeedback removed - use submitMonthlyFeedback instead
 
   // Create assignment for a student
   async createAssignment(data) {

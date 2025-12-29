@@ -53,7 +53,6 @@ import {
 import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
-import analyticsService from '../../../services/analytics.service';
 import principalService from '../../../services/principal.service';
 
 const { Title, Text } = Typography;
@@ -95,7 +94,7 @@ const FacultyProgress = () => {
     try {
       setLoading(true);
       // Response is already unwrapped: { faculty: [...] }
-      const response = await analyticsService.getFacultyProgressList();
+      const response = await principalService.getFacultyProgress();
       setFacultyList(response?.faculty || []);
 
       // Auto-select first faculty if available
@@ -116,7 +115,7 @@ const FacultyProgress = () => {
     try {
       setDetailsLoading(true);
       // Response is already unwrapped
-      const response = await analyticsService.getFacultyProgressDetails(facultyId);
+      const response = await principalService.getFacultyProgressDetails(facultyId);
       setFacultyDetails(response);
     } catch (error) {
       console.error('Failed to fetch faculty details:', error);
@@ -625,20 +624,6 @@ const FacultyProgress = () => {
                     styles={{ content: { color: stats.missedVisits > 0 ? 'var(--ant-error-color)' : 'var(--ant-success-color)', fontSize: 24, fontWeight: 'bold' } }}
                   />
                   <Text className="text-[10px] uppercase font-bold text-text-tertiary">Missed</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
-                  <div className="flex items-center justify-center gap-1">
-                    <StarOutlined className="text-yellow-500" />
-                    <Statistic
-                      value={averageRating}
-                      precision={1}
-                      suffix="/ 5"
-                      styles={{ content: { color: 'var(--ant-warning-color)', fontSize: 20, fontWeight: 'bold' } }}
-                    />
-                  </div>
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Avg Rating</Text>
                 </div>
               </Col>
             </Row>

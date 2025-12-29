@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiClient } from '../../../services/api';
-import { API_ENDPOINTS } from '../../../utils/constants';
 import industryService from '../../../services/industry.service';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   dashboard: {
@@ -41,9 +40,6 @@ const initialState = {
   },
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 export const fetchIndustryDashboard = createAsyncThunk(
   'industry/fetchDashboard',
   async (params, { getState, rejectWithValue }) => {
@@ -51,12 +47,12 @@ export const fetchIndustryDashboard = createAsyncThunk(
       const state = getState();
       const lastFetched = state.industry.lastFetched.dashboard;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get(API_ENDPOINTS.INDUSTRY_DASHBOARD);
-      return response.data;
+      const response = await industryService.getDashboard();
+      return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
     }
@@ -81,10 +77,9 @@ export const fetchMyPostings = createAsyncThunk(
       const lastKey = state.industry.lastFetched.postingsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -116,10 +111,9 @@ export const fetchMyApplications = createAsyncThunk(
       const lastKey = state.industry.lastFetched.applicationsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -238,7 +232,7 @@ export const fetchProfile = createAsyncThunk(
       const state = getState();
       const lastFetched = state.industry.lastFetched.profile;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
         return { cached: true };
       }
 

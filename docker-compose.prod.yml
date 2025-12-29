@@ -14,7 +14,7 @@ services:
   # Frontend - React/Vite (Served with internal Nginx)
   # ===========================================
   frontend:
-    image: ghcr.io/nikhil2247/cms-new/frontend:latest 
+    image: ghcr.io/nikhil2247/cms-new/frontend:latest
     container_name: cms-frontend
     # Exposes the container's port 80 (where Nginx serves files) to the host's port 5173.
     ports:
@@ -43,8 +43,8 @@ services:
       - NODE_ENV=production
       - PORT=8000
       - BACKEND_PORT=8000
-      # Database
-      - DATABASE_URL=${DATABASE_URL}
+      # Database (PostgreSQL) - hardcoded for Docker network
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-cms_db}?schema=public
       # Cache (connects to Dragonfly service)
       - REDIS_URL=${REDIS_URL:-redis://dragonfly:6379}
       - REDIS_HOST=dragonfly
@@ -58,12 +58,11 @@ services:
       - FRONTEND_URL=${FRONTEND_URL}
       - CORS_ORIGIN=${CORS_ORIGIN}
       # File Storage (connects to MinIO service)
-      - AWS_S3_ENDPOINT=http://minio:9000
-      - AWS_S3_BUCKET=${AWS_S3_BUCKET:-cms-uploads}
-      - AWS_ACCESS_KEY_ID=${MINIO_ROOT_USER}
-      - AWS_SECRET_ACCESS_KEY=${MINIO_ROOT_PASSWORD}
-      - AWS_REGION=${AWS_REGION:-us-east-1}
-      - AWS_S3_FORCE_PATH_STYLE=true
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - MINIO_REGION=${MINIO_REGION:-us-east-1}
       # PM2
       - PM2_INSTANCES=${PM2_INSTANCES:-max}
     volumes:
@@ -72,7 +71,7 @@ services:
     # No 'command' here - allows the Dockerfile's `CMD ["pm2-runtime", ...]` to run.
     user: "appuser"
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
@@ -89,44 +88,74 @@ services:
       start_period: 60s
 
   # ===========================================
-  # MongoDB 8.0 LTS
+  # PostgreSQL 18 - Primary Database
   # ===========================================
-  mongodb:
-    image: mongo:8.0
-    container_name: cms-mongodb
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres
     ports:
-      - "27017:27017"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-cms_db}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-cms_db}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
-      - mongodb-data:/data/db
-      - mongodb-config:/data/configdb
-      # Mount the keyfile created in Step 1
-      - ./docker/mongodb/mongo-keyfile:/opt/mongo/mongo-keyfile:ro
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - cms-network
     restart: unless-stopped
-    # The command now includes the --keyFile flag
-    command: >
-      mongod --replSet rs0 
-      --keyFile /opt/mongo/mongo-keyfile 
-      --bind_ip_all 
-      --wiredTigerCacheSizeGB 0.5
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 512M
     healthcheck:
-      # We use the root credentials to check health since auth is enabled
-      test: mongosh --quiet --username "$${MONGO_INITDB_ROOT_USERNAME}" --password "$${MONGO_INITDB_ROOT_PASSWORD}" --eval "db.adminCommand('ping')"
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cms_db}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=4MB
+      - -c
+      - huge_pages=off
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - max_connections=200
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=1000
 
   # ===========================================
   # DragonflyDB - Redis-compatible Cache
   # ===========================================
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.24.0
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: cms-dragonfly
     ports:
       - "6379:6379"
@@ -192,9 +221,9 @@ services:
       - |
         sleep 3
         mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
-        mc mb myminio/${AWS_S3_BUCKET:-cms-uploads} --ignore-existing
-        mc anonymous set download myminio/${AWS_S3_BUCKET:-cms-uploads}
-        echo "MinIO bucket '${AWS_S3_BUCKET:-cms-uploads}' is ready."
+        mc mb myminio/${MINIO_BUCKET:-cms-uploads} --ignore-existing
+        mc anonymous set download myminio/${MINIO_BUCKET:-cms-uploads}
+        echo "MinIO bucket '${MINIO_BUCKET:-cms-uploads}' is ready."
 
 networks:
   cms-network:
@@ -202,10 +231,8 @@ networks:
     name: cms-prod-network
 
 volumes:
-  mongodb-data:
-    name: cms-prod-mongodb-data
-  mongodb-config:
-    name: cms-prod-mongodb-config
+  postgres-data:
+    name: cms-prod-postgres-data
   dragonfly-data:
     name: cms-prod-dragonfly-data
   minio-data:

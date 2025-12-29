@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider } from 'antd';
+import { Form, Input, Select, Button, Row, Col, message, Spin, Modal, Divider } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { createStaff, updateStaff, fetchStaff, fetchDepartments } from '../store/principalSlice';
-import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
-import dayjs from 'dayjs';
+import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
+import { SaveOutlined } from '@ant-design/icons';
+import { useDepartments } from '../../shared/hooks/useLookup';
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -11,19 +11,22 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
 
-  const { staff, departments } = useSelector(state => state.principal);
+  const { staff } = useSelector(state => state.principal);
   const staffMember = staffId ? staff.list?.find(s => s.id === staffId) : null;
   const isEditMode = !!staffId;
+
+  // Use global lookup data for departments
+  const { activeDepartments, loading: departmentsLoading } = useDepartments();
 
   useEffect(() => {
     if (open) {
       const loadData = async () => {
         setInitialLoading(true);
         try {
-          await Promise.all([
-            dispatch(fetchDepartments()),
-            staffId && !staffMember ? dispatch(fetchStaff({})) : Promise.resolve(),
-          ]);
+          // Only fetch staff data if editing and staff not in list
+          if (staffId && !staffMember) {
+            await dispatch(fetchStaff({}));
+          }
         } finally {
           setInitialLoading(false);
         }
@@ -32,43 +35,30 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
     }
   }, [dispatch, staffId, staffMember, open]);
 
-  const transformImageToFileList = (imageUrl, name = 'Image') => {
-    if (!imageUrl) return undefined;
-    if (typeof imageUrl === 'string') {
-      return [{
-        uid: '-1',
-        name: name,
-        status: 'done',
-        url: imageUrl,
-      }];
-    }
-    if (Array.isArray(imageUrl)) return imageUrl;
-    return undefined;
-  };
-
   useEffect(() => {
     if (open && staffMember) {
       // Find matching department ID from the department name
       let departmentId = null;
       if (staffMember.department || staffMember.branchName) {
         const deptName = staffMember.department || staffMember.branchName;
-        const matchingDept = departments?.list?.find(d =>
+        const matchingDept = activeDepartments?.find(d =>
           d.name === deptName || d.shortName === deptName
         );
         departmentId = matchingDept?.id || null;
       }
 
       form.setFieldsValue({
-        ...staffMember,
-        departmentId, // Set the department ID for the select
-        dateOfJoining: staffMember.dateOfJoining ? dayjs(staffMember.dateOfJoining) : null,
-        profileImage: transformImageToFileList(staffMember.profileImage, 'Profile Image'),
-        signature: transformImageToFileList(staffMember.signature, 'Signature'),
+        name: staffMember.name,
+        email: staffMember.email,
+        phoneNo: staffMember.phoneNo,
+        role: staffMember.role,
+        designation: staffMember.designation,
+        departmentId,
       });
     } else if (open && !isEditMode) {
       form.resetFields();
     }
-  }, [staffMember, form, open, isEditMode, departments]);
+  }, [staffMember, form, open, isEditMode, activeDepartments]);
 
   const handleClose = () => {
     form.resetFields();
@@ -81,17 +71,18 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       // Transform departmentId to department name
       let departmentName = null;
       if (values.departmentId) {
-        const selectedDept = departments?.list?.find(d => d.id === values.departmentId);
+        const selectedDept = activeDepartments?.find(d => d.id === values.departmentId);
         departmentName = selectedDept?.name || null;
       }
 
       const formattedValues = {
-        ...values,
-        department: departmentName, // Send department name, not ID
-        dateOfJoining: values.dateOfJoining ? values.dateOfJoining.format('YYYY-MM-DD') : null,
+        name: values.name,
+        email: values.email,
+        phoneNo: values.phoneNo,
+        role: values.role,
+        designation: values.designation,
+        department: departmentName,
       };
-      // Remove departmentId as backend expects 'department' string
-      delete formattedValues.departmentId;
 
       if (isEditMode) {
         await dispatch(updateStaff({ id: staffId, data: formattedValues })).unwrap();
@@ -109,13 +100,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
     }
   };
 
-  const normFile = (e) => {
-    if (Array.isArray(e)) {
-      return e;
-    }
-    return e?.fileList;
-  };
-
   return (
     <Modal
       title={isEditMode ? 'Edit Staff Member' : 'Add New Staff Member'}
@@ -125,7 +109,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       width={600}
       destroyOnHidden
     >
-      {initialLoading ? (
+      {initialLoading || departmentsLoading ? (
         <div className="flex justify-center items-center py-12">
           <Spin size="large" />
         </div>
@@ -145,14 +129,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="employeeId"
-                label="Employee ID"
-              >
-                <Input placeholder="Enter employee ID" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
                 name="email"
                 label="Email"
                 rules={[
@@ -160,7 +136,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                   { type: 'email', message: 'Please enter valid email' }
                 ]}
               >
-                <Input placeholder="Enter email" />
+                <Input placeholder="Enter email" disabled={isEditMode} />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -172,15 +148,6 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 ]}
               >
                 <Input placeholder="Enter phone number" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="gender" label="Gender">
-                <Select placeholder="Select gender">
-                  <Select.Option value="MALE">Male</Select.Option>
-                  <Select.Option value="FEMALE">Female</Select.Option>
-                  <Select.Option value="OTHER">Other</Select.Option>
-                </Select>
               </Form.Item>
             </Col>
           </Row>
@@ -196,10 +163,11 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
               >
                 <Select placeholder="Select role">
                   <Select.Option value="TEACHER">Teacher</Select.Option>
-                  <Select.Option value="MENTOR">Mentor</Select.Option>
-                  <Select.Option value="HOD">Head of Department</Select.Option>
-                  <Select.Option value="COORDINATOR">Coordinator</Select.Option>
-                  <Select.Option value="ADMIN">Admin</Select.Option>
+                  <Select.Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Select.Option>
+                  <Select.Option value="PLACEMENT_OFFICER">Placement Officer</Select.Option>
+                  <Select.Option value="ACCOUNTANT">Accountant</Select.Option>
+                  <Select.Option value="ADMISSION_OFFICER">Admission Officer</Select.Option>
+                  <Select.Option value="EXAMINATION_OFFICER">Examination Officer</Select.Option>
                 </Select>
               </Form.Item>
             </Col>
@@ -209,7 +177,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 label="Department"
               >
                 <Select placeholder="Select department" allowClear>
-                  {departments?.list?.map(dept => (
+                  {activeDepartments?.map(dept => (
                     <Select.Option key={dept.id} value={dept.id}>
                       {dept.name}
                     </Select.Option>
@@ -217,93 +185,12 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12}>
+            <Col xs={24}>
               <Form.Item
                 name="designation"
                 label="Designation"
               >
-                <Input placeholder="Enter designation (e.g., Assistant Professor)" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="dateOfJoining"
-                label="Date of Joining"
-              >
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format="DD/MM/YYYY"
-                  disabledDate={(current) => current && current > dayjs().endOf('day')}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider plain>Academic Information</Divider>
-
-          <Row gutter={16}>
-            <Col xs={24} sm={12}>
-              <Form.Item name="qualification" label="Highest Qualification">
-                <Select placeholder="Select qualification">
-                  <Select.Option value="B.Tech">B.Tech</Select.Option>
-                  <Select.Option value="M.Tech">M.Tech</Select.Option>
-                  <Select.Option value="PhD">PhD</Select.Option>
-                  <Select.Option value="MBA">MBA</Select.Option>
-                  <Select.Option value="MCA">MCA</Select.Option>
-                  <Select.Option value="Other">Other</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="specialization" label="Specialization">
-                <Input placeholder="Enter specialization/area of expertise" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="experience" label="Years of Experience">
-                <Input type="number" placeholder="Enter years of experience" min={0} />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider plain>Additional Information</Divider>
-
-          <Row gutter={16}>
-            <Col xs={24}>
-              <Form.Item name="address" label="Address">
-                <Input.TextArea rows={2} placeholder="Enter address" />
-              </Form.Item>
-            </Col>
-            <Col xs={24}>
-              <Form.Item name="qualifications" label="Qualifications & Certifications">
-                <Input.TextArea
-                  rows={2}
-                  placeholder="Enter detailed qualifications, certifications, and achievements"
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="resume"
-                label="Resume/CV"
-                valuePropName="fileList"
-                getValueFromEvent={normFile}
-              >
-                <Upload beforeUpload={() => false} maxCount={1} accept=".pdf,.doc,.docx">
-                  <Button icon={<UploadOutlined />}>Click to Upload</Button>
-                </Upload>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="profileImage"
-                label="Profile Image"
-                valuePropName="fileList"
-                getValueFromEvent={normFile}
-              >
-                <Upload beforeUpload={() => false} maxCount={1} accept="image/*">
-                  <Button icon={<UploadOutlined />}>Click to Upload</Button>
-                </Upload>
+                <Input placeholder="Enter designation (e.g., Assistant Professor, Senior Lecturer)" />
               </Form.Item>
             </Col>
           </Row>

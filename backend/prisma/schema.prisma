@@ -2,18 +2,19 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 // Models
 
 model User {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  id          String   @id @default(uuid())
   email       String?  @unique
   password    String
   name        String
@@ -32,7 +33,7 @@ model User {
   Student             Student?
   ClassAssignment     ClassAssignment[]
   Institution         Institution?            @relation(fields: [institutionId], references: [id])
-  institutionId       String?                 @db.ObjectId
+  institutionId       String?
   // New internship relations
   Industry            Industry?
   menteeApplications  InternshipApplication[] @relation("StudentMentor")
@@ -117,15 +118,15 @@ enum Role {
 // Student Information linked with admissiontype, category, batch, fees, results, documents, and scholarship
 
 model Student {
-  id                     String                  @id @default(auto()) @map("_id") @db.ObjectId
+  id                     String                  @id @default(uuid())
   profileImage           String?
-  userId                 String                  @unique @db.ObjectId
+  userId                 String                  @unique
   user                   User                    @relation(fields: [userId], references: [id])
-  rollNumber             String?                 @unique
-  branchId               String?                 @db.ObjectId
+  rollNumber             String?
+  branchId               String?
   branch                 Branch?                 @relation(fields: [branchId], references: [id])
   branchName             String? // Cached for quick access
-  admissionNumber        String?                 @unique
+  admissionNumber        String?
   name                   String
   email                  String?
   contact                String?
@@ -151,18 +152,18 @@ model Student {
   isActive               Boolean                 @default(true)
   // Preferences
   internshipPreferences  InternshipPreference?
-  batchId                String?                 @db.ObjectId
+  batchId                String?
   batch                  Batch?                  @relation(fields: [batchId], references: [id])
   admissionType          AdmissionType?
   category               Category?
   document               Document[]
   fees                   Fee[]
   results                ExamResult[]
-  scholarshipId          String?                 @db.ObjectId
+  scholarshipId          String?
   scholarship            Scholarship?            @relation(fields: [scholarshipId], references: [id])
-  feeStructureId         String?                 @db.ObjectId
+  feeStructureId         String?
   feeStructure           FeeStructure?           @relation(fields: [feeStructureId], references: [id])
-  institutionId          String?                 @db.ObjectId
+  institutionId          String?
   Institution            Institution?            @relation(fields: [institutionId], references: [id])
   createdAt              DateTime                @default(now())
   placements             Placement[]
@@ -184,8 +185,8 @@ model Student {
 }
 
 model InternshipPreference {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
-  studentId String  @unique @db.ObjectId
+  id        String  @id @default(uuid())
+  studentId String  @unique
   student   Student @relation(fields: [studentId], references: [id])
 
   preferredFields        String[] // Array of preferred industry fields
@@ -222,14 +223,14 @@ enum Category {
 
 // Batch Management (Simplified)
 model Batch {
-  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  id               String            @id @default(uuid())
   name             String            @unique // e.g., "2023-26"
   isActive         Boolean           @default(true)
   students         Student[]
   classAssignments ClassAssignment[]
   createdAt        DateTime          @default(now())
   Institution      Institution?      @relation(fields: [institutionId], references: [id])
-  institutionId    String?           @db.ObjectId
+  institutionId    String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -238,8 +239,8 @@ model Batch {
 
 // Document Management (Simplified)
 model Document {
-  id        String       @id @default(auto()) @map("_id") @db.ObjectId
-  studentId String       @db.ObjectId
+  id        String       @id @default(uuid())
+  studentId String
   type      DocumentType
   fileName  String
   fileUrl   String
@@ -260,7 +261,7 @@ enum DocumentType {
 }
 
 model FeeStructure {
-  id                String          @id @default(auto()) @map("_id") @db.ObjectId
+  id                String          @id @default(uuid())
   admissionType     AdmissionType // FIRST_YEAR or LEET
   scholarshipScheme ScholarshipType
   semesterNumber    Int // 1-6
@@ -274,7 +275,7 @@ model FeeStructure {
   fees              Fee[]
   students          Student[]
   Institution       Institution?    @relation(fields: [institutionId], references: [id])
-  institutionId     String?         @db.ObjectId
+  institutionId     String?
 
   // Unique constraint to prevent duplicates
   @@unique([admissionType, scholarshipScheme, semesterNumber])
@@ -287,10 +288,10 @@ model FeeStructure {
 // Fee Management (Simplified)
 
 model Fee {
-  id             String        @id @default(auto()) @map("_id") @db.ObjectId
-  studentId      String        @db.ObjectId
-  semesterId     String        @db.ObjectId
-  feeStructureId String?       @db.ObjectId
+  id             String        @id @default(uuid())
+  studentId      String
+  semesterId     String
+  feeStructureId String?
   amountDue      Float
   amountPaid     Float         @default(0)
   dueDate        DateTime
@@ -301,7 +302,7 @@ model Fee {
   Semester       Semester      @relation(fields: [semesterId], references: [id])
   FeeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id])
   Institution    Institution?  @relation(fields: [institutionId], references: [id])
-  institutionId  String?       @db.ObjectId
+  institutionId  String?
 
   // Performance Indexes
   @@index([studentId])
@@ -320,8 +321,8 @@ enum FeeStatus {
 }
 
 model Notification {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String   @id @default(uuid())
+  userId    String
   title     String
   body      String
   type      String?
@@ -339,8 +340,8 @@ model Notification {
 }
 
 model NotificationSettings {
-  id            String  @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String  @unique @db.ObjectId
+  id            String  @id @default(uuid())
+  userId        String  @unique
   assignments   Boolean @default(true)
   attendance    Boolean @default(true)
   examSchedules Boolean @default(true)
@@ -358,9 +359,9 @@ model NotificationSettings {
 // Authentication (Token Management)
 
 model BlacklistedToken {
-  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  id                 String   @id @default(uuid())
   token              String   @unique
-  userId             String?  @db.ObjectId
+  userId             String?
   reason             String?
   isFullInvalidation Boolean  @default(false)
   expiresAt          DateTime
@@ -372,14 +373,14 @@ model BlacklistedToken {
 
 // Scholarship (Simplified)
 model Scholarship {
-  id            String             @id @default(auto()) @map("_id") @db.ObjectId
+  id            String             @id @default(uuid())
   type          ScholarshipType
   amount        Float
   status        ScholarshipStatus?
   createdAt     DateTime           @default(now())
   students      Student[] // 1 scholarship has many students
   Institution   Institution?       @relation(fields: [institutionId], references: [id])
-  institutionId String?            @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -406,14 +407,14 @@ enum ScholarshipStatus {
 // Examination Management (Simplified)
 
 model Semester {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  id            String       @id @default(uuid())
   //name     String // e.g., "Semester 1"
   number        Int // e.g., 1, 2, 3, etc.
   results       ExamResult[]
   isActive      Boolean      @default(true)
   fees          Fee[]
   Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?      @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -422,7 +423,7 @@ model Semester {
 }
 
 model Subject {
-  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  id             String       @id @default(uuid())
   syllabusYear   Int
   semesterNumber String?
   branchName     String
@@ -434,9 +435,9 @@ model Subject {
   // ← add back‐relation so you can do subject.examResults
   examResults    ExamResult[]
   Institution    Institution? @relation(fields: [institutionId], references: [id])
-  institutionId  String?      @db.ObjectId
+  institutionId  String?
   Branch         Branch?      @relation(fields: [branchId], references: [id])
-  branchId       String?      @db.ObjectId
+  branchId       String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -446,10 +447,10 @@ model Subject {
 }
 
 model ExamResult {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  studentId  String   @db.ObjectId
-  semesterId String   @db.ObjectId
-  subjectId  String   @db.ObjectId
+  id         String   @id @default(uuid())
+  studentId  String
+  semesterId String
+  subjectId  String
   marks      Float
   maxMarks   Float    @default(100)
   createdAt  DateTime @default(now())
@@ -467,8 +468,8 @@ model ExamResult {
 // Placement Management (Simplified)
 
 model Placement {
-  id            String          @id @default(auto()) @map("_id") @db.ObjectId
-  studentId     String          @db.ObjectId // This is your foreign key
+  id            String          @id @default(uuid())
+  studentId     String // This is your foreign key
   student       Student         @relation(fields: [studentId], references: [id]) // Add this relation field
   companyName   String
   jobRole       String
@@ -477,7 +478,7 @@ model Placement {
   status        PlacementStatus @default(OFFERED)
   createdAt     DateTime        @default(now())
   Institution   Institution?    @relation(fields: [institutionId], references: [id])
-  institutionId String?         @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([studentId])
@@ -494,46 +495,19 @@ enum PlacementStatus {
   JOINED
 }
 
-// Events Management (Simplified)
-
-// UNUSED - Event management feature not implemented
-// model Event {
-//     id            String       @id @default(auto()) @map("_id") @db.ObjectId
-//     title         String
-//     description   String
-//     eventType     String
-//     startDate     DateTime
-//     venue         String
-//     isActive      Boolean      @default(true)
-//     createdAt     DateTime     @default(now())
-//     Institution   Institution? @relation(fields: [institutionId], references: [id])
-//     institutionId String?      @db.ObjectId
-// }
-
-// UNUSED - Event registration feature not implemented
-// model EventRegistration {
-//     id             String    @id @default(auto()) @map("_id") @db.ObjectId
-//     eventId        String    @db.ObjectId
-//     studentId      String    @db.ObjectId
-//     attended       Boolean?
-//     attendanceDate DateTime?
-//     notes          String?
-//     createdAt      DateTime  @default(now())
-// }
-
 // Teacher Assignment (Simplified)
 
 model ClassAssignment {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
-  teacherId     String       @db.ObjectId
-  batchId       String       @db.ObjectId
+  id            String       @id @default(uuid())
+  teacherId     String
+  batchId       String
   section       String?
   academicYear  String?
   isActive      Boolean      @default(true)
   Batch         Batch        @relation(fields: [batchId], references: [id])
   teacher       User         @relation(fields: [teacherId], references: [id])
   Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?      @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([teacherId])
@@ -545,7 +519,7 @@ model ClassAssignment {
 
 // Institution Model
 model Institution {
-  id        String          @id @default(auto()) @map("_id") @db.ObjectId
+  id        String          @id @default(uuid())
   code      String?         @unique // The unique code for the institution (e.g., "INST001", "MAIN_CAMPUS")
   name      String? // Optional: Full name of the institution
   shortName String?
@@ -589,15 +563,11 @@ model Institution {
   scholarships     Scholarship[] // Assuming scholarship definitions are per-institution
   semesters        Semester[] // Semesters belong to an institution's academic structure
   subjects         Subject[] // Subjects are defined within an institution/program
-  // events           Event[] // UNUSED - Event management feature not implemented
   classAssignments ClassAssignment[] // Assignments happen within an institution
   auditLogs        AuditLog[] // Audit logs should track the institution context
   calendars        Calendar[] // Calendars are institution-specific
   notices          Notice[] // Notices are issued by an institution
 
-  // Note: Models like Student, Fee, Document, ExamResult, Placement, EventRegistration
-  // will likely be linked indirectly via their parent (e.g., Student via User or directly,
-  // Fee via Student, Document via Student, etc.)
   Student    Student[]
   Fee        Fee[]
   placements Placement[]
@@ -617,8 +587,8 @@ model Institution {
 }
 
 model InstitutionSettings {
-  id            String      @id @default(auto()) @map("_id") @db.ObjectId
-  institutionId String      @unique @db.ObjectId
+  id            String      @id @default(uuid())
+  institutionId String      @unique
   institution   Institution @relation(fields: [institutionId], references: [id])
 
   // Academic Settings
@@ -661,15 +631,15 @@ enum InstitutionType {
 // =============================================
 
 model Branch {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String  @id @default(uuid())
   name      String
   shortName String
   code      String  @unique
   duration  Int // Duration in years
   isActive  Boolean @default(true)
 
-  institutionId String      @db.ObjectId
-  institution   Institution @relation(fields: [institutionId], references: [id])
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
 
   students Student[]
   subjects Subject[]
@@ -681,15 +651,15 @@ model Branch {
 }
 
 model Department {
-  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  id        String  @id @default(uuid())
   name      String
   shortName String?
   code      String  @unique
-  hodId     String? @db.ObjectId // Head of Department
+  hodId     String? // Head of Department
   isActive  Boolean @default(true)
 
-  institutionId String      @db.ObjectId
-  institution   Institution @relation(fields: [institutionId], references: [id])
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id])
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -700,14 +670,14 @@ model Department {
 // Audit Log (Basic)
 
 model AuditLog {
-  id         String      @id @default(auto()) @map("_id") @db.ObjectId
+  id         String      @id @default(uuid())
   // Core Tracking Information
   entityType String // e.g., "Student", "Internship", "InternshipApplication", "Industry"
-  entityId   String?     @db.ObjectId // ID of the affected entity
+  entityId   String? // ID of the affected entity
   action     AuditAction // Standardized actions
 
   // User Context
-  userId   String? @db.ObjectId
+  userId   String?
   user     User?   @relation("AuditUser", fields: [userId], references: [id])
   userRole Role // Role of the user performing the action
   userName String? // Cache user name for quick reference
@@ -724,7 +694,7 @@ model AuditLog {
 
   timestamp     DateTime     @default(now())
   Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?      @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([userId])
@@ -877,14 +847,14 @@ enum AuditSeverity {
 }
 
 model Calendar {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  id            String       @id @default(uuid())
   title         String
   startDate     DateTime?
   endDate       DateTime?
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?      @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -893,13 +863,13 @@ model Calendar {
 }
 
 model Notice {
-  id            String       @id @default(auto()) @map("_id") @db.ObjectId
+  id            String       @id @default(uuid())
   title         String
   message       String
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?      @db.ObjectId
+  institutionId String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -912,16 +882,16 @@ model Notice {
 // =============================================
 
 model MentorAssignment {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  studentId String  @db.ObjectId
+  studentId String
   student   Student @relation(fields: [studentId], references: [id])
-  mentorId  String  @db.ObjectId
+  mentorId  String
   mentor    User    @relation("AssignedMentor", fields: [mentorId], references: [id])
 
   // Assignment tracking
-  assignedBy       String   @db.ObjectId
+  assignedBy       String
   assignedByUser   User     @relation("AssignedBy", fields: [assignedBy], references: [id])
   assignmentDate   DateTime @default(now())
   assignmentReason String?
@@ -929,7 +899,7 @@ model MentorAssignment {
   // Status
   isActive           Boolean   @default(true)
   deactivatedAt      DateTime?
-  deactivatedBy      String?   @db.ObjectId
+  deactivatedBy      String?
   deactivationReason String?
 
   // Context
@@ -939,7 +909,7 @@ model MentorAssignment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  userId    String?  @db.ObjectId
+  userId    String?
 
   // Note: Uniqueness of active assignment per student is enforced in application code
   // (by deactivating existing assignments before creating new ones)
@@ -953,10 +923,10 @@ model MentorAssignment {
 }
 
 model ComplianceRecord {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  studentId String  @db.ObjectId
+  studentId String
   student   Student @relation(fields: [studentId], references: [id])
 
   // Compliance tracking
@@ -969,7 +939,7 @@ model ComplianceRecord {
   lastVisitDate   DateTime?
   nextVisitDue    DateTime?
 
-  // Feedback compliance  
+  // Feedback compliance
   requiredFeedbacks  Int?      @default(0)
   completedFeedbacks Int?      @default(0)
   lastFeedbackDate   DateTime?
@@ -982,7 +952,7 @@ model ComplianceRecord {
   actionRequired  String?
 
   // Review tracking
-  reviewedBy     String?   @db.ObjectId
+  reviewedBy     String?
   reviewedAt     DateTime?
   nextReviewDate DateTime?
 
@@ -1002,8 +972,8 @@ model ComplianceRecord {
 
 // Industry/Company Profile
 model Industry {
-  id     String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @unique @db.ObjectId
+  id     String @id @default(uuid())
+  userId String @unique
   user   User   @relation(fields: [userId], references: [id])
 
   // Company Information
@@ -1038,15 +1008,15 @@ model Industry {
   // Approval Status
   isVerified Boolean   @default(false)
   verifiedAt DateTime?
-  verifiedBy String?   @db.ObjectId
+  verifiedBy String?
   isApproved Boolean   @default(false)
   approvedAt DateTime?
-  approvedBy String?   @db.ObjectId
+  approvedBy String?
 
   referralApplications ReferralApplication[] @relation("IndustryReferralApplications")
   approvedReferrals    ApprovedReferral[]    @relation("IndustryApprovedReferrals")
 
-  referredById  String?   @db.ObjectId
+  referredById  String?
   referredBy    User?     @relation("IndustryReferredBy", fields: [referredById], references: [id])
   referralDate  DateTime? // When the referral was made
   referralNotes String? // Optional notes about the referral
@@ -1058,7 +1028,7 @@ model Industry {
   industryRequests    IndustryRequest[]
   grievances          Grievance[]
   // Institution context
-  institutionId       String?              @db.ObjectId
+  institutionId       String?
   Institution         Institution?         @relation(fields: [institutionId], references: [id])
 
   createdAt DateTime @default(now())
@@ -1078,7 +1048,7 @@ model Industry {
 
 // Core Internship Model
 model Internship {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Basic Information
   title               String
@@ -1118,7 +1088,7 @@ model Internship {
   isActive           Boolean          @default(true)
 
   // Relations
-  industryId String   @db.ObjectId
+  industryId String
   industry   Industry @relation(fields: [industryId], references: [id])
 
   applications     InternshipApplication[]
@@ -1127,7 +1097,7 @@ model Internship {
   grievances       Grievance[]
 
   // Institution context
-  institutionId String?      @db.ObjectId
+  institutionId String?
   Institution   Institution? @relation(fields: [institutionId], references: [id])
 
   createdAt DateTime @default(now())
@@ -1147,13 +1117,13 @@ model Internship {
 
 // Student Internship Application
 model InternshipApplication {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  studentId String  @db.ObjectId
+  studentId String
   student   Student @relation(fields: [studentId], references: [id])
 
-  internshipId String?     @db.ObjectId
+  internshipId String?
   internship   Internship? @relation(fields: [internshipId], references: [id])
 
   // Application Details
@@ -1178,10 +1148,10 @@ model InternshipApplication {
   completionDate DateTime?
 
   // Mentor Assignment
-  mentorId         String?   @db.ObjectId
+  mentorId         String?
   mentor           User?     @relation("StudentMentor", fields: [mentorId], references: [id])
   mentorAssignedAt DateTime?
-  mentorAssignedBy String?   @db.ObjectId // Principal/Admin who assigned
+  mentorAssignedBy String? // Principal/Admin who assigned
 
   // Self-Identified Internship Fields
   isSelfIdentified Boolean @default(false)
@@ -1257,19 +1227,19 @@ model InternshipApplication {
 
 // Monthly Feedback from Industry
 model MonthlyFeedback {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  applicationId String                @db.ObjectId
+  applicationId String
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
-  industryId String?   @db.ObjectId
+  industryId String?
   industry   Industry? @relation(fields: [industryId], references: [id])
 
-  studentId String?  @db.ObjectId
+  studentId String?
   student   Student? @relation(fields: [studentId], references: [id])
 
-  internshipId String?     @db.ObjectId
+  internshipId String?
   internship   Internship? @relation(fields: [internshipId], references: [id])
 
   //student monthly feedback
@@ -1301,7 +1271,7 @@ model MonthlyFeedback {
 
   // Submission Details
   submittedAt DateTime @default(now())
-  submittedBy String   @db.ObjectId // Industry user who submitted
+  submittedBy String // Industry user who submitted
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1320,13 +1290,13 @@ model MonthlyFeedback {
 
 // Student Monthly Report Model
 model MonthlyReport {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  applicationId String                @db.ObjectId
+  applicationId String
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
-  studentId String  @db.ObjectId
+  studentId String
   student   Student @relation(fields: [studentId], references: [id])
 
   // Report Period
@@ -1342,13 +1312,13 @@ model MonthlyReport {
   submittedAt DateTime?
 
   // Review Details (optional - for mentor/faculty review)
-  reviewedBy     String?   @db.ObjectId
+  reviewedBy     String?
   reviewedAt     DateTime?
   reviewComments String?
 
   // Approval
   isApproved Boolean   @default(false)
-  approvedBy String?   @db.ObjectId
+  approvedBy String?
   approvedAt DateTime?
 
   // Submission Window (1st-10th of next month)
@@ -1386,10 +1356,10 @@ model MonthlyReport {
 
 // Completion Feedback (from both Student and Industry)
 model CompletionFeedback {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  applicationId String                @unique @db.ObjectId
+  applicationId String                @unique
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   // Feedback from Student
@@ -1414,7 +1384,7 @@ model CompletionFeedback {
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
   Industry   Industry? @relation(fields: [industryId], references: [id])
-  industryId String?   @db.ObjectId
+  industryId String?
 
   // Performance Indexes
   @@index([industryId])
@@ -1424,17 +1394,17 @@ model CompletionFeedback {
 
 // Faculty Visit Log
 model FacultyVisitLog {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Relations
-  applicationId String                @db.ObjectId
+  applicationId String
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   // internshipId is optional for self-identified internships
-  internshipId String?     @db.ObjectId
+  internshipId String?
   internship   Internship? @relation(fields: [internshipId], references: [id])
 
-  facultyId String? @db.ObjectId
+  facultyId String?
   faculty   User?   @relation("FacultyVisits", fields: [facultyId], references: [id])
 
   //location of visit
@@ -1494,7 +1464,7 @@ model FacultyVisitLog {
   attendeesList  String[] // Names of people met during visit
 
   // Administrative
-  reportSubmittedTo String?   @db.ObjectId // Principal/Admin
+  reportSubmittedTo String? // Principal/Admin
   followUpRequired  Boolean   @default(false)
   nextVisitDate     DateTime?
 
@@ -1524,7 +1494,7 @@ model FacultyVisitLog {
 
 // State Directorate Analytics/Reports
 model StateReport {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   reportType        ReportType
   reportCategory    StateReportCategory?
@@ -1548,7 +1518,7 @@ model StateReport {
   // Performance metrics
   applicationToPlacementRatio Float?
   placementRate               Float? // Percentage
-  completionRate              Float? // Percentage  
+  completionRate              Float? // Percentage
   industryParticipationRate   Float? // Percentage
   averageStipend              Float?
   medianStipend               Float?
@@ -1566,7 +1536,7 @@ model StateReport {
   // File References
   reportFileUrl       String?
   generatedAt         DateTime @default(now())
-  generatedBy         String   @db.ObjectId
+  generatedBy         String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1576,7 +1546,7 @@ model StateReport {
 
 // Fee Reports Model
 model FeeReport {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   reportType        FeeReportType
   reportPeriod      String // e.g., "Q1 2024", "Annual 2024", "Monthly March 2024"
@@ -1625,7 +1595,7 @@ model FeeReport {
   // File References
   reportFileUrl String?
   generatedAt   DateTime @default(now())
-  generatedBy   String   @db.ObjectId
+  generatedBy   String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1638,7 +1608,7 @@ model FeeReport {
 // =============================================
 
 model IndustryRequest {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Request details
   requestType     IndustryRequestType
@@ -1649,7 +1619,7 @@ model IndustryRequest {
   expectedOutcome String?
 
   // Target industry
-  industryId String?   @db.ObjectId
+  industryId String?
   industry   Industry? @relation(fields: [industryId], references: [id])
 
   // Industry criteria (if no specific industry targeted)
@@ -1658,18 +1628,18 @@ model IndustryRequest {
   preferredCompanySize CompanySize?
 
   // NEW: Referred By fields
-  referredById          String?              @db.ObjectId
+  referredById          String?
   referredByType        ReferredByType?
   referredBy            User?                @relation("IndustryRequestReferredBy", fields: [referredById], references: [id])
   referralDate          DateTime?
   referralNotes         String?
-  referralApplicationId String?              @db.ObjectId
+  referralApplicationId String?
   referralApplication   ReferralApplication? @relation("RequestReferral", fields: [referralApplicationId], references: [id])
 
   // Request context
-  requestedBy     String      @db.ObjectId
+  requestedBy     String
   requestedByUser User        @relation("RequestSender", fields: [requestedBy], references: [id])
-  institutionId   String      @db.ObjectId
+  institutionId   String
   institution     Institution @relation(fields: [institutionId], references: [id])
 
   // Timeline
@@ -1684,7 +1654,7 @@ model IndustryRequest {
   responseAttachments String[] // URLs to response documents
 
   // Internal processing
-  assignedTo       String? @db.ObjectId // Staff member handling this request
+  assignedTo       String? // Staff member handling this request
   internalNotes    String?
   followUpRequired Boolean @default(false)
 
@@ -1708,7 +1678,7 @@ enum ReferredByType {
 
 // New model for referral applications
 model ReferralApplication {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Application Details
   title          String
@@ -1717,7 +1687,7 @@ model ReferralApplication {
   targetAudience String[] // e.g., ["STUDENTS", "FACULTY", "INSTITUTIONS"]
 
   // Applicant Information
-  industryId String   @db.ObjectId
+  industryId String
   industry   Industry @relation("IndustryReferralApplications", fields: [industryId], references: [id])
 
   // Application Content
@@ -1731,19 +1701,19 @@ model ReferralApplication {
   applicationDate DateTime                  @default(now())
 
   // Review Process
-  reviewedBy     String?   @db.ObjectId
+  reviewedBy     String?
   reviewer       User?     @relation("ReferralReviewer", fields: [reviewedBy], references: [id])
   reviewedAt     DateTime?
   reviewComments String?
 
   // Approval Details
-  approvedBy    String?   @db.ObjectId
+  approvedBy    String?
   approver      User?     @relation("ReferralApprover", fields: [approvedBy], references: [id])
   approvedAt    DateTime?
   approvalNotes String?
 
   // Rejection Details
-  rejectedBy      String?   @db.ObjectId
+  rejectedBy      String?
   rejector        User?     @relation("ReferralRejector", fields: [rejectedBy], references: [id])
   rejectedAt      DateTime?
   rejectionReason String?
@@ -1757,7 +1727,7 @@ model ReferralApplication {
   maxUsageLimit Int? // Optional limit on how many times it can be used
 
   // Institution Context
-  institutionId String      @db.ObjectId
+  institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id])
 
   // Relations
@@ -1772,10 +1742,10 @@ model ReferralApplication {
 
 // New model for approved referrals that can be used
 model ApprovedReferral {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Source Application
-  applicationId String              @unique @db.ObjectId
+  applicationId String              @unique
   application   ReferralApplication @relation(fields: [applicationId], references: [id])
 
   // Referral Details
@@ -1785,7 +1755,7 @@ model ApprovedReferral {
   referralType ReferralType
 
   // Industry Information
-  industryId String   @db.ObjectId
+  industryId String
   industry   Industry @relation("IndustryApprovedReferrals", fields: [industryId], references: [id])
 
   // Usage Controls
@@ -2012,21 +1982,21 @@ enum StateReportCategory {
 
 // Student Grievance Model
 model Grievance {
-  id                     String            @id @default(auto()) @map("_id") @db.ObjectId
-  studentId              String            @db.ObjectId
+  id                     String            @id @default(uuid())
+  studentId              String
   student                Student           @relation(fields: [studentId], references: [id])
   title                  String // Changed from 'subject' to match frontend
   category               GrievanceCategory
   description            String
   severity               GrievancePriority @default(MEDIUM) // Changed from 'priority' to match frontend
   status                 GrievanceStatus   @default(PENDING)
-  internshipId           String?           @db.ObjectId
+  internshipId           String?
   internship             Internship?       @relation(fields: [internshipId], references: [id])
-  industryId             String?           @db.ObjectId
+  industryId             String?
   industry               Industry?         @relation(fields: [industryId], references: [id])
-  facultySupervisorId    String?           @db.ObjectId
+  facultySupervisorId    String?
   facultySupervisor      User?             @relation("GrievanceFacultySupervisor", fields: [facultySupervisorId], references: [id])
-  assignedToId           String?           @db.ObjectId
+  assignedToId           String?
   assignedTo             User?             @relation("GrievanceAssignedTo", fields: [assignedToId], references: [id])
   actionRequested        String? // What student wants to happen
   preferredContactMethod String? // EMAIL, PHONE, IN_PERSON
@@ -2040,7 +2010,7 @@ model Grievance {
   // Escalation tracking
   escalationLevel   EscalationLevel @default(MENTOR) // Current escalation level
   escalationHistory Json[]          @default([]) // Array of escalation records
-  escalatedById     String?         @db.ObjectId // Last person who escalated
+  escalatedById     String? // Last person who escalated
   escalatedAt       DateTime? // Last escalation timestamp
   escalationCount   Int             @default(0) // Number of times escalated
   previousAssignees String[]        @default([]) // Track all previous assignees
@@ -2106,20 +2076,20 @@ enum EscalationLevel {
 
 // Track all status changes for grievances
 model GrievanceStatusHistory {
-  id          String    @id @default(auto()) @map("_id") @db.ObjectId
-  grievanceId String    @db.ObjectId
+  id          String    @id @default(uuid())
+  grievanceId String
   grievance   Grievance @relation(fields: [grievanceId], references: [id], onDelete: Cascade)
 
   fromStatus GrievanceStatus?
   toStatus   GrievanceStatus
 
   // Who made this change
-  changedById String @db.ObjectId
+  changedById String
   changedBy   User   @relation(fields: [changedById], references: [id])
 
   // Escalation tracking
   escalationLevel EscalationLevel?
-  escalatedToId   String?          @db.ObjectId
+  escalatedToId   String?
 
   // Additional context
   remarks String?
@@ -2156,10 +2126,10 @@ enum TechnicalQueryPriority {
 }
 
 model TechnicalQuery {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Who raised the query
-  userId String @db.ObjectId
+  userId String
   user   User   @relation(fields: [userId], references: [id])
 
   // Core content
@@ -2175,7 +2145,7 @@ model TechnicalQuery {
   resolution String?
 
   // Context
-  institutionId String?      @db.ObjectId
+  institutionId String?
   Institution   Institution? @relation(fields: [institutionId], references: [id])
 
   createdAt DateTime @default(now())
@@ -2215,12 +2185,12 @@ enum SupportTicketPriority {
 
 // Support Ticket - Main ticket model for help requests
 model SupportTicket {
-  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  id           String @id @default(uuid())
   ticketNumber String @unique // Format: SUP-YYYYMMDD-XXXX
 
   // Submitter information
-  submittedById  String  @db.ObjectId
-  submittedBy    User    @relation("TicketSubmitter", fields: [submittedById], references: [id])
+  submittedById  String
+  submittedBy    User   @relation("TicketSubmitter", fields: [submittedById], references: [id])
   submitterRole  Role
   submitterName  String // Cached for quick reference
   submitterEmail String?
@@ -2237,29 +2207,29 @@ model SupportTicket {
   statusHistory Json[]              @default([]) // Track status changes
 
   // Assignment
-  assignedToId String?   @db.ObjectId
+  assignedToId String?
   assignedTo   User?     @relation("TicketAssignee", fields: [assignedToId], references: [id])
   assignedAt   DateTime?
-  assignedBy   String?   @db.ObjectId
+  assignedBy   String?
 
   // Resolution
   resolution     String?
   resolvedAt     DateTime?
-  resolvedById   String?   @db.ObjectId
+  resolvedById   String?
   closedAt       DateTime?
-  closedById     String?   @db.ObjectId
+  closedById     String?
   closureRemarks String?
 
   // Responses/Thread
   responses SupportResponse[]
 
   // Context
-  institutionId String?      @db.ObjectId
+  institutionId String?
   institution   Institution? @relation(fields: [institutionId], references: [id])
 
   // Metadata
   lastResponseAt   DateTime?
-  lastResponseById String?   @db.ObjectId
+  lastResponseById String?
   responseCount    Int       @default(0)
 
   createdAt DateTime @default(now())
@@ -2280,12 +2250,12 @@ model SupportTicket {
 
 // Support Response - Conversation thread for tickets
 model SupportResponse {
-  id       String        @id @default(auto()) @map("_id") @db.ObjectId
-  ticketId String        @db.ObjectId
+  id       String        @id @default(uuid())
+  ticketId String
   ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
   // Responder info
-  responderId   String @db.ObjectId
+  responderId   String
   responder     User   @relation("ResponseAuthor", fields: [responderId], references: [id])
   responderRole Role
   responderName String // Cached for quick reference
@@ -2308,7 +2278,7 @@ model SupportResponse {
 
 // FAQ Article - Knowledge base articles
 model FAQArticle {
-  id String @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Content
   title    String
@@ -2324,10 +2294,10 @@ model FAQArticle {
   // Publishing
   isPublished Boolean   @default(false)
   publishedAt DateTime?
-  publishedBy String?   @db.ObjectId
+  publishedBy String?
 
   // Author
-  authorId   String @db.ObjectId
+  authorId   String
   author     User   @relation("FAQAuthor", fields: [authorId], references: [id])
   authorName String // Cached for display
 
@@ -2358,47 +2328,47 @@ model FAQArticle {
 
 // Track all bulk operations for history and reporting
 model BulkJob {
-  id        String        @id @default(auto()) @map("_id") @db.ObjectId
+  id String @id @default(uuid())
 
   // Job identification
-  jobId     String        @unique // BullMQ job ID
-  type      BulkJobType
-  status    BulkJobStatus @default(QUEUED)
+  jobId  String        @unique // BullMQ job ID
+  type   BulkJobType
+  status BulkJobStatus @default(QUEUED)
 
   // File information
-  fileName      String
-  fileSize      Int
-  originalName  String?
+  fileName     String
+  fileSize     Int
+  originalName String?
 
   // Progress tracking
-  totalRows     Int       @default(0)
-  processedRows Int       @default(0)
-  successCount  Int       @default(0)
-  failedCount   Int       @default(0)
-  progress      Int       @default(0) // 0-100 percentage
+  totalRows     Int @default(0)
+  processedRows Int @default(0)
+  successCount  Int @default(0)
+  failedCount   Int @default(0)
+  progress      Int @default(0) // 0-100 percentage
 
   // Results (stored as JSON for flexibility)
-  errorReport   Json?     // Array of failed rows with reasons
-  successReport Json?     // Array of created records summary
-  warnings      Json?     // Array of warnings
+  errorReport   Json? // Array of failed rows with reasons
+  successReport Json? // Array of created records summary
+  warnings      Json? // Array of warnings
 
   // Timing
-  queuedAt      DateTime  @default(now())
-  startedAt     DateTime?
-  completedAt   DateTime?
-  processingTime Int?     // In milliseconds
+  queuedAt       DateTime  @default(now())
+  startedAt      DateTime?
+  completedAt    DateTime?
+  processingTime Int? // In milliseconds
 
   // Error handling
-  errorMessage  String?   // Overall error message if job failed
-  retryCount    Int       @default(0)
-  maxRetries    Int       @default(3)
+  errorMessage String? // Overall error message if job failed
+  retryCount   Int     @default(0)
+  maxRetries   Int     @default(3)
 
   // Context
-  institutionId String    @db.ObjectId
-  createdById   String    @db.ObjectId
+  institutionId String
+  createdById   String
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Performance Indexes
   @@index([institutionId])
@@ -2433,7 +2403,7 @@ enum BulkJobStatus {
 
 // Saved Report Templates - Users can save report configurations for reuse
 model ReportTemplate {
-  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  id          String  @id @default(uuid())
   name        String
   reportType  String // e.g., "mentor-student-assignments", "student-directory"
   description String?
@@ -2446,8 +2416,8 @@ model ReportTemplate {
   sortOrder String? // "asc" | "desc"
 
   // Metadata
-  createdBy     String  @db.ObjectId
-  institutionId String? @db.ObjectId
+  createdBy     String
+  institutionId String?
   isPublic      Boolean @default(false) // Share with other users
 
   createdAt DateTime @default(now())
@@ -2458,7 +2428,7 @@ model ReportTemplate {
 
 // Generated Reports - Track generated reports and their outputs
 model GeneratedReport {
-  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  id            String  @id @default(uuid())
   reportType    String
   reportName    String? // Human-readable name
   configuration Json // Full config used to generate
@@ -2472,8 +2442,8 @@ model GeneratedReport {
   generatedAt  DateTime @default(now())
 
   // Metadata
-  generatedBy   String   @db.ObjectId
-  institutionId String?  @db.ObjectId
+  generatedBy   String
+  institutionId String?
   expiresAt     DateTime // Auto-cleanup old reports
 
   status       String  @default("pending") // pending, processing, completed, failed
@@ -2492,7 +2462,7 @@ model GeneratedReport {
 // =============================================
 
 model TokenBlacklist {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(uuid())
   tokenHash String   @unique // SHA-256 hash of the token
   expiresAt DateTime // When the token expires
   createdAt DateTime @default(now())
@@ -2502,8 +2472,8 @@ model TokenBlacklist {
 }
 
 model UserSession {
-  id     String @id @default(auto()) @map("_id") @db.ObjectId
-  userId String @db.ObjectId
+  id     String @id @default(uuid())
+  userId String
   user   User   @relation("UserSessions", fields: [userId], references: [id], onDelete: Cascade)
 
   // Session tracking
@@ -2531,22 +2501,22 @@ model UserSession {
 // =============================================
 
 model BackupRecord {
-  id               String       @id @default(auto()) @map("_id") @db.ObjectId
+  id               String       @id @default(uuid())
   filename         String
   description      String?
-  size             Int          // Size in bytes
-  storageLocations String[]     // ['minio', 'local']
-  minioKey         String?      // Key in MinIO bucket
-  localPath        String?      // Path on local filesystem
+  size             Int // Size in bytes
+  storageLocations String[] // ['minio', 'local']
+  minioKey         String? // Key in MinIO bucket
+  localPath        String? // Path on local filesystem
   status           BackupStatus @default(COMPLETED)
 
   // Creator tracking
-  createdById      String       @db.ObjectId
-  createdAt        DateTime     @default(now())
+  createdById String
+  createdAt   DateTime @default(now())
 
   // Restore tracking
-  restoredAt       DateTime?
-  restoredById     String?      @db.ObjectId
+  restoredAt   DateTime?
+  restoredById String?
 
   @@index([createdAt])
   @@index([status])
@@ -2561,14 +2531,14 @@ enum BackupStatus {
 }
 
 model BackupSchedule {
-  id             String    @id @default(auto()) @map("_id") @db.ObjectId
+  id             String    @id @default(uuid())
   name           String
-  cronExpression String    // Cron expression for schedule timing
-  storageType    String    // 'minio', 'local', 'both'
+  cronExpression String // Cron expression for schedule timing
+  storageType    String // 'minio', 'local', 'both'
   retentionDays  Int       @default(30)
   isActive       Boolean   @default(true)
   lastRun        DateTime?
-  createdById    String    @db.ObjectId
+  createdById    String
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
@@ -2577,11 +2547,11 @@ model BackupSchedule {
 }
 
 model SystemConfig {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(uuid())
   key       String   @unique
   value     Json
-  category  String   // 'general', 'security', 'features', 'notifications', 'maintenance'
-  updatedBy String?  @db.ObjectId
+  category  String // 'general', 'security', 'features', 'notifications', 'maintenance'
+  updatedBy String?
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 

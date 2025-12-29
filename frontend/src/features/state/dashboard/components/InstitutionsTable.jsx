@@ -11,6 +11,7 @@ import {
   WarningOutlined,
   CheckCircleOutlined,
   BookOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
@@ -274,6 +275,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
           <span className="font-bold text-text-primary text-lg">Institution Performance</span>
           {month && year && (
             <Tag color="blue" className="ml-2 rounded-md border-0 font-medium">
+              <FilterOutlined className="mr-1" />
               {monthName} {year}
             </Tag>
           )}

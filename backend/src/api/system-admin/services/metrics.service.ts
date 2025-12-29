@@ -130,7 +130,7 @@ export class MetricsService {
 
   async getDetailedHealth(): Promise<SystemHealth> {
     const [mongodb, redis, minio] = await Promise.all([
-      this.checkMongoHealth(),
+      this.checkDatabaseHealth(),
       this.checkRedisHealth(),
       this.checkMinioHealth(),
     ]);
@@ -200,10 +200,10 @@ export class MetricsService {
     };
   }
 
-  private async checkMongoHealth(): Promise<ServiceHealth> {
+  private async checkDatabaseHealth(): Promise<ServiceHealth> {
     const start = Date.now();
     try {
-      await this.prisma.$runCommandRaw({ ping: 1 });
+      await this.prisma.$queryRaw`SELECT 1`;
       return {
         status: 'up',
         responseTime: Date.now() - start,
@@ -429,14 +429,14 @@ export class MetricsService {
 
   private async getDatabaseMetrics() {
     try {
-      // Get collection stats
-      const collections = await this.prisma.$runCommandRaw({
-        listCollections: 1,
-      }) as any;
+      // Get table count from PostgreSQL information_schema
+      const tableCountResult = await this.prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*) as count FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      `;
+      const tableCount = Number(tableCountResult[0]?.count || 0);
 
-      const collectionCount = collections?.cursor?.firstBatch?.length || 0;
-
-      // Get counts from key collections
+      // Get counts from key tables
       const [userCount, studentCount, institutionCount, internshipCount] = await Promise.all([
         this.prisma.user.count().catch(() => 0),
         this.prisma.student.count().catch(() => 0),
@@ -446,7 +446,7 @@ export class MetricsService {
 
       return {
         activeConnections: 1, // Prisma manages connection pool
-        totalCollections: collectionCount,
+        totalCollections: tableCount, // PostgreSQL tables count
         totalDocuments: userCount + studentCount + internshipCount,
         totalUsers: userCount,
         totalStudents: studentCount,

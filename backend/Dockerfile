@@ -26,9 +26,9 @@ RUN npm run build
 # Production stage
 FROM node:20.18-alpine AS production
 
-# Install PM2 globally and required tools including MongoDB tools for backup/restore
+# Install PM2 globally and required tools including PostgreSQL client for migrations
 RUN npm install -g pm2 && \
-    apk add --no-cache wget curl libc6-compat mongodb-tools
+    apk add --no-cache wget curl libc6-compat postgresql-client
 
 WORKDIR /app
 

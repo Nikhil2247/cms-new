@@ -232,10 +232,12 @@ const StateDashboard = () => {
         const month = date.getMonth() + 1;
         const year = date.getFullYear();
         dispatch(fetchDashboardStats({ month, year, forceRefresh: true }));
+        dispatch(fetchInstitutionsWithStats({ month, year, forceRefresh: true }));
         dispatch(fetchMonthlyAnalytics({ month, year, forceRefresh: true }));
         message.info(`Filtering data for ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`);
       } else {
         dispatch(fetchDashboardStats({ forceRefresh: true }));
+        dispatch(fetchInstitutionsWithStats({ forceRefresh: true }));
         dispatch(fetchMonthlyAnalytics({ forceRefresh: true }));
       }
     },

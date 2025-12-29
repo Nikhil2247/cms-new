@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Modal, Form, Input, Select, DatePicker, Button, message, Row, Col, Divider, Spin, Switch } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
-import { createPrincipal, updatePrincipal, fetchPrincipalById, fetchInstitutions, clearCurrentPrincipal } from '../store/stateSlice';
+import { createPrincipal, updatePrincipal, fetchPrincipalById, clearCurrentPrincipal } from '../store/stateSlice';
 import dayjs from 'dayjs';
+import { useInstitutions } from '../../shared/hooks/useLookup';
 
 const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
   const isEdit = !!principalId;
@@ -13,15 +14,15 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
   const [dataLoading, setDataLoading] = useState(false);
 
   const { currentPrincipal } = useSelector((state) => state.state);
-  const institutions = useSelector((state) => state.state?.institutions?.list || []);
+
+  // Use global lookup data for institutions
+  const { activeInstitutions, loading: institutionsLoading } = useInstitutions();
 
   useEffect(() => {
     if (open) {
       const loadData = async () => {
         setDataLoading(true);
         try {
-          dispatch(fetchInstitutions({ limit: 1000 }));
-
           if (isEdit && principalId) {
             await dispatch(fetchPrincipalById(principalId));
           }
@@ -105,7 +106,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
       width={800}
       destroyOnHidden
     >
-      {dataLoading ? (
+      {dataLoading || institutionsLoading ? (
         <div className="py-12 text-center">
           <Spin size="large" />
         </div>
@@ -186,7 +187,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
                     (option?.children || '').toLowerCase().includes(input.toLowerCase())
                   }
                 >
-                  {institutions.map(inst => (
+                  {activeInstitutions?.map(inst => (
                     <Select.Option key={inst.id} value={inst.id}>
                       {inst.name}
                     </Select.Option>

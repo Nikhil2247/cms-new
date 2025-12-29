@@ -19,6 +19,7 @@ export { default as NotificationService } from './notification.service';
 export { default as FileService } from './file.service';
 export { default as GrievanceService, grievanceService } from './grievance.service';
 export { default as CredentialsService, credentialsService } from './credentials.service';
+export { default as LookupService, lookupService } from './lookup.service';
 
 // Legacy named exports for backward compatibility
 export { studentService } from './student.service';

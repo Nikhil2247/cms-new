@@ -1,7 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { apiClient } from '../../../services/api';
-import { API_ENDPOINTS } from '../../../utils/constants';
 import principalService from '../../../services/principal.service';
+import { bulkService } from '../../../services/bulk.service';
+import { credentialsService } from '../../../services/credentials.service';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   dashboard: {
@@ -28,16 +29,8 @@ const initialState = {
     loading: false,
     error: null,
   },
-  batches: {
-    list: [],
-    loading: false,
-    error: null,
-  },
-  departments: {
-    list: [],
-    loading: false,
-    error: null,
-  },
+  // Note: batches and departments are now managed globally by lookupSlice
+  // Use useBatches() and useDepartments() hooks from shared/hooks/useLookup
   mentorAssignments: [],
   mentorStats: {
     data: null,
@@ -88,8 +81,7 @@ const initialState = {
     staff: null,
     staffKey: null,
     mentors: null,
-    batches: null,
-    departments: null,
+    // batches and departments removed - use lookupSlice instead
     mentorAssignments: null,
     mentorAssignmentsKey: null,
     mentorStats: null,
@@ -106,25 +98,6 @@ const initialState = {
   },
 };
 
-// Cache duration configuration per endpoint type
-const CACHE_CONFIG = {
-  // Master data - very stable, rarely changes
-  MASTER_DATA: 30 * 60 * 1000, // 30 minutes (batches, departments)
-  // Dashboard stats - frequently updated
-  DASHBOARD: 5 * 60 * 1000, // 5 minutes
-  // Lists with pagination - users expect fresh data
-  LISTS: 3 * 60 * 1000, // 3 minutes (students, staff)
-  // Metrics and analytics - calculated values
-  METRICS: 10 * 60 * 1000, // 10 minutes (compliance, coverage)
-  // Time-sensitive data
-  ALERTS: 2 * 60 * 1000, // 2 minutes (alerts, joining letters)
-  // Default fallback
-  DEFAULT: 5 * 60 * 1000, // 5 minutes
-};
-
-// Legacy constant for backward compatibility
-const CACHE_DURATION = CACHE_CONFIG.DEFAULT;
-
 export const fetchPrincipalDashboard = createAsyncThunk(
   'principal/fetchDashboard',
   async (params, { getState, rejectWithValue }) => {
@@ -132,12 +105,12 @@ export const fetchPrincipalDashboard = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.dashboard;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get(API_ENDPOINTS.PRINCIPAL_DASHBOARD);
-      return response.data;
+      const response = await principalService.getDashboard();
+      return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -171,10 +144,9 @@ export const fetchStudents = createAsyncThunk(
 
       // Use LISTS cache duration - users expect relatively fresh data
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -212,10 +184,9 @@ export const fetchStaff = createAsyncThunk(
 
       // Use LISTS cache duration - users expect relatively fresh data
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -239,7 +210,7 @@ export const fetchMentors = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.mentors;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -255,55 +226,9 @@ export const fetchMentors = createAsyncThunk(
   }
 );
 
-export const fetchBatches = createAsyncThunk(
-  'principal/fetchBatches',
-  async (params, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.principal.lastFetched.batches;
-
-      // Use MASTER_DATA cache duration - batches rarely change
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.MASTER_DATA) {
-        return { cached: true };
-      }
-
-      const response = await apiClient.get('/principal/batches');
-      return response.data;
-    } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-                          error.message ||
-                          'Failed to fetch batches. Please try again.';
-      console.error('Fetch batches error:', error);
-      return rejectWithValue(errorMessage);
-    }
-  }
-);
-
-export const fetchDepartments = createAsyncThunk(
-  'principal/fetchDepartments',
-  async (params, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.principal.lastFetched.departments;
-
-      // Use MASTER_DATA cache duration - departments rarely change
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.MASTER_DATA) {
-        return { cached: true };
-      }
-
-      // Fetch branches/departments directly from the dedicated endpoint
-      const response = await apiClient.get('/principal/branches');
-      const branches = response.data?.data || response.data || [];
-      return { data: branches };
-    } catch (error) {
-      const errorMessage = error.response?.data?.message ||
-                          error.message ||
-                          'Failed to fetch departments. Please try again.';
-      console.error('Fetch departments error:', error);
-      return rejectWithValue(errorMessage);
-    }
-  }
-);
+// Note: fetchBatches and fetchDepartments have been removed
+// These are now handled globally by lookupSlice
+// Use useBatches() and useDepartments() hooks from shared/hooks/useLookup
 
 // Student CRUD
 export const createStudent = createAsyncThunk(
@@ -390,7 +315,7 @@ export const downloadTemplate = createAsyncThunk(
   'principal/downloadTemplate',
   async (type, { rejectWithValue }) => {
     try {
-      const response = await principalService.downloadTemplate(type);
+      const response = await bulkService.downloadTemplate(type);
       return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
@@ -473,8 +398,8 @@ export const removeMentorAssignment = createAsyncThunk(
   'principal/removeMentorAssignment',
   async ({ studentId }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.delete(`/principal/students/${studentId}/mentor`);
-      return { studentId, ...response.data };
+      const response = await principalService.removeMentor(studentId);
+      return { studentId, ...response };
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -492,12 +417,12 @@ export const fetchMentorStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.mentorStats;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
-      const response = await apiClient.get('/principal/mentors/stats');
-      return response.data;
+      const response = await principalService.getMentorStats();
+      return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -512,8 +437,8 @@ export const bulkUnassignMentors = createAsyncThunk(
   'principal/bulkUnassignMentors',
   async ({ studentIds }, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/principal/mentors/bulk-unassign', { studentIds });
-      return response.data;
+      const response = await principalService.bulkUnassignMentors(studentIds);
+      return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -528,8 +453,8 @@ export const autoAssignMentors = createAsyncThunk(
   'principal/autoAssignMentors',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await apiClient.post('/principal/mentors/auto-assign');
-      return response.data;
+      const response = await principalService.autoAssignMentors();
+      return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -541,11 +466,12 @@ export const autoAssignMentors = createAsyncThunk(
 );
 
 // Reset user password (student or staff)
+// Uses credentialsService for centralized credential management
 export const resetUserPassword = createAsyncThunk(
   'principal/resetUserPassword',
   async (userId, { rejectWithValue }) => {
     try {
-      const response = await principalService.resetUserPassword(userId);
+      const response = await credentialsService.resetUserPassword(userId);
       return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
@@ -573,10 +499,9 @@ export const fetchMentorAssignments = createAsyncThunk(
       const lastKey = state.principal.lastFetched.mentorAssignmentsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -600,8 +525,8 @@ export const forceRefreshDashboard = createAsyncThunk(
   'principal/forceRefreshDashboard',
   async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await apiClient.get(API_ENDPOINTS.PRINCIPAL_DASHBOARD);
-      return response.data;
+      const response = await principalService.getDashboard();
+      return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
                           error.message ||
@@ -653,7 +578,7 @@ export const fetchMentorCoverage = createAsyncThunk(
       const lastFetched = state.principal.lastFetched.mentorCoverage;
 
       // Use METRICS cache duration - calculated analytics data
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.METRICS) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -678,7 +603,7 @@ export const fetchComplianceMetrics = createAsyncThunk(
       const lastFetched = state.principal.lastFetched.complianceMetrics;
 
       // Use METRICS cache duration - calculated analytics data
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.METRICS) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -703,7 +628,7 @@ export const fetchAlertsEnhanced = createAsyncThunk(
       const lastFetched = state.principal.lastFetched.alertsEnhanced;
 
       // Use ALERTS cache duration - time-sensitive data
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)) {
         return { cached: true };
       }
 
@@ -728,7 +653,7 @@ export const fetchJoiningLetterStats = createAsyncThunk(
       const lastFetched = state.principal.lastFetched.joiningLetterStats;
 
       // Use ALERTS cache duration - time-sensitive pending items
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)) {
         return { cached: true };
       }
 
@@ -763,10 +688,9 @@ export const fetchJoiningLetters = createAsyncThunk(
 
       // Use ALERTS cache duration - time-sensitive pending items
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)
       ) {
         return { cached: true };
       }
@@ -797,10 +721,9 @@ export const fetchJoiningLetterActivity = createAsyncThunk(
       const lastKey = state.principal.lastFetched.joiningLetterActivityKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)
       ) {
         return { cached: true };
       }
@@ -857,7 +780,7 @@ export const fetchInternshipStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.internshipStats;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -881,7 +804,7 @@ export const fetchFacultyWorkload = createAsyncThunk(
       const state = getState();
       const lastFetched = state.principal.lastFetched.facultyWorkload;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -921,8 +844,7 @@ const principalSlice = createSlice({
       state.students.error = null;
       state.staff.error = null;
       state.mentors.error = null;
-      state.batches.error = null;
-      state.departments.error = null;
+      // batches and departments errors handled by lookupSlice
     },
 
     // Cache invalidation
@@ -933,8 +855,7 @@ const principalSlice = createSlice({
       state.lastFetched.staff = 0;
       state.lastFetched.staffKey = null;
       state.lastFetched.mentors = 0;
-      state.lastFetched.batches = 0;
-      state.lastFetched.departments = 0;
+      // batches and departments cache handled by lookupSlice
       state.lastFetched.mentorAssignments = 0;
       state.lastFetched.mentorAssignmentsKey = null;
       state.lastFetched.joiningLetterActivity = 0;
@@ -1338,39 +1259,8 @@ const principalSlice = createSlice({
         state.mentors.error = action.payload;
       })
 
-      // Batches
-      .addCase(fetchBatches.pending, (state) => {
-        state.batches.loading = true;
-        state.batches.error = null;
-      })
-      .addCase(fetchBatches.fulfilled, (state, action) => {
-        state.batches.loading = false;
-        if (!action.payload.cached) {
-          state.batches.list = action.payload.data || action.payload || [];
-          state.lastFetched.batches = Date.now();
-        }
-      })
-      .addCase(fetchBatches.rejected, (state, action) => {
-        state.batches.loading = false;
-        state.batches.error = action.payload;
-      })
-
-      // Departments
-      .addCase(fetchDepartments.pending, (state) => {
-        state.departments.loading = true;
-        state.departments.error = null;
-      })
-      .addCase(fetchDepartments.fulfilled, (state, action) => {
-        state.departments.loading = false;
-        if (!action.payload.cached) {
-          state.departments.list = action.payload.data || action.payload || [];
-          state.lastFetched.departments = Date.now();
-        }
-      })
-      .addCase(fetchDepartments.rejected, (state, action) => {
-        state.departments.loading = false;
-        state.departments.error = action.payload;
-      })
+      // Note: Batches and Departments extraReducers removed
+      // These are now handled by lookupSlice
 
       // Force Refresh thunks
       .addCase(forceRefreshDashboard.pending, (state) => {
@@ -1652,13 +1542,8 @@ export const selectMentorAssignments = (state) => state.principal.mentorAssignme
 export const selectMentorStats = (state) => state.principal.mentorStats.data;
 export const selectMentorStatsLoading = (state) => state.principal.mentorStats.loading;
 
-// Batch selectors
-export const selectBatches = (state) => state.principal.batches.list;
-export const selectBatchesLoading = (state) => state.principal.batches.loading;
-
-// Department selectors
-export const selectDepartments = (state) => state.principal.departments.list;
-export const selectDepartmentsLoading = (state) => state.principal.departments.loading;
+// Note: Batch and Department selectors have been removed
+// Use useBatches() and useDepartments() hooks from shared/hooks/useLookup
 
 // Last fetched selectors
 export const selectLastFetched = (state) => state.principal.lastFetched;
@@ -1672,9 +1557,7 @@ export const selectAnyLoading = (state) =>
   state.principal.dashboard.loading ||
   state.principal.students.loading ||
   state.principal.staff.loading ||
-  state.principal.mentors.loading ||
-  state.principal.batches.loading ||
-  state.principal.departments.loading;
+  state.principal.mentors.loading;
 
 // Mentor Coverage selectors
 export const selectMentorCoverage = (state) => state.principal.mentorCoverage.data;

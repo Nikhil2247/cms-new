@@ -29,10 +29,12 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 
 import API from "../../../services/api"; // Assuming you have a file that exports an Axios instance or similar
 import Layouts from "../../../components/Layout";
 import { toast } from "react-hot-toast";
+import { useBranches } from "../../shared/hooks/useLookup";
 const { Title, Text } = Typography;
 const { Option } = Select;
 const { TextArea } = Input;
@@ -43,42 +45,12 @@ const PostInternship = () => {
   const [profile, setProfile] = useState(null);
   const navigate = useNavigate();
 
-  const branches = ["CSE", "IT", "ECE", "EE", "ME", "CE", "CHEM", "AUTO"];
-  const branchOptions = branches.map((shortForm) => {
-    let fullName = "";
-    switch (shortForm) {
-      case "CSE":
-        fullName = "Computer Science Engineering";
-        break;
-      case "IT":
-        fullName = "Information Technology";
-        break;
-      case "ECE":
-        fullName = "Electronics Communication Engineering";
-        break;
-      case "EE":
-        fullName = "Electrical Engineering";
-        break;
-      case "ME":
-        fullName = "Mechanical Engineering";
-        break;
-      case "CE":
-        fullName = "Civil Engineering";
-        break;
-      case "CHEM":
-        fullName = "Chemical Engineering";
-        break;
-      case "AUTO":
-        fullName = "Automobile Engineering";
-        break;
-      default:
-        fullName = shortForm;
-    }
-    return {
-      value: shortForm,
-      label: fullName,
-    };
-  });
+  // Use global branch data from lookup slice
+  const { activeBranches, loading: branchesLoading } = useBranches();
+  const branchOptions = activeBranches.map((branch) => ({
+    value: branch.shortName,
+    label: branch.name,
+  }));
 
   const workLocations = [
     { value: "ON_SITE", label: "On-site" },
