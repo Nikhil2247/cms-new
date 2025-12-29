@@ -141,6 +141,13 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
    */
   async handleConnection(client: Socket): Promise<void> {
     try {
+      // Debug: record handshake summary (don't log token contents)
+      const origin = client.handshake.headers.origin || client.handshake.headers?.Origin || 'unknown';
+      const upgrade = client.handshake.headers.upgrade || 'none';
+      const hasAuth = !!client.handshake.auth?.token;
+      const hasQueryToken = !!client.handshake.query?.token;
+      this.logger.debug(`Handshake attempt: id=${client.id}, url=${client.handshake.url || 'n/a'}, origin=${origin}, upgrade=${upgrade}, auth=${hasAuth}, queryToken=${hasQueryToken}`);
+
       const token = this.extractToken(client);
 
       if (!token) {
