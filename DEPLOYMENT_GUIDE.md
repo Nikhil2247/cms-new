@@ -82,8 +82,38 @@ A comprehensive guide to deploy the College Management System using Docker.
 | Frontend | `ghcr.io/nikhil2247/cms-new/frontend` | GitHub Container Registry |
 | Backend | `ghcr.io/nikhil2247/cms-new/backend` | GitHub Container Registry |
 | MongoDB | `mongo:8.0` | Docker Hub |
-| DragonflyDB | `dragonflydb/dragonfly:v1.24.0` | Docker Hub |
+| DragonflyDB | `docker.dragonflydb.io/dragonflydb/dragonfly:v1.24.0` | Docker Hub |
 | MinIO | `minio/minio:latest` | Docker Hub |
+
+### Production compose specifics
+
+To make deployment and troubleshooting easier, here are the exact details used by `docker-compose.prod.yml` in this repository.
+
+| Service | Container name | Host ports | Volumes (inside Compose) | Healthcheck |
+|--------:|:---------------:|:----------:|:------------------------:|:----------- |
+| Frontend | `cms-frontend` | `5173:80` | (no persistent volumes) | `wget --spider http://127.0.0.1:80/health` |
+| Backend | `cms-backend` | `8000:8000` | `backend-uploads:/app/uploads`, `backend-logs:/app/logs` | `wget --spider http://127.0.0.1:8000/health` |
+| MongoDB | `cms-mongodb` | `27017:27017` | `mongodb-data:/data/db`, `mongodb-config:/data/configdb` | `mongosh --quiet ... "db.adminCommand('ping')"` |
+| Dragonfly | `cms-dragonfly` | `6379:6379` | `dragonfly-data:/data` | `redis-cli ping` |
+| MinIO | `cms-minio` | `9000:9000` (API), `9001:9001` (console) | `minio-data:/data` | `curl -f http://localhost:9000/minio/health/live` |
+| MinIO Init | `cms-minio-init` | (no host port) | (no persistent volumes) | runs once to create bucket on startup |
+
+**Network and volumes**
+
+- Docker network name: `cms-prod-network` (Compose uses `cms-network` with driver bridge and `name: cms-prod-network`).
+- Named volumes (created by Compose):
+  - `cms-prod-mongodb-data` (mounted as `mongodb-data`)
+  - `cms-prod-mongodb-config` (mounted as `mongodb-config`)
+  - `cms-prod-dragonfly-data` (mounted as `dragonfly-data`)
+  - `cms-prod-minio-data` (mounted as `minio-data`)
+  - `cms-prod-backend-uploads` (mounted as `backend-uploads`)
+  - `cms-prod-backend-logs` (mounted as `backend-logs`)
+
+**Important notes**
+
+- The backend image runs as user `appuser` inside the container and depends on `mongodb`, `dragonfly`, and the `minio-init` job for startup ordering & readiness.
+- Healthchecks are defined for each service and used by Compose `depends_on` conditions; this helps the backend wait for DB/cache availability.
+- The frontend is served by an internal Nginx at container port `80` and is exposed on host port `5173` by default in the production compose file.
 
 ---
 
