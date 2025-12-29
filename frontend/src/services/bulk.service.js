@@ -117,6 +117,23 @@ export const bulkService = {
     return response.data;
   },
 
+  // Generic template download (used by principal portal)
+  async downloadTemplate(type) {
+    const response = await API.get(`/bulk/templates/${type}`, {
+      responseType: 'blob',
+    });
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `${type}-template.xlsx`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    return response.data;
+  },
+
   // Bulk job tracking
   async getJobs(params = {}) {
     const response = await API.get('/bulk/jobs', { params });

@@ -3,6 +3,7 @@ import { apiClient } from '../../../services/api';
 import { API_ENDPOINTS } from '../../../utils/constants';
 import stateService from '../../../services/state.service';
 import reportService from '../../../services/report.service';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   dashboard: {
@@ -177,9 +178,6 @@ const initialState = {
   },
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 // Async thunks
 export const fetchDashboardStats = createAsyncThunk(
   'state/fetchDashboardStats',
@@ -188,7 +186,7 @@ export const fetchDashboardStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.dashboard;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
@@ -222,10 +220,9 @@ export const fetchInstitutions = createAsyncThunk(
       const lastKey = state.state.lastFetched.institutionsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -254,10 +251,9 @@ export const fetchInstitutionsWithStats = createAsyncThunk(
       const lastKey = state.state.lastFetched.institutionsWithStatsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -289,10 +285,9 @@ export const fetchPrincipals = createAsyncThunk(
       const lastKey = state.state.lastFetched.principalsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -312,7 +307,7 @@ export const fetchReports = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.reports;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true };
       }
 
@@ -444,10 +439,9 @@ export const fetchStaff = createAsyncThunk(
       const lastKey = state.state.lastFetched.staffKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -553,7 +547,7 @@ export const fetchTopPerformers = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.topPerformers;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -573,7 +567,7 @@ export const fetchTopIndustries = createAsyncThunk(
       const lastFetched = state.state.lastFetched.topIndustries;
 
       // Fixed: Use standard cache logic (was inverted before)
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -592,7 +586,7 @@ export const fetchMonthlyAnalytics = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.monthlyAnalytics;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -722,7 +716,7 @@ export const fetchPlacementStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.placementStats;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -741,7 +735,7 @@ export const fetchPlacementTrends = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.placementTrends;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -761,7 +755,7 @@ export const fetchJoiningLetterStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.joiningLetters;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)) {
         return { cached: true };
       }
 
@@ -782,7 +776,7 @@ export const fetchInstituteOverview = createAsyncThunk(
       const lastFetched = state.state.lastFetched.instituteOverview?.[institutionId];
 
       // Return cached data if available and fresh
-      if (lastFetched && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
         return { cached: true, institutionId };
       }
 
@@ -806,7 +800,7 @@ export const fetchInstituteStudents = createAsyncThunk(
                         (status && status !== 'all');
 
       // Return cached data if available, fresh, not loading more, and no active filters
-      if (lastFetched && !forceRefresh && !loadMore && !hasFilters && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!forceRefresh && !loadMore && !hasFilters && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true, institutionId };
       }
 
@@ -837,7 +831,7 @@ export const fetchInstituteCompanies = createAsyncThunk(
       const lastFetched = state.state.lastFetched.instituteCompanies?.[institutionId];
 
       // Return cached data if available, fresh, and no search filter
-      if (lastFetched && !forceRefresh && !search && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!forceRefresh && !search && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true, institutionId };
       }
 
@@ -857,7 +851,7 @@ export const fetchInstituteFacultyPrincipal = createAsyncThunk(
       const lastFetched = state.state.lastFetched.instituteFaculty?.[institutionId];
 
       // Return cached data if available and fresh
-      if (lastFetched && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
         return { cached: true, institutionId };
       }
 
@@ -952,7 +946,7 @@ export const fetchCriticalAlerts = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.criticalAlerts;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)) {
         return { cached: true };
       }
 
@@ -972,7 +966,7 @@ export const fetchActionItems = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.actionItems;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
         return { cached: true };
       }
 
@@ -992,7 +986,7 @@ export const fetchComplianceSummary = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.complianceSummary;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
@@ -1027,10 +1021,9 @@ export const fetchAllCompanies = createAsyncThunk(
       const lastKey = state.state.lastFetched.companiesOverviewKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }

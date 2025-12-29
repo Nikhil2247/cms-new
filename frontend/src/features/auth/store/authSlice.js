@@ -2,12 +2,10 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { authService } from '../services/auth.service';
 import { tokenStorage } from '../../../utils/tokenManager';
 import { RESET_STORE } from '../../../app/store/actions';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const extractToken = (resp) => resp?.access_token || resp?.accessToken || resp?.token || null;
 const extractRefreshToken = (resp) => resp?.refresh_token || resp?.refreshToken || null;
-
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Initial state
 const initialState = {
@@ -77,7 +75,7 @@ export const getCurrentUser = createAsyncThunk(
       const lastFetched = state.auth.lastFetched.user;
 
       // Check cache unless forced refresh
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
         return { cached: true };
       }
 

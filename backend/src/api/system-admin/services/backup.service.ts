@@ -140,7 +140,7 @@ export class BackupService implements OnModuleInit {
 
     // Check database connectivity
     try {
-      await this.prisma.$runCommandRaw({ ping: 1 });
+      await this.prisma.$queryRaw`SELECT 1`;
     } catch (error) {
       throw new BadRequestException('Cannot connect to database. Please check database status.');
     }

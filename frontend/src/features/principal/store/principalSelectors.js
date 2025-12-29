@@ -208,73 +208,9 @@ export const selectMentorsError = createSelector(
   (mentors) => mentors.error || DEFAULT_ERROR
 );
 
-// ============= BATCHES SELECTORS =============
-
-/**
- * Select the entire batches state object
- */
-export const selectBatches = createSelector(
-  [selectPrincipalState],
-  (principal) => principal.batches || DEFAULT_OBJECT
-);
-
-/**
- * Select batches list
- */
-export const selectBatchesList = createSelector(
-  [selectBatches],
-  (batches) => batches.list || DEFAULT_LIST
-);
-
-/**
- * Select batches loading state
- */
-export const selectBatchesLoading = createSelector(
-  [selectBatches],
-  (batches) => batches.loading || DEFAULT_LOADING
-);
-
-/**
- * Select batches error state
- */
-export const selectBatchesError = createSelector(
-  [selectBatches],
-  (batches) => batches.error || DEFAULT_ERROR
-);
-
-// ============= DEPARTMENTS SELECTORS =============
-
-/**
- * Select the entire departments state object
- */
-export const selectDepartments = createSelector(
-  [selectPrincipalState],
-  (principal) => principal.departments || DEFAULT_OBJECT
-);
-
-/**
- * Select departments list
- */
-export const selectDepartmentsList = createSelector(
-  [selectDepartments],
-  (departments) => departments.list || DEFAULT_LIST
-);
-
-/**
- * Select departments loading state
- */
-export const selectDepartmentsLoading = createSelector(
-  [selectDepartments],
-  (departments) => departments.loading || DEFAULT_LOADING
-);
-
-/**
- * Select departments error state
- */
-export const selectDepartmentsError = createSelector(
-  [selectDepartments],
-  (departments) => departments.error || DEFAULT_ERROR
-);
+// ============= BATCHES & DEPARTMENTS SELECTORS =============
+// NOTE: Batches and Departments are now managed by lookupSlice
+// Use useBatches() and useDepartments() hooks from shared/hooks/useLookup
 
 // ============= MENTOR ASSIGNMENTS SELECTORS =============
 
@@ -683,6 +619,7 @@ export const selectStudentsWithMentor = createSelector(
 
 /**
  * Combined loading selector - true if any major operation is loading
+ * Note: Batches and Departments loading now handled by lookupSlice
  */
 export const selectAnyLoading = createSelector(
   [
@@ -690,27 +627,22 @@ export const selectAnyLoading = createSelector(
     selectStudentsLoading,
     selectStaffLoading,
     selectMentorsLoading,
-    selectBatchesLoading,
-    selectDepartmentsLoading,
   ],
   (
     dashboardLoading,
     studentsLoading,
     staffLoading,
-    mentorsLoading,
-    batchesLoading,
-    departmentsLoading
+    mentorsLoading
   ) =>
     dashboardLoading ||
     studentsLoading ||
     staffLoading ||
-    mentorsLoading ||
-    batchesLoading ||
-    departmentsLoading
+    mentorsLoading
 );
 
 /**
  * Combined error selector - returns first non-null error
+ * Note: Batches and Departments errors now handled by lookupSlice
  */
 export const selectFirstError = createSelector(
   [
@@ -718,23 +650,17 @@ export const selectFirstError = createSelector(
     selectStudentsError,
     selectStaffError,
     selectMentorsError,
-    selectBatchesError,
-    selectDepartmentsError,
   ],
   (
     dashboardError,
     studentsError,
     staffError,
-    mentorsError,
-    batchesError,
-    departmentsError
+    mentorsError
   ) =>
     dashboardError ||
     studentsError ||
     staffError ||
     mentorsError ||
-    batchesError ||
-    departmentsError ||
     null
 );
 
@@ -756,6 +682,7 @@ export const selectStaffTotalCount = createSelector(
 
 /**
  * Select summary statistics
+ * Note: Batches and Departments counts should be obtained from lookupSlice
  */
 export const selectSummaryStats = createSelector(
   [
@@ -763,21 +690,15 @@ export const selectSummaryStats = createSelector(
     selectStaffTotalCount,
     selectStudentsWithMentor,
     selectStudentsWithoutMentor,
-    selectBatchesList,
-    selectDepartmentsList,
   ],
   (
     totalStudents,
     totalStaff,
     studentsWithMentor,
-    studentsWithoutMentor,
-    batches,
-    departments
+    studentsWithoutMentor
   ) => ({
     totalStudents,
     totalStaff,
-    totalBatches: batches.length,
-    totalDepartments: departments.length,
     studentsWithMentor: studentsWithMentor.length,
     studentsWithoutMentor: studentsWithoutMentor.length,
     mentorCoveragePercentage: totalStudents > 0

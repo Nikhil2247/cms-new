@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { apiClient } from '../../../services/api';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   notifications: {
@@ -13,9 +14,6 @@ const initialState = {
   sidebarCollapsed: false,
 };
 
-// Cache duration constant
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
 // Async thunks
 export const fetchNotifications = createAsyncThunk(
   'shared/fetchNotifications',
@@ -24,7 +22,7 @@ export const fetchNotifications = createAsyncThunk(
       const state = getState();
       const lastFetched = state.shared.notifications.lastFetched;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)) {
         return { cached: true };
       }
 

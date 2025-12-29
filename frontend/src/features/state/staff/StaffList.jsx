@@ -2,15 +2,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons';
-import { fetchStaff, deleteStaff, resetStaffPassword, fetchInstitutions } from '../store/stateSlice';
+import { fetchStaff, deleteStaff, resetStaffPassword } from '../store/stateSlice';
 import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
+import { useInstitutions } from '../../shared/hooks/useLookup';
 
 const StaffList = () => {
   const { modal } = App.useApp();
   const dispatch = useDispatch();
   const { list: staff, loading, pagination } = useSelector((state) => state.state.staff);
-  const { list: institutions } = useSelector((state) => state.state.institutions);
+
+  // Use global lookup data for institutions
+  const { activeInstitutions } = useInstitutions();
 
   const [searchText, setSearchText] = useState('');
   const [filters, setFilters] = useState({
@@ -37,10 +40,7 @@ const StaffList = () => {
     }));
   }, [dispatch, tableParams.page, tableParams.limit, searchText, filters]);
 
-  useEffect(() => {
-    // Load institutions for filter dropdown
-    dispatch(fetchInstitutions({ limit: 500 }));
-  }, [dispatch]);
+  // Institutions are automatically loaded by useInstitutions hook
 
   useEffect(() => {
     loadStaff();
@@ -358,7 +358,7 @@ const StaffList = () => {
                   showSearch
                   optionFilterProp="children"
                 >
-                  {institutions?.map(inst => (
+                  {activeInstitutions?.map(inst => (
                     <Select.Option key={inst.id} value={inst.id}>
                       {inst.name}
                     </Select.Option>

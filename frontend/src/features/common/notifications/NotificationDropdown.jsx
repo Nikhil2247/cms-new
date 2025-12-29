@@ -59,11 +59,10 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
     return searchNotifications(notifications, searchText);
   }, [notifications, searchText]);
 
-  // Handle view all click - navigate to notifications page
+  // Handle view all click - open drawer instead of navigating
   const handleViewAll = () => {
     setOpen(false);
-    setDrawerOpen(false);
-    navigate('/notifications');
+    setDrawerOpen(true);
   };
 
   // Handle opening drawer
@@ -255,16 +254,6 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
                   onDelete={deleteNotification}
                 />
               ))}
-              <div className="p-6 text-center">
-                <Button 
-                  type="primary" 
-                  block 
-                  onClick={handleViewAll}
-                  className="rounded-xl h-11 bg-blue-600 font-bold shadow-lg shadow-blue-200"
-                >
-                  Go to Inbox
-                </Button>
-              </div>
             </div>
           ) : (
             <div className="py-24 flex flex-col items-center justify-center px-8 text-center">

@@ -1,7 +1,7 @@
 # Docker Compose for CMS - Production
 # All images pinned to stable versions
 # Total Memory Allocation: ~5GB
-# - Backend: 1.5GB | Frontend: 0.5GB | MongoDB: 2GB | Dragonfly: 0.5GB | MinIO: 0.5GB
+# - Backend: 1.5GB | Frontend: 0.5GB | PostgreSQL: 2GB | Dragonfly: 0.5GB | MinIO: 0.5GB
 
 services:
   # ===========================================
@@ -54,8 +54,8 @@ services:
       - NODE_ENV=${NODE_ENV:-production}
       - PORT=8000
       - BACKEND_PORT=8000
-      # Database
-      - DATABASE_URL=${DATABASE_URL:-mongodb://admin:admin123@mongodb:27017/cms?authSource=admin}
+      # Database (PostgreSQL)
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/cms_db?schema=public}
       # Redis/Cache (DragonflyDB)
       - REDIS_URL=${REDIS_URL:-redis://dragonfly:6379}
       - REDIS_HOST=dragonfly
@@ -105,7 +105,7 @@ services:
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs
     depends_on:
-      mongodb:
+      postgres:
         condition: service_healthy
       dragonfly:
         condition: service_healthy
@@ -128,21 +128,22 @@ services:
       start_period: 60s
 
   # ===========================================
-  # MongoDB 7.0 (LTS) - Primary Database (2GB)
+  # PostgreSQL 18 - Primary Database (2GB)
   # ===========================================
-  mongodb:
-    image: mongo:7.0
-    container_name: cms-mongodb
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres
     ports:
-      - "${MONGODB_PORT:-27017}:27017"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-admin123}
-      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-cms}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres123}
+      POSTGRES_DB: ${POSTGRES_DB:-cms_db}
+      # Performance tuning
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
-      - mongodb-data:/data/db
-      - mongodb-config:/data/configdb
-      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - cms-network
     restart: unless-stopped
@@ -153,25 +154,43 @@ services:
         reservations:
           memory: 512M
     healthcheck:
-      test: |
-        mongosh --quiet --eval "
-          try {
-            db.adminCommand('ping');
-            print('MongoDB is healthy');
-            quit(0);
-          } catch(e) {
-            print('MongoDB health check failed: ' + e);
-            quit(1);
-          }
-        "
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cms_db}"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 40s
+      start_period: 30s
     command:
-      - mongod
-      - --bind_ip_all
-      - --wiredTigerCacheSizeGB=1
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=4MB
+      - -c
+      - huge_pages=off
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - max_connections=200
+      - -c
+      - log_statement=none
+      - -c
+      - log_min_duration_statement=1000
 
   # ===========================================
   # DragonflyDB 1.x - Redis-compatible Cache (512MB)
@@ -279,10 +298,8 @@ networks:
     name: cms-network
 
 volumes:
-  mongodb-data:
-    name: cms-mongodb-data
-  mongodb-config:
-    name: cms-mongodb-config
+  postgres-data:
+    name: cms-postgres-data
   dragonfly-data:
     name: cms-dragonfly-data
   minio-data:

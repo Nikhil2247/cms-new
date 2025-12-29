@@ -20,6 +20,7 @@ import dayjs from "dayjs";
 
 import toast from "react-hot-toast";
 import API from "../../services/api";
+import { useBranches } from "../../features/shared/hooks/useLookup";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -29,42 +30,12 @@ const EditInternshipModal = ({ visible, onClose, internship, onSuccess }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
 
-  const branches = ["CSE", "IT", "ECE", "EE", "ME", "CE", "CHEM", "AUTO"];
-  const branchOptions = branches.map((shortForm) => {
-    let fullName = "";
-    switch (shortForm) {
-      case "CSE":
-        fullName = "Computer Science Engineering";
-        break;
-      case "IT":
-        fullName = "Information Technology";
-        break;
-      case "ECE":
-        fullName = "Electronics Communication Engineering";
-        break;
-      case "EE":
-        fullName = "Electrical Engineering";
-        break;
-      case "ME":
-        fullName = "Mechanical Engineering";
-        break;
-      case "CE":
-        fullName = "Civil Engineering";
-        break;
-      case "CHEM":
-        fullName = "Chemical Engineering";
-        break;
-      case "AUTO":
-        fullName = "Automobile Engineering";
-        break;
-      default:
-        fullName = shortForm;
-    }
-    return {
-      value: shortForm,
-      label: fullName,
-    };
-  });
+  // Use global branch data from lookup slice
+  const { activeBranches } = useBranches();
+  const branchOptions = activeBranches.map((branch) => ({
+    value: branch.shortName,
+    label: branch.name,
+  }));
 
   const workLocations = [
     { value: "ON_SITE", label: "On-site" },

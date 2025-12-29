@@ -182,6 +182,16 @@ export const studentService = {
   },
 
   // =====================
+  // Enrollments
+  // =====================
+  async getEnrollments(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/student/enrollments?${queryParams}` : '/student/enrollments';
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // =====================
   // Legacy aliases (for backward compatibility)
   // =====================
   async getMyInternships(params = {}) {

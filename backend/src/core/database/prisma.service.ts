@@ -85,7 +85,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    */
   async isHealthy(): Promise<boolean> {
     try {
-      await this.$runCommandRaw({ ping: 1 });
+      // PostgreSQL health check - simple query
+      await this.$queryRaw`SELECT 1`;
       return true;
     } catch {
       return false;

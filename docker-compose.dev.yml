@@ -1,38 +1,37 @@
 # Docker Compose for Development
-# Runs only infrastructure services (MongoDB, DragonflyDB, MinIO)
+# Runs only infrastructure services (PostgreSQL, DragonflyDB, MinIO)
 # Frontend and Backend run locally for hot-reloading
 
 services:
   # ===========================================
-  # MongoDB 7.0 (LTS)
+  # PostgreSQL 18 - Primary Database
   # ===========================================
-  mongodb:
-    image: mongo:7.0
-    container_name: cms-mongodb-dev
+  postgres:
+    image: postgres:18-alpine
+    container_name: cms-postgres-dev
     ports:
-      - "27017:27017"
+      - "5432:5432"
     environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: cms
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: cms_db
     volumes:
-      - mongodb-dev-data:/data/db
-      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/01-init.js:ro
+      - postgres-dev-data:/var/lib/postgresql/data
+      - ./docker/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     networks:
       - cms-dev-network
     healthcheck:
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cms_db"]
+      interval: 10s
+      timeout: 5s
       retries: 5
-      start_period: 30s
-    command: ["mongod", "--bind_ip_all"]
+      start_period: 10s
 
   # ===========================================
   # DragonflyDB (Redis-compatible)
   # ===========================================
   dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.24.0
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     container_name: cms-dragonfly-dev
     ports:
       - "6379:6379"
@@ -58,7 +57,7 @@ services:
   # MinIO - S3-compatible Object Storage
   # ===========================================
   minio:
-    image: minio/minio:RELEASE.2024-12-18T13-15-44Z
+    image: minio/minio:latest
     container_name: cms-minio-dev
     ports:
       - "9000:9000"
@@ -82,7 +81,7 @@ services:
   # MinIO bucket initialization
   # ===========================================
   minio-init:
-    image: minio/mc:RELEASE.2024-12-18T02-01-23Z
+    image: minio/mc:latest
     container_name: cms-minio-init-dev
     depends_on:
       minio:
@@ -107,8 +106,8 @@ networks:
     name: cms-dev-network
 
 volumes:
-  mongodb-dev-data:
-    name: cms-mongodb-dev-data
+  postgres-dev-data:
+    name: cms-postgres-dev-data
   dragonfly-dev-data:
     name: cms-dragonfly-dev-data
   minio-dev-data:

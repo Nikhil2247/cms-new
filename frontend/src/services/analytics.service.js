@@ -29,27 +29,15 @@ export const analyticsService = {
     return response.data;
   },
 
-  async getInternshipStats(institutionId) {
-    const response = await API.get(`/principal/internships/stats?institutionId=${institutionId}`);
-    return response.data;
-  },
+  // Note: getInternshipStats moved to principal.service.js
 
   async getPlacementStats(institutionId) {
     const response = await API.get(`/principal/placements/stats?institutionId=${institutionId}`);
     return response.data;
   },
 
-  // Faculty progress tracking
-  async getFacultyProgressList(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const response = await API.get(`/principal/faculty/progress?${queryParams}`);
-    return response.data;
-  },
-
-  async getFacultyProgressDetails(facultyId) {
-    const response = await API.get(`/principal/faculty/progress/${facultyId}`);
-    return response.data;
-  },
+  // Note: getFacultyProgressList and getFacultyProgressDetails moved to principal.service.js
+  // Use principalService.getFacultyProgress() and principalService.getFacultyProgressDetails()
 };
 
 export default analyticsService;

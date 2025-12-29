@@ -137,7 +137,13 @@
       "Bash(mongosh:*)",
       "Bash(mongo --version:*)",
       "Bash(dir /s /b \"D:\\\\Github\\\\New folder\\\\cms-new\\\\mongodb-database-tools*\\\\bin\\\\mongorestore.exe\")",
-      "Bash(\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb://admin:Admin%401234@mongodb:27017/cms_db?authSource=admin\" --archive=\"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-27_03-25-20.gz\" --gzip --nsInclude=\"internship.*\" --nsExclude=\"admin.*\" --nsFrom=\"internship.*\" --nsTo=\"cms_db.*\" --drop)"
+      "Bash(\"C:\\\\Program Files\\\\MongoDB\\\\Tools\\\\100\\\\bin\\\\mongorestore.exe\" --uri=\"mongodb://admin:Admin%401234@mongodb:27017/cms_db?authSource=admin\" --archive=\"D:\\\\Github\\\\New folder\\\\cms-new\\\\prisma backup\\\\mongodb_backup_2025-12-27_03-25-20.gz\" --gzip --nsInclude=\"internship.*\" --nsExclude=\"admin.*\" --nsFrom=\"internship.*\" --nsTo=\"cms_db.*\" --drop)",
+      "Bash(npm run db:migrate-to-postgres:*)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx prisma db push --force-reset)",
+      "Bash(set PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes)",
+      "Bash($env:PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=\"yes\")",
+      "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes npx prisma db push:*)"
     ]
   }
 }

@@ -5,8 +5,6 @@ import {
   fetchStudents,
   updateStudent,
   deleteStudent,
-  fetchDepartments,
-  fetchBatches,
   resetUserPassword,
   optimisticallyUpdateStudent,
   optimisticallyDeleteStudent,
@@ -29,27 +27,21 @@ import {
 import { getStatusColor } from '../../../utils/format';
 import { getImageUrl } from '../../../utils/imageUtils';
 import StudentModal from './StudentModal';
+import { useLookup } from '../../shared/hooks/useLookup';
 
 const { Search } = Input;
 const { Option } = Select;
 
-// Fallback departments list
-const DEFAULT_DEPARTMENTS = [
-  { id: 'cse', name: 'CSE - Computer Science Engineering' },
-  { id: 'it', name: 'IT - Information Technology' },
-  { id: 'ece', name: 'ECE - Electronics & Communication' },
-  { id: 'ee', name: 'EE - Electrical Engineering' },
-  { id: 'me', name: 'ME - Mechanical Engineering' },
-  { id: 'ce', name: 'CE - Civil Engineering' },
-  { id: 'lt', name: 'LT - Leather Technology' },
-];
-
 const StudentList = () => {
   const dispatch = useDispatch();
   const { list, loading, pagination } = useSelector((state) => state.principal.students);
-  const departmentsFromStore = useSelector((state) => state.principal.departments.list);
-  const batches = useSelector((state) => state.principal.batches?.list || []);
   const lastFetched = useSelector((state) => state.principal.lastFetched.students);
+
+  // Use global lookup data
+  const { activeBranches, activeBatches, loadBranches, loadBatches } = useLookup({
+    include: ['branches', 'batches']
+  });
+
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState({
     search: '',
@@ -62,9 +54,6 @@ const StudentList = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Use store departments if available, otherwise use fallback
-  const departments = departmentsFromStore?.length > 0 ? departmentsFromStore : DEFAULT_DEPARTMENTS;
 
   const handleOpenModal = (studentId = null) => {
     setEditingStudentId(studentId);
@@ -84,17 +73,16 @@ const StudentList = () => {
     setIsRefreshing(true);
     try {
       await dispatch(fetchStudents({ ...filters, forceRefresh: true })).unwrap();
-      await Promise.all([
-        dispatch(fetchDepartments({ forceRefresh: true })),
-        dispatch(fetchBatches({ forceRefresh: true })),
-      ]);
+      // Refresh lookup data
+      loadBranches();
+      loadBatches();
       message.success('Data refreshed successfully');
     } catch (error) {
       message.error('Failed to refresh data');
     } finally {
       setIsRefreshing(false);
     }
-  }, [dispatch, filters]);
+  }, [dispatch, filters, loadBranches, loadBatches]);
 
   // Debounced search effect - 300ms delay
   useEffect(() => {
@@ -107,8 +95,6 @@ const StudentList = () => {
 
   useEffect(() => {
     dispatch(fetchStudents(filters));
-    dispatch(fetchDepartments());
-    dispatch(fetchBatches());
   }, [dispatch, filters]);
 
   const handleView = (record) => {
@@ -386,13 +372,13 @@ const StudentList = () => {
             prefix={<SearchOutlined className="text-text-tertiary" />}
           />
           <Select
-            placeholder="Department"
+            placeholder="Branch"
             allowClear
             className="w-full md:w-[200px]"
             onChange={(value) => handleFilterChange('branchId', value)}
           >
-            {departments?.map(dept => (
-              <Option key={dept.id} value={dept.id}>{dept.name}</Option>
+            {activeBranches?.map(branch => (
+              <Option key={branch.id} value={branch.id}>{branch.name}</Option>
             ))}
           </Select>
           <Select
@@ -401,7 +387,7 @@ const StudentList = () => {
             className="w-full md:w-[150px]"
             onChange={(value) => handleFilterChange('batchId', value)}
           >
-            {batches?.map(batch => (
+            {activeBatches?.map(batch => (
               <Option key={batch.id} value={batch.id}>{batch.name}</Option>
             ))}
           </Select>

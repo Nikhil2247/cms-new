@@ -19,6 +19,7 @@ import facultyReducer from '../../features/faculty/store/facultySlice';
 import studentReducer from '../../features/student/store/studentSlice';
 import industryReducer from '../../features/industry/store/industrySlice';
 import sharedReducer from '../../features/shared/store/sharedSlice';
+import lookupReducer from '../../features/shared/store/lookupSlice';
 import instituteReducer from '../../store/slices/instituteSlice';
 import companyReducer from '../../store/slices/companySlice';
 
@@ -41,6 +42,7 @@ const appReducer = combineReducers({
   student: studentReducer,
   industry: industryReducer,
   shared: sharedReducer,
+  lookup: lookupReducer,
   institute: instituteReducer,
   company: companyReducer,
 });

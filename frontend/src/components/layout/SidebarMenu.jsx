@@ -43,9 +43,9 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
   };
 
   return (
-    <div className="flex flex-col flex-1 h-full min-h-0 relative">
+    <div className="flex flex-col flex-1 h-full min-h-0 relative overflow-hidden">
       {/* Menu Container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin py-2">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin py-2" style={{ maxHeight: isMobile ? 'calc(100vh - 180px)' : 'auto' }}>
         <Menu
           mode="inline"
           theme="light"

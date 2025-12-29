@@ -49,10 +49,10 @@ import AuditLogs from '../../features/state/audit/AuditLogs';
 import BulkUserCreate from '../../features/state/users/BulkUserCreate';
 import CredentialsReset from '../../features/state/users/CredentialsReset';
 import CompaniesOverview from '../../features/state/companies/CompaniesOverview';
+import MasterData from '../../features/state/master-data/MasterData';
 
 // Shared
 import GrievanceList from '../../features/shared/grievances/GrievanceList';
-import { NotificationViewer } from '../../features/common/notifications';
 import { SendNotification } from '../../features/shared';
 import SubmitGrievance from '../../features/student/grievances/SubmitGrievance';
 
@@ -249,6 +249,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL]}>
               <Grievances />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="master-data"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <MasterData />
             </ProtectedRoute>
           }
         />
@@ -494,7 +502,6 @@ const AppRoutes = () => {
         />
 
         {/* Shared Routes */}
-        <Route path="notifications" element={<NotificationViewer />} />
         <Route
           path="send-notification"
           element={
@@ -666,9 +673,9 @@ const DashboardRouter = () => {
   if (role === ROLES.STATE) {
     return <StateDashboard />;
   }
-  // Principal - redirect to Overview page by default
+  // Principal
   if (role === ROLES.PRINCIPAL) {
-    return <Navigate to="/overview" replace />;
+    return <PrincipalDashboard />;
   }
   // Faculty (includes TEACHER, FACULTY_SUPERVISOR)
   if (ROLES.FACULTY.includes(role)) {

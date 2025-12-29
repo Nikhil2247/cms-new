@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
-import { createStudent, updateStudent, fetchStudents, fetchBatches, fetchDepartments } from '../store/principalSlice';
+import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
 import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useLookup } from '../../shared/hooks/useLookup';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -11,20 +12,24 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
 
-  const { students, batches, departments } = useSelector(state => state.principal);
+  const { students } = useSelector(state => state.principal);
   const student = studentId ? students.list?.find(s => s.id === studentId) : null;
   const isEditMode = !!studentId;
+
+  // Use global lookup data
+  const { activeBatches, activeBranches, isLoading: lookupLoading } = useLookup({
+    include: ['batches', 'branches']
+  });
 
   useEffect(() => {
     if (open) {
       const loadData = async () => {
         setInitialLoading(true);
         try {
-          await Promise.all([
-            dispatch(fetchBatches()),
-            dispatch(fetchDepartments()),
-            studentId && !student ? dispatch(fetchStudents({})) : Promise.resolve(),
-          ]);
+          // Only fetch student data if editing and student not in list
+          if (studentId && !student) {
+            await dispatch(fetchStudents({}));
+          }
         } finally {
           setInitialLoading(false);
         }
@@ -104,7 +109,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
       width={800}
       destroyOnHidden
     >
-      {initialLoading ? (
+      {initialLoading || lookupLoading ? (
         <div className="flex justify-center items-center py-12">
           <Spin size="large" />
         </div>
@@ -190,9 +195,23 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 label="Batch"
               >
                 <Select placeholder="Select batch" allowClear>
-                  {batches?.list?.map(batch => (
+                  {activeBatches?.map(batch => (
                     <Select.Option key={batch.id} value={batch.id}>
-                      {batch.name} ({batch.year})
+                      {batch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item
+                name="batchYear"
+                label="Batch Year"
+              >
+                <Select placeholder="Select year" allowClear>
+                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                    <Select.Option key={year} value={year}>
+                      {year}
                     </Select.Option>
                   ))}
                 </Select>
@@ -201,12 +220,12 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             <Col xs={24} sm={12}>
               <Form.Item
                 name="branchId"
-                label="Department/Branch"
+                label="Branch"
               >
-                <Select placeholder="Select department/branch" allowClear>
-                  {departments?.list?.map(dept => (
-                    <Select.Option key={dept.id} value={dept.id}>
-                      {dept.name}
+                <Select placeholder="Select branch" allowClear>
+                  {activeBranches?.map(branch => (
+                    <Select.Option key={branch.id} value={branch.id}>
+                      {branch.name}
                     </Select.Option>
                   ))}
                 </Select>

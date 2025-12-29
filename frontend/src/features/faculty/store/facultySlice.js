@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import facultyService from '../../../services/faculty.service';
+import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
   dashboard: {
@@ -81,24 +82,6 @@ const initialState = {
   },
 };
 
-// Cache duration configuration per endpoint type
-const CACHE_CONFIG = {
-  // Dashboard and profile - frequently accessed
-  DASHBOARD: 5 * 60 * 1000, // 5 minutes
-  PROFILE: 10 * 60 * 1000, // 10 minutes - rarely changes
-  // Lists with pagination - users expect fresh data
-  LISTS: 3 * 60 * 1000, // 3 minutes (students, visit logs, reports)
-  // Time-sensitive data
-  ALERTS: 2 * 60 * 1000, // 2 minutes (joining letters, applications)
-  // Individual resources
-  SINGLE_RESOURCE: 5 * 60 * 1000, // 5 minutes (single visit log, student progress)
-  // Default fallback
-  DEFAULT: 5 * 60 * 1000, // 5 minutes
-};
-
-// Legacy constant for backward compatibility
-const CACHE_DURATION = CACHE_CONFIG.DEFAULT;
-
 // Dashboard
 export const fetchFacultyDashboard = createAsyncThunk(
   'faculty/fetchDashboard',
@@ -107,7 +90,7 @@ export const fetchFacultyDashboard = createAsyncThunk(
       const state = getState();
       const lastFetched = state.faculty.lastFetched.dashboard;
 
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
@@ -128,7 +111,7 @@ export const fetchProfile = createAsyncThunk(
       const lastFetched = state.faculty.lastFetched.profile;
 
       // Use PROFILE cache duration - profile rarely changes
-      if (lastFetched && !params?.forceRefresh && (Date.now() - lastFetched) < CACHE_CONFIG.PROFILE) {
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
         return { cached: true };
       }
 
@@ -163,10 +146,9 @@ export const fetchAssignedStudents = createAsyncThunk(
 
       // Use LISTS cache duration - users expect relatively fresh data
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -190,7 +172,7 @@ export const fetchStudentProgress = createAsyncThunk(
       const state = getState();
       const lastFetched = state.faculty.lastFetched.studentProgressById[studentId];
 
-      if (lastFetched && !forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
         return { cached: true, studentId };
       }
 
@@ -222,10 +204,9 @@ export const fetchVisitLogs = createAsyncThunk(
 
       // Use LISTS cache duration - users expect relatively fresh data
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.LISTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -249,7 +230,7 @@ export const fetchVisitLogById = createAsyncThunk(
       const state = getState();
       const lastFetched = state.faculty.lastFetched.visitLogsById[id];
 
-      if (lastFetched && !forceRefresh && (Date.now() - lastFetched) < CACHE_DURATION) {
+      if (!forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
         return { cached: true, id };
       }
 
@@ -317,10 +298,9 @@ export const fetchMonthlyReports = createAsyncThunk(
       const lastKey = state.faculty.lastFetched.monthlyReportsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -365,10 +345,9 @@ export const fetchApplications = createAsyncThunk(
       const lastKey = state.faculty.lastFetched.applicationsKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)
       ) {
         return { cached: true };
       }
@@ -445,10 +424,9 @@ export const fetchFeedbackHistory = createAsyncThunk(
       const lastKey = state.faculty.lastFetched.feedbackHistoryKey;
 
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_DURATION
+        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
       ) {
         return { cached: true };
       }
@@ -480,10 +458,9 @@ export const fetchJoiningLetters = createAsyncThunk(
 
       // Use ALERTS cache duration - time-sensitive pending items
       if (
-        lastFetched &&
         !params?.forceRefresh &&
         lastKey === requestKey &&
-        (Date.now() - lastFetched) < CACHE_CONFIG.ALERTS
+        isCacheValid(lastFetched, CACHE_DURATIONS.ALERTS)
       ) {
         return { cached: true };
       }

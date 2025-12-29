@@ -41,7 +41,6 @@ import {
 import {
   fetchStaff,
   fetchStudents,
-  fetchBatches,
   assignMentor,
   fetchMentorAssignments,
   fetchMentorStats,
@@ -50,6 +49,7 @@ import {
   autoAssignMentors,
 } from '../store/principalSlice';
 import { debounce } from 'lodash';
+import { useBatches } from '../../shared/hooks/useLookup';
 
 const { Text } = Typography;
 
@@ -73,17 +73,19 @@ const MentorAssignment = () => {
     branchId: '',
   });
 
-  const { staff, students, mentorAssignments, mentorStats, batches } = useSelector(
+  const { staff, students, mentorAssignments, mentorStats } = useSelector(
     (state) => state.principal
   );
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
 
+  // Use global lookup data for batches
+  const { activeBatches } = useBatches();
+
   useEffect(() => {
     dispatch(fetchStaff({ limit: 100 }));
     dispatch(fetchMentorAssignments());
     dispatch(fetchMentorStats());
-    dispatch(fetchBatches());
   }, [dispatch]);
 
   useEffect(() => {
@@ -118,9 +120,8 @@ const MentorAssignment = () => {
 
   // Get unique batches for filter
   const batchFilters = useMemo(() => {
-    const batchList = batches?.list || [];
-    return batchList.map((b) => ({ text: b.name, value: b.id }));
-  }, [batches?.list]);
+    return activeBatches.map((b) => ({ text: b.name, value: b.id }));
+  }, [activeBatches]);
 
   // Get unique departments/branches for filter
   const departmentFilters = useMemo(() => {
