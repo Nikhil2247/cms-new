@@ -33,12 +33,18 @@ const getAllowedOrigins = () => {
   if (process.env.ALLOWED_ORIGINS) {
     return process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
   }
-  // Default origins for development
+  // Default origins (include production domains)
   return [
     'http://localhost:5173',
     'http://localhost:3000',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'https://placeintern.com',
+    'https://www.placeintern.com',
+    'https://api.placeintern.com',
+    'https://sukeerat.com',
+    'https://www.sukeerat.com',
+    'https://api.sukeerat.com',
   ];
 };
 
@@ -74,6 +80,7 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
 
   afterInit(): void {
     this.logger.log('Unified WebSocket Gateway initialized');
+    this.logger.log(`Allowed WebSocket origins: ${getAllowedOrigins().join(', ')}`);
 
     // Start periodic cleanup of stale rate limit entries
     this.startRateLimitCleanup();
