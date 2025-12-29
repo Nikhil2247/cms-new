@@ -43,8 +43,8 @@ services:
       - NODE_ENV=production
       - PORT=8000
       - BACKEND_PORT=8000
-      # Database (PostgreSQL)
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres123@postgres:5432/cms_db?schema=public}
+      # Database (PostgreSQL) - hardcoded for Docker network
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-cms_db}?schema=public
       # Cache (connects to Dragonfly service)
       - REDIS_URL=${REDIS_URL:-redis://dragonfly:6379}
       - REDIS_HOST=dragonfly
