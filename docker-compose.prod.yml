@@ -37,12 +37,12 @@ services:
     container_name: cms-backend
     # Exposes the container's port 8000 to the host's port 8000.
     ports:
-      - "8000:8000"
+      - "6000:6000"
     environment:
       # Core
       - NODE_ENV=production
-      - PORT=8000
-      - BACKEND_PORT=8000
+      - PORT=6000
+      - BACKEND_PORT=6000
       # Database (PostgreSQL) - hardcoded for Docker network
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-cms_db}?schema=public
       # Cache (connects to Dragonfly service)
@@ -188,8 +188,8 @@ services:
       - "9000:9000" # API port
       - "9001:9001" # Console port
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     volumes:
       - minio-data:/data
     networks:
