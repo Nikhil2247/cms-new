@@ -10,7 +10,7 @@ import { AllExceptionsFilter } from './core/common/filters/all-exceptions.filter
 import { validateProductionEnvironment } from './config/env.validation';
 
 // Prefer BACKEND_PORT so generic PORT (often set by other tools) doesn't hijack backend.
-const port = process.env.BACKEND_PORT || process.env.PORT || 8000;
+const port = process.env.BACKEND_PORT || process.env.PORT || 6000;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
