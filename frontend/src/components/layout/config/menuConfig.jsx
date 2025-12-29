@@ -41,109 +41,130 @@ export const menuConfig = {
   // ==========================================
   // STATE DIRECTORATE MENUS
   // ==========================================
-  STATE_OVERVIEW: {
-    key: 'state-overview',
-    title: 'State Overview',
-    icon: <GlobalOutlined />,
+  STATE_HOME: {
+    key: 'state-home',
+    title: 'Home',
+    icon: <DashboardOutlined />,
     items: [
       { key: 'state-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'institutions-overview', label: 'Institutions Overview', icon: <BankOutlined />, path: '/institutions-overview' },
-      { key: 'companies-overview', label: 'Companies Overview', icon: <ShopOutlined />, path: '/companies-overview' },
       { key: 'report-builder', label: 'Report Builder', icon: <BarChartOutlined />, path: '/reports/builder' },
-      { key: 'send-announcement', label: 'Send Announcement', icon: <SendOutlined />, path: '/send-notification' },
-      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/audit-logs' },
+      { key: 'send-announcement', label: 'Announcements', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
-  STATE_OPERATIONS: {
-    key: 'state-operations',
-    title: 'Operations',
-    icon: <DeploymentUnitOutlined />,
+  STATE_INSTITUTIONS: {
+    key: 'state-institutions',
+    title: 'Institutions',
+    icon: <BankOutlined />,
     items: [
+      { key: 'institutions-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/institutions-overview' },
       { key: 'institutions-list', label: 'All Institutions', icon: <BankOutlined />, path: '/institutions' },
+      { key: 'principals-list', label: 'Principals', icon: <TeamOutlined />, path: '/principals' },
+    ],
+  },
+  STATE_COMPANIES: {
+    key: 'state-companies',
+    title: 'Companies',
+    icon: <ShopOutlined />,
+    items: [
+      { key: 'companies-overview', label: 'Overview', icon: <ShopOutlined />, path: '/companies-overview' },
       { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/grievances' },
     ],
   },
-  STATE_BULK_OPERATIONS: {
-    key: 'state-bulk-operations',
+  STATE_BULK: {
+    key: 'state-bulk',
     title: 'Bulk Operations',
     icon: <CloudUploadOutlined />,
     items: [
-      { key: 'bulk-institute-upload', label: 'Bulk Institutions', icon: <BankOutlined />, path: '/institutions/bulk-upload' },
-      { key: 'bulk-staff-upload', label: 'Bulk Staff/Students', icon: <TeamOutlined />, path: '/bulk-upload' },
-      { key: 'bulk-internship-upload', label: 'Bulk Self Internships', icon: <LaptopOutlined />, path: '/bulk/self-internships' },
+      { key: 'bulk-institute-upload', label: 'Institutions', icon: <BankOutlined />, path: '/institutions/bulk-upload' },
+      { key: 'bulk-staff-upload', label: 'Staff/Students', icon: <TeamOutlined />, path: '/bulk-upload' },
+      { key: 'bulk-internship-upload', label: 'Internships', icon: <LaptopOutlined />, path: '/bulk/self-internships' },
       { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
     ],
   },
-  STATE_USERS: {
-    key: 'state-users',
-    title: 'Users & Access',
-    icon: <UsergroupAddOutlined />,
+  STATE_SYSTEM: {
+    key: 'state-system',
+    title: 'System',
+    icon: <SettingOutlined />,
     items: [
-      { key: 'principals-list', label: 'All Principals', icon: <TeamOutlined />, path: '/principals' },
-      { key: 'state-staff-list', label: 'All Staff', icon: <SolutionOutlined />, path: '/state-staff' },
+      { key: 'state-staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/state-staff' },
       { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/users/bulk-create' },
       { key: 'credentials-reset', label: 'Reset Credentials', icon: <LockOutlined />, path: '/users/reset-credentials' },
+      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/audit-logs' },
     ],
   },
 
   // ==========================================
   // PRINCIPAL MENUS
   // ==========================================
-  PRINCIPAL: {
-    key: 'principal',
-    title: 'Administration',
-    icon: <SafetyOutlined />,
+  PRINCIPAL_HOME: {
+    key: 'principal-home',
+    title: 'Home',
+    icon: <DashboardOutlined />,
     items: [
-      { key: 'principal-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'staff-list', label: 'Staff List', icon: <TeamOutlined />, path: '/staff' },
-      { key: 'send-announcement', label: 'Send Announcement', icon: <BellOutlined />, path: '/send-notification' },
+      { key: 'principal-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/overview' },
+      { key: 'principal-dashboard', label: 'Full Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
     ],
   },
-  BULK_OPERATIONS: {
-    key: 'bulk-operations',
-    title: 'Bulk Operations',
-    icon: <CloudUploadOutlined />,
-    items: [
-      { key: 'bulk-staff-upload', label: 'Bulk Upload Staff/Students', icon: <UploadOutlined />, path: '/bulk-upload' },
-      { key: 'bulk-internship-upload', label: 'Bulk Self Internships', icon: <UploadOutlined />, path: '/bulk/self-internships' },
-      { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
-    ],
-  },
-  STUDENTS: {
-    key: 'students',
-    title: 'Students',
+  PRINCIPAL_PEOPLE: {
+    key: 'principal-people',
+    title: 'People',
     icon: <TeamOutlined />,
     items: [
-      { key: 'students-list', label: 'All Students', icon: <TeamOutlined />, path: '/students' },
+      { key: 'students-list', label: 'Students', icon: <TeamOutlined />, path: '/students' },
+      { key: 'staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/staff' },
       { key: 'mentor-assignment', label: 'Mentor Assignment', icon: <SolutionOutlined />, path: '/mentors' },
     ],
   },
   PRINCIPAL_INTERNSHIP: {
     key: 'principal-internship',
-    title: 'Internship Management',
+    title: 'Internships',
     icon: <LaptopOutlined />,
     items: [
-      { key: 'all-internships', label: 'All Internships', icon: <SolutionOutlined />, path: '/internships' },
-      { key: 'internship-analytics', label: 'Analytics & Reports', icon: <PieChartOutlined />, path: '/analytics' },
+      { key: 'all-internships', label: 'All Internships', icon: <LaptopOutlined />, path: '/internships' },
       { key: 'faculty-progress', label: 'Faculty Progress', icon: <CarOutlined />, path: '/faculty-progress' },
       { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/grievances' },
+    ],
+  },
+  PRINCIPAL_OPERATIONS: {
+    key: 'principal-operations',
+    title: 'Operations',
+    icon: <CloudUploadOutlined />,
+    items: [
+      { key: 'bulk-staff-upload', label: 'Bulk Upload', icon: <UploadOutlined />, path: '/bulk-upload' },
+      { key: 'bulk-internship-upload', label: 'Bulk Internships', icon: <UploadOutlined />, path: '/bulk/self-internships' },
+      { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
+      { key: 'send-announcement', label: 'Announcements', icon: <BellOutlined />, path: '/send-notification' },
     ],
   },
 
   // ==========================================
   // FACULTY MENUS
   // ==========================================
-  FACULTY_SUPERVISION: {
-    key: 'faculty-supervision',
-    title: 'Faculty Supervision',
-    icon: <SolutionOutlined />,
+  FACULTY_HOME: {
+    key: 'faculty-home',
+    title: 'Home',
+    icon: <DashboardOutlined />,
     items: [
       { key: 'supervision-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'assigned-students', label: 'Assigned Students', icon: <TeamOutlined />, path: '/assigned-students' },
+      { key: 'assigned-students', label: 'My Students', icon: <TeamOutlined />, path: '/assigned-students' },
+    ],
+  },
+  FACULTY_SUPERVISION: {
+    key: 'faculty-supervision',
+    title: 'Supervision',
+    icon: <SolutionOutlined />,
+    items: [
       { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/visit-logs' },
       { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/monthly-reports' },
       { key: 'joining-letters', label: 'Joining Letters', icon: <SafetyCertificateOutlined />, path: '/joining-letters' },
       { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/approvals' },
+    ],
+  },
+  FACULTY_COMMUNICATION: {
+    key: 'faculty-communication',
+    title: 'Communication',
+    icon: <SendOutlined />,
+    items: [
       { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/faculty-grievances' },
       { key: 'send-reminder', label: 'Send Reminder', icon: <SendOutlined />, path: '/send-notification' },
     ],
@@ -152,21 +173,21 @@ export const menuConfig = {
   // ==========================================
   // STUDENT MENUS
   // ==========================================
-  STUDENT: {
-    key: 'student',
-    title: 'Student Portal',
-    icon: <IdcardOutlined />,
+  STUDENT_HOME: {
+    key: 'student-home',
+    title: 'Home',
+    icon: <DashboardOutlined />,
     items: [
       { key: 'student-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
       { key: 'profile', label: 'My Profile', icon: <IdcardOutlined />, path: '/profile' },
     ],
   },
-  INTERNSHIP_PORTAL: {
-    key: 'internship-portal',
+  STUDENT_INTERNSHIP: {
+    key: 'student-internship',
     title: 'Internship',
     icon: <LaptopOutlined />,
     items: [
-      { key: 'my-applications', label: 'My Applications', icon: <FileSyncOutlined />, path: '/my-applications' },
+      { key: 'my-applications', label: 'My Internship', icon: <LaptopOutlined />, path: '/my-applications' },
       { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/reports/submit' },
       { key: 'submit-grievance', label: 'Submit Grievance', icon: <AlertOutlined />, path: '/submit-grievance' },
     ],
@@ -190,44 +211,44 @@ export const menuConfig = {
   // ==========================================
   // SYSTEM ADMIN MENUS
   // ==========================================
-  SYSTEM_ADMIN_OVERVIEW: {
-    key: 'admin-overview',
-    title: 'Overview',
+  SYSTEM_ADMIN_HOME: {
+    key: 'admin-home',
+    title: 'Home',
     icon: <DashboardOutlined />,
     items: [
       { key: 'system-admin-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/admin/dashboard' },
       { key: 'system-health', label: 'System Health', icon: <SafetyCertificateOutlined />, path: '/admin/health' },
       { key: 'analytics', label: 'Analytics', icon: <LineChartOutlined />, path: '/admin/analytics' },
-      { key: 'send-system-notification', label: 'Send Announcement', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
   SYSTEM_ADMIN_USERS: {
     key: 'admin-users',
-    title: 'User Management',
+    title: 'Users',
     icon: <TeamOutlined />,
     items: [
       { key: 'all-users', label: 'All Users', icon: <UsergroupAddOutlined />, path: '/admin/users' },
-      { key: 'active-sessions', label: 'Active Sessions', icon: <LaptopOutlined />, path: '/admin/sessions' },
-      { key: 'security-insights', label: 'Security Insights', icon: <SafetyOutlined />, path: '/admin/security' },
+      { key: 'active-sessions', label: 'Sessions', icon: <LaptopOutlined />, path: '/admin/sessions' },
+      { key: 'security-insights', label: 'Security', icon: <SafetyOutlined />, path: '/admin/security' },
     ],
   },
-  SYSTEM_ADMIN_BACKUP: {
-    key: 'admin-backup',
-    title: 'Backup & Restore',
+  SYSTEM_ADMIN_DATA: {
+    key: 'admin-data',
+    title: 'Data & Backups',
     icon: <DatabaseOutlined />,
     items: [
-      { key: 'backup-management', label: 'Backup Management', icon: <CloudUploadOutlined />, path: '/admin/backups' },
-      { key: 'backup-schedules', label: 'Scheduled Backups', icon: <HistoryOutlined />, path: '/admin/backup-schedules' },
+      { key: 'backup-management', label: 'Backups', icon: <CloudUploadOutlined />, path: '/admin/backups' },
+      { key: 'backup-schedules', label: 'Schedules', icon: <HistoryOutlined />, path: '/admin/backup-schedules' },
+      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/admin/audit-logs' },
     ],
   },
   SYSTEM_ADMIN_CONFIG: {
     key: 'admin-config',
-    title: 'Configuration',
+    title: 'Settings',
     icon: <SettingOutlined />,
     items: [
       { key: 'system-settings', label: 'System Settings', icon: <SettingOutlined />, path: '/admin/settings' },
       { key: 'feature-flags', label: 'Feature Flags', icon: <SwapOutlined />, path: '/admin/features' },
-      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/admin/audit-logs' },
+      { key: 'send-system-notification', label: 'Announcements', icon: <SendOutlined />, path: '/send-notification' },
     ],
   },
   SYSTEM_ADMIN_SUPPORT: {
@@ -235,8 +256,8 @@ export const menuConfig = {
     title: 'Support',
     icon: <CustomerServiceOutlined />,
     items: [
-      { key: 'technical-queries', label: 'Technical Queries', icon: <ExclamationCircleOutlined />, path: '/admin/queries' },
-      { key: 'system-alerts', label: 'System Alerts', icon: <AlertOutlined />, path: '/admin/alerts' },
+      { key: 'technical-queries', label: 'Queries', icon: <ExclamationCircleOutlined />, path: '/admin/queries' },
+      { key: 'system-alerts', label: 'Alerts', icon: <AlertOutlined />, path: '/admin/alerts' },
     ],
   },
 
@@ -285,28 +306,31 @@ export const getMenuSectionsForRole = (role) => {
 
   switch (role) {
     case 'STATE_DIRECTORATE':
-      sections.push(menuConfig.STATE_OVERVIEW);
-      sections.push(menuConfig.STATE_OPERATIONS);
-      sections.push(menuConfig.STATE_BULK_OPERATIONS);
-      sections.push(menuConfig.STATE_USERS);
+      sections.push(menuConfig.STATE_HOME);
+      sections.push(menuConfig.STATE_INSTITUTIONS);
+      sections.push(menuConfig.STATE_COMPANIES);
+      sections.push(menuConfig.STATE_BULK);
+      sections.push(menuConfig.STATE_SYSTEM);
       break;
 
     case 'PRINCIPAL':
-      sections.push(menuConfig.PRINCIPAL);
-      sections.push(menuConfig.STUDENTS);
+      sections.push(menuConfig.PRINCIPAL_HOME);
+      sections.push(menuConfig.PRINCIPAL_PEOPLE);
       sections.push(menuConfig.PRINCIPAL_INTERNSHIP);
-      sections.push(menuConfig.BULK_OPERATIONS);
+      sections.push(menuConfig.PRINCIPAL_OPERATIONS);
       break;
 
     case 'FACULTY':
     case 'TEACHER':
     case 'FACULTY_SUPERVISOR':
+      sections.push(menuConfig.FACULTY_HOME);
       sections.push(menuConfig.FACULTY_SUPERVISION);
+      sections.push(menuConfig.FACULTY_COMMUNICATION);
       break;
 
     case 'STUDENT':
-      sections.push(menuConfig.STUDENT);
-      sections.push(menuConfig.INTERNSHIP_PORTAL);
+      sections.push(menuConfig.STUDENT_HOME);
+      sections.push(menuConfig.STUDENT_INTERNSHIP);
       break;
 
     case 'INDUSTRY':
@@ -316,15 +340,15 @@ export const getMenuSectionsForRole = (role) => {
       break;
 
     case 'SYSTEM_ADMIN':
-      sections.push(menuConfig.SYSTEM_ADMIN_OVERVIEW);
+      sections.push(menuConfig.SYSTEM_ADMIN_HOME);
       sections.push(menuConfig.SYSTEM_ADMIN_USERS);
-      sections.push(menuConfig.SYSTEM_ADMIN_BACKUP);
+      sections.push(menuConfig.SYSTEM_ADMIN_DATA);
       sections.push(menuConfig.SYSTEM_ADMIN_CONFIG);
       sections.push(menuConfig.SYSTEM_ADMIN_SUPPORT);
       break;
 
     case 'ADMISSION_OFFICER':
-      sections.push(menuConfig.STUDENTS);
+      sections.push(menuConfig.PRINCIPAL_PEOPLE);
       break;
 
     default:

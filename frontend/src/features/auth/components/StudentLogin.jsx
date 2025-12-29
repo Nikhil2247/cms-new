@@ -16,13 +16,16 @@ import {
 import API from "../../../services/api";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { tokenStorage } from "../../../utils/tokenManager";
+import { setCredentials } from "../store/authSlice";
 
 const { Text, Title } = Typography;
 
 function StudentLogin() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const { token } = theme.useToken();
 
@@ -30,10 +33,21 @@ function StudentLogin() {
     setLoading(true);
     try {
       const res = await API.post("/auth/student-login", values);
-      tokenStorage.setToken(res.data.access_token);
-      if (res.data.refresh_token || res.data.refreshToken) {
-        tokenStorage.setRefreshToken(res.data.refresh_token || res.data.refreshToken);
+      const accessToken = res.data.access_token;
+      const refreshToken = res.data.refresh_token || res.data.refreshToken;
+
+      // Store tokens
+      tokenStorage.setToken(accessToken);
+      if (refreshToken) {
+        tokenStorage.setRefreshToken(refreshToken);
       }
+
+      // Update Redux auth state
+      dispatch(setCredentials({
+        user: res.data.user,
+        token: accessToken
+      }));
+
       toast.success("Login successful!");
       navigate("/dashboard");
     } catch (error) {

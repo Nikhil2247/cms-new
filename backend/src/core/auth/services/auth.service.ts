@@ -116,6 +116,102 @@ export class AuthService {
   }
 
   /**
+   * Validate student by roll number
+   */
+  async validateStudentByRollNumber(rollNumber: string, password: string, ipAddress?: string, userAgent?: string): Promise<any> {
+    // Find student by roll number
+    const student = await this.prisma.student.findUnique({
+      where: { rollNumber },
+      include: {
+        user: {
+          include: {
+            Institution: {
+              select: {
+                id: true,
+                name: true,
+                code: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!student || !student.user) {
+      this.logger.warn(`Student not found with roll number: ${rollNumber}`);
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        description: `Failed student login attempt - roll number not found: ${rollNumber}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.MEDIUM,
+        ipAddress,
+        userAgent,
+        newValues: { rollNumber, reason: 'student_not_found' },
+      }).catch(() => {});
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const user = student.user;
+
+    if (!user.active) {
+      this.logger.warn(`Inactive student account attempted login: ${rollNumber}`);
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        description: `Failed student login attempt - account inactive: ${rollNumber}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        institutionId: user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: { rollNumber, reason: 'account_inactive' },
+      }).catch(() => {});
+      throw new UnauthorizedException('Account is inactive');
+    }
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      this.logger.warn(`Invalid password for student: ${rollNumber}`);
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        entityId: user.id,
+        userId: user.id,
+        userName: user.name,
+        userRole: user.role,
+        description: `Failed student login attempt - invalid password: ${rollNumber}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: user.institutionId || undefined,
+        ipAddress,
+        userAgent,
+        newValues: { rollNumber, reason: 'invalid_password' },
+      }).catch(() => {});
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Update login tracking
+    this.updateLoginTracking(user.id).catch((err) => {
+      this.logger.warn(`Failed to update login tracking for student ${user.id}: ${err.message}`);
+    });
+
+    // Flatten institution data
+    const { password: _, Institution, ...result } = user;
+    return {
+      ...result,
+      institutionName: Institution?.name || null,
+      institutionCode: Institution?.code || null,
+      rollNumber: student.rollNumber,
+    };
+  }
+
+  /**
    * Login user and return tokens
    */
   async login(user: any, ipAddress?: string, userAgent?: string) {

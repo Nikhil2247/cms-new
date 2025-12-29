@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space } from 'antd';
+import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space, theme } from 'antd';
 import {
   TeamOutlined,
   SearchOutlined,
@@ -22,6 +22,7 @@ const AssignedStudentsList = ({
   onViewStudent,
   onScheduleVisit
 }) => {
+  const { token } = theme.useToken();
   const [searchText, setSearchText] = useState('');
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -114,19 +115,19 @@ const AssignedStudentsList = ({
     const expected = calculateExpectedVisits(internshipApp);
 
     // Determine color based on completion
-    let color = '#d9d9d9'; // grey - no progress
-    let bgColor = '#f5f5f5';
+    let color = token.colorTextQuaternary; // grey - no progress
+    let bgColor = token.colorFillQuaternary;
     if (expected > 0) {
       const ratio = done / expected;
       if (ratio >= 1) {
-        color = '#52c41a'; // green - complete
-        bgColor = '#f6ffed';
+        color = token.colorSuccess; // green - complete
+        bgColor = token.colorSuccessBg;
       } else if (ratio >= 0.5) {
-        color = '#faad14'; // orange - partial
-        bgColor = '#fffbe6';
+        color = token.colorWarning; // orange - partial
+        bgColor = token.colorWarningBg;
       } else if (done > 0) {
-        color = '#ff7a45'; // light red - started
-        bgColor = '#fff2e8';
+        color = token.colorError; // light red - started (using error color for low progress)
+        bgColor = token.colorErrorBg;
       }
     }
 
@@ -166,23 +167,23 @@ const AssignedStudentsList = ({
     const pendingCount = reports.filter(r => r.status === 'DRAFT').length;
 
     // Determine color based on completion
-    let color = '#d9d9d9'; // grey - no progress
-    let bgColor = '#f5f5f5';
+    let color = token.colorTextQuaternary; // grey - no progress
+    let bgColor = token.colorFillQuaternary;
     let icon = <MinusCircleOutlined style={{ color, fontSize: 12 }} />;
 
     if (expected > 0) {
       const ratio = done / expected;
       if (ratio >= 1) {
-        color = '#52c41a'; // green - complete
-        bgColor = '#f6ffed';
+        color = token.colorSuccess; // green - complete
+        bgColor = token.colorSuccessBg;
         icon = <CheckCircleOutlined style={{ color, fontSize: 12 }} />;
       } else if (pendingCount > 0) {
-        color = '#faad14'; // orange - has pending
-        bgColor = '#fffbe6';
+        color = token.colorWarning; // orange - has pending
+        bgColor = token.colorWarningBg;
         icon = <ClockCircleOutlined style={{ color, fontSize: 12 }} />;
       } else if (done > 0) {
-        color = '#1890ff'; // blue - in progress
-        bgColor = '#e6f7ff';
+        color = token.colorPrimary; // blue - in progress
+        bgColor = token.colorPrimaryBg;
         icon = <CheckCircleOutlined style={{ color, fontSize: 12 }} />;
       }
     }
@@ -222,7 +223,7 @@ const AssignedStudentsList = ({
     if (!letter && !hasJoiningLetterUrl) {
       return (
         <Tooltip title="No joining letter submitted">
-          <MinusCircleOutlined style={{ color: '#d9d9d9', fontSize: 16 }} />
+          <MinusCircleOutlined style={{ color: token.colorTextQuaternary, fontSize: 16 }} />
         </Tooltip>
       );
     }
@@ -231,7 +232,7 @@ const AssignedStudentsList = ({
     if (!letter && hasJoiningLetterUrl) {
       return (
         <Tooltip title="Joining letter uploaded">
-          <ClockCircleOutlined style={{ color: '#faad14', fontSize: 16 }} />
+          <ClockCircleOutlined style={{ color: token.colorWarning, fontSize: 16 }} />
         </Tooltip>
       );
     }
@@ -242,19 +243,19 @@ const AssignedStudentsList = ({
     if (isVerified) {
       return (
         <Tooltip title="Joining letter verified">
-          <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+          <CheckCircleOutlined style={{ color: token.colorSuccess, fontSize: 16 }} />
         </Tooltip>
       );
     } else if (isPending) {
       return (
         <Tooltip title="Joining letter pending verification">
-          <ClockCircleOutlined style={{ color: '#faad14', fontSize: 16 }} />
+          <ClockCircleOutlined style={{ color: token.colorWarning, fontSize: 16 }} />
         </Tooltip>
       );
     } else {
       return (
         <Tooltip title="No joining letter">
-          <MinusCircleOutlined style={{ color: '#d9d9d9', fontSize: 16 }} />
+          <MinusCircleOutlined style={{ color: token.colorTextQuaternary, fontSize: 16 }} />
         </Tooltip>
       );
     }
@@ -316,11 +317,11 @@ const AssignedStudentsList = ({
               {getCompanyName(student)}
             </Text>
             {(startDate || endDate) && (
-              <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+              <div style={{ fontSize: 11, color: token.colorTextSecondary }}>
                 {startDate && dayjs(startDate).format('DD MMM')}
                 {startDate && endDate && ' - '}
                 {endDate && dayjs(endDate).format('DD MMM YY')}
-                {duration && <span style={{ color: '#1890ff', marginLeft: 4 }}>({duration})</span>}
+                {duration && <span style={{ color: token.colorPrimary, marginLeft: 4 }}>({duration})</span>}
               </div>
             )}
           </div>
@@ -403,7 +404,7 @@ const AssignedStudentsList = ({
       <Card
         title={
           <div className="flex items-center gap-2">
-            <TeamOutlined className="text-primary" />
+            <TeamOutlined style={{ color: token.colorPrimary }} />
             <span>Assigned Students</span>
             <Badge count={students.length} className="ml-2" />
           </div>
@@ -418,7 +419,8 @@ const AssignedStudentsList = ({
             allowClear
           />
         }
-        className="h-full border border-border rounded-xl"
+        className="h-full rounded-xl"
+        style={{ borderColor: token.colorBorder }}
       >
         <Table
           loading={loading}

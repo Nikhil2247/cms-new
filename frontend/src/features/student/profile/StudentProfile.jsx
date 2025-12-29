@@ -19,6 +19,7 @@ import {
   Select,
   Upload,
   Modal,
+  theme,
 } from "antd";
 import ImgCrop from "antd-img-crop";
 import {
@@ -60,6 +61,7 @@ export default function StudentProfile() {
   const [profileImageList, setProfileImageList] = useState([]);
   const [imageUploading, setImageUploading] = useState(false);
   const toastShownRef = useRef(false);
+  const { token } = theme.useToken();
 
   // State-wise District and Tehsil data
   const stateDistrictTehsilData = {
@@ -129,21 +131,6 @@ export default function StudentProfile() {
       return a - b;
     });
 
-  // useEffect(() => {
-  //   const loginData = localStorage.getItem("loginResponse");
-
-  //   if (loginData) {
-  //     try {
-  //       const parsed = JSON.parse(loginData);
-  //       // console.log(parsed.user.id)
-  //       // adjust these paths based on your actual response shape
-  //       setId(parsed.user.id);
-  //     } catch (e) {
-  //       console.error("Failed to parse loginResponse:", e);
-  //     }
-  //   }
-  // }, []);
-
   // helper to map category → tag color
   const getCategoryColor = (cat) => {
     switch (cat) {
@@ -174,8 +161,6 @@ export default function StudentProfile() {
         return "default";
     }
   };
-
-  // Semesters data is derived from student results - no API call needed
 
   const getInternshipStatusColor = (status) => {
     const statusColors = {
@@ -471,31 +456,32 @@ export default function StudentProfile() {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+      <div className="flex justify-center items-center min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
         <Spin size="large" tip="Loading profile..." />
       </div>
     );
   if (error)
     return (
-      <div className="p-8 text-center">
+      <div className="p-8 text-center" style={{ backgroundColor: token.colorBgLayout }}>
         <Text type="danger">{error}</Text>
       </div>
     );
 
   return (
-    <div className="p-4 md:p-8 bg-background-secondary min-h-screen overflow-y-auto hide-scrollbar">
+    <div className="p-4 md:p-8 min-h-screen overflow-y-auto hide-scrollbar" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6 pb-10">
         {/* Action Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
           <div>
-            <Title level={2} className="!mb-0 !text-gray-900 !text-2xl lg:!text-3xl font-bold tracking-tight">My Profile</Title>
-            <Text className="text-gray-500 text-sm">View and manage your personal and academic information</Text>
+            <Title level={2} className="!mb-0 !text-2xl lg:!text-3xl font-bold tracking-tight" style={{ color: token.colorText }}>My Profile</Title>
+            <Text className="text-sm" style={{ color: token.colorTextSecondary }}>View and manage your personal and academic information</Text>
           </div>
           <div className="flex gap-3 w-full sm:w-auto">
             <Button 
               icon={<EditOutlined />} 
               onClick={openEditModal} 
-              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none border-gray-200 hover:border-blue-500 hover:text-blue-500"
+              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none"
+              style={{ borderColor: token.colorBorder, color: token.colorText }}
             >
               Edit Profile
             </Button>
@@ -503,7 +489,8 @@ export default function StudentProfile() {
               type="primary"
               onClick={openUploadModal}
               icon={<UploadOutlined />}
-              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none bg-blue-600 hover:bg-blue-500 border-0 shadow-lg shadow-blue-200"
+              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none shadow-lg"
+              style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}
             >
               Add Document
             </Button>
@@ -511,37 +498,44 @@ export default function StudentProfile() {
         </div>
 
         {/* Profile Header Card */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm bg-white overflow-hidden" styles={{ body: { padding: '32px' } }}>
+        <Card bordered={false} className="rounded-2xl shadow-sm overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }} styles={{ body: { padding: '32px' } }}>
           <div className="flex flex-col md:flex-row items-center gap-8">
             <div className="relative group">
               <Avatar
                 size={120}
                 src={getImageUrl(student.profileImage)}
                 icon={<UserOutlined />}
-                className="rounded-3xl border-4 border-white shadow-lg ring-1 ring-gray-100 group-hover:scale-105 transition-transform duration-300"
+                className="rounded-3xl border-4 shadow-lg group-hover:scale-105 transition-transform duration-300"
+                style={{ borderColor: token.colorBgContainer }}
               />
-              <div className={`absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 border-white shadow-sm ${student.isActive ? 'bg-green-500' : 'bg-red-500'}`}>
-                {student.isActive ? <CheckCircleOutlined className="text-white text-sm" /> : <StopOutlined className="text-white text-sm" />}
+              <div 
+                className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 shadow-sm"
+                style={{ backgroundColor: student.isActive ? token.colorSuccess : token.colorError, borderColor: token.colorBgContainer }}
+              >
+                {student.isActive ? <CheckCircleOutlined style={{ color: '#fff', fontSize: '14px' }} /> : <StopOutlined style={{ color: '#fff', fontSize: '14px' }} />}
               </div>
             </div>
             
             <div className="flex-grow text-center md:text-left">
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
-                <Title level={2} className="!mb-0 !text-gray-900 text-3xl font-bold tracking-tight">
+                <Title level={2} className="!mb-0 text-3xl font-bold tracking-tight" style={{ color: token.colorText }}>
                   {student.name}
                 </Title>
-                <Tag className="rounded-full px-3 py-1 bg-blue-50 text-blue-600 border-blue-100 font-bold uppercase tracking-wide text-[10px]">
+                <Tag 
+                  className="rounded-full px-3 py-1 font-bold uppercase tracking-wide text-[10px]"
+                  style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, borderColor: token.colorPrimaryBorder }}
+                >
                   {student.branchName}
                 </Tag>
               </div>
               
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-gray-500 text-sm mb-6">
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-sm mb-6" style={{ color: token.colorTextSecondary }}>
                 <span className="flex items-center gap-2 font-medium">
-                  <IdcardOutlined className="text-gray-400" /> {student.rollNumber}
+                  <IdcardOutlined style={{ color: token.colorTextTertiary }} /> {student.rollNumber}
                 </span>
                 <span className="hidden md:inline w-1 h-1 rounded-full bg-gray-300" />
                 <span className="flex items-center gap-2 font-medium">
-                  <BankOutlined className="text-gray-400" /> Batch of {student.batch?.name || 'N/A'}
+                  <BankOutlined style={{ color: token.colorTextTertiary }} /> Batch of {student.batch?.name || 'N/A'}
                 </span>
               </div>
 
@@ -549,7 +543,7 @@ export default function StudentProfile() {
                 <Tag color={getCategoryColor(student.category)} className="rounded-lg border-0 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0">
                   {student.category}
                 </Tag>
-                <Tag className="rounded-lg border-0 bg-gray-100 text-gray-600 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0">
+                <Tag className="rounded-lg border-0 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0" style={{ backgroundColor: token.colorFillQuaternary, color: token.colorTextSecondary }}>
                   {student.admissionType}
                 </Tag>
                 {student.clearanceStatus && (
@@ -563,52 +557,52 @@ export default function StudentProfile() {
               </div>
             </div>
 
-            <div className="hidden lg:flex items-center gap-10 pl-10 border-l border-gray-100">
+            <div className="hidden lg:flex items-center gap-10 pl-10 border-l" style={{ borderColor: token.colorBorderSecondary }}>
               <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">{stats?.passPercentage || 0}%</div>
-                <div className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mt-1">Pass Rate</div>
+                <div className="text-3xl font-bold" style={{ color: token.colorText }}>{stats?.passPercentage || 0}%</div>
+                <div className="text-[10px] uppercase font-bold tracking-widest mt-1" style={{ color: token.colorTextTertiary }}>Pass Rate</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{stats?.feePercentage || 0}%</div>
-                <div className="text-[10px] uppercase font-bold text-gray-400 tracking-widest mt-1">Fees Paid</div>
+                <div className="text-3xl font-bold" style={{ color: token.colorSuccess }}>{stats?.feePercentage || 0}%</div>
+                <div className="text-[10px] uppercase font-bold tracking-widest mt-1" style={{ color: token.colorTextTertiary }}>Fees Paid</div>
               </div>
             </div>
           </div>
 
           {/* Quick Contact Info Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 border-t border-gray-100">
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 hover:bg-blue-50/50 transition-colors border border-transparent hover:border-blue-100 group">
-              <div className="w-12 h-12 rounded-xl bg-white text-blue-500 flex items-center justify-center shrink-0 shadow-sm group-hover:text-blue-600 transition-colors">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 border-t" style={{ borderColor: token.colorBorderSecondary }}>
+            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: token.colorPrimary }}>
                 <MailOutlined className="text-xl" />
               </div>
               <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-0.5">Email Address</Text>
-                <Text ellipsis className="text-sm font-semibold text-gray-900 block">{student.email}</Text>
+                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Email Address</Text>
+                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.email}</Text>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 hover:bg-green-50/50 transition-colors border border-transparent hover:border-green-100 group">
-              <div className="w-12 h-12 rounded-xl bg-white text-green-500 flex items-center justify-center shrink-0 shadow-sm group-hover:text-green-600 transition-colors">
+            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: token.colorSuccess }}>
                 <PhoneOutlined className="text-xl" />
               </div>
               <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-0.5">Phone Number</Text>
-                <Text ellipsis className="text-sm font-semibold text-gray-900 block">{student.contact || "N/A"}</Text>
+                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Phone Number</Text>
+                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.contact || "N/A"}</Text>
               </div>
             </div>
-            <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50/50 hover:bg-purple-50/50 transition-colors border border-transparent hover:border-purple-100 group">
-              <div className="w-12 h-12 rounded-xl bg-white text-purple-500 flex items-center justify-center shrink-0 shadow-sm group-hover:text-purple-600 transition-colors">
+            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: '#a855f7' }}>
                 <CalendarOutlined className="text-xl" />
               </div>
               <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-0.5">Date of Birth</Text>
-                <Text ellipsis className="text-sm font-semibold text-gray-900 block">{student.dob?.slice(0, 10) || "N/A"}</Text>
+                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Date of Birth</Text>
+                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.dob?.slice(0, 10) || "N/A"}</Text>
               </div>
             </div>
           </div>
         </Card>
 
         {/* Detailed Tabs Container */}
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white" styles={{ body: { padding: 0 } }}>
+        <Card bordered={false} className="rounded-2xl border shadow-sm overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }} styles={{ body: { padding: 0 } }}>
           <Tabs 
             defaultActiveKey="1" 
             className="custom-tabs"
@@ -626,27 +620,27 @@ export default function StudentProfile() {
                       <Col xs={24} lg={12}>
                         <div className="space-y-6">
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1 h-6 rounded-full bg-blue-500" />
-                            <Title level={4} className="!mb-0 !text-gray-900 font-bold">Academic Profile</Title>
+                            <div className="w-1 h-6 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
+                            <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Academic Profile</Title>
                           </div>
-                          <div className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-                              <Text className="text-gray-500 font-medium">Roll Number</Text>
-                              <Text className="text-gray-900 font-bold">{student.rollNumber}</Text>
+                          <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Roll Number</Text>
+                              <Text className="font-bold" style={{ color: token.colorText }}>{student.rollNumber}</Text>
                             </div>
-                            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-                              <Text className="text-gray-500 font-medium">Branch</Text>
-                              <Tag className="m-0 px-3 py-1 rounded-full border-0 bg-blue-100 text-blue-700 font-bold text-[10px] uppercase tracking-wide">
+                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Branch</Text>
+                              <Tag className="m-0 px-3 py-1 rounded-full border-0 font-bold text-[10px] uppercase tracking-wide" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}>
                                 {student.branchName}
                               </Tag>
                             </div>
-                            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-                              <Text className="text-gray-500 font-medium">Batch</Text>
-                              <Text className="text-gray-900 font-bold">{student.batch?.name || "N/A"}</Text>
+                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Batch</Text>
+                              <Text className="font-bold" style={{ color: token.colorText }}>{student.batch?.name || "N/A"}</Text>
                             </div>
                             <div className="p-4 flex justify-between items-center">
-                              <Text className="text-gray-500 font-medium">Admission Type</Text>
-                              <Tag className="m-0 px-3 py-1 rounded-full border-0 bg-gray-200 text-gray-700 font-bold text-[10px] uppercase tracking-wide">
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Admission Type</Text>
+                              <Tag className="m-0 px-3 py-1 rounded-full border-0 font-bold text-[10px] uppercase tracking-wide" style={{ backgroundColor: token.colorBgContainerDisabled, color: token.colorTextSecondary }}>
                                 {student.admissionType}
                               </Tag>
                             </div>
@@ -657,21 +651,21 @@ export default function StudentProfile() {
                       <Col xs={24} lg={12}>
                         <div className="space-y-6">
                           <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1 h-6 rounded-full bg-green-500" />
-                            <Title level={4} className="!mb-0 !text-gray-900 font-bold">Contact & Address</Title>
+                            <div className="w-1 h-6 rounded-full" style={{ backgroundColor: token.colorSuccess }} />
+                            <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Contact & Address</Title>
                           </div>
-                          <div className="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                            <div className="p-4 flex justify-between items-start border-b border-gray-100">
-                              <Text className="text-gray-500 font-medium shrink-0 mr-4">Home Address</Text>
-                              <Text className="text-gray-900 font-bold text-right max-w-[60%]">{student.address || "N/A"}, {student.city}, {student.district}, {student.state} - {student.pinCode}</Text>
+                          <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                            <div className="p-4 flex justify-between items-start border-b" style={{ borderColor: token.colorBorderSecondary }}>
+                              <Text className="font-medium shrink-0 mr-4" style={{ color: token.colorTextSecondary }}>Home Address</Text>
+                              <Text className="font-bold text-right max-w-[60%]" style={{ color: token.colorText }}>{student.address || "N/A"}, {student.city}, {student.district}, {student.state} - {student.pinCode}</Text>
                             </div>
-                            <div className="p-4 flex justify-between items-center border-b border-gray-100">
-                              <Text className="text-gray-500 font-medium">Parent/Guardian</Text>
-                              <Text className="text-gray-900 font-bold">{student.parentName || "N/A"}</Text>
+                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Parent/Guardian</Text>
+                              <Text className="font-bold" style={{ color: token.colorText }}>{student.parentName || "N/A"}</Text>
                             </div>
                             <div className="p-4 flex justify-between items-center">
-                              <Text className="text-gray-500 font-medium">Parent Contact</Text>
-                              <Text className="text-gray-900 font-bold">{student.parentContact || "N/A"}</Text>
+                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Contact</Text>
+                              <Text className="font-bold" style={{ color: token.colorText }}>{student.parentContact || "N/A"}</Text>
                             </div>
                           </div>
                         </div>
@@ -696,11 +690,12 @@ export default function StudentProfile() {
                             <Card
                               hoverable
                               bordered={false}
-                              className="rounded-2xl border border-gray-200 shadow-sm overflow-hidden bg-white group hover:shadow-md transition-all duration-300"
+                              className="rounded-2xl border shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300"
+                              style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
                               styles={{ body: { padding: '16px' } }}
                               onClick={() => window.open(getImageUrl(doc.fileUrl), "_blank")}
                             >
-                              <div className="h-48 rounded-xl bg-gray-50 flex items-center justify-center p-4 mb-4 border border-gray-100 overflow-hidden group-hover:bg-blue-50/30 transition-colors">
+                              <div className="h-48 rounded-xl flex items-center justify-center p-4 mb-4 border overflow-hidden transition-colors" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
                                 <img
                                   src={getImageUrl(doc.fileUrl)}
                                   alt={doc.fileName}
@@ -708,10 +703,10 @@ export default function StudentProfile() {
                                 />
                               </div>
                               <div className="px-1">
-                                <Text className="text-xs uppercase font-bold text-gray-900 tracking-wider block truncate mb-1">
+                                <Text className="text-xs uppercase font-bold tracking-wider block truncate mb-1" style={{ color: token.colorText }}>
                                   {doc.type.replaceAll("_", " ")}
                                 </Text>
-                                <Text className="text-[10px] text-gray-400 truncate block font-medium">
+                                <Text className="text-[10px] truncate block font-medium" style={{ color: token.colorTextTertiary }}>
                                   {doc.fileName}
                                 </Text>
                               </div>
@@ -720,10 +715,10 @@ export default function StudentProfile() {
                         ))}
                       </Row>
                     ) : (
-                      <div className="py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
+                      <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
                         <Empty description={false} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                        <Title level={5} className="!text-gray-500 mt-4 !font-normal">No documents found</Title>
-                        <Button type="primary" onClick={openUploadModal} className="mt-6 rounded-xl font-bold bg-blue-600 hover:bg-blue-500 border-0 px-8 h-10 shadow-lg shadow-blue-200">
+                        <Title level={5} className="mt-4 !font-normal" style={{ color: token.colorTextSecondary }}>No documents found</Title>
+                        <Button type="primary" onClick={openUploadModal} className="mt-6 rounded-xl font-bold px-8 h-10 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
                           Upload Document
                         </Button>
                       </div>
@@ -744,27 +739,27 @@ export default function StudentProfile() {
                       <Row gutter={[20, 20]}>
                         {(student.placements || []).map((p, i) => (
                           <Col xs={24} md={12} lg={8} key={i}>
-                            <div className="p-6 rounded-2xl border border-gray-200 bg-white hover:border-green-200 hover:shadow-md transition-all duration-300">
+                            <div className="p-6 rounded-2xl border hover:shadow-md transition-all duration-300" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}>
                               <div className="flex justify-between items-start mb-4">
-                                <Title level={5} className="!mb-0 !text-gray-900 text-lg font-bold leading-tight flex-1 mr-2">{p.companyName}</Title>
+                                <Title level={5} className="!mb-0 text-lg font-bold leading-tight flex-1 mr-2" style={{ color: token.colorText }}>{p.companyName}</Title>
                                 <Tag color={getPlacementStatusColor(p.status)} className="m-0 px-2 py-1 rounded-md border-0 font-bold uppercase tracking-wider text-[10px]">
                                   {p.status}
                                 </Tag>
                               </div>
-                              <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4">
-                                <Text className="text-[10px] uppercase font-bold text-green-700 tracking-widest block mb-1">Annual CTC</Text>
-                                <Text className="text-2xl font-black text-green-800 leading-none">
-                                  ₹ {p.salary?.toFixed(2)} <span className="text-xs font-bold text-green-600">LPA</span>
+                              <div className="p-4 rounded-xl border mb-4" style={{ backgroundColor: token.colorSuccessBg, borderColor: token.colorSuccessBorder }}>
+                                <Text className="text-[10px] uppercase font-bold tracking-widest block mb-1" style={{ color: token.colorSuccess }}>Annual CTC</Text>
+                                <Text className="text-2xl font-black leading-none" style={{ color: token.colorSuccessText }}>
+                                  ₹ {p.salary?.toFixed(2)} <span className="text-xs font-bold">LPA</span>
                                 </Text>
                               </div>
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
-                                  <SolutionOutlined className="text-gray-400 text-sm" />
-                                  <Text className="text-sm font-semibold text-gray-700 truncate">{p.jobRole}</Text>
+                                  <SolutionOutlined className="text-sm" style={{ color: token.colorTextTertiary }} />
+                                  <Text className="text-sm font-semibold truncate" style={{ color: token.colorTextSecondary }}>{p.jobRole}</Text>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <CalendarOutlined className="text-gray-400 text-sm" />
-                                  <Text className="text-sm font-semibold text-gray-700">{formatDate(p.offerDate)}</Text>
+                                  <CalendarOutlined className="text-sm" style={{ color: token.colorTextTertiary }} />
+                                  <Text className="text-sm font-semibold" style={{ color: token.colorTextSecondary }}>{formatDate(p.offerDate)}</Text>
                                 </div>
                               </div>
                             </div>
@@ -772,8 +767,8 @@ export default function StudentProfile() {
                         ))}
                       </Row>
                     ) : (
-                      <div className="py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                        <Empty description={<span className="text-gray-400 font-medium">No placement offers found yet</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                      <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                        <Empty description={<span className="font-medium" style={{ color: token.colorTextSecondary }}>No placement offers found yet</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                       </div>
                     )}
                   </div>
@@ -790,8 +785,8 @@ export default function StudentProfile() {
                   <div className="p-8 space-y-10">
                     <section>
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="w-1 h-6 rounded-full bg-indigo-500" />
-                        <Title level={4} className="!mb-0 !text-gray-900 font-bold">Internship History</Title>
+                        <div className="w-1 h-6 rounded-full" style={{ backgroundColor: '#6366f1' }} />
+                        <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Internship History</Title>
                       </div>
                       
                       {(student.internshipApplications || []).length > 0 ? (
@@ -801,18 +796,18 @@ export default function StudentProfile() {
                             .map((app, i) => {
                               const isSelf = !app.internshipId || !app.internship;
                               return (
-                                <div key={i} className="p-6 rounded-2xl border border-gray-200 bg-white hover:border-indigo-200 hover:shadow-md transition-all duration-300">
+                                <div key={i} className="p-6 rounded-2xl border hover:shadow-md transition-all duration-300" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}>
                                   <div className="flex justify-between items-start mb-4">
                                     <div>
                                       {isSelf && (
-                                        <Tag className="m-0 mb-2 px-2 py-0.5 rounded-md bg-purple-50 text-purple-600 border-purple-100 text-[10px] font-bold uppercase tracking-wider">
+                                        <Tag className="m-0 mb-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: '#f3e8ff', color: '#9333ea', borderColor: '#e9d5ff' }}>
                                           Self-Identified
                                         </Tag>
                                       )}
-                                      <Title level={5} className="!mb-1 !text-gray-900 text-lg font-bold">
+                                      <Title level={5} className="!mb-1 text-lg font-bold" style={{ color: token.colorText }}>
                                         {isSelf ? app.companyName : app.internship?.title}
                                       </Title>
-                                      <Text className="text-indigo-600 font-bold text-xs uppercase tracking-wide block">
+                                      <Text className="font-bold text-xs uppercase tracking-wide block" style={{ color: '#6366f1' }}>
                                         {!isSelf ? app.internship?.industry?.companyName : 'External Position'}
                                       </Text>
                                     </div>
@@ -821,20 +816,20 @@ export default function StudentProfile() {
                                     </Tag>
                                   </div>
                                   
-                                  <div className="grid grid-cols-2 gap-4 py-4 border-y border-gray-100 mb-4">
+                                  <div className="grid grid-cols-2 gap-4 py-4 border-y mb-4" style={{ borderColor: token.colorBorderSecondary }}>
                                     <div>
-                                      <Text className="text-[10px] uppercase font-bold text-gray-400 block leading-none mb-1.5">Duration</Text>
-                                      <Text className="text-gray-900 font-bold text-sm">{app.internship?.duration || app.internshipDuration || 'N/A'}</Text>
+                                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1.5" style={{ color: token.colorTextTertiary }}>Duration</Text>
+                                      <Text className="font-bold text-sm" style={{ color: token.colorText }}>{app.internship?.duration || app.internshipDuration || 'N/A'}</Text>
                                     </div>
                                     <div>
-                                      <Text className="text-[10px] uppercase font-bold text-gray-400 block leading-none mb-1.5">Applied On</Text>
-                                      <Text className="text-gray-900 font-bold text-sm">{formatDate(app.appliedDate)}</Text>
+                                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1.5" style={{ color: token.colorTextTertiary }}>Applied On</Text>
+                                      <Text className="font-bold text-sm" style={{ color: token.colorText }}>{formatDate(app.appliedDate)}</Text>
                                     </div>
                                   </div>
                                   
                                   {(app.status === "JOINED" || app.status === "COMPLETED") && (
                                     <div>
-                                      <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">
+                                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: token.colorTextTertiary }}>
                                         <span>Course Progress</span>
                                         <span>{getInternshipProgress(app.internship?.startDate, app.internship?.endDate)}%</span>
                                       </div>
@@ -843,7 +838,7 @@ export default function StudentProfile() {
                                         size="small"
                                         showInfo={false}
                                         strokeColor="#4f46e5"
-                                        trailColor="#e0e7ff"
+                                        trailColor={token.colorFillQuaternary}
                                         className="!m-0"
                                       />
                                     </div>
@@ -853,8 +848,8 @@ export default function StudentProfile() {
                             })}
                         </div>
                       ) : (
-                        <div className="py-20 text-center bg-gray-50 rounded-2xl border border-dashed border-gray-200 flex flex-col items-center justify-center">
-                          <Empty description={<span className="text-gray-400 font-medium">No internship history recorded</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                        <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                          <Empty description={<span className="font-medium" style={{ color: token.colorTextSecondary }}>No internship history recorded</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                         </div>
                       )}
                     </section>
@@ -868,7 +863,7 @@ export default function StudentProfile() {
 
       {/* Modals */}
       <Modal
-        title={<span className="text-xl font-bold text-gray-900">Edit Student Details</span>}
+        title={<span className="text-xl font-bold" style={{ color: token.colorText }}>Edit Student Details</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         confirmLoading={imageUploading}
@@ -880,7 +875,7 @@ export default function StudentProfile() {
           <Button key="back" onClick={() => setIsModalOpen(false)} className="rounded-xl h-10 font-medium">
             Cancel
           </Button>,
-          <Button key="submit" type="primary" loading={imageUploading} onClick={() => form.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg shadow-blue-200 bg-blue-600">
+          <Button key="submit" type="primary" loading={imageUploading} onClick={() => form.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
             Save Changes
           </Button>,
         ]}
@@ -889,13 +884,14 @@ export default function StudentProfile() {
           <Row gutter={24}>
             {/* Profile Image Upload */}
             <Col span={24}>
-              <Form.Item label={<span className="font-medium text-gray-700">Profile Image</span>}>
-                <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+              <Form.Item label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Profile Image</span>}>
+                <div className="flex items-center gap-6 p-4 rounded-2xl border" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
                   <Avatar
                     size={80}
                     src={getImageUrl(student?.profileImage)}
                     icon={<UserOutlined />}
-                    className="border-2 border-white shadow-md"
+                    className="border-2 shadow-md"
+                    style={{ borderColor: token.colorBgContainer }}
                   />
                   <ImgCrop
                     rotationSlider
@@ -929,7 +925,7 @@ export default function StudentProfile() {
                       className="avatar-uploader"
                     >
                       {profileImageList.length < 1 && (
-                        <div className="flex flex-col items-center justify-center text-gray-500">
+                        <div className="flex flex-col items-center justify-center" style={{ color: token.colorTextTertiary }}>
                           <CameraOutlined className="text-xl mb-1" />
                           <div className="text-xs font-medium">Upload</div>
                         </div>
@@ -941,34 +937,34 @@ export default function StudentProfile() {
             </Col>
 
             <Col span={12}>
-              <Form.Item name="name" label={<span className="font-medium text-gray-700">Name</span>} rules={[{ required: true }]}>
-                <Input prefix={<UserOutlined className="text-gray-400" />} className="rounded-lg h-11" />
+              <Form.Item name="name" label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Name</span>} rules={[{ required: true }]}>
+                <Input prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
               </Form.Item>
             </Col>
             <Col span={12}>
                 <Form.Item
                   name="email"
-                  label={<span className="font-medium text-gray-700">Email</span>}
+                  label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Email</span>}
                   rules={[{ required: true, type: "email" }]}
                 >
-                  <Input prefix={<MailOutlined className="text-gray-400" />} className="rounded-lg h-11" />
+                  <Input prefix={<MailOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
                 </Form.Item>
               </Col>
 
             <Col span={12}>
               <Form.Item
                 name="contact"
-                label={<span className="font-medium text-gray-700">Contact</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Contact</span>}
                 rules={[{ required: true }]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} className="rounded-lg h-11" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
               </Form.Item>
             </Col>
 
               <Col span={12}>
                 <Form.Item
                   name="category"
-                  label={<span className="font-medium text-gray-700">Category</span>}
+                  label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Category</span>}
                   rules={[{ required: true }]}
                 >
                   <Select placeholder="Select Category" className="h-11 rounded-lg">
@@ -983,25 +979,25 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="parentName"
-                label={<span className="font-medium text-gray-700">Parent Name</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Name</span>}
                 rules={[{ required: true }]}
               >
-                <Input prefix={<TeamOutlined className="text-gray-400" />} className="rounded-lg h-11" />
+                <Input prefix={<TeamOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="parentContact"
-                label={<span className="font-medium text-gray-700">Parent Contact</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Contact</span>}
                 rules={[{ required: true }]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} className="rounded-lg h-11" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="gender"
-                label={<span className="font-medium text-gray-700">Gender</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Gender</span>}
                 rules={[{ required: true }]}
               >
                 <Select placeholder="Gender" className="h-11 rounded-lg">
@@ -1014,7 +1010,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="dob"
-                label={<span className="font-medium text-gray-700">Date of Birth</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Date of Birth</span>}
                 rules={[{ required: false }]}
               >
                 <Input type="date" className="rounded-lg h-11" />
@@ -1023,7 +1019,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="pinCode"
-                label={<span className="font-medium text-gray-700">Pin Code</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Pin Code</span>}
                 rules={[{ required: true }]}
               >
                 <Input className="rounded-lg h-11" />
@@ -1032,7 +1028,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="address"
-                label={<span className="font-medium text-gray-700">Address</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Address</span>}
                 rules={[{ required: true }]}
               >
                 <Input className="rounded-lg h-11" />
@@ -1041,7 +1037,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="city"
-                label={<span className="font-medium text-gray-700">City/Village</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>City/Village</span>}
                 rules={[{ required: true }]}
               >
                 <Input className="rounded-lg h-11" />
@@ -1050,7 +1046,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="state"
-                label={<span className="font-medium text-gray-700">State</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>State</span>}
                 rules={[{ required: true, message: 'Please select state' }]}
               >
                 <Select 
@@ -1077,7 +1073,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="district"
-                label={<span className="font-medium text-gray-700">District</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>District</span>}
                 rules={[{ required: true, message: 'Please select district' }]}
               >
                 <Select 
@@ -1104,7 +1100,7 @@ export default function StudentProfile() {
             <Col span={12}>
               <Form.Item
                 name="tehsil"
-                label={<span className="font-medium text-gray-700">Tehsil</span>}
+                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Tehsil</span>}
                 rules={[{ required: true, message: 'Please select tehsil' }]}
               >
                 <Select 
@@ -1129,7 +1125,7 @@ export default function StudentProfile() {
       </Modal>
 
       <Modal
-        title={<span className="text-xl font-bold text-gray-900">Upload Document</span>}
+        title={<span className="text-xl font-bold" style={{ color: token.colorText }}>Upload Document</span>}
         open={uploadModal}
         onCancel={() => setUploadModal(false)}
         onOk={() => uploadForm.submit()}
@@ -1139,7 +1135,7 @@ export default function StudentProfile() {
           <Button key="back" onClick={() => setUploadModal(false)} className="rounded-xl h-10 font-medium">
             Cancel
           </Button>,
-          <Button key="submit" type="primary" loading={uploading} onClick={() => uploadForm.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg shadow-blue-200 bg-blue-600">
+          <Button key="submit" type="primary" loading={uploading} onClick={() => uploadForm.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
             Upload
           </Button>,
         ]}
@@ -1147,7 +1143,7 @@ export default function StudentProfile() {
         <Form form={uploadForm} layout="vertical" onFinish={handleUpload} className="mt-6">
           <Form.Item
             name="type"
-            label={<span className="font-medium text-gray-700">Document Type</span>}
+            label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Document Type</span>}
             rules={[{ required: true }]}
           >
             <Select placeholder="Select type" className="h-11 rounded-lg">
@@ -1158,7 +1154,7 @@ export default function StudentProfile() {
               <Option value="OTHER">Other</Option>
             </Select>
           </Form.Item>
-          <Form.Item label={<span className="font-medium text-gray-700">Upload File</span>}>
+          <Form.Item label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Upload File</span>}>
             <Upload
               beforeUpload={(file) => {
                 const isUnderLimit = file.size / 1024 <= 200;
@@ -1178,7 +1174,8 @@ export default function StudentProfile() {
               <Button
                 loading={uploading}
                 icon={<UploadOutlined />}
-                className="w-full h-12 rounded-xl border-dashed border-gray-300 hover:border-blue-500 hover:text-blue-500"
+                className="w-full h-12 rounded-xl border-dashed"
+                style={{ borderColor: token.colorBorder }}
               >
                 Select File (Max 200KB)
               </Button>
@@ -1188,4 +1185,4 @@ export default function StudentProfile() {
       </Modal>
     </div>
   );
-}
+};

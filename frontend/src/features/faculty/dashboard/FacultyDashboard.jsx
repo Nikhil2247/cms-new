@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, message, FloatButton, Layout } from 'antd';
+import { Row, Col, Spin, Alert, Modal, message, FloatButton, Layout, theme, Input } from 'antd';
 import { SyncOutlined, CameraOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -23,6 +23,7 @@ dayjs.extend(isBetween);
 
 const FacultyDashboard = () => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   // Use custom hook for dashboard data with SWR
   const {
@@ -153,11 +154,17 @@ const FacultyDashboard = () => {
           message={<span className="font-bold text-lg">Dashboard Error</span>}
           description={error}
           showIcon
-          className="rounded-2xl shadow-sm border-red-100 bg-red-50 max-w-lg w-full"
+          className="rounded-2xl shadow-sm max-w-lg w-full"
+          style={{ 
+            backgroundColor: token.colorErrorBg, 
+            borderColor: token.colorErrorBorder,
+            color: token.colorErrorText
+          }}
           action={
             <button 
               onClick={refresh} 
-              className="text-red-600 font-semibold hover:text-red-800 hover:underline px-4 py-2"
+              className="font-semibold hover:underline px-4 py-2"
+              style={{ color: token.colorError }}
             >
               Try Again
             </button>
@@ -170,10 +177,20 @@ const FacultyDashboard = () => {
   return (
     <>
       <Spin spinning={isLoading} tip="Loading dashboard..." size="large">
-        <div className="p-4 md:p-8 bg-background-secondary min-h-screen">
+        <div 
+          className="p-4 md:p-8 min-h-screen"
+          style={{ backgroundColor: token.colorBgLayout }}
+        >
           {/* Subtle Revalidation Indicator */}
           {isRevalidating && !isLoading && (
-            <div className="fixed top-0 left-0 right-0 z-50 bg-blue-50/90 backdrop-blur-sm border-b border-blue-100 px-4 py-2 flex items-center justify-center gap-2 text-blue-700 text-sm font-medium animate-slide-down shadow-sm">
+            <div 
+              className="fixed top-0 left-0 right-0 z-50 backdrop-blur-sm px-4 py-2 flex items-center justify-center gap-2 text-sm font-medium animate-slide-down shadow-sm"
+              style={{ 
+                backgroundColor: token.colorInfoBg, // fallback or use colorInfoBg with opacity
+                borderBottom: `1px solid ${token.colorInfoBorder}`,
+                color: token.colorInfoText
+              }}
+            >
               <SyncOutlined spin />
               <span>Updating dashboard data...</span>
             </div>
@@ -283,8 +300,7 @@ const FacultyDashboard = () => {
           width: 64,
           height: 64,
         }}
-        className="shadow-lg shadow-blue-500/30"
-        badge={{ count: 'Quick', color: '#10b981', offset: [-5, 5] }}
+        badge={{ count: 'Quick', color: token.colorSuccess, offset: [-5, 5] }}
       />
 
       {/* Student Details Modal */}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Avatar, Tag, Button, Typography, Empty, Space, Popconfirm } from 'antd';
+import { Card, Avatar, Tag, Button, Typography, Empty, Space, Popconfirm, theme } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -21,6 +21,7 @@ const PendingApprovalsCard = ({
   onViewAll,
 }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   // Helper to extract student name from application
   const getStudentName = (app) => {
@@ -47,7 +48,7 @@ const PendingApprovalsCard = ({
     <Card
       title={
         <div className="flex items-center gap-2">
-          <ExclamationCircleOutlined className="text-warning-500" />
+          <ExclamationCircleOutlined style={{ color: token.colorWarning }} />
           <span>Pending Approvals</span>
           {pendingApplications.length > 0 && (
             <Tag color="orange">{pendingApplications.length}</Tag>
@@ -59,19 +60,28 @@ const PendingApprovalsCard = ({
           View All <RightOutlined />
         </Button>
       }
-      className="h-full border border-border rounded-xl"
+      className="h-full rounded-xl"
+      style={{ borderColor: token.colorBorder }}
     >
       {pendingApplications.length > 0 ? (
         <div className="flex flex-col gap-3">
           {pendingApplications.slice(0, 5).map((app, index) => (
-            <div key={app.id || index} className={`flex items-center justify-between w-full gap-3 pb-3 ${index !== pendingApplications.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}>
+            <div 
+              key={app.id || index} 
+              className="flex items-center justify-between w-full gap-3 pb-3"
+              style={{ borderBottom: index !== pendingApplications.slice(0, 5).length - 1 ? `1px solid ${token.colorSplit}` : 'none' }}
+            >
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <Avatar icon={<UserOutlined />} className="bg-warning-100 text-warning-600 shrink-0" />
+                <Avatar 
+                  icon={<UserOutlined />} 
+                  className="shrink-0"
+                  style={{ backgroundColor: token.colorWarningBg, color: token.colorWarning }}
+                />
                 <div className="min-w-0 flex-1">
                   <Text className="text-sm font-medium block truncate">
                     {getStudentName(app)}
                   </Text>
-                  <div className="flex items-center gap-2 text-xs text-text-secondary">
+                  <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
                     <BankOutlined />
                     <span className="truncate">
                       {getCompanyName(app)}

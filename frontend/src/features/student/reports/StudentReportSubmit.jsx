@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Form, Input, Select, DatePicker, InputNumber, Upload, Button, message, Row, Col, Divider } from 'antd';
+import { Card, Form, Input, Select, DatePicker, InputNumber, Upload, Button, message, Row, Col, Divider, theme } from 'antd';
 import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
 import { submitReport } from '../store/studentSlice';
 
@@ -9,6 +9,7 @@ const StudentReportSubmit = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [fileList, setFileList] = useState([]);
+  const { token } = theme.useToken();
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -50,10 +51,11 @@ const StudentReportSubmit = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-8 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <Card 
-        title={<span className="text-text-primary font-semibold">Submit Monthly Report</span>} 
-        className="rounded-xl border-border shadow-sm max-w-4xl mx-auto"
+        title={<span className="font-semibold" style={{ color: token.colorText }}>Submit Monthly Report</span>} 
+        className="rounded-xl shadow-sm max-w-4xl mx-auto"
+        style={{ borderColor: token.colorBorder }}
       >
         <Form
           form={form}
@@ -177,7 +179,7 @@ const StudentReportSubmit = () => {
                 Upload Supporting Documents
               </Button>
             </Upload>
-            <div className="text-text-tertiary text-xs mt-2 italic">
+            <div className="text-xs mt-2 italic" style={{ color: token.colorTextTertiary }}>
               Supported formats: PDF, DOC, DOCX, JPG, PNG (Max 5MB per file)
             </div>
           </Form.Item>
@@ -192,7 +194,8 @@ const StudentReportSubmit = () => {
                 loading={loading}
                 icon={<SaveOutlined />}
                 size="large"
-                className="rounded-xl px-10 h-12 shadow-lg shadow-primary/20"
+                className="rounded-xl px-10 h-12 shadow-lg"
+                style={{ backgroundColor: token.colorPrimary, boxShadow: `0 4px 10px ${token.colorPrimary}33` }}
               >
                 Submit Report
               </Button>

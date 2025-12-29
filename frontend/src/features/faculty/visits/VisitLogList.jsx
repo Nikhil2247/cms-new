@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Descriptions, Drawer, Typography, Segmented } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Descriptions, Drawer, Typography, Segmented, theme } from 'antd';
 import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined } from '@ant-design/icons';
 import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
 import UnifiedVisitLogModal from './UnifiedVisitLogModal';
@@ -8,11 +8,6 @@ import dayjs from 'dayjs';
 
 const { RangePicker } = DatePicker;
 const { Title, Text, Paragraph } = Typography;
-
-// Constant styles outside component
-const CARD_BODY_STYLE = { padding: '16px' };
-const TABLE_CARD_BODY_STYLE = { padding: 0 };
-const DRAWER_MASK_STYLE = { backdropFilter: 'blur(4px)' };
 
 const STATUS_FILTERS = [
   { value: 'all', label: 'All Visits' },
@@ -23,6 +18,7 @@ const STATUS_FILTERS = [
 
 const VisitLogList = React.memo(() => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   const { visitLogs, lastFetched, students } = useSelector((state) => state.faculty);
   const { list: visitLogsList = [], loading } = visitLogs || {};
   const assignedStudents = students?.list || [];
@@ -136,8 +132,8 @@ const VisitLogList = React.memo(() => {
       key: 'student',
       render: (text, record) => (
         <div>
-          <div className="font-medium">{text}</div>
-          <div className="text-text-secondary text-xs">{record.student?.rollNumber}</div>
+          <div className="font-medium" style={{ color: token.colorText }}>{text}</div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.rollNumber}</div>
         </div>
       ),
     },
@@ -226,6 +222,7 @@ const VisitLogList = React.memo(() => {
               icon={<EditOutlined />}
               onClick={() => handleOpenModal(record.id, record)}
               size="small"
+              style={isDraft ? { backgroundColor: token.colorPrimary } : {}}
             >
               {isDraft ? 'Complete' : 'Edit'}
             </Button>
@@ -241,29 +238,32 @@ const VisitLogList = React.memo(() => {
         );
       },
     },
-  ], [handleDelete]);
+  ], [handleDelete, token]);
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+            <div 
+              className="w-10 h-10 flex items-center justify-center rounded-xl shadow-sm mr-3"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, color: token.colorPrimary }}
+            >
               <CalendarOutlined className="text-lg" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
                   Visit Logs
                 </Title>
                 {visitLogsLastFetched && (
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-xs" style={{ color: token.colorTextTertiary }}>
                     Updated {new Date(visitLogsLastFetched).toLocaleTimeString()}
                   </span>
                 )}
               </div>
-              <Paragraph className="text-text-secondary text-sm mb-0">
+              <Paragraph className="text-sm mb-0" style={{ color: token.colorTextSecondary }}>
                 Track and manage industrial visits for assigned students
               </Paragraph>
             </div>
@@ -282,7 +282,8 @@ const VisitLogList = React.memo(() => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => handleOpenModal()}
-              className="h-10 rounded-xl font-bold shadow-lg shadow-primary/20"
+              className="h-10 rounded-xl font-bold shadow-lg"
+              style={{ backgroundColor: token.colorPrimary, boxShadow: `0 4px 6px -1px ${token.colorPrimary}20` }}
             >
               Add Visit Log
             </Button>
@@ -304,18 +305,19 @@ const VisitLogList = React.memo(() => {
               </Space>
             ),
           }))}
-          className="bg-surface"
+          style={{ backgroundColor: token.colorBgContainer }}
         />
 
         {/* Filters */}
-        <Card className="rounded-xl border-border shadow-sm" styles={{ body: CARD_BODY_STYLE }}>
+        <Card className="rounded-xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }} styles={{ body: { padding: '16px' } }}>
           <div className="flex flex-wrap items-center gap-4">
             <Input
               placeholder="Search by student, company, location..."
-              prefix={<SearchOutlined className="text-text-tertiary" />}
+              prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="max-w-md rounded-lg h-10 bg-background border-border"
+              className="max-w-md rounded-lg h-10"
+              style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
               allowClear
             />
             <RangePicker
@@ -323,18 +325,20 @@ const VisitLogList = React.memo(() => {
               onChange={setDateRange}
               format="DD/MM/YYYY"
               placeholder={['Start Date', 'End Date']}
-              className="rounded-lg h-10 border-border"
+              className="rounded-lg h-10"
+              style={{ borderColor: token.colorBorder }}
             />
           </div>
         </Card>
 
         {/* Table Container */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: TABLE_CARD_BODY_STYLE }}>
+        <Card className="rounded-2xl shadow-sm overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }} styles={{ body: { padding: 0 } }}>
           <Table
             columns={columns}
             dataSource={filteredLogs}
             loading={loading}
             rowKey="id"
+            scroll={{ x: 'max-content' }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
@@ -351,10 +355,13 @@ const VisitLogList = React.memo(() => {
       <Drawer
         title={
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-              <EyeOutlined className="text-primary" />
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center border"
+              style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}
+            >
+              <EyeOutlined style={{ color: token.colorPrimary }} />
             </div>
-            <span className="font-bold text-text-primary">Visit Log Details</span>
+            <span className="font-bold" style={{ color: token.colorText }}>Visit Log Details</span>
           </div>
         }
         placement="right"
@@ -364,15 +371,15 @@ const VisitLogList = React.memo(() => {
           setSelectedLog(null);
         }}
         open={detailDrawer}
-        styles={{ mask: DRAWER_MASK_STYLE }}
+        styles={{ mask: { backdropFilter: 'blur(4px)' } }}
         className="rounded-l-2xl overflow-hidden"
       >
         {selectedLog && (
           <div className="space-y-8">
-            <div className="bg-surface rounded-xl border border-border p-4 flex justify-between items-center shadow-sm">
+            <div className="rounded-xl border p-4 flex justify-between items-center shadow-sm" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
               <div className="flex items-center gap-3">
-                <CalendarOutlined className="text-primary" />
-                <span className="font-bold text-text-primary">{dayjs(selectedLog.visitDate).format('MMMM DD, YYYY')}</span>
+                <CalendarOutlined style={{ color: token.colorPrimary }} />
+                <span className="font-bold" style={{ color: token.colorText }}>{dayjs(selectedLog.visitDate).format('MMMM DD, YYYY')}</span>
               </div>
               <Tag 
                 color={selectedLog.status === 'completed' ? 'success' : 'processing'}
@@ -383,16 +390,16 @@ const VisitLogList = React.memo(() => {
             </div>
 
             <section>
-              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Student Information</Title>
-              <div className="bg-background-tertiary/30 rounded-xl border border-border overflow-hidden">
+              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest font-bold" style={{ color: token.colorTextTertiary }}>Student Information</Title>
+              <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorder }}>
                 <Descriptions column={1} size="small" bordered className="custom-descriptions">
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Name</span>}>
-                    <Text strong className="text-text-primary">{selectedLog.student?.name}</Text>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Name</span>}>
+                    <Text strong style={{ color: token.colorText }}>{selectedLog.student?.name}</Text>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Roll Number</span>}>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Roll Number</span>}>
                     {selectedLog.student?.rollNumber}
                   </Descriptions.Item>
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Email</span>}>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Email</span>}>
                     {selectedLog.student?.email}
                   </Descriptions.Item>
                 </Descriptions>
@@ -400,40 +407,40 @@ const VisitLogList = React.memo(() => {
             </section>
 
             <section>
-              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Visit Details</Title>
-              <div className="bg-background-tertiary/30 rounded-xl border border-border overflow-hidden">
+              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest font-bold" style={{ color: token.colorTextTertiary }}>Visit Details</Title>
+              <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorder }}>
                 <Descriptions column={1} size="small" bordered className="custom-descriptions">
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Type</span>}>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Type</span>}>
                     <Tag color={selectedLog.visitType === 'PHYSICAL' ? 'green' : 'blue'}>
                       {selectedLog.visitType}
                     </Tag>
                   </Descriptions.Item>
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Location</span>}>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Location</span>}>
                     <Space>
                       <EnvironmentOutlined />
                       {selectedLog.visitLocation || 'N/A'}
                     </Space>
                   </Descriptions.Item>
                   {selectedLog.latitude && selectedLog.longitude && (
-                    <Descriptions.Item label={<span className="text-text-tertiary font-medium">GPS Coordinates</span>}>
+                    <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>GPS Coordinates</span>}>
                       <Text code>{selectedLog.latitude.toFixed(6)}, {selectedLog.longitude.toFixed(6)}</Text>
                       {selectedLog.gpsAccuracy && (
                         <Text type="secondary" className="ml-2">(±{selectedLog.gpsAccuracy.toFixed(0)}m)</Text>
                       )}
                     </Descriptions.Item>
                   )}
-                  <Descriptions.Item label={<span className="text-text-tertiary font-medium">Company</span>}>
-                    <Text strong className="text-text-primary">{selectedLog.company?.name || selectedLog.application?.internship?.industry?.companyName || 'N/A'}</Text>
+                  <Descriptions.Item label={<span className="font-medium" style={{ color: token.colorTextTertiary }}>Company</span>}>
+                    <Text strong style={{ color: token.colorText }}>{selectedLog.company?.name || selectedLog.application?.internship?.industry?.companyName || 'N/A'}</Text>
                   </Descriptions.Item>
                 </Descriptions>
               </div>
             </section>
 
             <section>
-              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Notes & Observations</Title>
+              <Title level={5} className="!mb-4 text-xs uppercase tracking-widest font-bold" style={{ color: token.colorTextTertiary }}>Notes & Observations</Title>
               <div className="space-y-4">
-                <div className="bg-surface p-4 rounded-xl border border-border">
-                  <Paragraph className="text-text-primary text-sm mb-0">
+                <div className="p-4 rounded-xl border" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                  <Paragraph className="text-sm mb-0" style={{ color: token.colorText }}>
                     {selectedLog.observationsAboutStudent || selectedLog.notes || selectedLog.observations || 'No notes recorded'}
                   </Paragraph>
                 </div>
@@ -443,7 +450,7 @@ const VisitLogList = React.memo(() => {
             {/* Documents Section */}
             {(selectedLog.signedDocumentUrl || selectedLog.visitPhotos?.length > 0) && (
               <section>
-                <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">Documents</Title>
+                <Title level={5} className="!mb-4 text-xs uppercase tracking-widest font-bold" style={{ color: token.colorTextTertiary }}>Documents</Title>
                 <div className="space-y-3">
                   {selectedLog.signedDocumentUrl && (
                     <Button
@@ -461,7 +468,8 @@ const VisitLogList = React.memo(() => {
                           key={idx}
                           src={url}
                           alt={`Visit photo ${idx + 1}`}
-                          className="w-16 h-16 object-cover rounded-lg cursor-pointer border border-border"
+                          className="w-16 h-16 object-cover rounded-lg cursor-pointer border"
+                          style={{ borderColor: token.colorBorder }}
                           onClick={() => window.open(url, '_blank')}
                         />
                       ))}
@@ -471,7 +479,7 @@ const VisitLogList = React.memo(() => {
               </section>
             )}
 
-            <div className="pt-6 flex justify-end gap-3 border-t border-border">
+            <div className="pt-6 flex justify-end gap-3 border-t" style={{ borderColor: token.colorBorder }}>
               <Button
                 onClick={() => setDetailDrawer(false)}
                 className="rounded-xl px-6 h-10 font-medium"
@@ -485,7 +493,8 @@ const VisitLogList = React.memo(() => {
                   setDetailDrawer(false);
                   handleOpenModal(selectedLog.id, selectedLog);
                 }}
-                className="rounded-xl px-6 h-10 font-bold bg-primary border-0"
+                className="rounded-xl px-6 h-10 font-bold border-0"
+                style={{ backgroundColor: token.colorPrimary }}
               >
                 {selectedLog.status?.toUpperCase() === 'DRAFT' ? 'Complete Visit' : 'Edit Log'}
               </Button>

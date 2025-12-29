@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, Tabs, Empty, Spin, Button, Typography, Row, Col, Tag, Statistic } from 'antd';
+import { Card, Tabs, Empty, Spin, Button, Typography, Row, Col, Tag, Statistic, theme } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -30,6 +30,7 @@ const { Title, Text } = Typography;
 const MyApplications = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
 
   // Redux state
   const loading = useSelector(selectApplicationsLoading);
@@ -136,7 +137,7 @@ const MyApplications = () => {
   // Render loading state
   if (loading && !lastFetched) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: token.colorBgLayout }}>
         <Spin size="large" />
       </div>
     );
@@ -145,7 +146,7 @@ const MyApplications = () => {
   // Render details view
   if (showDetailsView && selectedApplication) {
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: token.colorBgLayout }}>
         <ApplicationDetailsView
           application={selectedApplication}
           onBack={handleCloseDetailsView}
@@ -177,7 +178,7 @@ const MyApplications = () => {
         </span>
       ),
       children: derivedData.hasPlatformApplications ? (
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm">
+        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
           <ApplicationsTable
             applications={applications}
             loading={loading}
@@ -185,14 +186,14 @@ const MyApplications = () => {
           />
         </Card>
       ) : (
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm bg-white">
+        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
           <Empty
-            image={<BankOutlined className="text-6xl text-gray-300" />}
+            image={<BankOutlined style={{ fontSize: 60, color: token.colorTextDisabled }} />}
             imageStyle={{ height: 80 }}
             description={
               <div className="text-center py-4">
-                <Title level={4} className="text-gray-500 mb-2">No applications yet</Title>
-                <Text className="text-gray-400">Browse available internships and start applying</Text>
+                <Title level={4} className="mb-2" style={{ color: token.colorTextSecondary }}>No applications yet</Title>
+                <Text style={{ color: token.colorTextTertiary }}>Browse available internships and start applying</Text>
               </div>
             }
           >
@@ -201,7 +202,8 @@ const MyApplications = () => {
               icon={<ExportOutlined />}
               onClick={() => navigate('/internships')}
               size="large"
-              className="rounded-xl h-11 px-6 font-bold bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-200"
+              className="rounded-xl h-11 px-6 font-bold shadow-lg"
+              style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}
             >
               Browse Internships
             </Button>
@@ -219,7 +221,7 @@ const MyApplications = () => {
         </span>
       ),
       children: derivedData.hasSelfIdentifiedApplications ? (
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm">
+        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
           <ApplicationsTable
             applications={selfIdentifiedApplications}
             loading={loading}
@@ -228,14 +230,14 @@ const MyApplications = () => {
           />
         </Card>
       ) : (
-        <Card bordered={false} className="rounded-2xl border border-gray-100 shadow-sm bg-white">
+        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
           <Empty
-            image={<RocketOutlined className="text-6xl text-gray-300" />}
+            image={<RocketOutlined style={{ fontSize: 60, color: token.colorTextDisabled }} />}
             imageStyle={{ height: 80 }}
             description={
               <div className="text-center py-4">
-                <Title level={4} className="text-gray-500 mb-2">No self-identified internships</Title>
-                <Text className="text-gray-400">Submit internships you found from other platforms</Text>
+                <Title level={4} className="mb-2" style={{ color: token.colorTextSecondary }}>No self-identified internships</Title>
+                <Text style={{ color: token.colorTextTertiary }}>Submit internships you found from other platforms</Text>
               </div>
             }
           >
@@ -244,7 +246,8 @@ const MyApplications = () => {
               icon={<PlusOutlined />}
               onClick={() => navigate('/self-identified-internship')}
               size="large"
-              className="rounded-xl h-11 px-6 font-bold bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-200"
+              className="rounded-xl h-11 px-6 font-bold shadow-lg"
+              style={{ backgroundColor: '#9333ea', boxShadow: '0 10px 15px -3px rgba(147, 51, 234, 0.4)' }}
             >
               Add Self-Identified Internship
             </Button>
@@ -255,19 +258,26 @@ const MyApplications = () => {
   ];
 
   return (
-    <div className="p-4 md:p-8 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-8 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       {/* Header Section */}
       <div className="mb-8 animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-white border border-gray-100 rounded-2xl flex items-center justify-center shadow-sm text-blue-600">
+            <div 
+              className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
+              style={{ 
+                backgroundColor: token.colorBgContainer, 
+                border: `1px solid ${token.colorBorderSecondary}`,
+                color: token.colorPrimary 
+              }}
+            >
               <BankOutlined className="text-2xl" />
             </div>
             <div>
-              <Title level={2} className="!mb-1 !text-gray-900 !text-2xl lg:!text-3xl tracking-tight">
+              <Title level={2} className="!mb-1 !text-2xl lg:!text-3xl tracking-tight" style={{ color: token.colorText }}>
                 My Applications
               </Title>
-              <Text className="text-gray-500 text-sm">
+              <Text style={{ color: token.colorTextSecondary }}>
                 Track and manage your internship applications
               </Text>
             </div>
@@ -278,7 +288,12 @@ const MyApplications = () => {
               icon={<ReloadOutlined spin={loading} />}
               onClick={refetch}
               loading={loading}
-              className="rounded-xl h-11 px-4 border-gray-200 text-gray-600 hover:text-blue-600 hover:border-blue-200 bg-white"
+              className="rounded-xl h-11 px-4"
+              style={{ 
+                borderColor: token.colorBorder, 
+                color: token.colorTextSecondary,
+                backgroundColor: token.colorBgContainer
+              }}
             >
               Refresh
             </Button>
@@ -286,7 +301,11 @@ const MyApplications = () => {
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => navigate('/self-identified-internship')}
-              className="rounded-xl h-11 px-6 font-bold shadow-lg shadow-blue-200 bg-blue-600 hover:bg-blue-500 border-0"
+              className="rounded-xl h-11 px-6 font-bold shadow-lg border-0"
+              style={{ 
+                backgroundColor: token.colorPrimary,
+                boxShadow: `0 10px 15px -3px ${token.colorPrimary}40`
+              }}
             >
               Add Internship
             </Button>
@@ -296,42 +315,58 @@ const MyApplications = () => {
         {/* Quick Stats */}
         <Row gutter={[16, 16]}>
           <Col xs={12} sm={6}>
-            <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+            <Card 
+              bordered={false} 
+              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
+            >
               <Statistic
-                title={<span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Total Applications</span>}
+                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Total Applications</span>}
                 value={derivedData.totalCount}
-                prefix={<BankOutlined className="text-blue-500 mr-2" />}
-                valueStyle={{ fontWeight: 700, color: '#111827' }}
+                prefix={<BankOutlined style={{ color: token.colorPrimary }} className="mr-2" />}
+                valueStyle={{ fontWeight: 700, color: token.colorText }}
               />
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+            <Card 
+              bordered={false} 
+              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
+            >
               <Statistic
-                title={<span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Active Internships</span>}
+                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Active Internships</span>}
                 value={derivedData.activeCount}
-                valueStyle={{ color: '#10b981', fontWeight: 700 }}
-                prefix={<CheckCircleOutlined className="text-emerald-500 mr-2" />}
+                valueStyle={{ color: token.colorSuccess, fontWeight: 700 }}
+                prefix={<CheckCircleOutlined style={{ color: token.colorSuccess }} className="mr-2" />}
               />
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+            <Card 
+              bordered={false} 
+              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
+            >
               <Statistic
-                title={<span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Pending</span>}
+                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Pending</span>}
                 value={derivedData.pendingCount}
-                valueStyle={{ color: '#f59e0b', fontWeight: 700 }}
-                prefix={<ClockCircleOutlined className="text-amber-500 mr-2" />}
+                valueStyle={{ color: token.colorWarning, fontWeight: 700 }}
+                prefix={<ClockCircleOutlined style={{ color: token.colorWarning }} className="mr-2" />}
               />
             </Card>
           </Col>
           <Col xs={12} sm={6}>
-            <Card bordered={false} className="rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md transition-all duration-300">
+            <Card 
+              bordered={false} 
+              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
+            >
               <Statistic
-                title={<span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Self-Identified</span>}
+                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Self-Identified</span>}
                 value={derivedData.selfIdentifiedCount}
                 valueStyle={{ color: '#8b5cf6', fontWeight: 700 }}
-                prefix={<RocketOutlined className="text-violet-500 mr-2" />}
+                prefix={<RocketOutlined style={{ color: '#8b5cf6' }} className="mr-2" />}
               />
             </Card>
           </Col>
@@ -351,3 +386,4 @@ const MyApplications = () => {
 };
 
 export default MyApplications;
+

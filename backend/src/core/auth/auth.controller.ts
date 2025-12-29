@@ -26,6 +26,7 @@ import {
   ForgotPasswordDto,
   ResetPasswordDto,
   ChangePasswordDto,
+  StudentLoginDto,
 } from './dto';
 
 @Controller('auth')
@@ -50,6 +51,27 @@ export class AuthController {
     const user = await this.authService.validateUser(
       loginDto.email,
       loginDto.password,
+      ipAddress,
+      userAgent,
+    );
+    return this.authService.login(user, ipAddress, userAgent);
+  }
+
+  /**
+   * Student login endpoint - login with roll number
+   */
+  @Public()
+  @Post('student-login')
+  @HttpCode(HttpStatus.OK)
+  async studentLogin(
+    @Body() studentLoginDto: StudentLoginDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    const user = await this.authService.validateStudentByRollNumber(
+      studentLoginDto.rollNumber,
+      studentLoginDto.password,
       ipAddress,
       userAgent,
     );

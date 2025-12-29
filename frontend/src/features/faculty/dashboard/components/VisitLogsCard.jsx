@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, Avatar, Tag, Button, Typography, Empty, Space } from 'antd';
+import { Card, Avatar, Tag, Button, Typography, Empty, Space, theme } from 'antd';
 import {
   CalendarOutlined,
   PlusOutlined,
@@ -25,6 +25,7 @@ const getVisitTypeColor = (type) => {
 
 const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   const upcomingVisits = visitLogs.filter(v =>
     dayjs(v.visitDate).isAfter(dayjs())
@@ -34,7 +35,7 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
     <Card
       title={
         <div className="flex items-center gap-2">
-          <CalendarOutlined className="text-success" />
+          <CalendarOutlined style={{ color: token.colorSuccess }} />
           <span>Visit Logs</span>
           {upcomingVisits > 0 && (
             <Tag color="blue">{upcomingVisits} upcoming</Tag>
@@ -60,7 +61,8 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
           </Button>
         </Space>
       }
-      className="h-full border border-border rounded-xl"
+      className="h-full rounded-xl"
+      style={{ borderColor: token.colorBorder }}
     >
       {visitLogs.length > 0 ? (
         <div className="flex flex-col gap-3">
@@ -68,18 +70,25 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
             const isPast = dayjs(visit.visitDate).isBefore(dayjs());
 
             return (
-              <div key={visit.id || index} className={`flex items-center justify-between w-full pb-3 ${index !== visitLogs.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}>
+              <div 
+                key={visit.id || index} 
+                className="flex items-center justify-between w-full pb-3"
+                style={{ borderBottom: index !== visitLogs.slice(0, 5).length - 1 ? `1px solid ${token.colorSplit}` : 'none' }}
+              >
                 <div className="flex items-center gap-3">
                   <Avatar
                     size="small"
                     icon={isPast ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
-                    className={isPast ? 'bg-success-100 text-success-600' : 'bg-primary-100 text-primary-600'}
+                    style={{ 
+                      backgroundColor: isPast ? token.colorSuccessBg : token.colorPrimaryBg,
+                      color: isPast ? token.colorSuccess : token.colorPrimary 
+                    }}
                   />
                   <div>
                     <Text className="text-sm font-medium block">
                       {visit.application?.student?.name || visit.studentName || 'Student'}
                     </Text>
-                    <div className="flex items-center gap-2 text-xs text-text-secondary">
+                    <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
                       <EnvironmentOutlined />
                       <span>{visit.visitLocation || visit.application?.internship?.industry?.companyName || 'Location'}</span>
                     </div>
@@ -89,7 +98,7 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
                   <Tag color={getVisitTypeColor(visit.visitType)} className="m-0">
                     {visit.visitType || 'PHYSICAL'}
                   </Tag>
-                  <Text className="text-xs text-text-tertiary block mt-1">
+                  <Text className="text-xs block mt-1" style={{ color: token.colorTextTertiary }}>
                     {dayjs(visit.visitDate).format('MMM DD, YYYY')}
                   </Text>
                 </div>

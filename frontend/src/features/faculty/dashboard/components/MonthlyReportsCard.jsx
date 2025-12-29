@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
 import {
   FileTextOutlined,
   RightOutlined,
@@ -26,6 +26,7 @@ const getStatusConfig = (status) => {
 
 const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
   const [reviewModal, setReviewModal] = useState({ visible: false, report: null, action: null });
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -106,7 +107,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       <Card
         title={
           <div className="flex items-center gap-2">
-            <FileTextOutlined className="text-primary" />
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
             <span>Monthly Reports</span>
             {pendingCount > 0 && (
               <Badge count={pendingCount} className="ml-2" />
@@ -118,7 +119,8 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
             View All <RightOutlined />
           </Button>
         }
-        className="h-full border border-border rounded-xl"
+        className="h-full rounded-xl"
+        style={{ borderColor: token.colorBorder }}
         styles={{ body: { padding: reports.length > 0 ? 0 : 24 } }}
       >
         {reports.length > 0 ? (
@@ -145,9 +147,19 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
               return (
                 <div
                   key={report.id || index}
-                  className={`px-4 py-3 hover:bg-surface-hover flex items-start gap-4 ${index !== reports.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}
+                  className="px-4 py-3 flex items-start gap-4"
+                  style={{ 
+                    borderBottom: index !== reports.slice(0, 5).length - 1 ? `1px solid ${token.colorSplit}` : 'none',
+                    transition: 'background-color 0.3s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorFillQuaternary)}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <Avatar icon={<UserOutlined />} className="bg-primary shrink-0" />
+                  <Avatar 
+                    icon={<UserOutlined />} 
+                    className="shrink-0"
+                    style={{ backgroundColor: token.colorPrimary, color: '#fff' }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium truncate mr-2">{report.student?.name || 'Unknown Student'}</span>
@@ -156,11 +168,11 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                       </Tag>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-xs text-text-secondary">
+                      <div className="text-xs" style={{ color: token.colorTextSecondary }}>
                         {monthName} {report.reportYear}
                       </div>
                       {report.submittedAt && (
-                        <div className="text-xs text-text-tertiary">
+                        <div className="text-xs" style={{ color: token.colorTextTertiary }}>
                           Submitted: {dayjs(report.submittedAt).format('DD/MM/YYYY')}
                         </div>
                       )}
@@ -233,3 +245,4 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
 };
 
 export default MonthlyReportsCard;
+

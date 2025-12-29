@@ -1,5 +1,5 @@
 import React, { memo, useState } from 'react';
-import { Typography, Button, Tag, Tooltip, Modal, Upload, message, Space } from 'antd';
+import { Typography, Button, Tag, Tooltip, Modal, Upload, message, Space, theme } from 'antd';
 import {
   FileTextOutlined,
   CheckCircleOutlined,
@@ -21,6 +21,7 @@ const JoiningLetterCard = ({
   loading = false,
   compact = true,
 }) => {
+  const { token } = theme.useToken();
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -103,19 +104,44 @@ const JoiningLetterCard = ({
     return null;
   }
 
+  const statusStyle = hasJoiningLetter
+    ? {
+        bg: token.colorSuccessBg,
+        border: token.colorSuccessBorder,
+        text: token.colorSuccessText, // or token.colorSuccess
+        iconBg: token.colorSuccessBgHover || '#dcfce7', // fallback if hover token missing
+        iconColor: token.colorSuccess,
+      }
+    : {
+        bg: token.colorWarningBg,
+        border: token.colorWarningBorder,
+        text: token.colorWarningText || token.colorWarning,
+        iconBg: token.colorWarningBgHover || '#fef3c7',
+        iconColor: token.colorWarning,
+      };
+
   // Compact version for dashboard
   if (compact) {
     return (
       <>
-        <div className={`p-3 rounded-xl border ${hasJoiningLetter ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+        <div 
+          className="p-3 rounded-xl border"
+          style={{ 
+            backgroundColor: statusStyle.bg, 
+            borderColor: statusStyle.border 
+          }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${hasJoiningLetter ? 'bg-green-100' : 'bg-orange-100'}`}>
-                <FileTextOutlined className={hasJoiningLetter ? 'text-green-600' : 'text-orange-600'} />
+              <div 
+                className="w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: statusStyle.iconBg }}
+              >
+                <FileTextOutlined style={{ color: statusStyle.iconColor }} />
               </div>
               <div>
                 <Text strong className="text-sm block">Joining Letter</Text>
-                <Text className={`text-xs ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`}>
+                <Text className="text-xs" style={{ color: statusStyle.text }}>
                   {hasJoiningLetter ? 'Uploaded' : 'Required'}
                 </Text>
               </div>
@@ -150,7 +176,7 @@ const JoiningLetterCard = ({
         <Modal
           title={
             <div className="flex items-center gap-2">
-              <CloudUploadOutlined className="text-blue-500" />
+              <CloudUploadOutlined style={{ color: token.colorPrimary }} />
               <span>{hasJoiningLetter ? 'Replace' : 'Upload'} Joining Letter</span>
             </div>
           }
@@ -190,15 +216,21 @@ const JoiningLetterCard = ({
               fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
             >
               <p className="ant-upload-drag-icon">
-                <CloudUploadOutlined className="text-4xl text-blue-500" />
+                <CloudUploadOutlined style={{ fontSize: '36px', color: token.colorPrimary }} />
               </p>
               <p className="ant-upload-text">Click or drag file to upload</p>
               <p className="ant-upload-hint">PDF only, max 5MB</p>
             </Upload.Dragger>
 
             {hasJoiningLetter && (
-              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <Text className="text-yellow-700 text-sm">
+              <div 
+                className="p-3 rounded-lg border"
+                style={{ 
+                  backgroundColor: token.colorWarningBg, 
+                  borderColor: token.colorWarningBorder 
+                }}
+              >
+                <Text className="text-sm" style={{ color: token.colorWarningText }}>
                   <ExclamationCircleOutlined className="mr-2" />
                   Uploading a new file will replace the existing joining letter.
                 </Text>
@@ -210,7 +242,7 @@ const JoiningLetterCard = ({
         {/* Delete Confirmation Modal */}
         <Modal
           title={
-            <div className="flex items-center gap-2 text-red-500">
+            <div className="flex items-center gap-2" style={{ color: token.colorError }}>
               <DeleteOutlined />
               <span>Delete Joining Letter</span>
             </div>
@@ -227,7 +259,7 @@ const JoiningLetterCard = ({
           ]}
         >
           <p>Are you sure you want to delete the joining letter?</p>
-          <p className="text-red-500 text-sm">This action cannot be undone.</p>
+          <p className="text-sm" style={{ color: token.colorError }}>This action cannot be undone.</p>
         </Modal>
       </>
     );
@@ -236,15 +268,24 @@ const JoiningLetterCard = ({
   // Full version (for other pages if needed)
   return (
     <>
-      <div className={`p-4 rounded-xl border ${hasJoiningLetter ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+      <div 
+        className="p-4 rounded-xl border"
+        style={{ 
+          backgroundColor: statusStyle.bg, 
+          borderColor: statusStyle.border 
+        }}
+      >
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${hasJoiningLetter ? 'bg-green-100' : 'bg-orange-100'}`}>
-              <FileTextOutlined className={`text-2xl ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`} />
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: statusStyle.iconBg }}
+            >
+              <FileTextOutlined className="text-2xl" style={{ color: statusStyle.iconColor }} />
             </div>
             <div>
               <Text strong className="text-base block">Joining Letter</Text>
-              <Text className={`text-sm ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`}>
+              <Text className="text-sm" style={{ color: statusStyle.text }}>
                 {hasJoiningLetter ? 'Document uploaded' : 'Upload required'}
               </Text>
             </div>
@@ -282,7 +323,7 @@ const JoiningLetterCard = ({
       <Modal
         title={
           <div className="flex items-center gap-2">
-            <CloudUploadOutlined className="text-blue-500" />
+            <CloudUploadOutlined style={{ color: token.colorPrimary }} />
             <span>{hasJoiningLetter ? 'Replace' : 'Upload'} Joining Letter</span>
           </div>
         }
@@ -308,7 +349,7 @@ const JoiningLetterCard = ({
           fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
         >
           <p className="ant-upload-drag-icon">
-            <CloudUploadOutlined className="text-4xl text-blue-500" />
+            <CloudUploadOutlined style={{ fontSize: '36px', color: token.colorPrimary }} />
           </p>
           <p className="ant-upload-text">Click or drag file to upload</p>
           <p className="ant-upload-hint">PDF only, max 5MB</p>
@@ -316,7 +357,7 @@ const JoiningLetterCard = ({
       </Modal>
 
       <Modal
-        title={<span className="text-red-500"><DeleteOutlined /> Delete Joining Letter</span>}
+        title={<span style={{ color: token.colorError }}><DeleteOutlined /> Delete Joining Letter</span>}
         open={deleteConfirmVisible}
         onCancel={() => setDeleteConfirmVisible(false)}
         footer={[

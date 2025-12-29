@@ -242,13 +242,6 @@ const PrincipalDashboard = () => {
       colorClass: 'text-success',
     },
     {
-      title: 'Batches',
-      ...stats.batches,
-      icon: <UserOutlined />,
-      bgClass: 'bg-warning/10',
-      colorClass: 'text-warning',
-    },
-    {
       title: 'Mentors',
       total: mentorCoverage?.totalMentors || 0,
       icon: <SolutionOutlined />,
@@ -362,72 +355,10 @@ const PrincipalDashboard = () => {
           )}
         </div>
 
-        {/* Internship Statistics & Pending Items Row */}
+        {/* Pending Items Row */}
         <Row gutter={[16, 16]} className="mt-6">
-          {/* Internship Statistics */}
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <div className="flex items-center gap-2">
-                  <SolutionOutlined className="text-primary" />
-                  <span>Self-Identified Internships</span>
-                </div>
-              }
-              className="border-border shadow-sm rounded-xl h-full"
-              loading={dashboardLoading}
-              styles={{ body: { padding: '20px' } }}
-            >
-              {!dashboardLoading && stats && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-primary/10 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">
-                      {stats.internships?.totalApplications || 0}
-                    </div>
-                    <div className="text-xs text-text-secondary uppercase font-semibold">Total</div>
-                  </div>
-                  <div className="text-center p-3 bg-info/10 rounded-lg">
-                    <div className="text-2xl font-bold text-info">
-                      {stats.internships?.ongoingInternships || 0}
-                    </div>
-                    <div className="text-xs text-text-secondary uppercase font-semibold">Ongoing</div>
-                  </div>
-                  <div className="text-center p-3 bg-success/10 rounded-lg">
-                    <div className="text-2xl font-bold text-success">
-                      {stats.internships?.completedInternships || 0}
-                    </div>
-                    <div className="text-xs text-text-secondary uppercase font-semibold">Completed</div>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between mb-1">
-                    <Text className="text-text-secondary">Completion Progress</Text>
-                    <Text strong className="text-success">
-                      {stats.internships?.completedInternships || 0} / {stats.internships?.totalApplications || 0}
-                    </Text>
-                  </div>
-                  <Progress
-                    percent={stats.internships?.completionRate || 0}
-                    strokeColor={{
-                      '0%': 'rgb(var(--color-primary))',
-                      '100%': 'rgb(var(--color-success))',
-                    }}
-                    showInfo={false}
-                  />
-                </div>
-                {stats.internships?.totalApplications > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
-                    <CheckCircleOutlined className="text-success" />
-                    <span>Auto-approved on submission</span>
-                  </div>
-                )}
-              </div>
-              )}
-            </Card>
-          </Col>
-
           {/* Pending Items */}
-          <Col xs={24} lg={12}>
+          <Col xs={24}>
             <Card
               title={
                 <div className="flex items-center justify-between w-full">
@@ -531,10 +462,10 @@ const PrincipalDashboard = () => {
           </Col>
         </Row>
 
-        {/* Mentor Coverage and Compliance Row */}
+        {/* Mentor Coverage Row */}
         <Row gutter={[16, 16]} className="mt-6">
           {/* Mentor Coverage */}
-          <Col xs={24} lg={12}>
+          <Col xs={24}>
             <Card
               title={
                 <div className="flex items-center gap-2">
@@ -599,92 +530,6 @@ const PrincipalDashboard = () => {
               ) : (
                 <div className="text-center py-8">
                   <Text className="text-text-tertiary">No mentor coverage data available</Text>
-                </div>
-              )}
-            </Card>
-          </Col>
-
-          {/* Compliance Metrics */}
-          <Col xs={24} lg={12}>
-            <Card
-              title={
-                <div className="flex items-center gap-2">
-                  <CheckCircleOutlined className="text-success" />
-                  <span>Compliance Metrics</span>
-                </div>
-              }
-              className="border-border shadow-sm rounded-xl h-full"
-              loading={complianceMetricsLoading}
-              styles={{ body: { padding: '20px' } }}
-            >
-              {complianceMetricsError ? (
-                <Alert
-                  type="error"
-                  message="Failed to load compliance metrics"
-                  description={complianceMetricsError}
-                  showIcon
-                  action={
-                    <Button size="small" onClick={() => dispatch(fetchComplianceMetrics({ forceRefresh: true }))}>
-                      Retry
-                    </Button>
-                  }
-                />
-              ) : complianceMetrics ? (
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <Text className="text-text-secondary">Report Submission</Text>
-                      <Text strong>{complianceMetrics.currentMonth?.reportComplianceRate || 0}%</Text>
-                    </div>
-                    <Progress
-                      percent={complianceMetrics.currentMonth?.reportComplianceRate || 0}
-                      strokeColor={complianceMetrics.currentMonth?.reportComplianceRate >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.reportComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
-                      showInfo={false}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <Text className="text-text-secondary">Faculty Visits</Text>
-                      <Text strong>{complianceMetrics.currentMonth?.visitComplianceRate || 0}%</Text>
-                    </div>
-                    <Progress
-                      percent={complianceMetrics.currentMonth?.visitComplianceRate || 0}
-                      strokeColor={complianceMetrics.currentMonth?.visitComplianceRate >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.visitComplianceRate >= 50 ? '#faad14' : '#ff4d4f'}
-                      showInfo={false}
-                    />
-                  </div>
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <Text className="text-text-secondary">Overall Compliance</Text>
-                      <Text strong className="text-lg">{complianceMetrics.currentMonth?.overallScore || 0}%</Text>
-                    </div>
-                    <Progress
-                      percent={complianceMetrics.currentMonth?.overallScore || 0}
-                      strokeColor={complianceMetrics.currentMonth?.overallScore >= 80 ? '#52c41a' : complianceMetrics.currentMonth?.overallScore >= 50 ? '#faad14' : '#ff4d4f'}
-                    />
-                  </div>
-                  {complianceMetrics.trend && complianceMetrics.trend.length > 0 && (
-                    <div className="text-sm text-text-secondary">
-                      <Text>6-month trend: </Text>
-                      {complianceMetrics.trend.slice(-3).map((item, idx) => {
-                        // Handle case where monthName might be a number or missing
-                        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                        const displayMonth = typeof item.monthName === 'string' && item.monthName.length > 0
-                          ? item.monthName
-                          : (typeof item.month === 'number' ? monthNames[item.month - 1] || item.month : 'N/A');
-                        const score = typeof item.overallScore === 'number' ? item.overallScore : 0;
-                        return (
-                          <Tag key={idx} color={score >= 80 ? 'green' : score >= 50 ? 'orange' : 'red'} className="mr-1">
-                            {displayMonth}: {score}%
-                          </Tag>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Text className="text-text-tertiary">No compliance data available</Text>
                 </div>
               )}
             </Card>
@@ -806,97 +651,6 @@ const PrincipalDashboard = () => {
             </Card>
           </div>
         )}
-
-        {/* Notices Section */}
-        <div className="mt-6">
-          {/* Notices Card */}
-            <Card
-              className="border-border shadow-sm rounded-xl h-full"
-              styles={{ body: { padding: '20px' } }}
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <NotificationOutlined className="text-lg text-primary" />
-                  </div>
-                  <Title level={4} className="!mb-0 !text-text-primary text-lg">
-                    Important Notices
-                  </Title>
-                </div>
-                <Button
-                  type="text"
-                  icon={<PlusOutlined />}
-                  onClick={() => setModalVisible(true)}
-                  className="text-primary hover:text-primary-600 hover:bg-primary/5 font-medium rounded-lg"
-                >
-                  Add
-                </Button>
-              </div>
-
-              <div className="space-y-3">
-                {notices.length > 0 ? (
-                  notices.slice(0, 4).map((notice, index) => (
-                    <div
-                      key={notice.id || index}
-                      className="
-                        p-4 rounded-xl bg-surface border border-border/50
-                        hover:border-primary/30
-                        transition-all duration-200 group
-                      "
-                    >
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge
-                              status={index % 2 === 0 ? 'processing' : 'warning'}
-                            />
-                            <Text strong className="text-text-primary">
-                              {notice.title}
-                            </Text>
-                          </div>
-                          <Text className="text-text-secondary text-sm line-clamp-2 block mb-2">
-                            {notice.message || notice.content}
-                          </Text>
-                          <div className="flex items-center gap-4 text-xs text-text-tertiary">
-                            <span className="flex items-center gap-1">
-                              <ClockCircleOutlined />
-                              {new Date(notice.createdAt).toLocaleDateString()}
-                            </span>
-                            <span className="px-2 py-0.5 rounded-md bg-background-tertiary text-text-secondary">
-                              {notice.category || 'General'}
-                            </span>
-                          </div>
-                        </div>
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<EditOutlined />}
-                          onClick={() => handleEdit(notice)}
-                          className="
-                            opacity-0 group-hover:opacity-100
-                            text-primary hover:bg-primary/10
-                            transition-all duration-200
-                          "
-                        />
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                      <div className="text-center py-4">
-                        <Text className="text-text-secondary block mb-2">No notices available</Text>
-                        <Button type="link" onClick={() => setModalVisible(true)}>
-                          Create your first notice
-                        </Button>
-                      </div>
-                    }
-                  />
-                )}
-              </div>
-            </Card>
-        </div>
 
         {/* Modals */}
         <NoticeFormModal

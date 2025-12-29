@@ -11,7 +11,8 @@ import {
   Modal,
   message,
   Tooltip,
-  Alert
+  Alert,
+  theme
 } from 'antd';
 import {
   BankOutlined,
@@ -44,6 +45,7 @@ const { Title, Paragraph, Text } = Typography;
 
 const InstituteManagement = () => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   
   // Redux State
   const institutions = useSelector(selectInstitutions);
@@ -130,13 +132,20 @@ const InstituteManagement = () => {
       key: 'name',
       render: (text, record) => (
         <div className="flex items-start gap-3">
-          <div className="mt-1 p-2 rounded-lg bg-surface border border-border text-primary">
+          <div 
+            className="mt-1 p-2 rounded-lg"
+            style={{ 
+              backgroundColor: token.colorBgContainer, 
+              border: `1px solid ${token.colorBorder}`,
+              color: token.colorPrimary 
+            }}
+          >
             <BankOutlined />
           </div>
           <div>
-            <Text strong className="text-text-primary block">{text}</Text>
-            <Space size={4} className="text-xs text-text-tertiary">
-              <Tag variant="borderless" className="m-0 bg-surface text-text-secondary text-[10px]">{record.code}</Tag>
+            <Text strong style={{ color: token.colorText }} className="block">{text}</Text>
+            <Space size={4} className="text-xs" style={{ color: token.colorTextTertiary }}>
+              <Tag variant="borderless" className="m-0 text-[10px]" style={{ backgroundColor: token.colorBgContainer, color: token.colorTextSecondary }}>{record.code}</Tag>
               <span>•</span>
               <span>{record.city}, {record.state}</span>
             </Space>
@@ -162,14 +171,20 @@ const InstituteManagement = () => {
       render: (_, record) => (
         <div className="space-y-1 text-sm">
           {record.contactEmail && (
-            <div className="flex items-center gap-2 text-text-secondary">
-              <div className="w-4 h-4 flex items-center justify-center rounded-full bg-surface text-primary">@</div>
+            <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
+              <div 
+                className="w-4 h-4 flex items-center justify-center rounded-full"
+                style={{ backgroundColor: token.colorBgContainer, color: token.colorPrimary }}
+              >@</div>
               <span className="truncate max-w-[180px]">{record.contactEmail}</span>
             </div>
           )}
           {record.contactPhone && (
-            <div className="flex items-center gap-2 text-text-secondary">
-              <div className="w-4 h-4 flex items-center justify-center rounded-full bg-surface text-success">#</div>
+            <div className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
+              <div 
+                className="w-4 h-4 flex items-center justify-center rounded-full"
+                style={{ backgroundColor: token.colorBgContainer, color: token.colorSuccess }}
+              >#</div>
               <span>{record.contactPhone}</span>
             </div>
           )}
@@ -183,13 +198,13 @@ const InstituteManagement = () => {
       render: (_, record) => (
         <Space size={16}>
           <Tooltip title="Students">
-            <div className="flex items-center gap-1.5 text-text-secondary">
+            <div className="flex items-center gap-1.5" style={{ color: token.colorTextSecondary }}>
               <TeamOutlined />
               <span>{record._count?.Student ?? record.studentCount ?? 0}</span>
             </div>
           </Tooltip>
           <Tooltip title="Staff">
-            <div className="flex items-center gap-1.5 text-text-secondary">
+            <div className="flex items-center gap-1.5" style={{ color: token.colorTextSecondary }}>
               <SafetyCertificateOutlined />
               <span>{record._count?.users ?? record.facultyCount ?? 0}</span>
             </div>
@@ -223,14 +238,13 @@ const InstituteManagement = () => {
             type="text"
             icon={<EditOutlined />}
             onClick={() => openEditModal(record.id)}
-            className="text-primary hover:text-primary-600 hover:bg-primary-50"
+            style={{ color: token.colorPrimary }}
           />
           <Button
             type="text"
             danger
             icon={<DeleteOutlined />}
             onClick={() => handleDeleteClick(record)}
-            className="hover:bg-error-50"
           />
         </Space>
       ),
@@ -258,19 +272,27 @@ const InstituteManagement = () => {
   }, [dashboardStats, institutions, pagination]);
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-[1600px] mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
           <div className="flex items-center">
-            <div className="w-12 h-12 flex items-center justify-center rounded-2xl bg-surface border border-border text-primary shadow-soft mr-4">
+            <div 
+              className="w-12 h-12 flex items-center justify-center rounded-2xl mr-4"
+              style={{ 
+                backgroundColor: token.colorBgContainer, 
+                border: `1px solid ${token.colorBorder}`,
+                color: token.colorPrimary,
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+              }}
+            >
               <BankOutlined className="text-xl" />
             </div>
             <div>
-              <Title level={2} className="!mb-0 !text-2xl font-bold text-text-primary">
+              <Title level={2} className="!mb-0 !text-2xl font-bold" style={{ color: token.colorText }}>
                 Institution Management
               </Title>
-              <Paragraph className="!mb-0 text-text-secondary text-sm">
+              <Paragraph className="!mb-0 text-sm" style={{ color: token.colorTextSecondary }}>
                 Manage educational institutions, track performance, and oversee administrative details.
               </Paragraph>
             </div>
@@ -279,50 +301,62 @@ const InstituteManagement = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
             <div className="flex items-center gap-4 p-2">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
+              >
                 <BankOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{stats.total}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Total Institutes</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.total}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Total Institutes</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
             <div className="flex items-center gap-4 p-2">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-success/10 text-success">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}
+              >
                 <CheckCircleOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{stats.active}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Active</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.active}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Active</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
             <div className="flex items-center gap-4 p-2">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-error/10 text-error">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorErrorBg, color: token.colorError }}
+              >
                 <CloseCircleOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{stats.inactive}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Inactive</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.inactive}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Inactive</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl border-border shadow-soft hover:shadow-soft-lg transition-all duration-300">
+          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
             <div className="flex items-center gap-4 p-2">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-secondary/10 text-secondary-600">
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorFillQuaternary, color: token.colorTextSecondary }}
+              >
                 <GlobalOutlined className="text-xl" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{stats.autonomous}</div>
-                <div className="text-[10px] uppercase tracking-wider font-bold text-text-tertiary">Autonomous</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.autonomous}</div>
+                <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Autonomous</div>
               </div>
             </div>
           </Card>
@@ -330,16 +364,18 @@ const InstituteManagement = () => {
 
         {/* Main Content Card */}
         <Card 
-          className="rounded-3xl border-border shadow-soft overflow-hidden" 
+          className="rounded-3xl overflow-hidden" 
+          style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}
           styles={{ body: { padding: '24px' } }}
         >
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
             <Input
               placeholder="Search by name, code, or city..."
-              prefix={<SearchOutlined className="text-text-tertiary" />}
+              prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="max-w-md h-10 rounded-xl bg-background border-border hover:border-primary focus:border-primary"
+              className="max-w-md h-10 rounded-xl"
+              style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
               allowClear
             />
             <div className="flex items-center gap-3 w-full md:w-auto">
@@ -347,7 +383,8 @@ const InstituteManagement = () => {
                 icon={<ReloadOutlined />}
                 onClick={handleRefresh}
                 loading={loading}
-                className="h-10 rounded-xl border-border hover:text-primary hover:border-primary"
+                className="h-10 rounded-xl"
+                style={{ borderColor: token.colorBorder }}
               >
                 Refresh
               </Button>
@@ -355,20 +392,21 @@ const InstituteManagement = () => {
                 type="primary"
                 icon={<PlusOutlined />}
                 onClick={openCreateModal}
-                className="h-10 rounded-xl font-bold shadow-lg shadow-primary/25 hover:shadow-primary/40"
+                className="h-10 rounded-xl font-bold shadow-lg"
+                style={{ backgroundColor: token.colorPrimary }}
               >
                 Add Institute
               </Button>
             </div>
           </div>
 
-          <div className="rounded-xl border border-border overflow-hidden bg-surface">
+          <div className="rounded-xl border overflow-hidden" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <Table
               columns={columns}
               dataSource={institutions}
               rowKey="id"
               loading={loading}
-              scroll={{ x: 1000 }}
+              scroll={{ x: 'max-content' }}
               pagination={{
                 current: currentPage,
                 pageSize: pageSize,
@@ -379,7 +417,7 @@ const InstituteManagement = () => {
                 },
                 showSizeChanger: true,
                 showTotal: (total, range) => (
-                  <span className="text-text-tertiary">
+                  <span style={{ color: token.colorTextTertiary }}>
                     Showing {range[0]}-{range[1]} of {total} institutes
                   </span>
                 ),
@@ -400,7 +438,7 @@ const InstituteManagement = () => {
         {/* Delete Confirmation Modal */}
         <Modal
           title={
-            <div className="flex items-center gap-2 text-error">
+            <div className="flex items-center gap-2" style={{ color: token.colorError }}>
               <DeleteOutlined />
               <span className="font-bold">Delete Institute</span>
             </div>
@@ -436,15 +474,16 @@ const InstituteManagement = () => {
           {instituteToDelete && (
             <div className="space-y-4">
               <Alert
-                title="Warning: Irreversible Action"
+                message="Warning: Irreversible Action"
                 description="This will permanently delete the institution and all associated data including students, faculty, and academic records."
                 type="error"
                 showIcon
-                className="rounded-lg border-error/20 bg-error/5"
+                className="rounded-lg"
+                style={{ borderColor: `${token.colorError}33`, backgroundColor: token.colorErrorBg }}
               />
 
               <div>
-                <Text className="block mb-2 text-text-primary font-medium">
+                <Text className="block mb-2 font-medium" style={{ color: token.colorText }}>
                   Type <Text code>{instituteToDelete.name}</Text> to confirm:
                 </Text>
                 <Input

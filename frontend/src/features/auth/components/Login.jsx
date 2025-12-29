@@ -17,14 +17,17 @@ import {
 import API from "../../../services/api";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { tokenStorage } from "../../../utils/tokenManager";
+import { setCredentials } from "../store/authSlice";
 
 const { Text, Title } = Typography;
 
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("email");
   const { token } = theme.useToken();
@@ -38,12 +41,23 @@ function Login() {
     setLoading(true);
     try {
       const res = await API.post("/auth/login", values);
-      tokenStorage.setToken(res.data.access_token);
-      if (res.data.refresh_token || res.data.refreshToken) {
-        tokenStorage.setRefreshToken(res.data.refresh_token || res.data.refreshToken);
+      const accessToken = res.data.access_token;
+      const refreshToken = res.data.refresh_token || res.data.refreshToken;
+
+      // Store tokens
+      tokenStorage.setToken(accessToken);
+      if (refreshToken) {
+        tokenStorage.setRefreshToken(refreshToken);
       }
+
+      // Update Redux auth state
+      dispatch(setCredentials({
+        user: res.data.user,
+        token: accessToken
+      }));
+
       toast.success("Login successful!");
-      
+
       // Check if user needs to change password and redirect to change password page
       if (res.data.needsPasswordChange) {
         navigate("/change-password");
@@ -57,7 +71,7 @@ function Login() {
         toast.error("Too many login attempts. Please wait a minute and try again.");
       } else {
         toast.error(
-          error.response?.data?.message || 
+          error.response?.data?.message ||
           "Login failed. Please check your credentials."
         );
       }
@@ -70,12 +84,23 @@ function Login() {
     setLoading(true);
     try {
       const res = await API.post("/auth/student-login", values);
-      tokenStorage.setToken(res.data.access_token);
-      if (res.data.refresh_token || res.data.refreshToken) {
-        tokenStorage.setRefreshToken(res.data.refresh_token || res.data.refreshToken);
+      const accessToken = res.data.access_token;
+      const refreshToken = res.data.refresh_token || res.data.refreshToken;
+
+      // Store tokens
+      tokenStorage.setToken(accessToken);
+      if (refreshToken) {
+        tokenStorage.setRefreshToken(refreshToken);
       }
+
+      // Update Redux auth state
+      dispatch(setCredentials({
+        user: res.data.user,
+        token: accessToken
+      }));
+
       toast.success("Login successful!");
-      
+
       // Check if user needs to change password and redirect to change password page
       if (res.data.needsPasswordChange) {
         navigate("/change-password");
@@ -95,46 +120,48 @@ function Login() {
 
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const token = urlParams.get("token");
+    const accessToken = urlParams.get("token");
     const id = urlParams.get("id");
     const name = urlParams.get("name");
     const email = urlParams.get("email");
     const needsPasswordChange = urlParams.get("needsPasswordChange");
 
-    if (token && id && name && email) {
-
-      const loginResponse = {
-        access_token: token,
-        user: {
-          id,
-          name,
-          email,
-        },
+    if (accessToken && id && name && email) {
+      const user = {
+        id,
+        name,
+        email,
       };
 
       // If role is present in query params (backend may include it), attach it
       const roleParam = urlParams.get("role");
       if (roleParam) {
-        loginResponse.user.role = roleParam;
+        user.role = roleParam;
       }
 
       // Save token via centralized manager
-      tokenStorage.setToken(token);
+      tokenStorage.setToken(accessToken);
+
+      // Update Redux auth state
+      dispatch(setCredentials({
+        user,
+        token: accessToken
+      }));
 
       toast.success("Welcome back!");
-      
+
       // Check if user needs to change password and redirect to change password page
       if (needsPasswordChange === "true") {
         navigate("/change-password");
       } else {
         // Navigate after saving
-        navigateByRole(loginResponse);
+        navigateByRole();
       }
     } else if (urlParams.get("error")) {
       console.error("❌ Google login failed");
       toast.error("Google login failed. Please try again.");
     }
-  }, [location.search, navigate]);
+  }, [location.search, navigate, dispatch]);
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-white dark:from-slate-900 dark:via-slate-800 dark:to-slate-950 p-4 relative overflow-hidden">

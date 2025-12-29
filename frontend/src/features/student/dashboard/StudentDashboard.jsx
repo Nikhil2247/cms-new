@@ -1,5 +1,5 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, message, Card, Typography, Button, Tag, Empty } from 'antd';
+import { Row, Col, Spin, Alert, Modal, message, Card, Typography, Button, Tag, Empty, theme } from 'antd';
 import {
   SyncOutlined,
   FileTextOutlined,
@@ -42,11 +42,12 @@ const QuickActionsCard = memo(({
   loading,
 }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   return (
-    <Card className="h-full rounded-2xl border border-border">
+    <Card className="h-full rounded-2xl border border-border" style={{ borderColor: token.colorBorderSecondary }}>
       <Title level={5} className="mb-4 flex items-center gap-2">
-        <CheckCircleOutlined className="text-green-500" />
+        <CheckCircleOutlined style={{ color: token.colorSuccess }} />
         Quick Actions
       </Title>
 
@@ -61,7 +62,7 @@ const QuickActionsCard = memo(({
         )}
 
         {/* Quick Links */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
           <Button
             type="default"
             icon={<FileTextOutlined />}
@@ -89,14 +90,15 @@ QuickActionsCard.displayName = 'QuickActionsCard';
 // Recent Applications Mini Card
 const RecentApplicationsMini = memo(({ applications = [], onViewAll }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
 
   const getStatusColor = (status) => {
     const colors = {
       APPLIED: 'blue',
       SHORTLISTED: 'orange',
       SELECTED: 'green',
-      APPROVED: 'green',
-      REJECTED: 'red',
+      APPROVED: 'success',
+      REJECTED: 'error',
       WITHDRAWN: 'default',
     };
     return colors[status] || 'default';
@@ -105,9 +107,10 @@ const RecentApplicationsMini = memo(({ applications = [], onViewAll }) => {
   return (
     <Card
       className="h-full rounded-2xl border border-border"
+      style={{ borderColor: token.colorBorderSecondary }}
       title={
         <div className="flex items-center gap-2">
-          <BankOutlined className="text-blue-500" />
+          <BankOutlined style={{ color: token.colorPrimary }} />
           <span>Recent Applications</span>
         </div>
       }
@@ -128,14 +131,17 @@ const RecentApplicationsMini = memo(({ applications = [], onViewAll }) => {
             return (
               <div
                 key={app.id || index}
-                className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors"
+                style={{ backgroundColor: token.colorBgLayout }}
+                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorBgTextHover)}
+                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = token.colorBgLayout)}
                 onClick={() => navigate('/my-applications')}
               >
                 <div className="flex-1 min-w-0">
                   <Text strong className="text-sm block truncate">
                     {company.companyName || 'Company'}
                   </Text>
-                  <Text className="text-xs text-gray-500">
+                  <Text className="text-xs" style={{ color: token.colorTextSecondary }}>
                     {app.internship?.title || app.jobProfile || 'Internship'}
                   </Text>
                 </div>
@@ -165,18 +171,20 @@ RecentApplicationsMini.displayName = 'RecentApplicationsMini';
 
 // Monthly Reports Mini Card
 const MonthlyReportsMini = memo(({ reports = [], onViewAll, onSubmit }) => {
+  const { token } = theme.useToken();
   const recentReports = reports.slice(0, 3);
   const pendingCount = reports.filter(r => r.status === 'DRAFT' || !r.status).length;
 
   return (
     <Card
       className="h-full rounded-2xl border border-border"
+      style={{ borderColor: token.colorBorderSecondary }}
       title={
         <div className="flex items-center gap-2">
-          <FileTextOutlined className="text-purple-500" />
+          <FileTextOutlined style={{ color: '#8b5cf6' }} /> {/* Purple-500 approx, or use token.purple if available */}
           <span>Monthly Reports</span>
           {pendingCount > 0 && (
-            <Tag color="orange" className="ml-1">{pendingCount} pending</Tag>
+            <Tag color="warning" className="ml-1">{pendingCount} pending</Tag>
           )}
         </div>
       }
@@ -191,14 +199,15 @@ const MonthlyReportsMini = memo(({ reports = [], onViewAll, onSubmit }) => {
           {recentReports.map((report, index) => (
             <div
               key={report.id || index}
-              className="flex items-center justify-between p-2 rounded-lg bg-gray-50"
+              className="flex items-center justify-between p-2 rounded-lg"
+              style={{ backgroundColor: token.colorBgLayout }}
             >
               <div>
                 <Text className="text-sm">
                   {dayjs().month(report.reportMonth - 1).format('MMMM')} {report.reportYear}
                 </Text>
               </div>
-              <Tag color={report.status === 'APPROVED' ? 'green' : 'default'}>
+              <Tag color={report.status === 'APPROVED' ? 'success' : 'default'}>
                 {report.status || 'Draft'}
               </Tag>
             </div>
@@ -224,6 +233,7 @@ MonthlyReportsMini.displayName = 'MonthlyReportsMini';
 // Grievances Mini Card
 const GrievancesMini = memo(({ grievances = [], onViewAll, onCreateNew }) => {
   const navigate = useNavigate();
+  const { token } = theme.useToken();
   const grievancesList = Array.isArray(grievances) ? grievances : (grievances?.grievances || []);
   const pendingCount = grievancesList.filter(g => g.status !== 'RESOLVED' && g.status !== 'CLOSED').length;
 
@@ -233,7 +243,7 @@ const GrievancesMini = memo(({ grievances = [], onViewAll, onCreateNew }) => {
       IN_REVIEW: 'orange',
       IN_PROGRESS: 'orange',
       ESCALATED: 'red',
-      RESOLVED: 'green',
+      RESOLVED: 'success',
       CLOSED: 'default',
     };
     return colors[status] || 'default';
@@ -242,12 +252,13 @@ const GrievancesMini = memo(({ grievances = [], onViewAll, onCreateNew }) => {
   return (
     <Card
       className="h-full rounded-2xl border border-border"
+      style={{ borderColor: token.colorBorderSecondary }}
       title={
         <div className="flex items-center gap-2">
-          <ExclamationCircleOutlined className="text-orange-500" />
+          <ExclamationCircleOutlined style={{ color: token.colorWarning }} />
           <span>Grievances</span>
           {pendingCount > 0 && (
-            <Tag color="red" className="ml-1">{pendingCount} active</Tag>
+            <Tag color="error" className="ml-1">{pendingCount} active</Tag>
           )}
         </div>
       }
@@ -262,14 +273,17 @@ const GrievancesMini = memo(({ grievances = [], onViewAll, onCreateNew }) => {
           {grievancesList.slice(0, 3).map((grievance, index) => (
             <div
               key={grievance.id || index}
-              className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+              className="flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors"
+              style={{ backgroundColor: token.colorBgLayout }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorBgTextHover)}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = token.colorBgLayout)}
               onClick={() => navigate('/grievances')}
             >
               <div className="flex-1 min-w-0">
                 <Text strong className="text-sm block truncate">
                   {grievance.title || grievance.subject}
                 </Text>
-                <Text className="text-xs text-gray-500">
+                <Text className="text-xs" style={{ color: token.colorTextSecondary }}>
                   {dayjs(grievance.createdAt).format('MMM DD, YYYY')}
                 </Text>
               </div>
@@ -300,6 +314,7 @@ GrievancesMini.displayName = 'GrievancesMini';
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
 
   // Institute data
   const institute = useSelector(selectInstitute);
@@ -374,12 +389,17 @@ const StudentDashboard = () => {
 
   return (
     <Spin spinning={isLoading} tip="Loading dashboard...">
-      <div className="p-4 md:p-8 bg-background-secondary min-h-screen">
+      <div className="p-4 md:p-8 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
         {/* Subtle Revalidation Indicator */}
         {isRevalidating && !isLoading && (
           <div
-            className="fixed top-0 left-0 right-0 z-50 bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center justify-center gap-2 text-blue-700 text-sm"
-            style={{ animation: 'slideDown 0.3s ease-out' }}
+            className="fixed top-0 left-0 right-0 z-50 px-4 py-2 flex items-center justify-center gap-2 text-sm"
+            style={{ 
+              animation: 'slideDown 0.3s ease-out',
+              backgroundColor: token.colorInfoBg,
+              borderBottom: `1px solid ${token.colorInfoBorder}`,
+              color: token.colorInfoText
+            }}
           >
             <SyncOutlined spin />
             <span>Updating dashboard data...</span>

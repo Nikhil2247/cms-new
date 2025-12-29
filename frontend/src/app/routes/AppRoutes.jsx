@@ -61,11 +61,11 @@ import { HelpCenter, MyQueries, SupportDashboard } from '../../features/help-sup
 
 // Principal
 import PrincipalDashboard from '../../features/principal/dashboard/PrincipalDashboard';
+import PrincipalOverview from '../../features/principal/overview/PrincipalOverview';
 import StudentList from '../../features/principal/students/StudentList';
 import StaffList from '../../features/principal/staff/StaffList';
 import MentorAssignment from '../../features/principal/mentors/MentorAssignment';
 import BulkUpload from '../../features/principal/bulk/BulkUpload';
-import Analytics from '../../features/principal/analytics/Analytics';
 import FacultyProgress from '../../features/principal/faculty/FacultyProgress';
 import Grievances from '../../features/principal/grievances/Grievances';
 import SelfIdentifiedInternships from '../../features/principal/internships/SelfIdentifiedInternships';
@@ -279,6 +279,14 @@ const AppRoutes = () => {
 
         {/* Principal Routes */}
         <Route
+          path="overview"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <PrincipalOverview />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="students"
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
@@ -307,14 +315,6 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE, ROLES.PRINCIPAL]}>
               <BulkUpload />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="analytics"
-          element={
-            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
-              <Analytics />
             </ProtectedRoute>
           }
         />
@@ -666,9 +666,9 @@ const DashboardRouter = () => {
   if (role === ROLES.STATE) {
     return <StateDashboard />;
   }
-  // Principal
+  // Principal - redirect to Overview page by default
   if (role === ROLES.PRINCIPAL) {
-    return <PrincipalDashboard />;
+    return <Navigate to="/overview" replace />;
   }
   // Faculty (includes TEACHER, FACULTY_SUPERVISOR)
   if (ROLES.FACULTY.includes(role)) {

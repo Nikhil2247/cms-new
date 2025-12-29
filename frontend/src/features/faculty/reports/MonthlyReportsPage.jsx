@@ -7,7 +7,6 @@ import {
   Button,
   Tag,
   Space,
-  // Removed: Auto-approval implemented - Modal no longer needed
   Input,
   message,
   Badge,
@@ -17,6 +16,7 @@ import {
   Tooltip,
   Drawer,
   Descriptions,
+  theme,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -35,14 +35,11 @@ import {
 import dayjs from 'dayjs';
 import {
   fetchMonthlyReports,
-  // Removed: Auto-approval implemented - approveMonthlyReport,
-  // Removed: Auto-approval implemented - rejectMonthlyReport,
   selectMonthlyReports,
 } from '../store/facultySlice';
 import facultyService from '../../../services/faculty.service';
 
 const { Title, Text, Paragraph } = Typography;
-// Removed: Auto-approval implemented - TextArea no longer needed for review remarks
 
 const getStatusConfig = (status) => {
   const configs = {
@@ -55,16 +52,13 @@ const getStatusConfig = (status) => {
 const MonthlyReportsPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { token } = theme.useToken();
   const { list: reports, loading, total, page, totalPages } = useSelector(selectMonthlyReports);
   const lastFetched = useSelector((state) => state.faculty.lastFetched?.monthlyReports);
 
   const [searchText, setSearchText] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  // Removed: Auto-approval implemented - review modal state no longer needed
-  // const [reviewModal, setReviewModal] = useState({ visible: false, report: null, action: null });
-  // const [remarks, setRemarks] = useState('');
-  // const [actionLoading, setActionLoading] = useState(false);
   const [detailDrawer, setDetailDrawer] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
 
@@ -83,9 +77,6 @@ const MonthlyReportsPage = () => {
       setIsRefreshing(false);
     }
   }, [dispatch]);
-
-  // Removed: Auto-approval implemented - handleApprove and handleReject no longer needed
-  // Reports are now automatically approved upon submission
 
   const handleDownload = async (report) => {
     try {
@@ -140,10 +131,10 @@ const MonthlyReportsPage = () => {
         const student = record.application?.student;
         return (
           <div className="flex items-center gap-3">
-            <Avatar icon={<UserOutlined />} className="bg-primary" />
+            <Avatar icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary }} />
             <div>
-              <div className="font-semibold text-text-primary">{student?.name || 'Unknown'}</div>
-              <div className="text-xs text-text-tertiary">{student?.rollNumber}</div>
+              <div className="font-semibold" style={{ color: token.colorText }}>{student?.name || 'Unknown'}</div>
+              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.rollNumber}</div>
             </div>
           </div>
         );
@@ -157,8 +148,8 @@ const MonthlyReportsPage = () => {
         const monthName = dayjs().month(record.reportMonth - 1).format('MMMM');
         return (
           <div>
-            <div className="font-medium text-text-primary">{monthName}</div>
-            <div className="text-xs text-text-tertiary">{record.reportYear}</div>
+            <div className="font-medium" style={{ color: token.colorText }}>{monthName}</div>
+            <div className="text-xs" style={{ color: token.colorTextTertiary }}>{record.reportYear}</div>
           </div>
         );
       },
@@ -177,8 +168,8 @@ const MonthlyReportsPage = () => {
         const companyName = company?.companyName || record.application?.companyName;
         return (
           <div className="flex items-center gap-2">
-            <BankOutlined className="text-success" />
-            <span className="text-text-primary">{companyName || 'Self-Identified'}</span>
+            <BankOutlined style={{ color: token.colorSuccess }} />
+            <span style={{ color: token.colorText }}>{companyName || 'Self-Identified'}</span>
           </div>
         );
       },
@@ -233,7 +224,6 @@ const MonthlyReportsPage = () => {
               />
             </Tooltip>
           )}
-          {/* Removed: Auto-approval implemented - Approve/Reject buttons removed */}
         </Space>
       ),
     },
@@ -266,14 +256,14 @@ const MonthlyReportsPage = () => {
         <span className="flex items-center gap-2">
           <CheckCircleOutlined />
           Approved
-          <Badge count={approvedCount} showZero className="ml-1" style={{ backgroundColor: 'rgb(var(--color-success))' }} />
+          <Badge count={approvedCount} showZero className="ml-1" style={{ backgroundColor: token.colorSuccess }} />
         </span>
       ),
     },
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -283,21 +273,24 @@ const MonthlyReportsPage = () => {
               onClick={() => navigate('/dashboard')}
               className="rounded-lg"
             />
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm">
+            <div 
+              className="w-10 h-10 flex items-center justify-center rounded-xl shadow-sm"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, color: token.colorPrimary }}
+            >
               <FileTextOutlined className="text-lg" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
                   Monthly Reports
                 </Title>
                 {lastFetched && (
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-xs" style={{ color: token.colorTextTertiary }}>
                     Updated {new Date(lastFetched).toLocaleTimeString()}
                   </span>
                 )}
               </div>
-              <Text className="text-text-secondary text-sm">
+              <Text className="text-sm" style={{ color: token.colorTextSecondary }}>
                 View student monthly internship reports
               </Text>
             </div>
@@ -316,38 +309,47 @@ const MonthlyReportsPage = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
+              >
                 <FileTextOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{reports.length}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Total Reports</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{reports.length}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Total Reports</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-default/10 text-default">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorFillQuaternary, color: token.colorText }}
+              >
                 <FileTextOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{draftCount}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Draft</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{draftCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Draft</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-success/10 text-success">
+              <div 
+                className="w-10 h-10 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}
+              >
                 <CheckCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{approvedCount}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Approved</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{approvedCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Approved</div>
               </div>
             </div>
           </Card>
@@ -355,11 +357,11 @@ const MonthlyReportsPage = () => {
         </div>
 
         {/* Search and Table */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <div className="p-4 border-b border-border">
+        <Card className="rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: token.colorBorder }} styles={{ body: { padding: 0 } }}>
+          <div className="p-4 border-b" style={{ borderColor: token.colorBorder }}>
             <Input
               placeholder="Search by student name or roll number..."
-              prefix={<SearchOutlined className="text-text-tertiary" />}
+              prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="max-w-md rounded-lg h-10"
@@ -379,6 +381,7 @@ const MonthlyReportsPage = () => {
             dataSource={getFilteredReports()}
             loading={loading}
             rowKey="id"
+            scroll={{ x: 'max-content' }}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
@@ -391,16 +394,17 @@ const MonthlyReportsPage = () => {
         </Card>
       </div>
 
-      {/* Removed: Auto-approval implemented - Review Modal removed */}
-
       {/* Detail Drawer */}
       <Drawer
         title={
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-              <FileTextOutlined className="text-primary" />
+            <div 
+              className="w-8 h-8 rounded-lg flex items-center justify-center border"
+              style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}
+            >
+              <FileTextOutlined style={{ color: token.colorPrimary }} />
             </div>
-            <span className="font-bold text-text-primary">Report Details</span>
+            <span className="font-bold" style={{ color: token.colorText }}>Report Details</span>
           </div>
         }
         placement="right"
@@ -415,15 +419,21 @@ const MonthlyReportsPage = () => {
         {selectedReport && (
           <div className="space-y-6">
             {/* Status Banner */}
-            <div className={`p-4 rounded-xl border ${
-              selectedReport.status === 'APPROVED' ? 'bg-success/5 border-success/20' :
-              selectedReport.status === 'REJECTED' ? 'bg-error/5 border-error/20' :
-              'bg-warning/5 border-warning/20'
-            }`}>
+            <div 
+              className="p-4 rounded-xl border"
+              style={{ 
+                backgroundColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBg : 
+                                selectedReport.status === 'REJECTED' ? token.colorErrorBg : 
+                                token.colorWarningBg,
+                borderColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBorder : 
+                             selectedReport.status === 'REJECTED' ? token.colorErrorBorder : 
+                             token.colorWarningBorder
+              }}
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <CalendarOutlined className="text-primary" />
-                  <span className="font-bold text-text-primary">
+                  <CalendarOutlined style={{ color: token.colorPrimary }} />
+                  <span className="font-bold" style={{ color: token.colorText }}>
                     {dayjs().month(selectedReport.reportMonth - 1).format('MMMM')} {selectedReport.reportYear}
                   </span>
                 </div>
@@ -434,10 +444,10 @@ const MonthlyReportsPage = () => {
             </div>
 
             {/* Student Information */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                  <UserOutlined className="text-primary" /> Student Information
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <div className="px-4 py-3 border-b" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorder }}>
+                <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                  <UserOutlined style={{ color: token.colorPrimary }} /> Student Information
                 </Text>
               </div>
               <div className="p-4">
@@ -456,27 +466,27 @@ const MonthlyReportsPage = () => {
             </div>
 
             {/* Report Details */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                  <FileTextOutlined className="text-success" /> Report Details
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <div className="px-4 py-3 border-b" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorder }}>
+                <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                  <FileTextOutlined style={{ color: token.colorSuccess }} /> Report Details
                 </Text>
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex justify-between">
                   <div>
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Submitted On</Text>
-                    <Text className="text-text-primary">{selectedReport.submittedAt ? dayjs(selectedReport.submittedAt).format('DD MMM YYYY, HH:mm') : '-'}</Text>
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Submitted On</Text>
+                    <Text style={{ color: token.colorText }}>{selectedReport.submittedAt ? dayjs(selectedReport.submittedAt).format('DD MMM YYYY, HH:mm') : '-'}</Text>
                   </div>
                   <div className="text-right">
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Reviewed On</Text>
-                    <Text className="text-text-primary">{selectedReport.reviewedAt ? dayjs(selectedReport.reviewedAt).format('DD MMM YYYY, HH:mm') : '-'}</Text>
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Reviewed On</Text>
+                    <Text style={{ color: token.colorText }}>{selectedReport.reviewedAt ? dayjs(selectedReport.reviewedAt).format('DD MMM YYYY, HH:mm') : '-'}</Text>
                   </div>
                 </div>
                 {selectedReport.reviewComments && (
                   <div>
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Review Comments</Text>
-                    <Paragraph className="text-text-primary mb-0 p-3 bg-background-tertiary/30 rounded-lg">
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Review Comments</Text>
+                    <Paragraph className="mb-0 p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary, color: token.colorText }}>
                       {selectedReport.reviewComments}
                     </Paragraph>
                   </div>
@@ -485,7 +495,7 @@ const MonthlyReportsPage = () => {
             </div>
 
             {/* Actions - View only mode */}
-            <div className="pt-4 flex justify-end gap-3 border-t border-border">
+            <div className="pt-4 flex justify-end gap-3 border-t" style={{ borderColor: token.colorBorder }}>
               {selectedReport.reportFileUrl && (
                 <Button
                   icon={<DownloadOutlined />}
@@ -495,7 +505,6 @@ const MonthlyReportsPage = () => {
                   Download Report
                 </Button>
               )}
-              {/* Removed: Auto-approval implemented - Approve/Reject buttons removed */}
             </div>
           </div>
         )}
@@ -505,3 +514,4 @@ const MonthlyReportsPage = () => {
 };
 
 export default MonthlyReportsPage;
+
