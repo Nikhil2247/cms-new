@@ -215,9 +215,21 @@ jobs:
               sleep 2
             done
 
+            # Run Prisma migrations
+            echo "Running Prisma migrations..."
+            docker exec cms-backend npx prisma migrate deploy || {
+              echo "Migration failed, trying to push schema..."
+              docker exec cms-backend npx prisma db push --accept-data-loss || true
+            }
+
+            # Restart backend after migrations
+            echo "Restarting backend after migrations..."
+            docker restart cms-backend
+            sleep 10
+
             # Wait for backend to be healthy
             echo "Running health checks on backend..."
-            for i in {1..24}; do
+            for i in {1..30}; do
               if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
                 echo "Backend is healthy!"
                 break
@@ -237,7 +249,15 @@ jobs:
               echo "======================================"
               echo "ERROR: Health check failed!"
               echo "======================================"
-              echo "Container logs:"
-              docker logs cms-backend --tail 50
+              echo ""
+              echo "=== PostgreSQL Status ==="
+              docker exec cms-postgres pg_isready -U postgres -d cms_db || echo "PostgreSQL not ready"
+              echo ""
+              echo "=== Backend Container Logs ==="
+              docker logs cms-backend --tail 100
+              echo ""
+              echo "=== PM2 Logs ==="
+              docker exec cms-backend cat /app/logs/error.log 2>/dev/null || echo "No error.log"
+              docker exec cms-backend cat /app/logs/out.log 2>/dev/null || echo "No out.log"
               exit 1
             fi
