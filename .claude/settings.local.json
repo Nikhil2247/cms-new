@@ -151,7 +151,9 @@
       "WebFetch(domain:www.prisma.io)",
       "Bash(npm ls:*)",
       "Bash(del prisma.config.ts)",
-      "Bash(set \"NODE_OPTIONS=--stack-size=8192\")"
+      "Bash(set \"NODE_OPTIONS=--stack-size=8192\")",
+      "Bash(git fetch:*)",
+      "Bash(npm update:*)"
     ]
   }
 }
