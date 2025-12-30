@@ -10,6 +10,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StateService } from './state.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
@@ -33,6 +34,7 @@ import {
 export class StateController {
   constructor(private readonly stateService: StateService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Get('dashboard')
   @ApiOperation({ summary: 'Get state directorate dashboard data' })
   async getDashboard() {
@@ -91,6 +93,7 @@ export class StateController {
     return this.stateService.getInstitutionOverview(id);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Get('institutions/:id/students')
   @ApiOperation({ summary: 'Get institution students with cursor pagination and filters' })
   async getInstitutionStudents(
@@ -484,7 +487,8 @@ export class StateController {
     return this.stateService.getJoiningLetterStats();
   }
 
-  @Get('export/dashboard')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Post('export/dashboard')
   @ApiOperation({ summary: 'Export dashboard data as report' })
   async exportDashboard(
     @Query('format') format: 'json' | 'csv' = 'json',
@@ -494,10 +498,13 @@ export class StateController {
     const monthNum = month ? Number(month) : undefined;
     const yearNum = year ? Number(year) : undefined;
 
-    const stats = await this.stateService.getDashboardStats();
-    const performers = await this.stateService.getTopPerformers({ limit: 10, month: monthNum, year: yearNum });
-    const industries = await this.stateService.getTopIndustries({ limit: 10 });
-    const monthlyData = await this.stateService.getMonthlyAnalytics({ month: monthNum, year: yearNum });
+    // OPTIMIZED: Parallelize all data fetching calls for better performance
+    const [stats, performers, industries, monthlyData] = await Promise.all([
+      this.stateService.getDashboardStats(),
+      this.stateService.getTopPerformers({ limit: 10, month: monthNum, year: yearNum }),
+      this.stateService.getTopIndustries({ limit: 10 }),
+      this.stateService.getMonthlyAnalytics({ month: monthNum, year: yearNum }),
+    ]);
 
     return {
       exportedAt: new Date().toISOString(),

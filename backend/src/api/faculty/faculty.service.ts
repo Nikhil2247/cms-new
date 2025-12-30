@@ -1320,6 +1320,7 @@ export class FacultyService {
    * Get student internships
    */
   async getStudentInternships(studentId: string) {
+    // OPTIMIZED: Added pagination limit to prevent memory issues with students who have many applications
     const internships = await this.prisma.internshipApplication.findMany({
       where: { studentId },
       include: {
@@ -1343,6 +1344,7 @@ export class FacultyService {
         },
       },
       orderBy: { createdAt: 'desc' },
+      take: 50, // Limit to 50 most recent internships
     });
 
     return { internships };

@@ -14,6 +14,7 @@ import {
   ExportConfig,
 } from './interfaces/report.interface';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
+import { WebSocketService } from '../../../infrastructure/websocket/websocket.service';
 
 @Processor('report-generation')
 @Injectable()
@@ -27,6 +28,7 @@ export class ReportProcessor extends WorkerHost {
     private pdfService: PdfService,
     private csvService: CsvService,
     private fileStorage: FileStorageService,
+    private webSocketService: WebSocketService,
   ) {
     super();
   }
@@ -54,8 +56,8 @@ export class ReportProcessor extends WorkerHost {
     this.logger.log(`Selected columns: ${selectedColumns.length > 0 ? selectedColumns.join(', ') : 'all'}`);
 
     try {
-      // Update status to processing
-      await this.updateReportStatus(reportId, ReportStatus.PROCESSING);
+      // Update status to processing (with WebSocket notification)
+      await this.updateReportStatus(reportId, ReportStatus.PROCESSING, null, null, userId, reportType);
 
       // Fetch data based on report type
       this.logger.log(`Fetching data for report type: ${reportType}`);
@@ -147,11 +149,15 @@ export class ReportProcessor extends WorkerHost {
 
       this.logger.log(`Upload complete. File size: ${uploadResult.size} bytes, URL: ${uploadResult.url}`);
 
-      // Update report status to completed
+      // Update report status to completed (with WebSocket notification)
       await this.updateReportStatus(
         reportId,
         ReportStatus.COMPLETED,
         uploadResult.url,
+        null,
+        userId,
+        reportType,
+        data.length,
       );
 
       // Send notification to user (non-blocking)
@@ -171,12 +177,14 @@ export class ReportProcessor extends WorkerHost {
         error,
       );
 
-      // Update report status to failed
+      // Update report status to failed (with WebSocket notification)
       await this.updateReportStatus(
         reportId,
         ReportStatus.FAILED,
         null,
         error.message,
+        userId,
+        reportType,
       );
 
       throw error;
@@ -184,13 +192,16 @@ export class ReportProcessor extends WorkerHost {
   }
 
   /**
-   * Update report status in database
+   * Update report status in database and emit WebSocket event
    */
   private async updateReportStatus(
     reportId: string,
     status: ReportStatus,
     downloadUrl?: string,
     errorMessage?: string,
+    userId?: string,
+    reportType?: string,
+    totalRecords?: number,
   ) {
     try {
       const updateData: Record<string, unknown> = {
@@ -206,12 +217,27 @@ export class ReportProcessor extends WorkerHost {
         updateData.errorMessage = errorMessage;
       }
 
-      await this.prisma.generatedReport.update({
+      const updatedReport = await this.prisma.generatedReport.update({
         where: { id: reportId },
         data: updateData,
       });
 
       this.logger.log(`Report ${reportId} status updated to ${status}`);
+
+      // Emit WebSocket event for real-time updates
+      if (userId) {
+        this.webSocketService.sendReportStatus(userId, {
+          reportId,
+          status: status.toLowerCase() as 'pending' | 'processing' | 'completed' | 'failed',
+          reportType,
+          reportName: updatedReport.reportName,
+          format: updatedReport.format,
+          totalRecords,
+          fileUrl: downloadUrl,
+          errorMessage,
+          generatedAt: updatedReport.generatedAt,
+        });
+      }
     } catch (err) {
       this.logger.error(`Failed to update report status: ${err.message}`);
     }

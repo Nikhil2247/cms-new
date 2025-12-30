@@ -814,17 +814,21 @@ export class NotificationsService {
       let totalUsers = 0;
 
       if (dto.targetRoles && dto.targetRoles.length > 0) {
-        // Send to specific roles asynchronously
-        for (const role of dto.targetRoles) {
-          const roleResult = await this.notificationSender.sendToRoleAsync(role, {
-            type: 'SYSTEM_ALERT',
-            title: dto.title,
-            body: dto.body,
-            data: { ...dto.data, fromAdmin: user.userId },
-            sendEmail: dto.sendEmail,
-            force: dto.force,
-            initiatedBy: user.userId,
-          });
+        // OPTIMIZED: Send to all roles in parallel instead of sequentially
+        const roleResults = await Promise.all(
+          dto.targetRoles.map((role) =>
+            this.notificationSender.sendToRoleAsync(role, {
+              type: 'SYSTEM_ALERT',
+              title: dto.title,
+              body: dto.body,
+              data: { ...dto.data, fromAdmin: user.userId },
+              sendEmail: dto.sendEmail,
+              force: dto.force,
+              initiatedBy: user.userId,
+            }),
+          ),
+        );
+        for (const roleResult of roleResults) {
           jobIds.push(roleResult.jobId);
           totalUsers += roleResult.totalUsers;
         }

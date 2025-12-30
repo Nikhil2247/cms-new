@@ -68,61 +68,89 @@ export class StateReportService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
-          const institutions = await this.prisma.institution.findMany({
-            select: { id: true, name: true },
-          });
-
-          const performance = await Promise.all(
-            institutions.map(async (institution) => {
-              const [
-                totalStudents,
-                totalFaculty,
-                activeInternships,
-                completedInternships,
-                monthlyReports,
-              ] = await Promise.all([
-                this.prisma.student.count({ where: { institutionId: institution.id } }),
-                this.prisma.user.count({
-                  where: {
-                    institutionId: institution.id,
-                    role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
-                    active: true,
-                  },
-                }),
-                // Only count self-identified internships
-                this.prisma.internshipApplication.count({
-                  where: {
-                    student: { institutionId: institution.id },
+          // OPTIMIZED: Use batch queries with groupBy instead of N+1 queries per institution
+          // This reduces 5*N queries to just 6 total queries regardless of institution count
+          const [
+            institutions,
+            studentCounts,
+            facultyCounts,
+            activeInternshipCounts,
+            completedInternshipCounts,
+            monthlyReportCounts,
+          ] = await Promise.all([
+            this.prisma.institution.findMany({
+              select: { id: true, name: true },
+            }),
+            this.prisma.student.groupBy({
+              by: ['institutionId'],
+              _count: { id: true },
+            }),
+            this.prisma.user.groupBy({
+              by: ['institutionId'],
+              where: {
+                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                active: true,
+                institutionId: { not: null },
+              },
+              _count: { id: true },
+            }),
+            // Get students with active internships grouped by institution
+            this.prisma.student.groupBy({
+              by: ['institutionId'],
+              where: {
+                internshipApplications: {
+                  some: {
                     isSelfIdentified: true,
                     status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                   },
-                }),
-                this.prisma.internshipApplication.count({
-                  where: {
-                    student: { institutionId: institution.id },
+                },
+              },
+              _count: { id: true },
+            }),
+            // Get students with completed internships grouped by institution
+            this.prisma.student.groupBy({
+              by: ['institutionId'],
+              where: {
+                internshipApplications: {
+                  some: {
                     isSelfIdentified: true,
                     status: ApplicationStatus.COMPLETED,
                   },
-                }),
-                this.prisma.monthlyReport.count({
-                  where: {
-                    student: { institutionId: institution.id },
+                },
+              },
+              _count: { id: true },
+            }),
+            // Get students with approved monthly reports grouped by institution
+            this.prisma.student.groupBy({
+              by: ['institutionId'],
+              where: {
+                monthlyReports: {
+                  some: {
                     status: MonthlyReportStatus.APPROVED,
                   },
-                }),
-              ]);
-
-              return {
-                institutionId: institution.id,
-                institutionName: institution.name,
-                totalStudents,
-                totalFaculty,
-                activeInternships,
-                completedInternships,
-                approvedReports: monthlyReports,
-              };
+                },
+              },
+              _count: { id: true },
             }),
-          );
+          ]);
+
+          // Create lookup maps for O(1) access
+          const studentMap = new Map(studentCounts.map(s => [s.institutionId, s._count.id]));
+          const facultyMap = new Map(facultyCounts.map(f => [f.institutionId, f._count.id]));
+          const activeMap = new Map(activeInternshipCounts.map(a => [a.institutionId, a._count.id]));
+          const completedMap = new Map(completedInternshipCounts.map(c => [c.institutionId, c._count.id]));
+          const reportMap = new Map(monthlyReportCounts.map(r => [r.institutionId, r._count.id]));
+
+          // Build performance data using maps
+          const performance = institutions.map((institution) => ({
+            institutionId: institution.id,
+            institutionName: institution.name,
+            totalStudents: studentMap.get(institution.id) || 0,
+            totalFaculty: facultyMap.get(institution.id) || 0,
+            activeInternships: activeMap.get(institution.id) || 0,
+            completedInternships: completedMap.get(institution.id) || 0,
+            approvedReports: reportMap.get(institution.id) || 0,
+          }));
 
           return performance.sort((a, b) => b.activeInternships - a.activeInternships);
         },

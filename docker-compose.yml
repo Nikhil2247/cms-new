@@ -100,7 +100,7 @@ services:
       - CLOUDINARY_API_SECRET=${CLOUDINARY_API_SECRET:-}
       # PM2 Settings - optimized for 1.5GB container
       - PM2_INSTANCES=${PM2_INSTANCES:-2}
-      - NODE_OPTIONS=--max-old-space-size=1200
+      - NODE_OPTIONS=--max-old-space-size=600
     volumes:
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs

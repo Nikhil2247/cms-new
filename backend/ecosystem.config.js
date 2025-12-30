@@ -39,7 +39,7 @@ module.exports = {
       time: true,
 
       // Graceful shutdown
-      kill_timeout: 5000,
+      kill_timeout: 10000,  // 10 seconds for graceful shutdown
       wait_ready: true,
       listen_timeout: 10000,
       shutdown_with_message: true,

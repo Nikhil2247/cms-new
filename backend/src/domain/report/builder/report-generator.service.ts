@@ -4,6 +4,20 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { ReportType } from './interfaces/report.interface';
 
 /**
+ * Pagination options for report generation
+ * Prevents memory overflow on large datasets
+ */
+export interface ReportPaginationOptions {
+  take?: number;  // Number of records to fetch (default: 10000)
+  skip?: number;  // Number of records to skip (default: 0)
+}
+
+/** Default maximum records to prevent memory overflow */
+const DEFAULT_MAX_RECORDS = 10000;
+/** Warning threshold for large result sets */
+const WARNING_THRESHOLD = 5000;
+
+/**
  * Reports that require institution isolation
  * These reports MUST have institutionId to prevent cross-tenant data leakage
  */
@@ -28,6 +42,28 @@ export class ReportGeneratorService {
   private readonly logger = new Logger(ReportGeneratorService.name);
 
   constructor(private prisma: PrismaService) {}
+
+  /**
+   * Get pagination parameters with defaults
+   * Enforces maximum record limit to prevent memory overflow
+   */
+  private getPaginationParams(pagination?: ReportPaginationOptions): { take: number; skip: number } {
+    const take = Math.min(pagination?.take ?? DEFAULT_MAX_RECORDS, DEFAULT_MAX_RECORDS);
+    const skip = pagination?.skip ?? 0;
+    return { take, skip };
+  }
+
+  /**
+   * Log warning if result set exceeds threshold
+   */
+  private warnOnLargeResultSet(resultCount: number, reportType: string): void {
+    if (resultCount >= WARNING_THRESHOLD) {
+      this.logger.warn(
+        `Large result set: ${reportType} returned ${resultCount} records. ` +
+        `Consider using pagination (skip/take) for better performance.`
+      );
+    }
+  }
 
   /**
    * Validate institution isolation for reports
@@ -57,9 +93,15 @@ export class ReportGeneratorService {
 
   /**
    * Generate Student Progress Report
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generateStudentProgressReport(filters: any): Promise<any[]> {
+  async generateStudentProgressReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
@@ -103,7 +145,12 @@ export class ReportGeneratorService {
         internshipApplications: { select: { id: true } },
         placements: { select: { id: true } },
       },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
     });
+
+    this.warnOnLargeResultSet(students.length, 'StudentProgressReport');
 
     return students.map((student) => ({
       rollNumber: student.rollNumber,
@@ -123,9 +170,15 @@ export class ReportGeneratorService {
   /**
    * Generate Internship Report
    * Supports filtering by isSelfIdentified, mentorId, status, date range, and verificationStatus
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generateInternshipReport(filters: any): Promise<any[]> {
+  async generateInternshipReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     // Handle isSelfIdentified filter - default to showing all if not specified
     if (filters?.isSelfIdentified !== undefined && filters?.isSelfIdentified !== null) {
@@ -198,7 +251,12 @@ export class ReportGeneratorService {
         mentor: { select: { id: true, name: true } },
         _count: { select: { monthlyReports: true } },
       },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
     });
+
+    this.warnOnLargeResultSet(applications.length, 'InternshipReport');
 
     return applications.map((application) => ({
       studentName: application.student.name,
@@ -222,9 +280,15 @@ export class ReportGeneratorService {
 
   /**
    * Generate Faculty Visit Report
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generateFacultyVisitReport(filters: any): Promise<any[]> {
+  async generateFacultyVisitReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     // Handle institution filter through application -> student relation
     if (filters?.institutionId) {
@@ -273,8 +337,12 @@ export class ReportGeneratorService {
           },
         },
       },
+      take,
+      skip,
       orderBy: { visitDate: 'desc' },
     });
+
+    this.warnOnLargeResultSet(visits.length, 'FacultyVisitReport');
 
     return visits.map((visit) => ({
       facultyName: visit.faculty.name,
@@ -293,9 +361,15 @@ export class ReportGeneratorService {
 
   /**
    * Generate Monthly Report
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generateMonthlyReport(filters: any): Promise<any[]> {
+  async generateMonthlyReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.studentId) {
       where.studentId = filters.studentId;
@@ -324,8 +398,12 @@ export class ReportGeneratorService {
           },
         },
       },
+      take,
+      skip,
       orderBy: [{ reportYear: 'desc' }, { reportMonth: 'desc' }],
     });
+
+    this.warnOnLargeResultSet(reports.length, 'MonthlyReport');
 
     return reports.map((report) => ({
       studentName: report.student.name,
@@ -341,9 +419,15 @@ export class ReportGeneratorService {
 
   /**
    * Generate Placement Report
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generatePlacementReport(filters: any): Promise<any[]> {
+  async generatePlacementReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.institutionId) {
       where.OR = [
@@ -367,8 +451,12 @@ export class ReportGeneratorService {
       include: {
         student: { select: { id: true, name: true, rollNumber: true, email: true } },
       },
+      take,
+      skip,
       orderBy: { offerDate: 'desc' },
     });
+
+    this.warnOnLargeResultSet(placements.length, 'PlacementReport');
 
     return placements.map((placement) => ({
       studentName: placement.student.name,
@@ -490,9 +578,15 @@ export class ReportGeneratorService {
   /**
    * Generate Student Compliance Report
    * Tracks student compliance with reporting requirements
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
    */
-  async generateStudentComplianceReport(filters: any): Promise<any[]> {
+  async generateStudentComplianceReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
     const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
@@ -518,7 +612,12 @@ export class ReportGeneratorService {
           },
         },
       },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
     });
+
+    this.warnOnLargeResultSet(students.length, 'StudentComplianceReport');
 
     const results = students.map((student) => {
       const activeApplications = student.internshipApplications;
@@ -565,11 +664,13 @@ export class ReportGeneratorService {
    * @param type - Report type
    * @param filters - Filter parameters including institutionId
    * @param isAdmin - Whether the requesting user is an admin (can bypass institution isolation)
+   * @param pagination - Optional pagination options (take, skip) to limit result sets
    */
   async generateReport(
     type: ReportType | string,
     filters: any,
     isAdmin: boolean = false,
+    pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
     // Map new report types to generators
     const typeStr = String(type).toLowerCase();
@@ -578,47 +679,49 @@ export class ReportGeneratorService {
     this.validateInstitutionIsolation(typeStr, filters, isAdmin);
 
     this.logger.log(
-      `Generating report: ${type}, institutionId: ${filters?.institutionId || 'N/A'}`,
+      `Generating report: ${type}, institutionId: ${filters?.institutionId || 'N/A'}, ` +
+      `pagination: take=${pagination?.take ?? DEFAULT_MAX_RECORDS}, skip=${pagination?.skip ?? 0}`,
     );
 
     // Compliance reports - check this before generic student reports
     if (typeStr.includes('compliance')) {
-      return this.generateStudentComplianceReport(filters);
+      return this.generateStudentComplianceReport(filters, pagination);
     }
 
     // Student reports
     if (typeStr.includes('student') || typeStr === ReportType.STUDENT_PROGRESS) {
-      return this.generateStudentProgressReport(filters);
+      return this.generateStudentProgressReport(filters, pagination);
     }
 
     // Internship reports (including self-identified)
     if (typeStr.includes('internship') || typeStr === ReportType.INTERNSHIP) {
-      return this.generateInternshipReport(filters);
+      return this.generateInternshipReport(filters, pagination);
     }
 
     // Faculty/Mentor reports
     if (typeStr.includes('mentor') || typeStr.includes('faculty-visit') || typeStr === ReportType.FACULTY_VISIT) {
-      return this.generateFacultyVisitReport(filters);
+      return this.generateFacultyVisitReport(filters, pagination);
     }
 
     // Monthly reports
     if (typeStr.includes('monthly') || typeStr === ReportType.MONTHLY) {
-      return this.generateMonthlyReport(filters);
+      return this.generateMonthlyReport(filters, pagination);
     }
 
     // Placement reports
     if (typeStr.includes('placement') || typeStr === ReportType.PLACEMENT) {
-      return this.generatePlacementReport(filters);
+      return this.generatePlacementReport(filters, pagination);
     }
 
     // Institution reports - requires institutionId by design
+    // Note: Institution performance report doesn't need pagination (returns aggregated metrics)
     if (typeStr.includes('institut') || typeStr === ReportType.INSTITUTION_PERFORMANCE) {
       return this.generateInstitutionPerformanceReport(filters);
     }
 
     // Pending reports - use monthly report data
     if (typeStr.includes('pending')) {
-      return this.generateMonthlyReport(filters);
+      return this.generateMonthlyReport(filters, pagination);
     }
 
     // Unknown report type - reject instead of defaulting

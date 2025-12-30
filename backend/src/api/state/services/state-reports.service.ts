@@ -542,7 +542,7 @@ export class StateReportsService {
           bottomPerformers: sorted.slice(-limit).reverse(),
         };
       },
-      { ttl: 300, tags: ['state', 'top-performers'] }, // 5 minute cache
+      { ttl: 900, tags: ['state', 'top-performers'] }, // OPTIMIZED: Increased from 5 to 15 minutes
     );
   }
 

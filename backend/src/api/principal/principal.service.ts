@@ -105,18 +105,22 @@ export class PrincipalService {
               status: { in: ['PENDING', 'UNDER_REVIEW'] },
             }
           }),
-          // Fetch self-identified applications to calculate pending joining letters using JavaScript
-          // This avoids MongoDB count query issues with null/undefined/empty string handling
-          this.prisma.internshipApplication.findMany({
-            where: { student: { institutionId }, isSelfIdentified: true },
-            select: { joiningLetterUrl: true },
+          // OPTIMIZED: Use count() with OR conditions for null/empty string handling
+          // PostgreSQL with Prisma handles this correctly unlike MongoDB
+          this.prisma.internshipApplication.count({
+            where: {
+              student: { institutionId },
+              isSelfIdentified: true,
+              OR: [
+                { joiningLetterUrl: null },
+                { joiningLetterUrl: '' },
+              ],
+            },
           }),
         ]);
 
-        // Calculate pending joining letters using JavaScript for reliable null/undefined handling
-        const pendingJoiningLetters = selfIdentifiedApplications.filter(
-          app => !app.joiningLetterUrl || app.joiningLetterUrl === ''
-        ).length;
+        // Pending joining letters now comes from the count query above
+        const pendingJoiningLetters = selfIdentifiedApplications;
 
         // Completion rate for self-identified internships (auto-approved on submission)
         const completionRate = totalSelfIdentifiedInternships > 0

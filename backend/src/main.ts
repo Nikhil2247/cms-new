@@ -38,7 +38,9 @@ async function bootstrap() {
 
   logger.log('Creating NestJS application...');
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log'],
+    logger: process.env.NODE_ENV === 'production'
+      ? ['error', 'warn']
+      : ['error', 'warn', 'log', 'debug'],
     bufferLogs: true,
   });
 
@@ -145,6 +147,21 @@ async function bootstrap() {
   // Enable graceful shutdown hooks
   app.enableShutdownHooks();
   logger.log('Graceful shutdown hooks enabled');
+
+  // ===== GRACEFUL SHUTDOWN HANDLERS =====
+
+  // Graceful shutdown handlers for SIGTERM (Docker/Kubernetes) and SIGINT (Ctrl+C)
+  process.on('SIGTERM', async () => {
+    logger.log('SIGTERM received, starting graceful shutdown...');
+    await app.close();
+    process.exit(0);
+  });
+
+  process.on('SIGINT', async () => {
+    logger.log('SIGINT received, starting graceful shutdown...');
+    await app.close();
+    process.exit(0);
+  });
 
   // ===== START SERVER =====
 
