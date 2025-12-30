@@ -13,7 +13,7 @@ module.exports = {
       name: 'cms-backend',
 
       // Entry point (compiled JS)
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
 
       // Cluster mode settings - 2 instances for 1.5GB container
       instances: process.env.PM2_INSTANCES || 2,
