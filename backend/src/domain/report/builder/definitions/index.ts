@@ -9,6 +9,7 @@ export * from './internship-reports.definition';
 export * from './compliance-reports.definition';
 export * from './institute-reports.definition';
 export * from './pending-reports.definition';
+export * from './user-activity-reports.definition';
 
 import { studentReportDefinitions } from './student-reports.definition';
 import { mentorReportDefinitions } from './mentor-reports.definition';
@@ -16,6 +17,7 @@ import { internshipReportDefinitions } from './internship-reports.definition';
 import { complianceReportDefinitions } from './compliance-reports.definition';
 import { instituteReportDefinitions } from './institute-reports.definition';
 import { pendingReportDefinitions } from './pending-reports.definition';
+import { userActivityReportDefinitions } from './user-activity-reports.definition';
 
 export const allReportDefinitions = {
   ...studentReportDefinitions,
@@ -24,6 +26,7 @@ export const allReportDefinitions = {
   ...complianceReportDefinitions,
   ...instituteReportDefinitions,
   ...pendingReportDefinitions,
+  ...userActivityReportDefinitions,
 };
 
 export const reportCategories = {
@@ -62,5 +65,11 @@ export const reportCategories = {
     label: 'Pending Reports',
     icon: 'clock-circle',
     reports: Object.keys(pendingReportDefinitions),
+  },
+  USER_ACTIVITY: {
+    key: 'user-activity',
+    label: 'User Activity Reports',
+    icon: 'login',
+    reports: Object.keys(userActivityReportDefinitions),
   },
 };

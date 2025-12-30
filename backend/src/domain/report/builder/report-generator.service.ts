@@ -660,6 +660,484 @@ export class ReportGeneratorService {
   }
 
   /**
+   * Generate User Login Activity Report
+   * Tracks user login activity, password changes, and first-time logins
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateUserLoginActivityReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.role) {
+      if (Array.isArray(filters.role)) {
+        where.role = { in: filters.role };
+      } else {
+        where.role = filters.role;
+      }
+    }
+
+    // Handle login status filter
+    if (filters?.loginStatus === 'logged_in') {
+      where.loginCount = { gt: 0 };
+    } else if (filters?.loginStatus === 'never_logged_in') {
+      where.loginCount = 0;
+    }
+
+    // Handle password status filter
+    if (filters?.passwordStatus === 'changed') {
+      where.hasChangedDefaultPassword = true;
+    } else if (filters?.passwordStatus === 'default') {
+      where.hasChangedDefaultPassword = false;
+    }
+
+    // Handle activity status filter
+    if (filters?.activityStatus) {
+      const now = new Date();
+      switch (filters.activityStatus) {
+        case 'active_7':
+          where.lastLoginAt = { gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) };
+          break;
+        case 'active_30':
+          where.lastLoginAt = { gte: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
+          break;
+        case 'inactive_30':
+          where.OR = [
+            { lastLoginAt: { lt: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) } },
+            { lastLoginAt: null },
+          ];
+          break;
+        case 'inactive_90':
+          where.OR = [
+            { lastLoginAt: { lt: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) } },
+            { lastLoginAt: null },
+          ];
+          break;
+      }
+    }
+
+    // Handle account status filter
+    if (filters?.isActive !== undefined && filters?.isActive !== null) {
+      where.active = filters.isActive === true || filters.isActive === 'true';
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(users.length, 'UserLoginActivityReport');
+
+    const now = new Date();
+
+    return users.map((user) => {
+      const daysSinceCreation = Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      const daysSinceLastLogin = user.lastLoginAt
+        ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
+        : null;
+
+      let status = 'Never Logged In';
+      if (user.loginCount > 0) {
+        if (daysSinceLastLogin !== null && daysSinceLastLogin <= 7) {
+          status = 'Active';
+        } else if (daysSinceLastLogin !== null && daysSinceLastLogin <= 30) {
+          status = 'Recently Active';
+        } else {
+          status = 'Inactive';
+        }
+      }
+
+      return {
+        userName: user.name,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        role: user.role,
+        institutionName: user.Institution?.name ?? 'N/A',
+        rollNumber: user.rollNumber,
+        designation: user.designation,
+        accountCreatedAt: user.createdAt,
+        loginCount: user.loginCount,
+        lastLoginAt: user.lastLoginAt,
+        previousLoginAt: user.previousLoginAt,
+        lastLoginIp: user.lastLoginIp,
+        hasChangedPassword: user.hasChangedDefaultPassword,
+        passwordChangedAt: user.passwordChangedAt,
+        daysSinceLastLogin,
+        daysSinceCreation,
+        isActive: user.active,
+        status,
+      };
+    });
+  }
+
+  /**
+   * Generate User Session History Report
+   * Detailed session history including IP addresses, devices, and session duration
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateUserSessionHistoryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters?.institutionId) {
+      where.user = { institutionId: filters.institutionId };
+    }
+
+    // Handle session status filter
+    const now = new Date();
+    if (filters?.sessionStatus === 'active') {
+      where.expiresAt = { gt: now };
+      where.invalidatedAt = null;
+    } else if (filters?.sessionStatus === 'expired') {
+      where.expiresAt = { lt: now };
+    } else if (filters?.sessionStatus === 'invalidated') {
+      where.invalidatedAt = { not: null };
+    }
+
+    // Handle date range filter
+    if (filters?.startDate || filters?.endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.startDate) {
+        dateFilter.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        dateFilter.lte = new Date(filters.endDate);
+      }
+      where.createdAt = dateFilter;
+    }
+
+    const sessions = await this.prisma.userSession.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            role: true,
+            Institution: { select: { name: true } },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(sessions.length, 'UserSessionHistoryReport');
+
+    return sessions.map((session) => {
+      const sessionDuration = Math.floor(
+        (session.lastActivityAt.getTime() - session.createdAt.getTime()) / (1000 * 60)
+      );
+      const isActive = session.expiresAt > now && !session.invalidatedAt;
+
+      return {
+        userName: session.user.name,
+        email: session.user.email,
+        role: session.user.role,
+        institutionName: session.user.Institution?.name ?? 'N/A',
+        sessionStartedAt: session.createdAt,
+        lastActivityAt: session.lastActivityAt,
+        sessionDuration,
+        ipAddress: session.ipAddress,
+        userAgent: session.userAgent,
+        deviceInfo: session.deviceInfo,
+        isActive,
+        expiresAt: session.expiresAt,
+      };
+    });
+  }
+
+  /**
+   * Generate Never Logged In Users Report
+   * Users who have never logged into the system since account creation
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateNeverLoggedInUsersReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      loginCount: 0,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.role) {
+      if (Array.isArray(filters.role)) {
+        where.role = { in: filters.role };
+      } else {
+        where.role = filters.role;
+      }
+    }
+
+    if (filters?.createdAfter) {
+      where.createdAt = { ...(where.createdAt as object || {}), gte: new Date(filters.createdAfter) };
+    }
+
+    if (filters?.createdBefore) {
+      where.createdAt = { ...(where.createdAt as object || {}), lte: new Date(filters.createdBefore) };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(users.length, 'NeverLoggedInUsersReport');
+
+    const now = new Date();
+
+    return users.map((user) => ({
+      userName: user.name,
+      email: user.email,
+      phoneNo: user.phoneNo,
+      role: user.role,
+      institutionName: user.Institution?.name ?? 'N/A',
+      rollNumber: user.rollNumber,
+      accountCreatedAt: user.createdAt,
+      daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+      hasChangedPassword: user.hasChangedDefaultPassword,
+      isActive: user.active,
+    }));
+  }
+
+  /**
+   * Generate Default Password Users Report
+   * Users who have not changed their default password
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateDefaultPasswordUsersReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      hasChangedDefaultPassword: false,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.role) {
+      if (Array.isArray(filters.role)) {
+        where.role = { in: filters.role };
+      } else {
+        where.role = filters.role;
+      }
+    }
+
+    if (filters?.hasLoggedIn !== undefined) {
+      if (filters.hasLoggedIn === true || filters.hasLoggedIn === 'true') {
+        where.loginCount = { gt: 0 };
+      } else {
+        where.loginCount = 0;
+      }
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(users.length, 'DefaultPasswordUsersReport');
+
+    const now = new Date();
+
+    return users.map((user) => ({
+      userName: user.name,
+      email: user.email,
+      phoneNo: user.phoneNo,
+      role: user.role,
+      institutionName: user.Institution?.name ?? 'N/A',
+      accountCreatedAt: user.createdAt,
+      daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+      loginCount: user.loginCount,
+      lastLoginAt: user.lastLoginAt,
+      isActive: user.active,
+    }));
+  }
+
+  /**
+   * Generate Inactive Users Report
+   * Users who have not logged in for a specified period
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateInactiveUsersReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.role) {
+      if (Array.isArray(filters.role)) {
+        where.role = { in: filters.role };
+      } else {
+        where.role = filters.role;
+      }
+    }
+
+    // Apply inactive days filter
+    const inactiveDays = Number(filters?.inactiveDays) || 30;
+    const cutoffDate = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+
+    where.OR = [
+      { lastLoginAt: { lt: cutoffDate } },
+      { lastLoginAt: null, loginCount: { gt: 0 } }, // Has logged in before but no lastLoginAt (edge case)
+    ];
+
+    // Ensure we only get users who have logged in at least once
+    where.loginCount = { gt: 0 };
+
+    const users = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { lastLoginAt: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(users.length, 'InactiveUsersReport');
+
+    const now = new Date();
+
+    return users.map((user) => ({
+      userName: user.name,
+      email: user.email,
+      phoneNo: user.phoneNo,
+      role: user.role,
+      institutionName: user.Institution?.name ?? 'N/A',
+      lastLoginAt: user.lastLoginAt,
+      daysSinceLastLogin: user.lastLoginAt
+        ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
+        : null,
+      loginCount: user.loginCount,
+      accountCreatedAt: user.createdAt,
+      isActive: user.active,
+    }));
+  }
+
+  /**
+   * Generate User Audit Log Report
+   * Complete audit trail of user actions in the system
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateUserAuditLogReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.userId) {
+      where.userId = filters.userId;
+    }
+
+    if (filters?.action) {
+      if (Array.isArray(filters.action)) {
+        where.action = { in: filters.action };
+      } else {
+        where.action = filters.action;
+      }
+    }
+
+    if (filters?.entityType) {
+      where.entityType = filters.entityType;
+    }
+
+    // Handle date range filter
+    if (filters?.startDate || filters?.endDate) {
+      const dateFilter: Record<string, unknown> = {};
+      if (filters.startDate) {
+        dateFilter.gte = new Date(filters.startDate);
+      }
+      if (filters.endDate) {
+        dateFilter.lte = new Date(filters.endDate);
+      }
+      where.timestamp = dateFilter;
+    }
+
+    const auditLogs = await this.prisma.auditLog.findMany({
+      where,
+      include: {
+        user: {
+          select: {
+            name: true,
+            Institution: { select: { name: true } },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { timestamp: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(auditLogs.length, 'UserAuditLogReport');
+
+    return auditLogs.map((log) => ({
+      userName: log.userName ?? log.user?.name ?? 'Unknown',
+      userRole: log.userRole,
+      action: log.action,
+      entityType: log.entityType,
+      entityId: log.entityId,
+      description: log.description,
+      institutionName: log.user?.Institution?.name ?? 'N/A',
+      category: log.category,
+      severity: log.severity,
+      timestamp: log.timestamp,
+    }));
+  }
+
+  /**
    * Generate report based on type
    * @param type - Report type
    * @param filters - Filter parameters including institutionId
@@ -722,6 +1200,31 @@ export class ReportGeneratorService {
     // Pending reports - use monthly report data
     if (typeStr.includes('pending')) {
       return this.generateMonthlyReport(filters, pagination);
+    }
+
+    // User Activity Reports
+    if (typeStr === 'user-login-activity' || typeStr.includes('login-activity')) {
+      return this.generateUserLoginActivityReport(filters, pagination);
+    }
+
+    if (typeStr === 'user-session-history' || typeStr.includes('session-history')) {
+      return this.generateUserSessionHistoryReport(filters, pagination);
+    }
+
+    if (typeStr === 'never-logged-in-users' || typeStr.includes('never-logged')) {
+      return this.generateNeverLoggedInUsersReport(filters, pagination);
+    }
+
+    if (typeStr === 'default-password-users' || typeStr.includes('default-password')) {
+      return this.generateDefaultPasswordUsersReport(filters, pagination);
+    }
+
+    if (typeStr === 'inactive-users' || typeStr.includes('inactive-user')) {
+      return this.generateInactiveUsersReport(filters, pagination);
+    }
+
+    if (typeStr === 'user-audit-log' || typeStr.includes('audit-log')) {
+      return this.generateUserAuditLogReport(filters, pagination);
     }
 
     // Unknown report type - reject instead of defaulting

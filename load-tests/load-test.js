@@ -19,9 +19,9 @@ import { Rate, Trend, Counter } from 'k6/metrics';
 // ============================================
 // CONFIGURATION - Update these values
 // ============================================
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-const TEST_USER_EMAIL = __ENV.TEST_EMAIL || 'test@example.com';
-const TEST_USER_PASSWORD = __ENV.TEST_PASSWORD || 'password123';
+const BASE_URL = __ENV.BASE_URL || 'https://api.sukeerat.com';
+const TEST_USER_EMAIL = __ENV.TEST_EMAIL || 'dtepunjab.internship@gmail.com';
+const TEST_USER_PASSWORD = __ENV.TEST_PASSWORD || 'Dtepunjab@directorate';
 
 // ============================================
 // CUSTOM METRICS
@@ -154,10 +154,11 @@ function apiEndpoints(token = null) {
   group('API Endpoints', function () {
     // Test various GET endpoints - adjust these to match your actual API
     const endpoints = [
-      '/api/v1/users/me',
-      '/api/v1/dashboard',
-      '/api/v1/content',
-      '/api/v1/settings',
+      '/api/users/me',
+      '/api/state/dashboard',
+      '/api/dashboard/critical-alerts',
+      '/api/institutions',
+      '/api/institutions/dashboard-stats'
     ];
 
     endpoints.forEach((endpoint) => {
@@ -185,7 +186,7 @@ function authFlow() {
       password: TEST_USER_PASSWORD,
     });
 
-    const loginResponse = http.post(`${BASE_URL}/api/v1/auth/login`, loginPayload, {
+    const loginResponse = http.post(`${BASE_URL}/api/auth/login`, loginPayload, {
       headers: getHeaders(),
       tags: { name: 'login' },
     });
