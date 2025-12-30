@@ -42,12 +42,12 @@ services:
     image: ghcr.io/nikhil2247/cms-new/backend:latest
     container_name: cms-backend
     ports:
-      - "8080:8080"
+      - "8080:6000"
     environment:
       # Core
       - NODE_ENV=production
-      - PORT=8080
-      - BACKEND_PORT=8080
+      - PORT=6000
+      - BACKEND_PORT=6000
       # Database (PostgreSQL) - hardcoded for Docker network
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres123}@postgres:5432/${POSTGRES_DB:-cms_db}?schema=public
       # Cache (connects to Dragonfly service)
@@ -64,14 +64,14 @@ services:
       - CORS_ORIGIN=${CORS_ORIGIN}
       # File Storage (connects to MinIO service)
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_BUCKET=${MINIO_BUCKET:-cms-uploads}
-      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
-      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - MINIO_BUCKET=cms-uploads
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
       - MINIO_REGION=${MINIO_REGION:-us-east-1}
       # PM2 - Limited instances for resource constraints
       - PM2_INSTANCES=2
       # Node.js memory optimization
-      - NODE_OPTIONS=--max-old-space-size=384
+      - NODE_OPTIONS=--max-old-space-size=450
     volumes:
       - backend-uploads:/app/uploads
       - backend-logs:/app/logs
@@ -90,16 +90,16 @@ services:
       resources:
         limits:
           cpus: "0.75"
-          memory: 512M
+          memory: 600M
         reservations:
           cpus: "0.25"
-          memory: 256M
+          memory: 300M
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8080/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:6000/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
 
   # ===========================================
   # PostgreSQL 18 - Primary Database
@@ -124,10 +124,10 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: 640M
+          memory: 550M
         reservations:
           cpus: "0.15"
-          memory: 256M
+          memory: 200M
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-cms_db}"]
       interval: 10s
@@ -212,8 +212,8 @@ services:
       - "9000:9000"
       - "9001:9001"
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+      MINIO_ROOT_USER: "minioadmin"
+      MINIO_ROOT_PASSWORD: "minioadmin123"
     volumes:
       - minio-data:/data
     networks:
@@ -260,10 +260,10 @@ services:
       - -c
       - |
         sleep 3
-        mc alias set myminio http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD}
-        mc mb myminio/${MINIO_BUCKET:-cms-uploads} --ignore-existing
-        mc anonymous set download myminio/${MINIO_BUCKET:-cms-uploads}
-        echo "MinIO bucket '${MINIO_BUCKET:-cms-uploads}' is ready."
+        mc alias set myminio http://minio:9000 minioadmin minioadmin123
+        mc mb myminio/cms-uploads --ignore-existing
+        mc anonymous set download myminio/cms-uploads
+        echo "MinIO bucket 'cms-uploads' is ready."
 
 networks:
   cms-network:
