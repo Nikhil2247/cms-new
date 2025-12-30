@@ -473,7 +473,7 @@ async function main() {
     const principalName = generateTeacherName();
     await prisma.user.create({
       data: {
-        email: `principal@gp${inst.city.toLowerCase()}.edu.in`,
+        email: `principal@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
         password: defaultHashedPassword,
         name: principalName.name,
         role: 'PRINCIPAL',
@@ -487,7 +487,7 @@ async function main() {
     const tpoName = generateTeacherName();
     await prisma.user.create({
       data: {
-        email: `tpo@gp${inst.city.toLowerCase()}.edu.in`,
+        email: `tpo@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
         password: defaultHashedPassword,
         name: tpoName.name,
         role: 'PLACEMENT_OFFICER',
@@ -502,7 +502,7 @@ async function main() {
     const accountantName = generateStudentName(accountantGender);
     await prisma.user.create({
       data: {
-        email: `accountant@gp${inst.city.toLowerCase()}.edu.in`,
+        email: `accountant@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
         password: defaultHashedPassword,
         name: `${accountantGender === 'Male' ? 'Mr.' : 'Mrs.'} ${accountantName}`,
         role: 'ACCOUNTANT',
@@ -516,7 +516,7 @@ async function main() {
     const admissionName = generateTeacherName();
     await prisma.user.create({
       data: {
-        email: `admission@gp${inst.city.toLowerCase()}.edu.in`,
+        email: `admission@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
         password: defaultHashedPassword,
         name: admissionName.name,
         role: 'ADMISSION_OFFICER',
@@ -530,7 +530,7 @@ async function main() {
     const examName = generateTeacherName();
     await prisma.user.create({
       data: {
-        email: `exam@gp${inst.city.toLowerCase()}.edu.in`,
+        email: `exam@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
         password: defaultHashedPassword,
         name: examName.name,
         role: 'EXAMINATION_OFFICER',
@@ -547,7 +547,7 @@ async function main() {
         const teacherFirstName = teacherDetails.name.split(' ')[1].toLowerCase();
         const teacher = await prisma.user.create({
           data: {
-            email: `${teacherFirstName}.${branch.shortName.toLowerCase()}.${k + 1}@gp${inst.city.toLowerCase()}.edu.in`,
+            email: `${teacherFirstName}.${branch.shortName.toLowerCase()}.${k + 1}@gp${(inst.city || 'unknown').toLowerCase()}.edu.in`,
             password: defaultHashedPassword,
             name: teacherDetails.name,
             role: 'TEACHER',
@@ -633,7 +633,7 @@ async function main() {
     // Create ~18 students per branch (18 × 5 branches × 22 institutions ≈ 2000 students)
     for (const branch of branches) {
       for (let k = 0; k < 18; k++) {
-        const rollNo = `${new Date().getFullYear()}${branch.shortName}${inst.code.substring(4)}${k.toString().padStart(3, '0')}`;
+        const rollNo = `${new Date().getFullYear()}${branch.shortName}${(inst.code || 'INST000').substring(4)}${k.toString().padStart(3, '0')}`;
         const gender: 'Male' | 'Female' = Math.random() > 0.45 ? 'Male' : 'Female';
         const studentName = generateStudentName(gender);
         const dob = generateRealisticDOB();
