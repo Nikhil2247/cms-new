@@ -11,7 +11,7 @@ export const setStore = (store) => {
 };
 
 const getBaseURL = () => {
-  const raw = import.meta.env.VITE_API_BASE_UR || 'http://127.0.0.1:6000';
+  const raw = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:6000';
   const baseUrl = raw
     .replace('http://localhost', 'http://127.0.0.1')
     .replace('https://localhost', 'https://127.0.0.1');
