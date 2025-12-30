@@ -111,11 +111,11 @@ export class HealthController {
       // Database check
       () => this.prismaPing(),
 
-      // Memory heap check (should not exceed 150MB)
-      () => this.memory.checkHeap('memory_heap', 150 * 1024 * 1024),
+      // Memory heap check (should not exceed 400MB - aligned with 600MB max heap)
+      () => this.memory.checkHeap('memory_heap', 400 * 1024 * 1024),
 
-      // Memory RSS check (should not exceed 150MB)
-      () => this.memory.checkRSS('memory_rss', 150 * 1024 * 1024),
+      // Memory RSS check (should not exceed 500MB - aligned with 600MB max heap)
+      () => this.memory.checkRSS('memory_rss', 500 * 1024 * 1024),
 
       // Disk storage check (should have at least 50% free space)
       () =>
@@ -136,8 +136,8 @@ export class HealthController {
   @HealthCheck()
   async checkMemory() {
     return this.health.check([
-      () => this.memory.checkHeap('memory_heap', 200 * 1024 * 1024),
-      () => this.memory.checkRSS('memory_rss', 200 * 1024 * 1024),
+      () => this.memory.checkHeap('memory_heap', 400 * 1024 * 1024),
+      () => this.memory.checkRSS('memory_rss', 500 * 1024 * 1024),
     ]);
   }
 
@@ -174,7 +174,7 @@ export class HealthController {
   @HealthCheck()
   async checkLiveness() {
     return this.health.check([
-      () => this.memory.checkHeap('memory_heap', 300 * 1024 * 1024),
+      () => this.memory.checkHeap('memory_heap', 500 * 1024 * 1024),
     ]);
   }
 }

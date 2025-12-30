@@ -26,6 +26,9 @@ export enum WebSocketEvent {
   RESTORE_PROGRESS = 'restoreProgress',
   BULK_OPERATION_PROGRESS = 'bulkOperationProgress',
   USER_ACTIVITY = 'userActivity',
+
+  // Report generation events
+  REPORT_STATUS = 'reportStatus',
 }
 
 /**
@@ -206,4 +209,21 @@ export interface HeartbeatAckPayload {
 export interface WebSocketErrorPayload {
   message: string;
   code?: 'AUTH_INVALID' | 'AUTH_EXPIRED' | 'AUTH_FAILED' | 'RATE_LIMIT' | 'NOT_AUTHORIZED';
+}
+
+/**
+ * Report status payload for real-time report generation updates
+ */
+export interface ReportStatusPayload {
+  reportId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  reportType?: string;
+  reportName?: string;
+  format?: string;
+  progress?: number;
+  totalRecords?: number;
+  fileUrl?: string;
+  errorMessage?: string;
+  generatedAt?: Date;
+  timestamp: Date;
 }

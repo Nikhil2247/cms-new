@@ -14,6 +14,7 @@ import {
   BackupProgressPayload,
   RestoreProgressPayload,
   BulkOperationProgressPayload,
+  ReportStatusPayload,
 } from './dto';
 
 @Injectable()
@@ -172,6 +173,20 @@ export class WebSocketService {
     };
     this.sendToAdminChannel(AdminChannel.USERS, WebSocketEvent.BULK_OPERATION_PROGRESS, payload);
     this.logger.debug(`Sent bulk operation progress: ${data.completed}/${data.total}`);
+  }
+
+  // ============ Report Status Methods ============
+
+  /**
+   * Send report generation status update to a specific user
+   */
+  sendReportStatus(userId: string, data: Omit<ReportStatusPayload, 'timestamp'>): void {
+    const payload: ReportStatusPayload = {
+      ...data,
+      timestamp: new Date(),
+    };
+    this.sendToUser(userId, WebSocketEvent.REPORT_STATUS, payload);
+    this.logger.debug(`Sent report status to user ${userId}: ${data.reportId} - ${data.status}`);
   }
 
   // ============ Broadcast Methods ============

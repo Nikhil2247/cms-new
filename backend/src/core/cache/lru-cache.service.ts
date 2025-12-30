@@ -10,9 +10,10 @@ export interface CacheOptions {
 }
 
 // Tag store configuration to prevent unbounded growth
-const TAG_STORE_MAX_TAGS = 10000; // Maximum number of unique tags
-const TAG_STORE_MAX_KEYS_PER_TAG = 5000; // Maximum keys per tag
-const TAG_STORE_CLEANUP_THRESHOLD = 0.9; // Cleanup when 90% full
+// OPTIMIZED: Reduced limits to conserve memory in 600MB heap per instance
+const TAG_STORE_MAX_TAGS = 1000; // Maximum number of unique tags
+const TAG_STORE_MAX_KEYS_PER_TAG = 500; // Maximum keys per tag
+const TAG_STORE_CLEANUP_THRESHOLD = 0.8; // Cleanup when 80% full (more aggressive)
 
 @Injectable()
 export class LruCacheService implements OnModuleInit {

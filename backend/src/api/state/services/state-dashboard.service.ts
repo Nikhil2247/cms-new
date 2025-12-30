@@ -350,7 +350,7 @@ export class StateDashboardService {
           },
         };
       },
-      { ttl: 300, tags: ['state', 'dashboard'] },
+      { ttl: 900, tags: ['state', 'dashboard'] }, // OPTIMIZED: Increased from 5 to 15 minutes - data rarely changes
     );
   }
 
@@ -547,7 +547,7 @@ export class StateDashboardService {
           },
         };
       },
-      { ttl: 300, tags: ['state', 'dashboard', 'alerts'] },
+      { ttl: 900, tags: ['state', 'dashboard', 'alerts'] }, // OPTIMIZED: Increased from 5 to 15 minutes
     );
   }
 
@@ -684,7 +684,7 @@ export class StateDashboardService {
           },
         };
       },
-      { ttl: 300, tags: ['state', 'dashboard', 'actions'] },
+      { ttl: 900, tags: ['state', 'dashboard', 'actions'] }, // OPTIMIZED: Increased from 5 to 15 minutes
     );
   }
 
@@ -851,7 +851,7 @@ export class StateDashboardService {
           institutions: institutionCompliance,
         };
       },
-      { ttl: 300, tags: ['state', 'compliance'] },
+      { ttl: 900, tags: ['state', 'compliance'] }, // OPTIMIZED: Increased from 5 to 15 minutes
     );
   }
 }

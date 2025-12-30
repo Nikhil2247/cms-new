@@ -52,10 +52,16 @@ export class SupportTicketService {
     return `SUP-${dateStr}-${sequenceNumber}`;
   }
 
+  /** Default limit for responses to prevent memory issues on tickets with many responses */
+  private readonly DEFAULT_RESPONSE_LIMIT = 20;
+
   /**
    * Get ticket with all relations
+   * Responses are paginated to last 20 by default to prevent memory overflow
+   * @param responseLimit - Optional limit for responses (default: 20)
    */
-  private getTicketInclude() {
+  private getTicketInclude(responseLimit?: number) {
+    const limit = responseLimit ?? this.DEFAULT_RESPONSE_LIMIT;
     return {
       submittedBy: {
         select: {
@@ -90,7 +96,8 @@ export class SupportTicketService {
             },
           },
         },
-        orderBy: { createdAt: 'asc' as const },
+        orderBy: { createdAt: 'desc' as const },
+        take: limit,  // Limit to prevent memory overflow on tickets with many responses
       },
     };
   }

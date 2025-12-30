@@ -1,4 +1,4 @@
-// ReportStatusMonitor Component - Track async report generation
+// ReportStatusMonitor Component - Track async report generation via WebSocket
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Modal,
@@ -24,6 +24,7 @@ import {
 import { getReportStatus, exportReport, getFileExtension } from "../../services/reportBuilderApi";
 import { downloadBlob } from "../../utils/downloadUtils";
 import { getStatusConfig, formatLabel, formatDateTime } from "../../utils/reportBuilderUtils";
+import { useWebSocket } from "../../hooks/useWebSocket";
 
 const { Title, Text } = Typography;
 
@@ -38,10 +39,12 @@ const ReportStatusMonitor = ({
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState(null);
-  const pollingRef = useRef(null);
   const completedRef = useRef(false);
   const mountedRef = useRef(true);
   const currentReportIdRef = useRef(reportId);
+
+  // WebSocket connection for real-time updates
+  const { on, off, isConnected } = useWebSocket();
 
   // Track mounted state
   useEffect(() => {
@@ -56,13 +59,7 @@ const ReportStatusMonitor = ({
     currentReportIdRef.current = reportId;
   }, [reportId]);
 
-  const stopPolling = useCallback(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-      pollingRef.current = null;
-    }
-  }, []);
-
+  // Fetch initial status via HTTP (fallback and initial load)
   const fetchStatus = useCallback(async () => {
     const currentId = currentReportIdRef.current;
     if (!currentId || !mountedRef.current) return;
@@ -77,14 +74,13 @@ const ReportStatusMonitor = ({
         setStatus(response.data);
         setError(null);
 
-        // Stop polling if completed or failed
+        // Mark as completed if already done
         if (
           (response.data.status === "completed" ||
             response.data.status === "failed") &&
           !completedRef.current
         ) {
           completedRef.current = true;
-          stopPolling();
 
           if (response.data.status === "completed") {
             onComplete?.(response.data);
@@ -100,33 +96,67 @@ const ReportStatusMonitor = ({
         setLoading(false);
       }
     }
-  }, [onComplete, stopPolling]);
+  }, [onComplete]);
 
-  const startPolling = useCallback(() => {
-    // Clear any existing polling first
-    stopPolling();
+  // Handle WebSocket report status updates
+  useEffect(() => {
+    if (!open || !reportId) return;
 
-    // Fetch immediately
-    fetchStatus();
+    const handleReportStatus = (data) => {
+      // Only process events for our report
+      if (data.reportId !== currentReportIdRef.current) return;
+      if (!mountedRef.current) return;
 
-    // Then poll every 2 seconds
-    pollingRef.current = setInterval(fetchStatus, 2000);
-  }, [fetchStatus, stopPolling]);
+      // Update status from WebSocket event
+      setStatus((prev) => ({
+        ...prev,
+        status: data.status,
+        reportType: data.reportType || prev?.reportType,
+        reportName: data.reportName || prev?.reportName,
+        format: data.format || prev?.format,
+        totalRecords: data.totalRecords || prev?.totalRecords,
+        fileUrl: data.fileUrl || prev?.fileUrl,
+        errorMessage: data.errorMessage || prev?.errorMessage,
+        generatedAt: data.generatedAt || prev?.generatedAt,
+      }));
+      setLoading(false);
+      setError(null);
 
-  // Start/stop polling based on visibility
+      // Handle completion
+      if (
+        (data.status === "completed" || data.status === "failed") &&
+        !completedRef.current
+      ) {
+        completedRef.current = true;
+
+        if (data.status === "completed") {
+          onComplete?.({
+            ...data,
+            reportType: data.reportType,
+            totalRecords: data.totalRecords,
+          });
+        }
+      }
+    };
+
+    // Subscribe to WebSocket events
+    on("reportStatus", handleReportStatus);
+
+    return () => {
+      off("reportStatus", handleReportStatus);
+    };
+  }, [open, reportId, on, off, onComplete]);
+
+  // Initial fetch when modal opens (WebSocket may miss if report already processing)
   useEffect(() => {
     if (open && reportId) {
       completedRef.current = false;
       setStatus(null);
       setLoading(true);
       setError(null);
-      startPolling();
-    } else {
-      stopPolling();
+      fetchStatus();
     }
-
-    return () => stopPolling();
-  }, [open, reportId, startPolling, stopPolling]);
+  }, [open, reportId, fetchStatus]);
 
   const handleDownload = async () => {
     if (!reportId || !status) return;
@@ -149,7 +179,7 @@ const ReportStatusMonitor = ({
     setLoading(true);
     setError(null);
     completedRef.current = false;
-    startPolling();
+    fetchStatus();
   };
 
   const getProgressPercent = () => {
