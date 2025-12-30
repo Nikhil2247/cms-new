@@ -19,7 +19,7 @@ import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { CurrentUser } from '../../core/auth/decorators/current-user.decorator';
-import { Role, BackupStatus } from '@prisma/client';
+import { Role, BackupStatus } from '../../generated/prisma/client';
 import * as fs from 'fs';
 
 import { MetricsService } from './services/metrics.service';

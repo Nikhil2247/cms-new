@@ -4,7 +4,7 @@ import { Response } from 'express';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Role } from '@prisma/client';
+import { Role } from '../../generated/prisma/client';
 import { BulkUserService } from '../bulk-user/bulk-user.service';
 import { BulkStudentService } from '../bulk-student/bulk-student.service';
 import { BulkInstitutionService } from '../bulk-institution/bulk-institution.service';

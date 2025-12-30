@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, ApplicationStatus, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { Prisma, ApplicationStatus, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 @Injectable()
 export class StateIndustryService {

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, Job } from 'bullmq';
-import { BulkJobType, BulkJobStatus } from '@prisma/client';
+import { BulkJobType, BulkJobStatus } from '../../generated/prisma/client';
 import { BulkJobService } from './bulk-job.service';
 import { QueueJobResponseDto } from './dto/bulk-job.dto';
 import { PrismaService } from '../../core/database/prisma.service';

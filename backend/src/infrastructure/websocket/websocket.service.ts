@@ -1,5 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
-import { Role } from '@prisma/client';
+import { Role } from '../../generated/prisma/client';
 import { UnifiedWebSocketGateway } from './websocket.gateway';
 import {
   WebSocketEvent,

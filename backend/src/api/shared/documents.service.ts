@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nest
 import { PrismaService } from '../../core/database/prisma.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 
 interface PaginationParams {
   page?: number;

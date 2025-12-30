@@ -11,7 +11,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { WebSocketService } from '../../../infrastructure/websocket/websocket.service';
-import { AuditAction, AuditCategory, AuditSeverity, BackupStatus, Role } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, BackupStatus, Role } from '../../../generated/prisma/client';
 import { CreateBackupDto, StorageType } from '../dto/backup.dto';
 import { spawn } from 'child_process';
 import * as fsPromises from 'fs/promises';

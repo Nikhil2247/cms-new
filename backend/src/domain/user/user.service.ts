@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';

@@ -26,7 +26,7 @@ import { BulkSelfInternshipService } from './bulk-self-internship.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Role, BulkJobType } from '@prisma/client';
+import { Role, BulkJobType } from '../../generated/prisma/client';
 import { BulkSelfInternshipResultDto } from './dto/bulk-self-internship.dto';
 import { BulkQueueService } from '../shared/bulk-queue.service';
 

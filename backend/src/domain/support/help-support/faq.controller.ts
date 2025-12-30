@@ -16,7 +16,7 @@ import { OptionalJwtAuthGuard } from '../../../core/auth/guards/optional-jwt-aut
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
 import { CreateFAQDto, UpdateFAQDto } from './dto';
-import { SupportCategory } from '@prisma/client';
+import { SupportCategory } from '../../../generated/prisma/client';
 
 @Controller('support/faq')
 export class FAQController {

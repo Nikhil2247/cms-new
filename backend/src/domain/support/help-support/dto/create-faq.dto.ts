@@ -10,7 +10,7 @@ import {
   MinLength,
   Min,
 } from 'class-validator';
-import { SupportCategory } from '@prisma/client';
+import { SupportCategory } from '../../../../generated/prisma/client';
 
 export class CreateFAQDto {
   @IsString()

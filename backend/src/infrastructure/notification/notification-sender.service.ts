@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
-import { Role, Prisma } from '@prisma/client';
+import { Role, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { NotificationService } from './notification.service';
 import { WebSocketService } from '../websocket/websocket.service';

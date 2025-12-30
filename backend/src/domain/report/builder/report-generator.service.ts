@@ -1,5 +1,5 @@
 import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
-import { InternshipStatus, MonthlyReportStatus, Role } from '@prisma/client';
+import { InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { ReportType } from './interfaces/report.interface';
 

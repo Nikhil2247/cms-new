@@ -11,7 +11,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 @Injectable()
 export class AuthService {

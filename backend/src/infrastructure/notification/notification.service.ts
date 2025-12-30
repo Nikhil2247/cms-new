@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Notification as PrismaNotification, Prisma, NotificationSettings } from '@prisma/client';
+import { Notification as PrismaNotification, Prisma, NotificationSettings } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WebSocketService } from '../websocket/websocket.service';
 import { WebSocketEvent, NotificationPayload } from '../websocket/dto';

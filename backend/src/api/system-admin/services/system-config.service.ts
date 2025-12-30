@@ -8,7 +8,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { WebSocketService } from '../../../infrastructure/websocket/websocket.service';
 import { AdminChannel } from '../../../infrastructure/websocket/dto';
-import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 export enum ConfigCategory {
   GENERAL = 'general',

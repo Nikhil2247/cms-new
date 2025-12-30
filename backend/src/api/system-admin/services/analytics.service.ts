@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Role, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Role, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 
 export interface LoginAnalytics {
   totalLogins: number;

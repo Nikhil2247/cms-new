@@ -9,7 +9,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { Role } from '@prisma/client';
+import { Role } from '../../../generated/prisma/client';
 
 export class CreateUserDto {
   @IsString()

@@ -7,7 +7,7 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { SupportCategory, SupportTicketPriority } from '@prisma/client';
+import { SupportCategory, SupportTicketPriority } from '../../../../generated/prisma/client';
 
 export class CreateTicketDto {
   @IsString()

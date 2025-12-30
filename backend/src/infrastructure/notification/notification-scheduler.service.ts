@@ -4,7 +4,7 @@ import { NotificationService } from './notification.service';
 import { PrismaService } from '../../core/database/prisma.service';
 import { MailService } from '../mail/mail.service';
 import { ConfigService } from '@nestjs/config';
-import { ApplicationStatus } from '@prisma/client';
+import { ApplicationStatus } from '../../generated/prisma/client';
 
 @Injectable()
 export class NotificationSchedulerService implements OnModuleDestroy {

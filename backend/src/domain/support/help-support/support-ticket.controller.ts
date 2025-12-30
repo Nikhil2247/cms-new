@@ -23,7 +23,7 @@ import {
   ResolveTicketDto,
   CloseTicketDto,
 } from './dto';
-import { SupportCategory, SupportTicketStatus, SupportTicketPriority } from '@prisma/client';
+import { SupportCategory, SupportTicketStatus, SupportTicketPriority } from '../../../generated/prisma/client';
 
 @Controller('support/tickets')
 @UseGuards(JwtAuthGuard, RolesGuard)

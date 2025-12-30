@@ -5,7 +5,7 @@ import {
   BulkSelfInternshipResultDto,
   BulkSelfInternshipValidationResultDto,
 } from './dto/bulk-self-internship.dto';
-import { ApplicationStatus, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { ApplicationStatus, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import * as XLSX from 'xlsx';
 

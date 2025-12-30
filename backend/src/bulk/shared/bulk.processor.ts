@@ -7,7 +7,7 @@ import { BulkInstitutionService } from '../bulk-institution/bulk-institution.ser
 import { BulkSelfInternshipService } from '../bulk-self-internship/bulk-self-internship.service';
 import { BulkJobService } from './bulk-job.service';
 import { BulkOperationJobData } from './bulk-queue.service';
-import { BulkJobType } from '@prisma/client';
+import { BulkJobType } from '../../generated/prisma/client';
 
 @Processor('bulk-operations', {
   concurrency: 2, // Process 2 jobs at a time

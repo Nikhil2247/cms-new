@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
-import { SupportCategory, Role } from '@prisma/client';
+import { SupportCategory, Role } from '../../../generated/prisma/client';
 import { CreateFAQDto, UpdateFAQDto } from './dto';
 
 @Injectable()

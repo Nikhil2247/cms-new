@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
-import { Prisma, ApplicationStatus, InternshipStatus, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { Prisma, ApplicationStatus, InternshipStatus, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
   calculateExpectedMonths,

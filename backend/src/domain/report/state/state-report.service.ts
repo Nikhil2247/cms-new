@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ApplicationStatus, InternshipStatus, MonthlyReportStatus, Role } from '@prisma/client';
+import { ApplicationStatus, InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 

@@ -11,7 +11,7 @@ import {
   Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { InstitutionType } from '@prisma/client';
+import { InstitutionType } from '../../../generated/prisma/client';
 
 export { InstitutionType };
 

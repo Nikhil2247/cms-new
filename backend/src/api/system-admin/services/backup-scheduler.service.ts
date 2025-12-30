@@ -6,7 +6,7 @@ import { WebSocketService } from '../../../infrastructure/websocket/websocket.se
 import { AdminChannel } from '../../../infrastructure/websocket/dto';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { StorageType } from '../dto/backup.dto';
-import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 import { CronJob } from 'cron';
 
 export interface BackupScheduleConfig {

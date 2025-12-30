@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { BulkInstitutionRowDto, BulkInstitutionResultDto, BulkInstitutionValidationResultDto } from './dto/bulk-institution.dto';
 import { InstitutionService, CreateInstitutionData, CreatePrincipalData } from '../../domain/institution/institution.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';

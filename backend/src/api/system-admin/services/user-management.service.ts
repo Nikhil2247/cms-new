@@ -15,7 +15,7 @@ import {
   AuditSeverity,
   Role,
   Prisma,
-} from '@prisma/client';
+} from '../../../generated/prisma/client';
 import {
   CreateUserDto,
   UpdateUserDto,

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
-import { PlacementStatus } from '@prisma/client';
+import { PlacementStatus } from '../../generated/prisma/client';
 
 export interface RecordPlacementDto {
   companyName: string;

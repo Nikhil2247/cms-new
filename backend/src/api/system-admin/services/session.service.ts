@@ -2,7 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { TokenBlacklistService } from '../../../core/auth/services/token-blacklist.service';
-import { AuditAction, AuditCategory, AuditSeverity, Role } from '@prisma/client';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 @Injectable()
 export class SessionService {

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { BulkJobType, BulkJobStatus } from '@prisma/client';
+import { BulkJobType, BulkJobStatus } from '../../generated/prisma/client';
 import {
   CreateBulkJobDto,
   UpdateBulkJobDto,

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsNumber, IsDateString } from 'class-validator';
-import { BulkJobType, BulkJobStatus } from '@prisma/client';
+import { BulkJobType, BulkJobStatus } from '../../../generated/prisma/client';
 
 export class CreateBulkJobDto {
   @ApiProperty({ enum: BulkJobType })

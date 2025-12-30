@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsArray, IsEnum, IsBoolean, MinLength, MaxLength, IsObject } from 'class-validator';
-import { Role } from '@prisma/client';
+import { Role } from '../../../generated/prisma/client';
 
 /**
  * Target types for sending notifications

@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, InternshipStatus, Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Prisma, ApplicationStatus, InternshipStatus, Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 
 @Injectable()

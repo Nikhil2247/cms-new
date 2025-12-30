@@ -12,7 +12,7 @@ import {
   AuditAction,
   AuditCategory,
   AuditSeverity,
-} from '@prisma/client';
+} from '../../../generated/prisma/client';
 
 export interface SubmitGrievanceDto {
   title: string;

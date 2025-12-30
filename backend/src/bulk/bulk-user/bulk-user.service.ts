@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { BulkUserRowDto, BulkUserResultDto, BulkUserValidationResultDto } from './dto/bulk-user.dto';
 import * as XLSX from 'xlsx';
 import * as bcrypt from 'bcryptjs';

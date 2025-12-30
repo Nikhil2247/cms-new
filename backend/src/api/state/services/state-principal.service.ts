@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Prisma, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()

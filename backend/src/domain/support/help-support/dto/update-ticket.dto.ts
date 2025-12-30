@@ -3,7 +3,7 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { SupportTicketStatus, SupportTicketPriority } from '@prisma/client';
+import { SupportTicketStatus, SupportTicketPriority } from '../../../../generated/prisma/client';
 
 export class UpdateTicketStatusDto {
   @IsEnum(SupportTicketStatus)

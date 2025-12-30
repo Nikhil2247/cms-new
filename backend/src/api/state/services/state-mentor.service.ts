@@ -3,7 +3,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { LookupService } from '../../shared/lookup.service';
-import { Role, AuditAction, AuditCategory, AuditSeverity } from '@prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 
 @Injectable()
 export class StateMentorService {

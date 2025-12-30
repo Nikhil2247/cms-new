@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
-import { ApplicationStatus, Role } from '@prisma/client';
+import { ApplicationStatus, Role } from '../../../generated/prisma/client';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { LookupService } from '../../shared/lookup.service';
 import {

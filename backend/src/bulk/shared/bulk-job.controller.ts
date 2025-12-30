@@ -20,7 +20,7 @@ import {
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
-import { Role, BulkJobType, BulkJobStatus } from '@prisma/client';
+import { Role, BulkJobType, BulkJobStatus } from '../../generated/prisma/client';
 import { BulkJobService } from './bulk-job.service';
 import { BulkQueueService } from './bulk-queue.service';
 import {

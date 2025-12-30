@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
-import { FeeStatus } from '@prisma/client';
+import { FeeStatus } from '../../../generated/prisma/client';
 
 export interface CreateFeePaymentDto {
   semesterId: string;

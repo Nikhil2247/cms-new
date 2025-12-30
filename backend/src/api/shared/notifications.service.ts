@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
-import { Role, AuditAction } from '@prisma/client';
+import { Role, AuditAction } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { NotificationSenderService } from '../../infrastructure/notification/notification-sender.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';

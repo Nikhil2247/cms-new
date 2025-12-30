@@ -16,7 +16,7 @@ import { StateService } from './state.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
-import { Role } from '@prisma/client';
+import { Role } from '../../generated/prisma/client';
 import {
   CreateInstitutionDto,
   UpdateInstitutionDto,

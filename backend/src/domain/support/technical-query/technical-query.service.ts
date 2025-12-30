@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
-import { TechnicalQueryPriority, TechnicalQueryStatus } from '@prisma/client';
+import { TechnicalQueryPriority, TechnicalQueryStatus } from '../../../generated/prisma/client';
 
 export interface SubmitQueryDto {
   subject: string;

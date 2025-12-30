@@ -1,4 +1,4 @@
-import { Role } from '@prisma/client';
+import { Role } from '../../../generated/prisma/client';
 
 /**
  * WebSocket event names used across the application

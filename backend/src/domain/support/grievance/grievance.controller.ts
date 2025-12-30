@@ -21,7 +21,7 @@ import {
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../../core/auth/guards/roles.guard';
 import { Roles } from '../../../core/auth/decorators/roles.decorator';
-import { GrievanceStatus } from '@prisma/client';
+import { GrievanceStatus } from '../../../generated/prisma/client';
 
 @Controller('grievances')
 @UseGuards(JwtAuthGuard, RolesGuard)

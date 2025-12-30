@@ -7,7 +7,7 @@ import {
   SupportTicketStatus,
   SupportTicketPriority,
   Role,
-} from '@prisma/client';
+} from '../../../generated/prisma/client';
 import {
   CreateTicketDto,
   RespondTicketDto,

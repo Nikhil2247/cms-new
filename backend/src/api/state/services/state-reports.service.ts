@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, MonthlyReportStatus } from '@prisma/client';
+import { Prisma, ApplicationStatus, MonthlyReportStatus } from '../../../generated/prisma/client';
 
 // Import domain services for business logic reuse
 import { StateReportService } from '../../../domain/report/state/state-report.service';
