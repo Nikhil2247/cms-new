@@ -1,6 +1,6 @@
 # Frontend Dockerfile with Nginx
-# Node 20 LTS for building
-FROM node:20.18-alpine AS builder
+# Node 22 LTS for building (consistent with backend)
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 

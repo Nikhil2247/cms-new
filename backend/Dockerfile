@@ -1,6 +1,6 @@
 # Backend Dockerfile with PM2 for production
-# Node 20 LTS (Iron) - stable version
-FROM node:20.18-alpine AS builder
+# Node 22 LTS - required for Prisma 7.x (needs Node 20.19+ or 22.12+)
+FROM node:22-alpine AS builder
 
 # Install build dependencies for native modules (bcrypt, sharp, etc.)
 RUN apk add --no-cache python3 make g++ libc6-compat
@@ -10,6 +10,7 @@ WORKDIR /app
 # Copy package files first (better layer caching)
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # Install ALL dependencies (including devDependencies for build)
 RUN npm ci
@@ -24,7 +25,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM node:20.18-alpine AS production
+FROM node:22-alpine AS production
 
 # Install PM2 globally and required tools including PostgreSQL client for migrations
 RUN npm install -g pm2 && \
@@ -35,15 +36,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
+COPY prisma.config.ts ./
 
 # Install production dependencies only
 RUN npm ci --omit=dev
 
-# Generate Prisma client in production
+# Generate Prisma client in production (required for runtime)
 RUN npx prisma generate
 
-# Copy built application from builder
+# Copy built application from builder (includes compiled generated client)
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/generated ./src/generated
 
 # Copy PM2 ecosystem config
 COPY ecosystem.config.js ./
