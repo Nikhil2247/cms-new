@@ -146,7 +146,12 @@
       "Bash(PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION=yes npx prisma db push:*)",
       "Bash(git push:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(npm outdated:*)",
+      "WebFetch(domain:www.prisma.io)",
+      "Bash(npm ls:*)",
+      "Bash(del prisma.config.ts)",
+      "Bash(set \"NODE_OPTIONS=--stack-size=8192\")"
     ]
   }
 }

@@ -79,20 +79,29 @@ export class LruCacheService implements OnModuleInit {
       host: redisHost,
       port: redisPort,
       password: redisPassword,
+      lazyConnect: true, // Don't connect immediately, wait for first command
       retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
+        // Stop retrying after 10 attempts (exponential backoff caps at ~30s)
+        if (times > 10) {
+          this.logger.warn('Redis: Max retry attempts reached, stopping reconnection');
+          return null; // Stop retrying
+        }
+        const delay = Math.min(times * 1000, 30000); // Max 30 seconds between retries
         return delay;
       },
       enableOfflineQueue: false,
-      maxRetriesPerRequest: 3,
+      maxRetriesPerRequest: 1, // Fail fast on individual requests
+      connectTimeout: 5000, // 5 second connection timeout
+      commandTimeout: 3000, // 3 second command timeout
     });
 
+    // Suppress continuous error logging - only log once per error type
     this.redis.on('error', (err) => {
       this.handleRedisError(err);
     });
 
     this.redis.on('connect', () => {
-      this.logger.log('Redis Client Connected');
+      this.logger.log('Redis cache connected');
     });
 
     this.redis.on('ready', () => {
@@ -100,12 +109,24 @@ export class LruCacheService implements OnModuleInit {
       this.redisUnavailableSince = null;
       this.redisLastErrorLogAt = null;
       this.redisDisabledUntil = 0;
-      this.logger.log('Redis Client Ready');
+      this.logger.log('Redis cache ready');
     });
 
     this.redis.on('end', () => {
       this.redisReady = false;
     });
+
+    this.redis.on('close', () => {
+      this.redisReady = false;
+    });
+
+    // Try to connect, but don't fail if Redis is unavailable
+    try {
+      await this.redis.connect();
+    } catch (err) {
+      this.logger.warn('Redis cache unavailable at startup, using local cache only');
+      this.handleRedisError(err);
+    }
   }
 
   /**
@@ -549,24 +570,25 @@ export class LruCacheService implements OnModuleInit {
     const now = Date.now();
     this.redisReady = false;
 
+    // First time seeing error - log once and set timestamp
     if (this.redisUnavailableSince === null) {
       this.redisUnavailableSince = now;
+      this.redisLastErrorLogAt = now;
+      this.logger.warn('Redis cache unavailable, falling back to local cache');
+      return;
     }
 
     this.redisDisabledUntil = Math.max(this.redisDisabledUntil, now + this.redisCooldownMs);
 
-    const unavailableForMs = now - this.redisUnavailableSince;
-    const shouldLog =
-      unavailableForMs >= this.redisErrorDelayMs &&
-      (this.redisLastErrorLogAt === null ||
-        now - this.redisLastErrorLogAt >= this.redisErrorDelayMs);
-
-    if (shouldLog) {
+    // Only log every 5 minutes after initial error
+    const timeSinceLastLog = now - (this.redisLastErrorLogAt ?? 0);
+    if (timeSinceLastLog >= this.redisErrorDelayMs) {
       this.redisLastErrorLogAt = now;
-      this.logger.error(
-        'Redis unavailable for 5 minutes; using local cache until it recovers',
-        err as Error,
+      const unavailableMinutes = Math.round((now - this.redisUnavailableSince) / 60000);
+      this.logger.warn(
+        `Redis cache still unavailable (${unavailableMinutes} min), using local cache`,
       );
     }
+    // Silently ignore all other errors to prevent log spam
   }
 }

@@ -1,43 +1,35 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(PrismaService.name);
   private readonly maxRetries = 3;
-  private readonly retryDelay = 1000; // ms
+  private readonly retryDelay = 1000;
+  private static pool: Pool;
 
   constructor() {
-    super({
-      log:
-        process.env.NODE_ENV === 'development'
-          ? [
-              { emit: 'event', level: 'query' },
-              { emit: 'event', level: 'error' },
-              { emit: 'event', level: 'warn' },
-            ]
-          : [{ emit: 'event', level: 'error' }],
-      // Connection pool configuration for MongoDB
-      // Uses DATABASE_URL with connection pool parameters
-      // Recommended: ?maxPoolSize=20&minPoolSize=5&maxIdleTimeMS=30000
-    });
-
-    // Log queries in development mode
-    if (process.env.NODE_ENV === 'development') {
-      (this.$on as any)('query', (e: Prisma.QueryEvent) => {
-        this.logger.debug(`Query: ${e.query}`);
-        this.logger.debug(`Duration: ${e.duration}ms`);
+    // Create pool lazily on first instantiation
+    if (!PrismaService.pool) {
+      PrismaService.pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 10000,
       });
     }
 
-    // Always log errors
-    (this.$on as any)('error', (e: Prisma.LogEvent) => {
-      this.logger.error(`Prisma Error: ${e.message}`);
-    });
+    const adapter = new PrismaPg(PrismaService.pool);
 
-    (this.$on as any)('warn', (e: Prisma.LogEvent) => {
-      this.logger.warn(`Prisma Warning: ${e.message}`);
-    });
+    super({
+      adapter,
+      log:
+        process.env.NODE_ENV === 'development'
+          ? ['query', 'error', 'warn']
+          : ['error'],
+    } as any);
   }
 
   async onModuleInit() {
@@ -46,7 +38,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleDestroy() {
     await this.$disconnect();
-    this.logger.log('Database connection closed');
+    if (PrismaService.pool) {
+      await PrismaService.pool.end();
+      this.logger.log('Database connection pool closed');
+    }
   }
 
   /**
@@ -63,7 +58,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
       if (attempt < this.maxRetries) {
         this.logger.log(`Retrying in ${this.retryDelay}ms...`);
-        await this.delay(this.retryDelay * attempt); // Exponential backoff
+        await this.delay(this.retryDelay * attempt);
         return this.connectWithRetry(attempt + 1);
       }
 
@@ -85,12 +80,23 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
    */
   async isHealthy(): Promise<boolean> {
     try {
-      // PostgreSQL health check - simple query
       await this.$queryRaw`SELECT 1`;
       return true;
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Get pool statistics for monitoring
+   */
+  getPoolStats() {
+    if (!PrismaService.pool) return null;
+    return {
+      totalCount: PrismaService.pool.totalCount,
+      idleCount: PrismaService.pool.idleCount,
+      waitingCount: PrismaService.pool.waitingCount,
+    };
   }
 
   /**
@@ -108,10 +114,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       } catch (error) {
         lastError = error;
 
-        // Check if error is retryable (connection issues, timeouts)
         const isRetryable =
-          error.code === 'P2024' || // Connection pool timeout
-          error.code === 'P2028' || // Transaction API error
+          error.code === 'P2024' ||
+          error.code === 'P2028' ||
           error.message?.includes('connection') ||
           error.message?.includes('timeout');
 
