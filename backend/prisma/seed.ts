@@ -1,7 +1,17 @@
-import { PrismaClient, Role, ClearanceStatus, AdmissionType, Category, ApplicationStatus } from '@prisma/client';
+import { PrismaClient, Role, ClearanceStatus, AdmissionType, Category, ApplicationStatus } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as bcrypt from 'bcryptjs';
+import 'dotenv/config';
 
-const prisma = new PrismaClient();
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Create Prisma client with pg adapter
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter } as any);
 
 // ============================================
 // CONFIGURATION & CONSTANTS
@@ -1476,4 +1486,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

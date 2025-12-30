@@ -1,11 +1,17 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 import * as bcrypt from 'bcryptjs';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
-// Load environment variables from .env file
-dotenv.config();
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 
-const prisma = new PrismaClient();
+// Create Prisma client with pg adapter
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter } as any);
 
 async function main() {
   console.log('🌱 Starting STATE_DIRECTORATE user seed...');
@@ -111,4 +117,5 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    await pool.end();
   });

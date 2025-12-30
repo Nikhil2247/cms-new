@@ -1,6 +1,16 @@
-import { PrismaClient, SupportCategory, Role } from '@prisma/client';
+import { PrismaClient, SupportCategory, Role } from '../src/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
+import 'dotenv/config';
 
-const prisma = new PrismaClient();
+// Create PostgreSQL connection pool
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Create Prisma client with pg adapter
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter } as any);
 
 // Helper function to determine targetRoles based on FAQ title and category
 export function determineTargetRoles(title: string, category: SupportCategory): string[] {
@@ -4095,5 +4105,6 @@ if (require.main === module) {
     })
     .finally(async () => {
       await prisma.$disconnect();
+      await pool.end();
     });
 }
