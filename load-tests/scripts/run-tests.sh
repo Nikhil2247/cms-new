@@ -94,22 +94,23 @@ echo ""
 echo "Starting $TEST_TYPE test..."
 echo ""
 
-# Get script directory
+# Get script directory and tests directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TESTS_DIR="$SCRIPT_DIR/../tests"
 
 # Run appropriate test
 case $TEST_TYPE in
     quick)
-        k6 run --env BASE_URL="$BASE_URL" "$SCRIPT_DIR/quick-test.js"
+        k6 run --env BASE_URL="$BASE_URL" "$TESTS_DIR/quick-test.js"
         ;;
     full)
-        k6 run --env BASE_URL="$BASE_URL" "$SCRIPT_DIR/load-test.js"
+        k6 run --env BASE_URL="$BASE_URL" "$TESTS_DIR/load-test.js"
         ;;
     smoke)
-        k6 run --env BASE_URL="$BASE_URL" --vus 5 --duration 30s "$SCRIPT_DIR/quick-test.js"
+        k6 run --env BASE_URL="$BASE_URL" --vus 5 --duration 30s "$TESTS_DIR/quick-test.js"
         ;;
     stress)
-        k6 run --env BASE_URL="$BASE_URL" --vus 500 --duration 2m "$SCRIPT_DIR/quick-test.js"
+        k6 run --env BASE_URL="$BASE_URL" --vus 500 --duration 2m "$TESTS_DIR/quick-test.js"
         ;;
     *)
         echo -e "${RED}Unknown test type: $TEST_TYPE${NC}"

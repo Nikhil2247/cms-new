@@ -21,12 +21,10 @@ import {
   WebSocketSubscriber,
   MarkAsReadPayload,
 } from './dto';
-
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
-const RATE_LIMIT_MAX_EVENTS = 100; // Max events per window
-const RATE_LIMIT_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Cleanup every 5 minutes
-const RATE_LIMIT_ENTRY_TTL_MS = 2 * 60 * 1000; // Entries expire after 2 minutes of inactivity
+import {
+  WEBSOCKET_THROTTLE_CONFIG,
+  WS_RATE_LIMIT_ENABLED,
+} from '../../core/config/throttle.config';
 
 // Get allowed origins from environment or use defaults
 const getAllowedOrigins = () => {
@@ -107,7 +105,7 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
   private startRateLimitCleanup(): void {
     this.rateLimitCleanupInterval = setInterval(() => {
       this.cleanupStaleRateLimitEntries();
-    }, RATE_LIMIT_CLEANUP_INTERVAL_MS);
+    }, WEBSOCKET_THROTTLE_CONFIG.cleanupIntervalMs);
   }
 
   /**
@@ -122,7 +120,7 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
       // 1. Socket is no longer connected, OR
       // 2. Entry is older than TTL (stale)
       const isConnected = this.subscribers.has(socketId);
-      const isStale = now - rateInfo.windowStart > RATE_LIMIT_ENTRY_TTL_MS;
+      const isStale = now - rateInfo.windowStart > WEBSOCKET_THROTTLE_CONFIG.entryTtlMs;
 
       if (!isConnected || isStale) {
         this.rateLimitMap.delete(socketId);
@@ -431,10 +429,15 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
    * Returns true if within limits, false if exceeded
    */
   private checkRateLimit(socketId: string): boolean {
+    // Skip rate limiting if disabled
+    if (!WS_RATE_LIMIT_ENABLED) {
+      return true;
+    }
+
     const now = Date.now();
     let rateInfo = this.rateLimitMap.get(socketId);
 
-    if (!rateInfo || now - rateInfo.windowStart > RATE_LIMIT_WINDOW_MS) {
+    if (!rateInfo || now - rateInfo.windowStart > WEBSOCKET_THROTTLE_CONFIG.windowMs) {
       // Start new window
       rateInfo = { count: 1, windowStart: now };
       this.rateLimitMap.set(socketId, rateInfo);
@@ -442,7 +445,7 @@ export class UnifiedWebSocketGateway implements OnGatewayInit, OnGatewayConnecti
     }
 
     rateInfo.count++;
-    if (rateInfo.count > RATE_LIMIT_MAX_EVENTS) {
+    if (rateInfo.count > WEBSOCKET_THROTTLE_CONFIG.maxEvents) {
       this.logger.warn(`Rate limit exceeded for socket ${socketId}`);
       return false;
     }

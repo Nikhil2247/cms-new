@@ -10,12 +10,16 @@ echo Running load test via Docker...
 echo Target: %BASE_URL%
 echo.
 
+REM Get the load-tests root directory (parent of scripts folder)
+set "SCRIPT_DIR=%~dp0"
+set "ROOT_DIR=%SCRIPT_DIR%.."
+
 docker run --rm -i ^
     --add-host=host.docker.internal:host-gateway ^
-    -v "%cd%:/scripts" ^
+    -v "%ROOT_DIR%:/load-tests" ^
     grafana/k6 run ^
     --env BASE_URL=%BASE_URL% ^
-    /scripts/quick-test.js
+    /load-tests/tests/quick-test.js
 
 echo.
 echo Test completed!

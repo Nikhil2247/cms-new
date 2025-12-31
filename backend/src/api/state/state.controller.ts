@@ -11,6 +11,7 @@ import {
   Req,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StateService } from './state.service';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
@@ -34,7 +35,7 @@ import {
 export class StateController {
   constructor(private readonly stateService: StateService) {}
 
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
   @ApiOperation({ summary: 'Get state directorate dashboard data' })
   async getDashboard() {
@@ -93,7 +94,7 @@ export class StateController {
     return this.stateService.getInstitutionOverview(id);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.list })
   @Get('institutions/:id/students')
   @ApiOperation({ summary: 'Get institution students with cursor pagination and filters' })
   async getInstitutionStudents(
@@ -487,7 +488,7 @@ export class StateController {
     return this.stateService.getJoiningLetterStats();
   }
 
-  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.export })
   @Post('export/dashboard')
   @ApiOperation({ summary: 'Export dashboard data as report' })
   async exportDashboard(

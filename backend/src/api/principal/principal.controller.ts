@@ -13,6 +13,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { PrincipalService } from './principal.service';
@@ -34,35 +35,35 @@ export class PrincipalController {
   constructor(private readonly principalService: PrincipalService) {}
 
   // Dashboard
-  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
   @ApiOperation({ summary: 'Get principal dashboard overview' })
   async getDashboard(@Request() req) {
     return this.principalService.getDashboard(req.user.userId);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
   @Get('dashboard/alerts')
   @ApiOperation({ summary: 'Get pending actions and alerts' })
   async getDashboardAlerts(@Request() req) {
     return this.principalService.getDashboardAlerts(req.user.userId);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
   @Get('dashboard/mentor-coverage')
   @ApiOperation({ summary: 'Get mentor coverage statistics for dashboard' })
   async getMentorCoverage(@Request() req) {
     return this.principalService.getMentorCoverage(req.user.userId);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
   @Get('dashboard/compliance')
   @ApiOperation({ summary: 'Get compliance metrics with 6-month trend' })
   async getComplianceMetrics(@Request() req) {
     return this.principalService.getComplianceMetrics(req.user.userId);
   }
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.mutation })
   @Get('dashboard/alerts-enhanced')
   @ApiOperation({ summary: 'Get enhanced dashboard alerts' })
   async getDashboardAlertsEnhanced(@Request() req) {

@@ -91,15 +91,18 @@ echo.
 echo Starting %TEST_TYPE% test...
 echo.
 
+REM Get script directory
+set "SCRIPT_DIR=%~dp0"
+
 REM Run appropriate test
 if /i "%TEST_TYPE%"=="quick" (
-    k6 run --env BASE_URL=%BASE_URL% quick-test.js
+    k6 run --env BASE_URL=%BASE_URL% "%SCRIPT_DIR%..\tests\quick-test.js"
 ) else if /i "%TEST_TYPE%"=="full" (
-    k6 run --env BASE_URL=%BASE_URL% load-test.js
+    k6 run --env BASE_URL=%BASE_URL% "%SCRIPT_DIR%..\tests\load-test.js"
 ) else if /i "%TEST_TYPE%"=="smoke" (
-    k6 run --env BASE_URL=%BASE_URL% --vus 5 --duration 30s quick-test.js
+    k6 run --env BASE_URL=%BASE_URL% --vus 5 --duration 30s "%SCRIPT_DIR%..\tests\quick-test.js"
 ) else if /i "%TEST_TYPE%"=="stress" (
-    k6 run --env BASE_URL=%BASE_URL% --vus 500 --duration 2m quick-test.js
+    k6 run --env BASE_URL=%BASE_URL% --vus 500 --duration 2m "%SCRIPT_DIR%..\tests\quick-test.js"
 ) else (
     echo Unknown test type: %TEST_TYPE%
     echo Valid types: quick, full, smoke, stress
