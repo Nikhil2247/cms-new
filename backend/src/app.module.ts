@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 // Core modules
 import { PrismaModule } from './core/database/prisma.module';
@@ -14,6 +14,7 @@ import { AllExceptionsFilter } from './core/common/filters/all-exceptions.filter
 import { LoggingInterceptor } from './core/common/interceptors/logging.interceptor';
 import { SecurityInterceptor } from './core/common/interceptors/security.interceptor';
 import { CustomThrottleGuard } from './core/common/guards/throttle.guard';
+import { THROTTLE_PRESETS } from './core/config/throttle.config';
 
 // API modules
 import { StateModule } from './api/state/state.module';
@@ -57,8 +58,8 @@ import { BulkModule } from './bulk/bulk.module';
     // ===== RATE LIMITING (THROTTLING) =====
     ThrottlerModule.forRoot([
       {
-        ttl: parseInt(process.env.THROTTLE_TTL || '60000', 10), // 1 minute
-        limit: parseInt(process.env.THROTTLE_LIMIT || '100', 10), // 100 requests per minute
+        ttl: THROTTLE_PRESETS.default.ttl,
+        limit: THROTTLE_PRESETS.default.limit,
       },
     ]),
 

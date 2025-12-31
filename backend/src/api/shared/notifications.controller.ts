@@ -11,6 +11,7 @@ import {
   Post,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
@@ -30,7 +31,7 @@ export class NotificationsController {
 
   // ============ GET Routes (specific paths BEFORE parameterized) ============
 
-  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.list })
   @Get()
   async getNotifications(
     @Request() req,
@@ -43,7 +44,7 @@ export class NotificationsController {
     });
   }
 
-  @Throttle({ default: { limit: 60, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.lightweight })
   @Get('unread-count')
   async getUnreadCount(@Request() req) {
     return this.notificationsService.getUnreadCount(req.user.userId);

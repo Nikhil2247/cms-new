@@ -14,6 +14,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
@@ -34,7 +35,7 @@ export class StudentController {
     private readonly fileStorageService: FileStorageService,
   ) {}
 
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Get student dashboard data' })

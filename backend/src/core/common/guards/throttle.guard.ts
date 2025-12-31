@@ -1,20 +1,40 @@
 import { Injectable, ExecutionContext } from '@nestjs/common';
 import { ThrottlerGuard, ThrottlerLimitDetail } from '@nestjs/throttler';
+import {
+  THROTTLE_ENABLED,
+  shouldSkipThrottle,
+  formatThrottleErrorMessage,
+} from '../../config/throttle.config';
 
 /**
  * Custom Throttle Guard for rate limiting
  * Tracks requests by IP address or user ID for authenticated requests
+ * Uses centralized configuration for skip patterns and error messages
  */
 @Injectable()
 export class CustomThrottleGuard extends ThrottlerGuard {
   /**
-   * Skip throttling for OPTIONS requests (CORS preflight)
+   * Skip throttling for OPTIONS requests (CORS preflight) and configured skip patterns
    */
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Check if throttling is globally disabled
+    if (!THROTTLE_ENABLED) {
+      return true;
+    }
+
     const request = context.switchToHttp().getRequest();
+
+    // Skip OPTIONS requests (CORS preflight)
     if (request.method === 'OPTIONS') {
       return true;
     }
+
+    // Skip configured patterns
+    const path = request.url || request.path || '';
+    if (shouldSkipThrottle(path)) {
+      return true;
+    }
+
     return super.canActivate(context);
   }
 
@@ -41,12 +61,13 @@ export class CustomThrottleGuard extends ThrottlerGuard {
   }
 
   /**
-   * Override to provide custom error message
+   * Override to provide configurable error message
    */
   protected async getErrorMessage(
     context: ExecutionContext,
     throttlerLimitDetail: ThrottlerLimitDetail,
   ): Promise<string> {
-    return 'Too many requests. Please try again later.';
+    const retryAfterSeconds = Math.ceil(throttlerLimitDetail.ttl / 1000);
+    return formatThrottleErrorMessage(retryAfterSeconds);
   }
 }
