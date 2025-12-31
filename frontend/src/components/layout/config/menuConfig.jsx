@@ -100,8 +100,8 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      { key: 'principal-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/overview' },
-      { key: 'principal-dashboard', label: 'Full Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
+      // { key: 'principal-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/overview' },
+      { key: 'principal-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
     ],
   },
   PRINCIPAL_PEOPLE: {
@@ -131,7 +131,7 @@ export const menuConfig = {
     items: [
       { key: 'bulk-staff-upload', label: 'Bulk Upload', icon: <UploadOutlined />, path: '/bulk-upload' },
       { key: 'bulk-internship-upload', label: 'Bulk Internships', icon: <UploadOutlined />, path: '/bulk/self-internships' },
-      { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
+      // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
     ],
   },
 

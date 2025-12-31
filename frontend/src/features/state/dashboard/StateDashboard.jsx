@@ -1,19 +1,8 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Row, Col, Spin, Typography, message, Card, Badge, Tag, Progress, Alert, Button } from 'antd';
+import { Row, Col, Spin, Typography, message, Card, Badge, Tag } from 'antd';
 import {
-  WarningOutlined,
-  ExclamationCircleOutlined,
-  CheckCircleOutlined,
   ClockCircleOutlined,
-  TeamOutlined,
-  FileTextOutlined,
-  EyeOutlined,
-  ReloadOutlined,
-  BankOutlined,
-  InboxOutlined,
-  FolderOpenOutlined,
-  SolutionOutlined,
-  AlertOutlined,
+  WarningOutlined,
 } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -46,12 +35,10 @@ import {
 import {
   DashboardHeader,
   StatisticsCards,
-  PerformanceMetrics,
   InstitutionsTable,
   TopPerformers,
   JoiningLetterTracker,
   TopIndustriesList,
-  CriticalAlertsModal,
 } from './components';
 import stateService from '../../../services/state.service';
 import { downloadBlob } from '../../../utils/downloadUtils';
@@ -112,8 +99,6 @@ const StateDashboard = () => {
   const [userName, setUserName] = useState('Administrator');
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [exporting, setExporting] = useState(false);
-  const [alertsModalOpen, setAlertsModalOpen] = useState(false);
-  const [selectedAlertTab, setSelectedAlertTab] = useState('lowCompliance');
 
   // Derived performers from institutions as fallback (memoized)
   const topPerformers = useMemo(() => {
@@ -207,8 +192,9 @@ const StateDashboard = () => {
     try {
       const exportData = await stateService.exportDashboard({
         format: 'json',
-        month: selectedMonth?.getMonth() + 1,
-        year: selectedMonth?.getFullYear(),
+        // dayjs uses .month() (0-indexed) and .year()
+        month: selectedMonth ? selectedMonth.month() + 1 : undefined,
+        year: selectedMonth ? selectedMonth.year() : undefined,
       });
 
       const jsonString = JSON.stringify(exportData, null, 2);
@@ -224,31 +210,39 @@ const StateDashboard = () => {
     }
   }, [selectedMonth]);
 
-  // Month filter handler
+  // Month filter handler - filters ALL dashboard data
+  // Note: Ant Design DatePicker returns dayjs objects, not native Date objects
   const handleMonthChange = useCallback(
     (date) => {
       setSelectedMonth(date);
       if (date) {
-        const month = date.getMonth() + 1;
-        const year = date.getFullYear();
-        dispatch(fetchDashboardStats({ month, year, forceRefresh: true }));
-        dispatch(fetchInstitutionsWithStats({ month, year, forceRefresh: true }));
-        dispatch(fetchMonthlyAnalytics({ month, year, forceRefresh: true }));
-        message.info(`Filtering data for ${date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`);
+        // dayjs uses .month() (0-indexed) and .year()
+        const month = date.month() + 1;
+        const year = date.year();
+        const filterParams = { month, year, forceRefresh: true };
+
+        // Refresh ALL dashboard sections with the month filter
+        dispatch(fetchDashboardStats(filterParams));
+        dispatch(fetchInstitutionsWithStats(filterParams));
+        dispatch(fetchMonthlyAnalytics(filterParams));
+        dispatch(fetchTopPerformers(filterParams));
+        dispatch(fetchTopIndustries({ ...filterParams, limit: 10 }));
+
+        message.info(`Filtering data for ${date.format('MMMM YYYY')}`);
       } else {
-        dispatch(fetchDashboardStats({ forceRefresh: true }));
-        dispatch(fetchInstitutionsWithStats({ forceRefresh: true }));
-        dispatch(fetchMonthlyAnalytics({ forceRefresh: true }));
+        // Clear filter - fetch current/all-time data
+        const refreshParams = { forceRefresh: true };
+        dispatch(fetchDashboardStats(refreshParams));
+        dispatch(fetchInstitutionsWithStats(refreshParams));
+        dispatch(fetchMonthlyAnalytics(refreshParams));
+        dispatch(fetchTopPerformers(refreshParams));
+        dispatch(fetchTopIndustries({ ...refreshParams, limit: 10 }));
+
+        message.info('Showing all-time data');
       }
     },
     [dispatch]
   );
-
-  // Handler to open alerts modal with specific tab
-  const handleOpenAlertsModal = useCallback((tab = 'lowCompliance') => {
-    setSelectedAlertTab(tab);
-    setAlertsModalOpen(true);
-  }, []);
 
   if (loading && !stats) {
     return (
@@ -271,204 +265,10 @@ const StateDashboard = () => {
         exporting={exporting}
       />
 
-      {/* Statistics Cards - Primary metrics and focus areas */}
+      {/* Statistics Cards - Primary metrics */}
       <div className="mb-6">
-        <StatisticsCards stats={stats} />
+        <StatisticsCards stats={stats} selectedMonth={selectedMonth} />
       </div>
-
-      {/* Critical Alerts and Compliance Summary Row */}
-      <Row gutter={[24, 24]} className="mb-6">
-        {/* Critical Alerts */}
-        <Col xs={24} lg={12}>
-          <Card
-            title={
-              <div className="flex items-center gap-3 w-full">
-                <div className="w-8 h-8 rounded-lg bg-error/10 flex items-center justify-center shrink-0">
-                  <WarningOutlined className="text-error text-lg" />
-                </div>
-                <span className="font-bold text-text-primary text-lg">Critical Alerts</span>
-                {criticalAlerts?.summary?.totalAlerts > 0 && (
-                  <Badge count={criticalAlerts.summary.totalAlerts} />
-                )}
-                <Button
-                  type="link"
-                  size="small"
-                  onClick={() => handleOpenAlertsModal('lowCompliance')}
-                  className="ml-auto text-primary font-medium"
-                >
-                  View All
-                </Button>
-              </div>
-            }
-            className="shadow-sm border-border rounded-2xl h-full bg-surface"
-            loading={criticalAlertsLoading}
-            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
-          >
-            {criticalAlerts ? (
-              <div className="space-y-4">
-                {criticalAlerts.alerts?.lowComplianceInstitutions?.length > 0 && (
-                  <div
-                    onClick={() => handleOpenAlertsModal('lowCompliance')}
-                    className="cursor-pointer transition-all hover:scale-[1.01]"
-                  >
-                    <Alert
-                      type="error"
-                      showIcon
-                      icon={<ExclamationCircleOutlined />}
-                      title={
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold">Low Compliance Institutions ({criticalAlerts.alerts?.lowComplianceInstitutions.length})</span>
-                          <Button type="link" size="small" className="text-error p-0 h-auto">View Details →</Button>
-                        </div>
-                      }
-                      description={
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {criticalAlerts.alerts?.lowComplianceInstitutions.slice(0, 3).map((inst, idx) => (
-                            <Tag key={idx} color="red" className="m-0 px-2 py-0.5 rounded-md border-0 font-medium">
-                              {inst.institutionName} ({inst.complianceScore}%)
-                            </Tag>
-                          ))}
-                          {criticalAlerts.alerts?.lowComplianceInstitutions.length > 3 && (
-                            <Tag className="m-0 px-2 py-0.5 rounded-md border-0 bg-background-tertiary text-text-secondary">+{criticalAlerts.alerts?.lowComplianceInstitutions.length - 3} more</Tag>
-                          )}
-                        </div>
-                      }
-                      className="rounded-xl border-error/20 bg-error/5"
-                    />
-                  </div>
-                )}
-                {criticalAlerts.summary?.studentsWithoutMentorsCount > 0 && (
-                  <div
-                    onClick={() => handleOpenAlertsModal('studentsWithoutMentors')}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-warning/5 border border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:border-warning/40"
-                  >
-                    <TeamOutlined className="text-warning text-lg mt-0.5" />
-                    <div className="flex-1">
-                      <Text strong className="text-text-primary block">Students Without Mentors</Text>
-                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.studentsWithoutMentorsCount} students need mentor assignment</Text>
-                    </div>
-                    <Button type="link" size="small" className="text-warning p-0 h-auto shrink-0">View →</Button>
-                  </div>
-                )}
-                {criticalAlerts.summary?.missingReportsCount > 0 && (
-                  <div
-                    onClick={() => handleOpenAlertsModal('missingReports')}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-warning/5 border border-warning/20 cursor-pointer transition-all hover:scale-[1.01] hover:border-warning/40"
-                  >
-                    <FileTextOutlined className="text-warning text-lg mt-0.5" />
-                    <div className="flex-1">
-                      <Text strong className="text-text-primary block">Missing Reports</Text>
-                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.missingReportsCount} overdue weekly/monthly reports</Text>
-                    </div>
-                    <Button type="link" size="small" className="text-warning p-0 h-auto shrink-0">View →</Button>
-                  </div>
-                )}
-                {criticalAlerts.summary?.visitGapsCount > 0 && (
-                  <div
-                    onClick={() => handleOpenAlertsModal('visitGaps')}
-                    className="flex items-start gap-3 p-3 rounded-xl bg-info/5 border border-info/20 cursor-pointer transition-all hover:scale-[1.01] hover:border-info/40"
-                  >
-                    <EyeOutlined className="text-info text-lg mt-0.5" />
-                    <div className="flex-1">
-                      <Text strong className="text-text-primary block">Faculty Visit Gaps</Text>
-                      <Text className="text-text-secondary text-sm">{criticalAlerts.summary?.visitGapsCount} institutions haven't had a visit in 30+ days</Text>
-                    </div>
-                    <Button type="link" size="small" className="text-info p-0 h-auto shrink-0">View →</Button>
-                  </div>
-                )}
-                {!criticalAlerts.summary.totalAlerts && (
-                  <div className="text-center py-12 bg-success/5 rounded-xl border border-success/10 border-dashed">
-                    <CheckCircleOutlined className="text-4xl text-success mb-3" />
-                    <Text className="block text-text-primary font-medium">All systems normal</Text>
-                    <Text className="text-text-tertiary text-sm">No critical alerts requiring attention</Text>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Text className="text-text-tertiary">No alerts data available</Text>
-              </div>
-            )}
-          </Card>
-        </Col>
-
-        {/* Compliance Summary */}
-        <Col xs={24} lg={12}>
-          <Card
-            title={
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0">
-                  <CheckCircleOutlined className="text-success text-lg" />
-                </div>
-                <span className="font-bold text-text-primary text-lg">Compliance Summary</span>
-              </div>
-            }
-            className="shadow-sm border-border rounded-2xl h-full bg-surface"
-            loading={complianceSummaryLoading}
-            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
-          >
-            {complianceSummary?.stateWide ? (
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Text className="text-text-secondary font-medium">Mentor Assignment Rate</Text>
-                    <Text strong className="text-text-primary">{complianceSummary.stateWide.mentorCoverageRate || 0}%</Text>
-                  </div>
-                  <Progress
-                    percent={complianceSummary.stateWide.mentorCoverageRate || 0}
-                    strokeColor={complianceSummary.stateWide.mentorCoverageRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.mentorCoverageRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
-                    showInfo={false}
-                    className="!m-0"
-                    size="small"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Text className="text-text-secondary font-medium">Faculty Visit Compliance</Text>
-                    <Text strong className="text-text-primary">{complianceSummary.stateWide.visitComplianceRate || 0}%</Text>
-                  </div>
-                  <Progress
-                    percent={complianceSummary.stateWide.visitComplianceRate || 0}
-                    strokeColor={complianceSummary.stateWide.visitComplianceRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.visitComplianceRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
-                    showInfo={false}
-                    className="!m-0"
-                    size="small"
-                  />
-                </div>
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Text className="text-text-secondary font-medium">Report Submission Rate</Text>
-                    <Text strong className="text-text-primary">{complianceSummary.stateWide.reportComplianceRate || 0}%</Text>
-                  </div>
-                  <Progress
-                    percent={complianceSummary.stateWide.reportComplianceRate || 0}
-                    strokeColor={complianceSummary.stateWide.reportComplianceRate >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.reportComplianceRate >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
-                    showInfo={false}
-                    className="!m-0"
-                    size="small"
-                  />
-                </div>
-                <div className="pt-6 border-t border-border mt-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <Text className="text-text-primary font-bold text-lg">Overall Compliance Score</Text>
-                    <Text className="text-2xl font-black text-primary">{complianceSummary.stateWide.overallComplianceScore || 0}%</Text>
-                  </div>
-                  <Progress
-                    percent={complianceSummary.stateWide.overallComplianceScore || 0}
-                    strokeColor={complianceSummary.stateWide.overallComplianceScore >= 80 ? 'rgb(var(--color-success))' : complianceSummary.stateWide.overallComplianceScore >= 50 ? 'rgb(var(--color-warning))' : 'rgb(var(--color-error))'}
-                    showInfo={false}
-                    className="!m-0"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="text-center py-12">
-                <Text className="text-text-tertiary">No compliance data available</Text>
-              </div>
-            )}
-          </Card>
-        </Col>
-      </Row>
 
       {/* Action Items */}
       {actionItemsList.length > 0 && (
@@ -530,11 +330,6 @@ const StateDashboard = () => {
           month={institutionsMonth}
           year={institutionsYear}
         />
-      </div>
-
-      {/* Performance Metrics */}
-      <div className="mb-6">
-        <PerformanceMetrics stats={stats} />
       </div>
 
       {/* Top Performers and Industry Partners */}
@@ -621,13 +416,6 @@ const StateDashboard = () => {
         </Card>
       )}
 
-      {/* Critical Alerts Modal */}
-      <CriticalAlertsModal
-        open={alertsModalOpen}
-        onClose={() => setAlertsModalOpen(false)}
-        alerts={criticalAlerts}
-        defaultTab={selectedAlertTab}
-      />
     </div>
   );
 };

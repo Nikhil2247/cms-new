@@ -1,39 +1,22 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import {
-  Card,
-  Button,
-  Tag,
-  Empty,
-  Spin,
-  Progress,
-  Select,
-  Popconfirm,
-  Typography,
-  message,
-  Timeline,
-  Modal,
-  Alert,
-  Tooltip,
+  Card, Button, Tag, Empty, Spin, Progress, Select, Popconfirm, Switch,
+  Typography, message, Modal, Alert, Tooltip, Upload
 } from 'antd';
 import {
-  FileTextOutlined,
-  UploadOutlined,
-  DeleteOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-  EyeOutlined,
-  CalendarOutlined,
-  WarningOutlined,
+  FileTextOutlined, UploadOutlined, DeleteOutlined, CheckCircleOutlined,
+  ClockCircleOutlined, ExclamationCircleOutlined, EyeOutlined, CalendarOutlined,
+  WarningOutlined, InboxOutlined
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import {
   MONTH_NAMES,
   getReportSubmissionStatus,
-  formatReportPeriod,
   getSubmissionWindow,
 } from '../utils/applicationUtils';
+import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 
-const { Text, Title } = Typography;
+const { Text } = Typography;
 
 const MonthlyReportsSection = ({
   application,
@@ -46,64 +29,119 @@ const MonthlyReportsSection = ({
   onRefresh,
   hasStarted,
 }) => {
-  const [reportFile, setReportFile] = useState(null);
+  const [fileList, setFileList] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [viewModalVisible, setViewModalVisible] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(null);
 
-  // Calculate progress from reports
+  // Auto month detection states
+  const [autoMonthSelection, setAutoMonthSelection] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
+  const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
+
+  // Month options
+  const monthOptions = useMemo(() =>
+    MONTH_NAMES.map((name, index) => ({
+      value: index + 1,
+      label: name,
+    })), []
+  );
+
+  // Year options
+  const yearOptions = useMemo(() => {
+    const currentYear = dayjs().year();
+    return Array.from({ length: 5 }, (_, i) => ({
+      value: currentYear - i + 1,
+      label: (currentYear - i + 1).toString(),
+    }));
+  }, []);
+
+  // Allowed month options based on internship period
+  const allowedMonthOptions = useMemo(() => {
+    if (!application) return monthOptions;
+
+    const startDate = application.startDate || application.joiningDate || application.internship?.startDate;
+    const endDate = application.endDate || application.internship?.endDate;
+
+    if (!startDate || !endDate) return monthOptions;
+
+    const start = dayjs(startDate).startOf('month');
+    const end = dayjs(endDate).endOf('month');
+
+    const options = [];
+    let cursor = start.clone();
+    while (cursor.isBefore(end) || cursor.isSame(end, 'month')) {
+      if (cursor.year() === selectedYear) {
+        options.push({
+          value: cursor.month() + 1,
+          label: cursor.format('MMMM')
+        });
+      }
+      cursor = cursor.add(1, 'month');
+    }
+
+    return options.length > 0 ? options : monthOptions;
+  }, [application, selectedYear, monthOptions]);
+
+  // Keep selectedMonth in sync when switching to manual selection
+  useEffect(() => {
+    if (!autoMonthSelection && allowedMonthOptions.length > 0) {
+      if (!allowedMonthOptions.some(o => o.value === selectedMonth)) {
+        setSelectedMonth(allowedMonthOptions[0].value);
+      }
+    }
+  }, [autoMonthSelection, allowedMonthOptions, selectedMonth]);
+
+  // Calculate progress
   const calculatedProgress = {
     total: progress.total || reports.length,
-    approved: progress.approved || reports.filter((r) => r.status === 'APPROVED').length,
-    draft: progress.draft || reports.filter((r) => r.status === 'DRAFT').length,
+    approved: progress.approved || reports.filter(r => r.status === 'APPROVED').length,
+    pending: progress.pending || reports.filter(r => r.status === 'DRAFT' || r.status === 'SUBMITTED').length,
     overdue: progress.overdue || 0,
     percentage: progress.percentage || 0,
   };
 
-  // Get reports that can be submitted now (within window or overdue)
-  const getSubmittableReports = useCallback(() => {
-    return reports.filter((report) => {
-      const status = report.submissionStatus || getReportSubmissionStatus(report);
-      return status.canSubmit && report.status === 'DRAFT';
-    });
-  }, [reports]);
-
-  const handleFileChange = useCallback((e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.type !== 'application/pdf') {
-        message.error('Please upload a PDF file');
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        message.error('File size should be less than 10MB');
-        return;
-      }
-      setReportFile(file);
+  // Handle file change
+  const handleFileChange = useCallback(({ fileList: newFileList }) => {
+    const file = newFileList[0]?.originFileObj;
+    if (file && file.size > 10 * 1024 * 1024) {
+      message.error('File size should be less than 10MB');
+      return;
     }
+    setFileList(newFileList.slice(-1));
   }, []);
 
+  // Handle upload
   const handleUpload = useCallback(async () => {
-    if (!reportFile || !selectedMonth || !selectedYear) {
-      message.warning('Please select a file and report month');
+    if (fileList.length === 0) {
+      message.warning('Please select a file');
+      return;
+    }
+
+    const file = fileList[0]?.originFileObj || fileList[0];
+    const monthValue = autoMonthSelection ? dayjs().month() + 1 : selectedMonth;
+    const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
+
+    if (!monthValue || !yearValue) {
+      message.warning('Please select report month and year');
       return;
     }
 
     try {
-      await onUpload(application.id, reportFile, selectedMonth, selectedYear);
-      setReportFile(null);
+      await onUpload(application.id, file, monthValue, yearValue);
+      setFileList([]);
       setUploadModalVisible(false);
-      setSelectedMonth(null);
-      setSelectedYear(null);
-      message.success('Report submitted and auto-approved!');
+      setAutoMonthSelection(true);
+      setSelectedMonth(dayjs().month() + 1);
+      setSelectedYear(dayjs().year());
+      message.success('Report uploaded successfully!');
       onRefresh?.();
     } catch (error) {
       // Error handled in hook
     }
-  }, [application.id, reportFile, selectedMonth, selectedYear, onUpload, onRefresh]);
+  }, [application.id, fileList, autoMonthSelection, selectedMonth, selectedYear, onUpload, onRefresh]);
 
+  // Handle delete
   const handleDeleteReport = useCallback(async (reportId, status) => {
     if (status === 'APPROVED') {
       message.warning('Approved reports cannot be deleted');
@@ -117,57 +155,32 @@ const MonthlyReportsSection = ({
     }
   }, [onDelete, onRefresh]);
 
+  // Open upload modal
   const openUploadModal = useCallback((report = null) => {
     if (report) {
       setSelectedMonth(report.reportMonth);
       setSelectedYear(report.reportYear);
+      setAutoMonthSelection(false);
     } else {
-      // Default to current month's report if available
-      const submittable = getSubmittableReports();
-      if (submittable.length > 0) {
-        setSelectedMonth(submittable[0].reportMonth);
-        setSelectedYear(submittable[0].reportYear);
-      }
+      setAutoMonthSelection(true);
+      setSelectedMonth(dayjs().month() + 1);
+      setSelectedYear(dayjs().year());
     }
+    setFileList([]);
     setUploadModalVisible(true);
-  }, [getSubmittableReports]);
+  }, []);
 
+  // Close upload modal
+  const handleCloseUploadModal = useCallback(() => {
+    setUploadModalVisible(false);
+    setFileList([]);
+    setAutoMonthSelection(true);
+  }, []);
+
+  // View modal
   const openViewModal = useCallback((report) => {
     setSelectedReport(report);
     setViewModalVisible(true);
-  }, []);
-
-  const getStatusIcon = useCallback((status) => {
-    switch (status) {
-      case 'APPROVED':
-        return <CheckCircleOutlined className="text-green-500" />;
-      case 'CAN_SUBMIT':
-        return <UploadOutlined className="text-blue-500" />;
-      case 'OVERDUE':
-        return <ExclamationCircleOutlined className="text-red-500" />;
-      case 'NOT_YET_DUE':
-        return <ClockCircleOutlined className="text-gray-400" />;
-      default:
-        return <FileTextOutlined className="text-gray-400" />;
-    }
-  }, []);
-
-  const getTimelineColor = useCallback((status) => {
-    switch (status) {
-      case 'APPROVED':
-        return 'green';
-      case 'CAN_SUBMIT':
-        return 'blue';
-      case 'OVERDUE':
-        return 'red';
-      default:
-        return 'gray';
-    }
-  }, []);
-
-  const handleCloseUploadModal = useCallback(() => {
-    setUploadModalVisible(false);
-    setReportFile(null);
   }, []);
 
   const handleCloseViewModal = useCallback(() => {
@@ -175,22 +188,30 @@ const MonthlyReportsSection = ({
     setSelectedReport(null);
   }, []);
 
-  const handleOpenReportPdf = useCallback(() => {
-    if (selectedReport?.reportFileUrl) {
-      window.open(selectedReport.reportFileUrl, '_blank');
-    }
-  }, [selectedReport]);
+  // Status helpers
+  const getStatusTag = useCallback((status) => {
+    const config = {
+      APPROVED: { color: 'success', icon: <CheckCircleOutlined />, text: 'Approved' },
+      SUBMITTED: { color: 'processing', icon: <ClockCircleOutlined />, text: 'Submitted' },
+      DRAFT: { color: 'default', icon: <FileTextOutlined />, text: 'Pending' },
+      CAN_SUBMIT: { color: 'blue', icon: <UploadOutlined />, text: 'Submit Now' },
+      OVERDUE: { color: 'error', icon: <ExclamationCircleOutlined />, text: 'Overdue' },
+      NOT_YET_DUE: { color: 'default', icon: <ClockCircleOutlined />, text: 'Upcoming' },
+    };
+    const { color, icon, text } = config[status] || config.DRAFT;
+    return <Tag color={color} icon={icon} className="rounded-full text-xs">{text}</Tag>;
+  }, []);
 
   if (!hasStarted) {
     return (
-      <Card className="rounded-xl">
+      <Card className="rounded-xl border border-gray-100" styles={{ body: { padding: '24px' } }}>
         <Empty
-          image={<CalendarOutlined style={{ fontSize: 48, color: '#bfbfbf' }} />}
+          image={<CalendarOutlined className="text-4xl text-gray-300" />}
+          imageStyle={{ height: 50 }}
           description={
             <div className="text-center">
-              <Text className="text-gray-500">
-                Monthly reports will be available once your internship starts
-              </Text>
+              <Text className="text-sm text-text-secondary block">Internship not started</Text>
+              <Text className="text-xs text-text-tertiary">Reports will be available once your internship begins</Text>
             </div>
           }
         />
@@ -199,250 +220,234 @@ const MonthlyReportsSection = ({
   }
 
   return (
-    <div className="space-y-4">
-      {/* Progress Card */}
-      <Card className="rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <Title level={5} className="!mb-0">Monthly Reports Progress</Title>
-            <Text className="text-gray-500 text-sm">
-              Submit reports for each month of your internship
-            </Text>
-          </div>
-          <Button
-            type="primary"
-            icon={<UploadOutlined />}
-            onClick={openUploadModal}
-            disabled={getSubmittableReports().length === 0}
-            className="bg-blue-600"
-          >
-            Submit Report
-          </Button>
+    <div className="space-y-4 p-4">
+      {/* Progress Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-background-secondary rounded-lg p-3 text-center">
+          <Text className="text-lg font-bold text-primary block">{calculatedProgress.total}</Text>
+          <Text className="text-[10px] text-text-tertiary">Total</Text>
         </div>
-
-        <Progress
-          percent={calculatedProgress.percentage}
-          status={calculatedProgress.overdue > 0 ? 'exception' : 'active'}
-          strokeColor={calculatedProgress.overdue > 0 ? undefined : { from: '#108ee9', to: '#87d068' }}
-        />
-
-        <div className="flex justify-between text-sm mt-2">
-          <div className="flex gap-4">
-            <span className="flex items-center gap-1">
-              <CheckCircleOutlined className="text-green-500" />
-              {calculatedProgress.approved} approved
-            </span>
-            <span className="flex items-center gap-1">
-              <FileTextOutlined className="text-gray-400" />
-              {calculatedProgress.draft} pending
-            </span>
-          </div>
-          {calculatedProgress.overdue > 0 && (
-            <span className="flex items-center gap-1 text-red-500">
-              <WarningOutlined />
-              {calculatedProgress.overdue} overdue
-            </span>
-          )}
+        <div className="bg-background-secondary rounded-lg p-3 text-center">
+          <Text className="text-lg font-bold text-green-500 block">{calculatedProgress.approved}</Text>
+          <Text className="text-[10px] text-text-tertiary">Approved</Text>
         </div>
+        <div className="bg-background-secondary rounded-lg p-3 text-center">
+          <Text className="text-lg font-bold text-orange-500 block">{calculatedProgress.pending}</Text>
+          <Text className="text-[10px] text-text-tertiary">Pending</Text>
+        </div>
+      </div>
 
-        {/* Auto-approval notice */}
-        <Alert
-          className="mt-4"
-          title="Reports are auto-approved upon submission"
-          type="info"
-          showIcon
-          icon={<CheckCircleOutlined />}
-        />
-      </Card>
+      {/* Upload Button */}
+      <div className="flex justify-end">
+        <Button
+          type="primary"
+          icon={<UploadOutlined />}
+          onClick={() => openUploadModal()}
+          size="small"
+          className="rounded-lg"
+        >
+          Upload Report
+        </Button>
+      </div>
 
-      {/* Reports Timeline */}
-      <Card className="rounded-xl" title="Report Timeline">
+      {/* Reports List */}
+      <Card className="rounded-xl border border-gray-100" styles={{ body: { padding: 0 } }}>
         {loading ? (
-          <div className="text-center py-8">
-            <Spin />
+          <div className="flex items-center justify-center py-8">
+            <Spin size="small" />
           </div>
         ) : reports.length === 0 ? (
-          <Empty description="No reports generated yet. Reports will be generated when your internship dates are set." />
+          <Empty
+            image={<FileTextOutlined className="text-3xl text-gray-300" />}
+            imageStyle={{ height: 40 }}
+            description={
+              <Text className="text-xs text-text-tertiary">No reports yet</Text>
+            }
+            className="py-8"
+          />
         ) : (
-          <Timeline
-            mode="left"
-            items={reports.map((report) => {
+          <div className="divide-y divide-gray-100">
+            {reports.map((report) => {
               const submissionStatus = report.submissionStatus || getReportSubmissionStatus(report);
               const window = getSubmissionWindow(report.reportMonth, report.reportYear);
 
-              return {
-                key: report.id,
-                color: getTimelineColor(submissionStatus.status),
-                dot: getStatusIcon(submissionStatus.status),
-                children: (
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg -mt-1 ml-2">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <Text strong>{MONTH_NAMES[report.reportMonth - 1]} {report.reportYear}</Text>
-                        {report.isFinalReport && (
-                          <Tag color="purple" className="text-xs">Final</Tag>
-                        )}
-                        {report.isPartialMonth && (
-                          <Tag color="orange" className="text-xs">Partial</Tag>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {submissionStatus.status === 'APPROVED' ? (
-                          <span className="text-green-600">{submissionStatus.sublabel}</span>
-                        ) : (
-                          <>
-                            <span>Due: {window.windowEndFormatted}</span>
-                            {submissionStatus.sublabel && (
-                              <span className={`ml-2 ${submissionStatus.status === 'OVERDUE' ? 'text-red-500' : ''}`}>
-                                • {submissionStatus.sublabel}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
+              return (
+                <div key={report.id} className="flex items-center justify-between p-3 hover:bg-background-secondary/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <CalendarOutlined className="text-primary text-sm" />
                     </div>
-
-                    <div className="flex items-center gap-2">
-                      <Tag color={submissionStatus.color}>
-                        {submissionStatus.label}
-                      </Tag>
-
-                      {/* Submit button for submittable reports */}
-                      {submissionStatus.canSubmit && report.status === 'DRAFT' && (
-                        <Tooltip title="Click to upload and submit">
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<UploadOutlined />}
-                            onClick={() => openUploadModal(report)}
-                            className="bg-blue-600"
-                          >
-                            Submit
-                          </Button>
-                        </Tooltip>
-                      )}
-
-                      {/* View button if file exists */}
-                      {report.reportFileUrl && (
-                        <Tooltip title="View report">
-                          <Button
-                            size="small"
-                            icon={<EyeOutlined />}
-                            onClick={() => openViewModal(report)}
-                          />
-                        </Tooltip>
-                      )}
-
-                      {/* Delete button for non-approved reports */}
-                      {report.status !== 'APPROVED' && report.reportFileUrl && (
-                        <Popconfirm
-                          title="Delete this report?"
-                          description="This action cannot be undone."
-                          onConfirm={() => handleDeleteReport(report.id, report.status)}
-                        >
-                          <Button
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                          />
-                        </Popconfirm>
-                      )}
+                    <div>
+                      <Text className="text-sm font-medium block">
+                        {MONTH_NAMES[report.reportMonth - 1]} {report.reportYear}
+                      </Text>
+                      <Text className="text-[10px] text-text-tertiary">
+                        {submissionStatus.status === 'APPROVED'
+                          ? `Approved ${report.approvedAt ? dayjs(report.approvedAt).format('MMM D') : ''}`
+                          : `Due: ${window.windowEndFormatted}`
+                        }
+                      </Text>
                     </div>
                   </div>
-                ),
-              };
+
+                  <div className="flex items-center gap-2">
+                    {getStatusTag(submissionStatus.status)}
+
+                    {/* Submit button */}
+                    {submissionStatus.canSubmit && report.status === 'DRAFT' && (
+                      <Tooltip title="Upload report">
+                        <Button
+                          type="primary"
+                          size="small"
+                          icon={<UploadOutlined />}
+                          onClick={() => openUploadModal(report)}
+                          className="rounded"
+                        />
+                      </Tooltip>
+                    )}
+
+                    {/* View button */}
+                    {report.reportFileUrl && (
+                      <Tooltip title="View">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EyeOutlined />}
+                          onClick={() => openViewModal(report)}
+                        />
+                      </Tooltip>
+                    )}
+
+                    {/* Delete button */}
+                    {report.status !== 'APPROVED' && report.reportFileUrl && (
+                      <Popconfirm
+                        title="Delete this report?"
+                        onConfirm={() => handleDeleteReport(report.id, report.status)}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <Tooltip title="Delete">
+                          <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                        </Tooltip>
+                      </Popconfirm>
+                    )}
+                  </div>
+                </div>
+              );
             })}
-          />
+          </div>
         )}
       </Card>
 
       {/* Upload Modal */}
       <Modal
-        title="Submit Monthly Report"
+        title={
+          <div className="flex items-center gap-2">
+            <FileTextOutlined className="text-primary" />
+            <span>Upload Monthly Report</span>
+          </div>
+        }
         open={uploadModalVisible}
         onCancel={handleCloseUploadModal}
         footer={[
-          <Button key="cancel" onClick={handleCloseUploadModal}>
-            Cancel
-          </Button>,
+          <Button key="cancel" onClick={handleCloseUploadModal}>Cancel</Button>,
           <Button
             key="submit"
             type="primary"
             onClick={handleUpload}
             loading={uploading}
-            disabled={!reportFile}
-            className="bg-blue-600"
+            disabled={fileList.length === 0 || (!autoMonthSelection && (!selectedMonth || !selectedYear))}
+            icon={<UploadOutlined />}
           >
-            Submit & Approve
+            Upload
           </Button>,
         ]}
+        width={480}
+        destroyOnClose
       >
-        <div className="space-y-4">
-          <Alert
-            title="Auto-Approval"
-            description="Your report will be automatically approved upon submission."
-            type="success"
-            showIcon
-          />
-
+        <div className="py-4 space-y-4">
+          {/* File Upload */}
           <div>
-            <Text strong className="block mb-2">Report Month</Text>
-            <div className="flex gap-2">
-              <Select
-                value={selectedMonth}
-                onChange={setSelectedMonth}
-                className="w-40"
-                placeholder="Month"
-                options={MONTH_NAMES.map((name, idx) => ({
-                  value: idx + 1,
-                  label: name,
-                }))}
-              />
-              <Select
-                value={selectedYear}
-                onChange={setSelectedYear}
-                className="w-28"
-                placeholder="Year"
-                options={[2024, 2025, 2026, 2027].map((y) => ({
-                  value: y,
-                  label: y.toString(),
-                }))}
-              />
-            </div>
-            {selectedMonth && selectedYear && (
-              <div className="mt-2 text-sm text-gray-500">
-                Submission window: {getSubmissionWindow(selectedMonth, selectedYear).windowStartFormatted} - {getSubmissionWindow(selectedMonth, selectedYear).windowEndFormatted}
-              </div>
-            )}
-          </div>
-
-          <div>
-            <Text strong className="block mb-2">Upload PDF Report</Text>
-            <input
-              type="file"
+            <Text className="text-xs font-medium block mb-2">Select Report File (PDF)</Text>
+            <Upload.Dragger
               accept=".pdf"
+              maxCount={1}
+              fileList={fileList}
               onChange={handleFileChange}
-              className="hidden"
-              id="report-file-input-modal"
-            />
-            <label
-              htmlFor="report-file-input-modal"
-              className="block border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
+              beforeUpload={() => false}
+              onRemove={() => setFileList([])}
             >
-              {reportFile ? (
-                <div className="flex items-center justify-center gap-2">
-                  <FileTextOutlined className="text-blue-600 text-xl" />
-                  <span className="text-blue-600">{reportFile.name}</span>
-                </div>
-              ) : (
-                <div className="text-gray-500">
-                  <UploadOutlined className="text-3xl mb-2" />
-                  <p>Click to select PDF file</p>
-                  <p className="text-xs">Maximum file size: 10MB</p>
-                </div>
-              )}
-            </label>
+              <p className="ant-upload-drag-icon">
+                <InboxOutlined className="text-3xl text-primary" />
+              </p>
+              <p className="ant-upload-text text-sm">Click or drag PDF file to upload</p>
+              <p className="ant-upload-hint text-xs text-text-tertiary">Max 10MB</p>
+            </Upload.Dragger>
           </div>
+
+          {/* Auto Month Detection Toggle */}
+          <div className="bg-background-secondary rounded-lg p-3 flex items-center justify-between">
+            <div>
+              <Text className="text-sm font-medium block">Auto-detect month</Text>
+              <Text className="text-[10px] text-text-tertiary">
+                Turn off to select month manually
+              </Text>
+            </div>
+            <Switch
+              checked={autoMonthSelection}
+              onChange={(checked) => {
+                setAutoMonthSelection(checked);
+                if (checked) {
+                  setSelectedMonth(dayjs().month() + 1);
+                  setSelectedYear(dayjs().year());
+                }
+              }}
+              size="small"
+            />
+          </div>
+
+          {/* Manual Month/Year Selection */}
+          {!autoMonthSelection && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Text className="text-xs font-medium block mb-1.5">Month</Text>
+                <Select
+                  value={selectedMonth}
+                  onChange={setSelectedMonth}
+                  options={allowedMonthOptions}
+                  placeholder="Select month"
+                  className="w-full"
+                  size="small"
+                />
+              </div>
+              <div>
+                <Text className="text-xs font-medium block mb-1.5">Year</Text>
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  options={yearOptions}
+                  placeholder="Select year"
+                  className="w-full"
+                  size="small"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Info Alert */}
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <Text className="text-xs">
+                {autoMonthSelection
+                  ? `Report will be uploaded for ${MONTH_NAMES[dayjs().month()]} ${dayjs().year()}`
+                  : `Report will be uploaded for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`
+                }
+              </Text>
+            }
+            className="!py-2"
+          />
         </div>
       </Modal>
 
@@ -452,58 +457,38 @@ const MonthlyReportsSection = ({
         open={viewModalVisible}
         onCancel={handleCloseViewModal}
         footer={[
-          <Button key="close" onClick={handleCloseViewModal}>
-            Close
-          </Button>,
+          <Button key="close" onClick={handleCloseViewModal}>Close</Button>,
           selectedReport?.reportFileUrl && (
             <Button
               key="open"
               type="primary"
-              onClick={handleOpenReportPdf}
-              className="bg-blue-600"
+              onClick={() => openFileWithPresignedUrl(selectedReport.reportFileUrl)}
             >
               Open PDF
             </Button>
           ),
         ]}
+        width={600}
       >
         {selectedReport && (
           <div className="space-y-4">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Text className="text-gray-500 text-xs">Status</Text>
-                  <div>
-                    <Tag color={getReportSubmissionStatus(selectedReport).color}>
-                      {getReportSubmissionStatus(selectedReport).label}
-                    </Tag>
-                  </div>
-                </div>
-                <div>
-                  <Text className="text-gray-500 text-xs">Submitted</Text>
-                  <div>
-                    {selectedReport.submittedAt
-                      ? new Date(selectedReport.submittedAt).toLocaleDateString()
-                      : 'Not submitted'}
-                  </div>
-                </div>
-                {selectedReport.approvedAt && (
-                  <div>
-                    <Text className="text-gray-500 text-xs">Approved</Text>
-                    <div>{new Date(selectedReport.approvedAt).toLocaleDateString()}</div>
-                  </div>
-                )}
-                {selectedReport.isOverdue && (
-                  <div>
-                    <Text className="text-gray-500 text-xs">Late Submission</Text>
-                    <div><Tag color="warning">Yes</Tag></div>
-                  </div>
-                )}
+            <div className="grid grid-cols-2 gap-3 p-3 bg-background-secondary rounded-lg">
+              <div>
+                <Text className="text-[10px] text-text-tertiary block">Status</Text>
+                {getStatusTag(selectedReport.status)}
+              </div>
+              <div>
+                <Text className="text-[10px] text-text-tertiary block">Submitted</Text>
+                <Text className="text-sm">
+                  {selectedReport.submittedAt
+                    ? dayjs(selectedReport.submittedAt).format('MMM D, YYYY')
+                    : 'Not submitted'}
+                </Text>
               </div>
             </div>
 
             {selectedReport.reportFileUrl && (
-              <div className="border rounded-lg overflow-hidden" style={{ height: '400px' }}>
+              <div className="border rounded-lg overflow-hidden" style={{ height: '350px' }}>
                 <iframe
                   src={selectedReport.reportFileUrl}
                   width="100%"

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
 import {
   Card,
   Table,
@@ -61,6 +62,9 @@ const ESCALATION_LEVELS = {
 };
 
 export default function FacultyGrievances() {
+  // Get user from Redux state
+  const user = useSelector((state) => state.auth.user);
+
   const [grievances, setGrievances] = useState([]);
   const [loading, setLoading] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -71,9 +75,6 @@ export default function FacultyGrievances() {
   const [respondForm] = Form.useForm();
   const [escalateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [userId, setUserId] = useState(null);
-  const [userName, setUserName] = useState("");
-  const [institutionId, setInstitutionId] = useState(null);
   const [activeTab, setActiveTab] = useState("all");
   const [stats, setStats] = useState({
     total: 0,
@@ -83,25 +84,16 @@ export default function FacultyGrievances() {
     escalated: 0,
   });
 
-  useEffect(() => {
-    const loginData = localStorage.getItem("loginResponse");
-    if (loginData) {
-      try {
-        const parsed = JSON.parse(loginData);
-        setUserId(parsed.user.id);
-        setUserName(parsed.user.name);
-        setInstitutionId(parsed.user.institutionId);
-      } catch (e) {
-        console.error("Failed to parse loginResponse:", e);
-      }
-    }
-  }, []);
+  // Derive user info from Redux state
+  const userId = user?.id;
+  const userName = user?.name || "";
+  const institutionId = user?.institutionId;
 
   useEffect(() => {
-    if (userId && institutionId) {
+    if (userId) {
       fetchGrievances();
     }
-  }, [userId, institutionId]);
+  }, [userId]);
 
   const fetchGrievances = async () => {
     try {

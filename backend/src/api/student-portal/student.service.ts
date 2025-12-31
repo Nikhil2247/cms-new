@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
+import { CacheService } from '../../core/cache/cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
 import { Prisma, ApplicationStatus, InternshipStatus, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -45,6 +46,7 @@ export class StudentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
+    private readonly redisCache: CacheService,
     private readonly facultyVisitService: FacultyVisitService,
     private readonly auditService: AuditService,
   ) {}
@@ -1883,7 +1885,11 @@ export class StudentService {
     actionRequested?: string;
     preferredContactMethod?: string;
     attachments?: string[];
+    assignedToId?: string;
   }) {
+    console.log('[StudentService.submitGrievance] Received grievanceDto:', JSON.stringify(grievanceDto, null, 2));
+    console.log('[StudentService.submitGrievance] assignedToId:', grievanceDto.assignedToId);
+
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
@@ -1907,7 +1913,9 @@ export class StudentService {
         actionRequested: grievanceDto.actionRequested,
         preferredContactMethod: grievanceDto.preferredContactMethod,
         attachments: grievanceDto.attachments || [],
-        status: 'PENDING',
+        assignedToId: grievanceDto.assignedToId,
+        escalationLevel: 'MENTOR',
+        status: 'SUBMITTED',
       },
     });
 
@@ -1935,6 +1943,11 @@ export class StudentService {
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['grievances', `student:${studentId}`]);
+
+    // Invalidate Redis cache for assigned faculty so they see the new grievance
+    if (grievanceDto.assignedToId) {
+      await this.redisCache.del(`grievances:faculty:${grievanceDto.assignedToId}`);
+    }
 
     return grievance;
   }
@@ -2492,5 +2505,54 @@ export class StudentService {
    */
   async generateExpectedVisits(applicationId: string) {
     return this.facultyVisitService.generateExpectedVisits(applicationId);
+  }
+
+  /**
+   * Get the assigned mentor for the student
+   */
+  async getMyMentor(userId: string) {
+    console.log('[StudentService.getMyMentor] userId:', userId);
+
+    const student = await this.prisma.student.findUnique({
+      where: { userId },
+      select: { id: true },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    console.log('[StudentService.getMyMentor] studentId:', student.id);
+
+    // Find active mentor assignment
+    const assignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId: student.id,
+        isActive: true,
+      },
+      include: {
+        mentor: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            designation: true,
+          },
+        },
+      },
+      orderBy: { assignmentDate: 'desc' },
+    });
+
+    console.log('[StudentService.getMyMentor] assignment found:', !!assignment);
+    console.log('[StudentService.getMyMentor] mentor:', assignment?.mentor ? { id: assignment.mentor.id, name: assignment.mentor.name } : null);
+
+    return {
+      data: {
+        mentor: assignment?.mentor || null,
+        assignmentId: assignment?.id || null,
+        assignmentDate: assignment?.assignmentDate || null,
+      },
+    };
   }
 }

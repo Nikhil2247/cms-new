@@ -8,6 +8,7 @@ import { Role } from '../../generated/prisma/client';
 import { BulkUserService } from '../bulk-user/bulk-user.service';
 import { BulkStudentService } from '../bulk-student/bulk-student.service';
 import { BulkInstitutionService } from '../bulk-institution/bulk-institution.service';
+import { BulkSelfInternshipService } from '../bulk-self-internship/bulk-self-internship.service';
 
 @ApiTags('Bulk Operations - Templates')
 @Controller('bulk/templates')
@@ -18,6 +19,7 @@ export class TemplateController {
     private readonly bulkUserService: BulkUserService,
     private readonly bulkStudentService: BulkStudentService,
     private readonly bulkInstitutionService: BulkInstitutionService,
+    private readonly bulkSelfInternshipService: BulkSelfInternshipService,
   ) {}
 
   @Get('users')
@@ -94,10 +96,10 @@ export class TemplateController {
 
   @Get(':type')
   @Roles(Role.PRINCIPAL, Role.SYSTEM_ADMIN, Role.STATE_DIRECTORATE)
-  @ApiOperation({ summary: 'Download template by type (users, students, institutions)' })
+  @ApiOperation({ summary: 'Download template by type (users, students, institutions, self-internships)' })
   @ApiParam({
     name: 'type',
-    enum: ['users', 'students', 'institutions'],
+    enum: ['users', 'students', 'institutions', 'self-internships'],
     description: 'Template type',
   })
   @ApiResponse({
@@ -128,6 +130,10 @@ export class TemplateController {
       case 'institutions':
         template = this.bulkInstitutionService.getTemplate();
         filename = 'bulk-institution-upload-template.xlsx';
+        break;
+      case 'self-internships':
+        template = this.bulkSelfInternshipService.getTemplate();
+        filename = 'bulk-self-internship-upload-template.xlsx';
         break;
       default:
         res.status(HttpStatus.BAD_REQUEST).send({ error: 'Invalid template type' });

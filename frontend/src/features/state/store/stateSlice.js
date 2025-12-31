@@ -148,6 +148,7 @@ const initialState = {
   },
   lastFetched: {
     dashboard: null,
+    dashboardKey: null,
     institutions: null,
     institutionsKey: null,
     institutionsWithStats: null,
@@ -159,8 +160,11 @@ const initialState = {
     reports: null,
     // Split analytics timestamps to prevent race conditions
     topPerformers: null,
+    topPerformersKey: null,
     topIndustries: null,
+    topIndustriesKey: null,
     monthlyAnalytics: null,
+    monthlyAnalyticsKey: null,
     // Split placement timestamps
     placementStats: null,
     placementTrends: null,
@@ -181,17 +185,27 @@ const initialState = {
 // Async thunks
 export const fetchDashboardStats = createAsyncThunk(
   'state/fetchDashboardStats',
-  async (params, { getState, rejectWithValue }) => {
+  async (params = {}, { getState, rejectWithValue }) => {
     try {
       const state = getState();
       const lastFetched = state.state.lastFetched.dashboard;
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
+      // Cache key includes month/year for filtered requests
+      const cacheKey = params?.month && params?.year
+        ? `${params.month}-${params.year}`
+        : 'current';
+      const lastKey = state.state.lastFetched.dashboardKey;
+
+      if (!params?.forceRefresh && lastKey === cacheKey && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
-      const response = await stateService.getDashboard();
-      return response;
+      // Pass month/year to the service
+      const response = await stateService.getDashboard({
+        month: params?.month,
+        year: params?.year,
+      });
+      return { ...response, _cacheKey: cacheKey };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
     }
@@ -242,10 +256,13 @@ export const fetchInstitutionsWithStats = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.institutionsWithStats;
 
+      // Include month/year in cache key for filtered requests
       const normalizedParams = {
         page: params?.page ?? 1,
         limit: params?.limit ?? 10,
         search: params?.search ?? '',
+        month: params?.month ?? null,
+        year: params?.year ?? null,
       };
       const requestKey = JSON.stringify(normalizedParams);
       const lastKey = state.state.lastFetched.institutionsWithStatsKey;
@@ -258,6 +275,7 @@ export const fetchInstitutionsWithStats = createAsyncThunk(
         return { cached: true };
       }
 
+      // Pass all params including month/year to service
       const response = await stateService.getInstitutionsWithStats(params);
       return { ...response, _cacheKey: requestKey };
     } catch (error) {
@@ -547,12 +565,18 @@ export const fetchTopPerformers = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.topPerformers;
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
+      // Cache key includes month/year for filtered requests
+      const cacheKey = params?.month && params?.year
+        ? `${params.month}-${params.year}`
+        : 'current';
+      const lastKey = state.state.lastFetched.topPerformersKey;
+
+      if (!params?.forceRefresh && lastKey === cacheKey && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
       const response = await apiClient.get('/state/analytics/performers', { params });
-      return response.data;
+      return { ...response.data, _cacheKey: cacheKey };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch performers');
     }
@@ -566,13 +590,23 @@ export const fetchTopIndustries = createAsyncThunk(
       const state = getState();
       const lastFetched = state.state.lastFetched.topIndustries;
 
-      // Fixed: Use standard cache logic (was inverted before)
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
+      // Cache key includes month/year for filtered requests
+      const cacheKey = params?.month && params?.year
+        ? `${params.month}-${params.year}`
+        : 'current';
+      const lastKey = state.state.lastFetched.topIndustriesKey;
+
+      if (!params?.forceRefresh && lastKey === cacheKey && isCacheValid(lastFetched, CACHE_DURATIONS.METRICS)) {
         return { cached: true };
       }
 
-      const response = await stateService.getTopIndustries({ limit: params?.limit || 10 });
-      return response;
+      // Pass month/year to service
+      const response = await stateService.getTopIndustries({
+        limit: params?.limit || 10,
+        month: params?.month,
+        year: params?.year,
+      });
+      return { ...response, _cacheKey: cacheKey };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch industries');
     }
@@ -1192,6 +1226,7 @@ const stateSlice = createSlice({
         if (!action.payload.cached) {
           state.dashboard.stats = action.payload;
           state.lastFetched.dashboard = Date.now();
+          state.lastFetched.dashboardKey = action.payload._cacheKey ?? null;
         }
       })
       .addCase(fetchDashboardStats.rejected, (state, action) => {
@@ -1549,6 +1584,7 @@ const stateSlice = createSlice({
           state.analytics.topPerformers = action.payload.topPerformers || [];
           state.analytics.bottomPerformers = action.payload.bottomPerformers || [];
           state.lastFetched.topPerformers = Date.now();
+          state.lastFetched.topPerformersKey = action.payload._cacheKey ?? null;
         }
       })
       .addCase(fetchTopPerformers.rejected, (state, action) => {
@@ -1563,6 +1599,7 @@ const stateSlice = createSlice({
         if (!action.payload.cached) {
           state.analytics.topIndustries = action.payload.data || action.payload || [];
           state.lastFetched.topIndustries = Date.now();
+          state.lastFetched.topIndustriesKey = action.payload._cacheKey ?? null;
         }
       })
       .addCase(fetchTopIndustries.rejected, (state, action) => {

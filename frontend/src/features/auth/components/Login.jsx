@@ -50,6 +50,9 @@ function Login() {
         tokenStorage.setRefreshToken(refreshToken);
       }
 
+      // Store login response in localStorage for components that need user data
+      localStorage.setItem("loginResponse", JSON.stringify(res.data));
+
       // Update Redux auth state
       dispatch(setCredentials({
         user: res.data.user,
@@ -92,6 +95,9 @@ function Login() {
       if (refreshToken) {
         tokenStorage.setRefreshToken(refreshToken);
       }
+
+      // Store login response in localStorage for components that need user data
+      localStorage.setItem("loginResponse", JSON.stringify(res.data));
 
       // Update Redux auth state
       dispatch(setCredentials({
@@ -139,8 +145,20 @@ function Login() {
         user.role = roleParam;
       }
 
+      // Get institutionId if present
+      const institutionIdParam = urlParams.get("institutionId");
+      if (institutionIdParam) {
+        user.institutionId = institutionIdParam;
+      }
+
       // Save token via centralized manager
       tokenStorage.setToken(accessToken);
+
+      // Store login response in localStorage for components that need user data
+      localStorage.setItem("loginResponse", JSON.stringify({
+        user,
+        access_token: accessToken
+      }));
 
       // Update Redux auth state
       dispatch(setCredentials({
@@ -216,6 +234,7 @@ function Login() {
                     >
                       <Input
                         placeholder="Enter your email address"
+                        prefix={<MailOutlined className="text-gray-400" />}
                         className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                       />
                     </Form.Item>
@@ -225,6 +244,11 @@ function Login() {
                       label={<span className="font-medium text-gray-700 dark:text-slate-300">Password</span>}
                       rules={[
                         { required: true, message: "Please enter your password" },
+                      ]}
+                    >
+                      <Input.Password
+                        placeholder="Enter your password"
+                        prefix={<LockOutlined className="text-gray-400" />}
                         className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
                       />
                     </Form.Item>
@@ -267,7 +291,11 @@ function Login() {
                       label={<span className="font-medium text-gray-700 dark:text-slate-300">Registration Number</span>}
                       rules={[{ required: true, message: "Please enter your registration number" }]}
                     >
+                      <Input
+                        placeholder="Enter your registration number"
+                        prefix={<IdcardOutlined className="text-gray-400" />}
                         className="rounded-xl h-12 bg-background-secondary border-border hover:bg-surface focus:bg-surface transition-all"
+                      />
                     </Form.Item>
 
                     <Form.Item

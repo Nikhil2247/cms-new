@@ -1,19 +1,17 @@
 import React, { memo, useState } from 'react';
-import { Card, Button, Typography, Tabs, Statistic, Row, Col, Tag, Upload, Modal, message, Space, Tooltip, Avatar, Progress } from 'antd';
+import { Card, Button, Typography, Tabs, Tag, Upload, Modal, message, Progress, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
   FileTextOutlined,
   TeamOutlined,
-  CalendarOutlined,
+  ClockCircleOutlined,
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   UploadOutlined,
   EyeOutlined,
   DeleteOutlined,
-  CloudUploadOutlined,
-  LoadingOutlined,
   BankOutlined,
-  ClockCircleOutlined,
+  CalendarOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { hasInternshipStarted } from '../utils/applicationUtils';
@@ -24,9 +22,9 @@ import {
 } from './tabs';
 import FacultyVisitsSection from './FacultyVisitsSection';
 import studentService from '../../../../services/student.service';
-import { getFileUrl } from '../../../../utils/imageUtils';
+import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const ApplicationDetailsView = ({
   application,
@@ -43,7 +41,6 @@ const ApplicationDetailsView = ({
   facultyVisitsLoading = false,
   onRefresh,
 }) => {
-  // Joining letter management state
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -56,12 +53,10 @@ const ApplicationDetailsView = ({
   const industry = internship?.industry || {};
   const internshipStarted = hasInternshipStarted(application);
 
-  // Company info
   const company = isSelfIdentified
     ? { companyName: application.companyName, city: application.companyAddress?.split(',')[0] }
     : industry;
 
-  // Check joining letter status
   const hasJoiningLetter = !!(application?.joiningLetterUrl || application?.joiningLetter);
   const joiningLetterUrl = application?.joiningLetterUrl || application?.joiningLetter;
 
@@ -72,99 +67,66 @@ const ApplicationDetailsView = ({
   const daysCompleted = startDate ? Math.max(0, dayjs().diff(dayjs(startDate), 'day')) : 0;
   const progressPercent = totalDays > 0 ? Math.min(Math.round((daysCompleted / totalDays) * 100), 100) : 0;
 
-  // Handle file selection for joining letter
   const handleFileSelect = (file) => {
-    const isPdf = file.type === 'application/pdf';
-    const isLt5M = file.size / 1024 / 1024 < 5;
-
-    if (!isPdf) {
+    if (file.type !== 'application/pdf') {
       message.error('Only PDF files are allowed');
       return false;
     }
-
-    if (!isLt5M) {
+    if (file.size / 1024 / 1024 > 5) {
       message.error('File must be smaller than 5MB');
       return false;
     }
-
     setSelectedFile(file);
     return false;
   };
 
-  // Handle joining letter upload
   const handleUploadJoiningLetter = async () => {
-    if (!selectedFile) {
-      message.error('Please select a file first');
-      return;
-    }
-
+    if (!selectedFile) return;
     try {
       setUploading(true);
       await studentService.uploadJoiningLetter(application.id, selectedFile);
       message.success('Joining letter uploaded successfully');
       setUploadModalVisible(false);
       setSelectedFile(null);
-
-      if (onRefresh) {
-        onRefresh();
-      }
+      onRefresh?.();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to upload joining letter');
+      message.error(error.response?.data?.message || 'Failed to upload');
     } finally {
       setUploading(false);
     }
   };
 
-  // Handle joining letter delete
   const handleDeleteJoiningLetter = async () => {
     try {
       setUploading(true);
       await studentService.deleteJoiningLetter(application.id);
-      message.success('Joining letter deleted successfully');
+      message.success('Joining letter deleted');
       setDeleteConfirmVisible(false);
-
-      if (onRefresh) {
-        onRefresh();
-      }
+      onRefresh?.();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to delete joining letter');
+      message.error(error.response?.data?.message || 'Failed to delete');
     } finally {
       setUploading(false);
     }
   };
 
-  // Handle view joining letter
   const handleViewJoiningLetter = () => {
-    if (joiningLetterUrl) {
-      const url = getFileUrl(joiningLetterUrl);
-      window.open(url, '_blank');
-    }
+    if (joiningLetterUrl) openFileWithPresignedUrl(joiningLetterUrl);
   };
 
   const getStatusColor = (status) => {
     const colors = {
-      APPLIED: 'blue',
-      SHORTLISTED: 'orange',
-      SELECTED: 'green',
-      APPROVED: 'green',
-      JOINED: 'purple',
-      COMPLETED: 'cyan',
-      REJECTED: 'red',
-      WITHDRAWN: 'default',
+      APPLIED: 'blue', SHORTLISTED: 'orange', SELECTED: 'green',
+      APPROVED: 'green', JOINED: 'purple', COMPLETED: 'cyan',
+      REJECTED: 'red', WITHDRAWN: 'default',
     };
     return colors[status] || 'default';
   };
 
-  // Tab items for Ant Design 5
   const tabItems = [
     {
       key: 'details',
-      label: (
-        <span className="flex items-center gap-2">
-          <FileTextOutlined />
-          Details
-        </span>
-      ),
+      label: <span className="flex items-center gap-1.5 text-sm"><FileTextOutlined />Details</span>,
       children: (
         <ApplicationDetailsTab
           application={application}
@@ -177,22 +139,16 @@ const ApplicationDetailsView = ({
     },
     {
       key: 'timeline',
-      label: (
-        <span className="flex items-center gap-2">
-          <ClockCircleOutlined />
-          Timeline
-        </span>
-      ),
+      label: <span className="flex items-center gap-1.5 text-sm"><ClockCircleOutlined />Timeline</span>,
       children: <ApplicationTimelineTab application={application} />,
     },
     {
       key: 'reports',
       label: (
-        <span className="flex items-center gap-2">
-          <FileTextOutlined />
-          Reports
+        <span className="flex items-center gap-1.5 text-sm">
+          <CalendarOutlined />Reports
           {monthlyReportsProgress?.pending > 0 && (
-            <Tag color="orange" className="ml-1">{monthlyReportsProgress.pending}</Tag>
+            <Tag color="warning" className="!ml-1 !px-1.5 !py-0 text-[10px] rounded-full">{monthlyReportsProgress.pending}</Tag>
           )}
         </span>
       ),
@@ -212,12 +168,7 @@ const ApplicationDetailsView = ({
     },
     {
       key: 'visits',
-      label: (
-        <span className="flex items-center gap-2">
-          <TeamOutlined />
-          Faculty Visits
-        </span>
-      ),
+      label: <span className="flex items-center gap-1.5 text-sm"><TeamOutlined />Faculty Visits</span>,
       children: (
         <FacultyVisitsSection
           application={application}
@@ -231,225 +182,132 @@ const ApplicationDetailsView = ({
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Header with Back Button */}
+    <div className="!space-y-4">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
-          size="large"
-          className="rounded-xl"
+          type="text"
+          className="text-text-secondary hover:text-text-primary"
         >
-          Back to Applications
+          Back
         </Button>
+        <Tag color={getStatusColor(application.status)} className="rounded-full px-3">
+          {application.status?.replace(/_/g, ' ')}
+        </Tag>
       </div>
 
-      {/* Company Header Card */}
-      <Card className="rounded-2xl border border-gray-200">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar
-              size={64}
-              icon={<BankOutlined />}
-              src={industry?.logo}
-              className="bg-blue-50 text-blue-500"
-            />
+      {/* Company Info Card */}
+      <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '16px' } }}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <BankOutlined className="text-lg text-primary" />
+            </div>
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Title level={3} className="m-0">
-                  {company.companyName || 'Company'}
-                </Title>
-                {isSelfIdentified && (
-                  <Tag color="purple">Self-Identified</Tag>
-                )}
+              <div className="flex items-center gap-2">
+                <Text strong className="text-base">{company.companyName || 'Company'}</Text>
+                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full">Self-Identified</Tag>}
               </div>
-              <Text className="text-gray-500">
-                {application.jobProfile || internship?.title || 'Internship'}
-              </Text>
+              <Text className="text-xs text-text-tertiary">{application.jobProfile || internship?.title || 'Internship'}</Text>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Tag color={getStatusColor(application.status)} className="text-sm px-3 py-1 rounded-lg">
-              {application.status?.replace(/_/g, ' ')}
-            </Tag>
+          {/* Quick Stats */}
+          <div className="hidden sm:flex items-center gap-4">
+            <Tooltip title="Reports Submitted">
+              <div className="text-center">
+                <Text className="text-lg font-bold text-primary block">{monthlyReportsProgress?.approved || 0}/{monthlyReportsProgress?.total || 0}</Text>
+                <Text className="text-[10px] text-text-tertiary">Reports</Text>
+              </div>
+            </Tooltip>
+            <Tooltip title="Faculty Visits">
+              <div className="text-center">
+                <Text className="text-lg font-bold text-purple-500 block">{facultyVisitsProgress?.completed || 0}/{facultyVisitsProgress?.total || 0}</Text>
+                <Text className="text-[10px] text-text-tertiary">Visits</Text>
+              </div>
+            </Tooltip>
           </div>
         </div>
 
         {/* Progress Bar */}
         {internshipStarted && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl">
-            <div className="flex justify-between items-center mb-2">
-              <Text className="text-sm font-medium">Internship Progress</Text>
-              <Text className="text-sm font-bold text-blue-600">{progressPercent}%</Text>
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <div className="flex justify-between items-center mb-1.5">
+              <Text className="text-xs text-text-tertiary">Progress</Text>
+              <Text className="text-xs font-semibold text-primary">{progressPercent}%</Text>
             </div>
             <Progress
               percent={progressPercent}
               showInfo={false}
               strokeColor={{ '0%': '#3b82f6', '100%': '#10b981' }}
+              size="small"
             />
-            <div className="flex justify-between text-xs text-gray-500 mt-2">
-              <span>{startDate ? dayjs(startDate).format('MMM DD, YYYY') : 'N/A'}</span>
-              <span>{daysCompleted} days completed</span>
-              <span>{endDate ? dayjs(endDate).format('MMM DD, YYYY') : 'N/A'}</span>
+            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
+              <span>{startDate ? dayjs(startDate).format('MMM D, YYYY') : 'N/A'}</span>
+              <span>{daysCompleted} days</span>
+              <span>{endDate ? dayjs(endDate).format('MMM D, YYYY') : 'N/A'}</span>
             </div>
           </div>
         )}
       </Card>
 
-      {/* Quick Stats */}
-      <Row gutter={[16, 16]}>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl border border-gray-200 text-center h-full">
-            <Statistic
-              title={<span className="text-gray-500 text-xs">Reports</span>}
-              value={monthlyReportsProgress?.approved || 0}
-              suffix={`/ ${monthlyReportsProgress?.total || 0}`}
-              prefix={<FileTextOutlined className="text-blue-500" />}
-              valueStyle={{ color: monthlyReportsProgress?.percentage === 100 ? '#10b981' : undefined }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl border border-gray-200 text-center h-full">
-            <Statistic
-              title={<span className="text-gray-500 text-xs">Faculty Visits</span>}
-              value={facultyVisitsProgress?.completed || 0}
-              suffix={`/ ${facultyVisitsProgress?.total || 0}`}
-              prefix={<TeamOutlined className="text-purple-500" />}
-              valueStyle={{ color: facultyVisitsProgress?.percentage === 100 ? '#10b981' : undefined }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl border border-gray-200 text-center h-full">
-            <Statistic
-              title={<span className="text-gray-500 text-xs">Overall Progress</span>}
-              value={monthlyReportsProgress?.percentage || 0}
-              suffix="%"
-              prefix={<CalendarOutlined className="text-green-500" />}
-              valueStyle={{ color: monthlyReportsProgress?.percentage === 100 ? '#10b981' : '#3b82f6' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={6}>
-          <Card className="rounded-xl border border-gray-200 text-center h-full">
-            {isSelfIdentified ? (
-              <div>
-                <Text className="text-gray-500 text-xs block mb-1">Joining Letter</Text>
-                {hasJoiningLetter ? (
-                  <Tag color="success" icon={<CheckCircleOutlined />} className="mt-1">
-                    Uploaded
-                  </Tag>
-                ) : (
-                  <Tag color="warning" icon={<ExclamationCircleOutlined />} className="mt-1">
-                    Required
-                  </Tag>
-                )}
-              </div>
-            ) : (
-              <Statistic
-                title={<span className="text-gray-500 text-xs">Days Left</span>}
-                value={totalDays > daysCompleted ? totalDays - daysCompleted : 0}
-                prefix={<ClockCircleOutlined className="text-orange-500" />}
-              />
-            )}
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Joining Letter Card - For Self-Identified Internships */}
+      {/* Joining Letter - Compact */}
       {isSelfIdentified && (
-        <Card className="rounded-2xl border border-gray-200">
-          <div className="flex items-start justify-between">
+        <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '12px 16px' } }}>
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                hasJoiningLetter ? 'bg-green-100' : 'bg-orange-100'
-              }`}>
-                <FileTextOutlined className={`text-xl ${
-                  hasJoiningLetter ? 'text-green-600' : 'text-orange-600'
-                }`} />
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${hasJoiningLetter ? 'bg-green-100' : 'bg-orange-100'}`}>
+                <FileTextOutlined className={`text-base ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`} />
               </div>
               <div>
-                <Title level={5} className="m-0">Joining Letter</Title>
-                <Text className={`text-sm ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`}>
-                  {hasJoiningLetter ? 'Document uploaded successfully' : 'Upload required for verification'}
+                <Text strong className="text-sm block">Joining Letter</Text>
+                <Text className={`text-[10px] ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`}>
+                  {hasJoiningLetter ? 'Uploaded' : 'Required'}
                 </Text>
               </div>
             </div>
 
-            {hasJoiningLetter && (
-              <Tag color="success" icon={<CheckCircleOutlined />}>
-                Uploaded
-              </Tag>
-            )}
-          </div>
-
-          <div className="mt-4">
-            {hasJoiningLetter ? (
-              <Space wrap>
-                <Button icon={<EyeOutlined />} onClick={handleViewJoiningLetter}>
-                  View Document
+            <div className="flex items-center gap-1.5">
+              {hasJoiningLetter ? (
+                <>
+                  <Tooltip title="View"><Button type="text" size="small" icon={<EyeOutlined />} onClick={handleViewJoiningLetter} /></Tooltip>
+                  <Tooltip title="Replace"><Button type="text" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)} /></Tooltip>
+                  <Tooltip title="Delete"><Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => setDeleteConfirmVisible(true)} /></Tooltip>
+                </>
+              ) : (
+                <Button type="primary" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)}>
+                  Upload
                 </Button>
-                <Button icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)}>
-                  Replace
-                </Button>
-                <Button danger icon={<DeleteOutlined />} onClick={() => setDeleteConfirmVisible(true)}>
-                  Delete
-                </Button>
-              </Space>
-            ) : (
-              <Button
-                type="primary"
-                icon={<UploadOutlined />}
-                onClick={() => setUploadModalVisible(true)}
-                size="large"
-              >
-                Upload Joining Letter
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </Card>
       )}
 
-      {/* Main Content Tabs */}
-      <Card className="rounded-2xl border border-gray-200">
+      {/* Tabs */}
+      <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '0' } }}>
         <Tabs
           defaultActiveKey="details"
           items={tabItems}
-          size="large"
-          className="application-details-tabs"
+          className="!px-4"
+          size="small"
         />
       </Card>
 
       {/* Upload Modal */}
       <Modal
-        title={
-          <div className="flex items-center gap-2">
-            <CloudUploadOutlined className="text-blue-500" />
-            <span>{hasJoiningLetter ? 'Replace' : 'Upload'} Joining Letter</span>
-          </div>
-        }
+        title="Upload Joining Letter"
         open={uploadModalVisible}
-        onCancel={() => {
-          setUploadModalVisible(false);
-          setSelectedFile(null);
-        }}
+        onCancel={() => { setUploadModalVisible(false); setSelectedFile(null); }}
         footer={[
-          <Button key="cancel" onClick={() => { setUploadModalVisible(false); setSelectedFile(null); }}>
-            Cancel
-          </Button>,
-          <Button
-            key="upload"
-            type="primary"
-            loading={uploading}
-            disabled={!selectedFile}
-            onClick={handleUploadJoiningLetter}
-            icon={uploading ? <LoadingOutlined /> : <UploadOutlined />}
-          >
-            {uploading ? 'Uploading...' : 'Upload'}
+          <Button key="cancel" onClick={() => { setUploadModalVisible(false); setSelectedFile(null); }}>Cancel</Button>,
+          <Button key="upload" type="primary" loading={uploading} disabled={!selectedFile} onClick={handleUploadJoiningLetter}>
+            Upload
           </Button>,
         ]}
+        width={400}
       >
         <Upload.Dragger
           accept=".pdf"
@@ -458,35 +316,25 @@ const ApplicationDetailsView = ({
           onRemove={() => setSelectedFile(null)}
           fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
         >
-          <p className="ant-upload-drag-icon">
-            <CloudUploadOutlined className="text-4xl text-blue-500" />
-          </p>
-          <p className="ant-upload-text">Click or drag file to upload</p>
-          <p className="ant-upload-hint">PDF only, max 5MB</p>
+          <p className="ant-upload-drag-icon"><UploadOutlined className="text-3xl text-primary" /></p>
+          <p className="ant-upload-text text-sm">Click or drag PDF file</p>
+          <p className="ant-upload-hint text-xs text-text-tertiary">Max 5MB</p>
         </Upload.Dragger>
-
-        {hasJoiningLetter && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <Text className="text-yellow-700 text-sm">
-              <ExclamationCircleOutlined className="mr-2" />
-              Uploading a new file will replace the existing document.
-            </Text>
-          </div>
-        )}
       </Modal>
 
       {/* Delete Modal */}
       <Modal
-        title={<span className="text-red-500"><DeleteOutlined /> Delete Joining Letter</span>}
+        title={<span className="text-red-500">Delete Joining Letter</span>}
         open={deleteConfirmVisible}
         onCancel={() => setDeleteConfirmVisible(false)}
         footer={[
           <Button key="cancel" onClick={() => setDeleteConfirmVisible(false)}>Cancel</Button>,
           <Button key="delete" danger loading={uploading} onClick={handleDeleteJoiningLetter}>Delete</Button>,
         ]}
+        width={360}
       >
-        <p>Are you sure you want to delete the joining letter?</p>
-        <p className="text-red-500 text-sm">This action cannot be undone.</p>
+        <p className="text-sm">Are you sure you want to delete the joining letter?</p>
+        <p className="text-xs text-red-500">This action cannot be undone.</p>
       </Modal>
     </div>
   );

@@ -45,8 +45,8 @@ export class StateService {
     return this.dashboardService.getDashboardStats();
   }
 
-  async getDashboard() {
-    return this.dashboardService.getDashboard();
+  async getDashboard(params?: { month?: number; year?: number }) {
+    return this.dashboardService.getDashboard(params);
   }
 
   async getCriticalAlerts() {
@@ -66,6 +66,13 @@ export class StateService {
     return this.dashboardService.getComplianceSummary(
       (params) => this.institutionService.getInstitutionsWithStats(params)
     );
+  }
+
+  async getCollegeWiseBreakdown(
+    type: 'students' | 'reports' | 'mentors' | 'visits',
+    params?: { month?: number; year?: number }
+  ) {
+    return this.dashboardService.getCollegeWiseBreakdown(type, params);
   }
 
   // ==========================================

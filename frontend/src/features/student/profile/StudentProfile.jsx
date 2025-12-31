@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
-import { useParams } from "react-router-dom";
 import API from "../../../services/api";
 import { getImageUrl } from "../../../utils/imageUtils";
 import {
@@ -10,7 +9,6 @@ import {
   Spin,
   Avatar,
   Tag,
-  Progress,
   Tabs,
   Button,
   Empty,
@@ -39,6 +37,8 @@ import {
   CheckCircleOutlined,
   StopOutlined,
   CameraOutlined,
+  HomeOutlined,
+  BookOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
 
@@ -48,7 +48,6 @@ const { Option } = Select;
 export default function StudentProfile() {
   const [id, setId] = useState(null);
   const [student, setStudent] = useState(null);
-  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const rawResults = student?.results || [];
@@ -109,13 +108,11 @@ export default function StudentProfile() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
 
   const resultsBySemester = useMemo(() => {
-    // clone & sort
     const sorted = [...rawResults].sort(
       (a, b) =>
         Number(a.Subject?.semesterNumber || 0) -
         Number(b.Subject?.semesterNumber || 0)
     );
-    // group
     return sorted.reduce((acc, res) => {
       const sem = res.Subject?.semesterNumber ?? "Unknown";
       (acc[sem] = acc[sem] || []).push(res);
@@ -123,42 +120,23 @@ export default function StudentProfile() {
     }, {});
   }, [rawResults]);
 
-  const semesterList = Object.keys(resultsBySemester)
-    .map((s) => (s === "Unknown" ? s : Number(s)))
-    .sort((a, b) => {
-      if (a === "Unknown") return 1;
-      if (b === "Unknown") return -1;
-      return a - b;
-    });
-
-  // helper to map category → tag color
   const getCategoryColor = (cat) => {
     switch (cat) {
-      case "GENERAL":
-        return "blue";
-      case "OBC":
-        return "orange";
-      case "SC":
-        return "green";
-      case "ST":
-        return "purple";
-      default:
-        return "default";
+      case "GENERAL": return "blue";
+      case "OBC": return "orange";
+      case "SC": return "green";
+      case "ST": return "purple";
+      default: return "default";
     }
   };
 
   const getPlacementStatusColor = (status) => {
     switch (status) {
-      case "ACCEPTED":
-        return "success";
-      case "JOINED":
-        return "green";
-      case "OFFERED":
-        return "processing";
-      case "REJECTED":
-        return "error";
-      default:
-        return "default";
+      case "ACCEPTED": return "success";
+      case "JOINED": return "green";
+      case "OFFERED": return "processing";
+      case "REJECTED": return "error";
+      default: return "default";
     }
   };
 
@@ -174,22 +152,6 @@ export default function StudentProfile() {
     return statusColors[status] || "default";
   };
 
-  const getInternshipProgress = (startDate, endDate) => {
-    if (!startDate || !endDate) return 0;
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const now = new Date();
-
-    if (now < start) return 0;
-    if (now > end) return 100;
-
-    const total = end - start;
-    const elapsed = now - start;
-
-    return Math.round((elapsed / total) * 100);
-  };
-
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -199,28 +161,17 @@ export default function StudentProfile() {
     });
   };
 
-  // helper to format semester name
-  const getSemesterName = (semesterNumber) => {
-    if (semesterNumber === "Unknown") return "Unknown Semester";
-    return `Semester ${semesterNumber}`;
-  };
-
   const fetchStudent = async () => {
-    // Try to get user ID from JWT token first, then fallback to loginResponse
     let userId = null;
-
-    const token = localStorage.getItem("auth_token");
-    if (token) {
+    const authToken = localStorage.getItem("auth_token");
+    if (authToken) {
       try {
-        // Decode JWT to get user info
-        const payload = JSON.parse(atob(token.split('.')[1]));
+        const payload = JSON.parse(atob(authToken.split('.')[1]));
         userId = payload?.userId || payload?.id || payload?.sub;
       } catch (e) {
         console.error("Failed to decode token:", e);
       }
     }
-
-    // Fallback to loginResponse if token doesn't have userId
     if (!userId) {
       const loginData = localStorage.getItem("loginResponse");
       if (loginData) {
@@ -232,21 +183,17 @@ export default function StudentProfile() {
         }
       }
     }
-
     if (!userId) {
       setError("Not logged in. Please log in again.");
       setLoading(false);
       return;
     }
-
     setId(userId);
 
     try {
-      // Use /student/profile - backend extracts userId from JWT token
       const res = await API.get(`/student/profile`);
       setStudent(res.data);
 
-      // Check for missing required fields
       const studentData = res.data;
       const requiredFields = [
         { key: 'name', label: 'Name' },
@@ -264,7 +211,7 @@ export default function StudentProfile() {
         { key: 'category', label: 'Category' }
       ];
 
-      const missingFields = requiredFields.filter(field => 
+      const missingFields = requiredFields.filter(field =>
         !studentData[field.key] || studentData[field.key].toString().trim() === ''
       );
 
@@ -281,8 +228,6 @@ export default function StudentProfile() {
                   cursor: 'pointer',
                   fontSize: '18px',
                   padding: '0',
-                  display: 'flex',
-                  alignItems: 'center',
                 }}
               >
                 ✕
@@ -292,40 +237,12 @@ export default function StudentProfile() {
           {
             duration: Infinity,
             position: 'top-right',
-            style: {
-              fontWeight: 'bold',
-              padding: '16px',
-              borderRadius: '8px',
-              minWidth: '300px',
-            },
+            style: { fontWeight: 'bold', padding: '16px', borderRadius: '8px', minWidth: '300px' },
             icon: '⚠️',
           }
         );
         toastShownRef.current = toastId;
       }
-
-      // compute stats
-      const fees = res.data.fees || [];
-      const totalDue = fees.reduce((sum, f) => sum + f.amountDue, 0);
-      // compute original totals per-semester:
-      const totalPaid = fees.reduce((sum, f) => sum + f.amountPaid, 0);
-      const totalOriginal = fees.reduce(
-        (sum, f) => sum + (f.amountPaid + f.amountDue),
-        0
-      );
-      const feePct =
-        totalOriginal > 0 ? Math.round((totalPaid / totalOriginal) * 100) : 0;
-
-      const results = res.data.results || [];
-      const passed = results.filter((r) => r.marks >= 30).length;
-      const totalSubj = results.length;
-      const passPct =
-        totalSubj > 0 ? Math.round((passed / totalSubj) * 100) : 0;
-
-      setStats({
-        feePercentage: feePct,
-        passPercentage: passPct,
-      });
     } catch (e) {
       console.error(e);
       setError("Failed to load student profile.");
@@ -333,56 +250,41 @@ export default function StudentProfile() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     fetchStudent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleEditSubmit = async (values) => {
     try {
       setImageUploading(true);
-
-      // Create FormData for multipart request
       const formData = new FormData();
-
-      // Add all form values to FormData
       Object.keys(values).forEach((key) => {
         if (values[key] !== undefined && values[key] !== null) {
           formData.append(key, values[key]);
         }
       });
-
-      // Add profile image if selected
       if (profileImageList.length > 0 && profileImageList[0].originFileObj) {
         formData.append("profileImage", profileImageList[0].originFileObj);
       }
 
       await API.put(`/students/update-student/${student.id}`, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      toast.success("Student updated successfully", {
-        duration: 4000,
-        position: 'top-center',
-      });
+      toast.success("Student updated successfully", { duration: 4000, position: 'top-center' });
       setIsModalOpen(false);
       setProfileImageList([]);
       fetchStudent();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update student", {
-        duration: 5000,
-        position: 'top-center',
-      });
+      toast.error(error.response?.data?.message || "Failed to update student", { duration: 5000, position: 'top-center' });
     } finally {
       setImageUploading(false);
     }
   };
 
   const openEditModal = () => {
-    // Dismiss the profile incomplete toast if it exists
     if (toastShownRef.current) {
       toast.dismiss(toastShownRef.current);
       toastShownRef.current = false;
@@ -405,24 +307,15 @@ export default function StudentProfile() {
       tenthper: student.tenthper,
       twelthper: student.twelthper,
       rollNumber: student.rollNumber,
-      // admissionNumber: student.admissionNumber,
       admissionType: student.admissionType,
       category: student.category,
       batchId: student.batch?.id,
     });
 
-    // Set selected state and district for cascading dropdowns
-    if (student.state) {
-      setSelectedState(student.state);
-    }
-    if (student.district) {
-      setSelectedDistrict(student.district);
-    }
-
-    // Reset image upload state
+    if (student.state) setSelectedState(student.state);
+    if (student.district) setSelectedDistrict(student.district);
     setProfileImageList([]);
     setImageUploading(false);
-
     setIsModalOpen(true);
   };
 
@@ -460,6 +353,7 @@ export default function StudentProfile() {
         <Spin size="large" tip="Loading profile..." />
       </div>
     );
+
   if (error)
     return (
       <div className="p-8 text-center" style={{ backgroundColor: token.colorBgLayout }}>
@@ -467,88 +361,131 @@ export default function StudentProfile() {
       </div>
     );
 
+  // Info Card Component
+  const InfoCard = ({ icon, label, value, color = token.colorPrimary }) => (
+    <div
+      className="p-4 rounded-xl border flex items-center gap-3 hover:shadow-sm transition-shadow"
+      style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+    >
+      <div
+        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+        style={{ backgroundColor: `${color}10`, color }}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0 flex-1">
+        <Text className="text-[10px] uppercase font-semibold tracking-wider block" style={{ color: token.colorTextTertiary }}>
+          {label}
+        </Text>
+        <Text className="text-sm font-medium block truncate" style={{ color: token.colorText }}>
+          {value || 'N/A'}
+        </Text>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="p-4 md:p-8 min-h-screen overflow-y-auto hide-scrollbar" style={{ backgroundColor: token.colorBgLayout }}>
-      <div className="max-w-7xl mx-auto space-y-6 pb-10">
-        {/* Action Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 animate-fade-in">
+    <div className="p-4 md:p-6 min-h-screen overflow-y-auto hide-scrollbar" style={{ backgroundColor: token.colorBgLayout }}>
+      <div className="max-w-7xl mx-auto !space-y-4 pb-8">
+
+        {/* Header with Actions */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <Title level={2} className="!mb-0 !text-2xl lg:!text-3xl font-bold tracking-tight" style={{ color: token.colorText }}>My Profile</Title>
-            <Text className="text-sm" style={{ color: token.colorTextSecondary }}>View and manage your personal and academic information</Text>
+            <Title level={3} className="!mb-0 !text-xl font-semibold" style={{ color: token.colorText }}>
+              My Profile
+            </Title>
+            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>
+              Manage your personal information
+            </Text>
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <Button 
-              icon={<EditOutlined />} 
-              onClick={openEditModal} 
-              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none"
-              style={{ borderColor: token.colorBorder, color: token.colorText }}
+          <div className="flex gap-2">
+            <Button
+              icon={<EditOutlined />}
+              onClick={openEditModal}
+              size="small"
+              className="rounded-lg text-xs font-medium"
             >
-              Edit Profile
+              Edit
             </Button>
             <Button
               type="primary"
               onClick={openUploadModal}
               icon={<UploadOutlined />}
-              className="rounded-xl h-10 px-6 font-semibold flex-1 sm:flex-none shadow-lg"
-              style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}
+              size="small"
+              className="rounded-lg text-xs font-medium"
             >
               Add Document
             </Button>
           </div>
         </div>
 
-        {/* Profile Header Card */}
-        <Card bordered={false} className="rounded-2xl shadow-sm overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }} styles={{ body: { padding: '32px' } }}>
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <div className="relative group">
+        {/* Profile Header Card - Compact */}
+        <Card
+          bordered={false}
+          className="rounded-xl shadow-sm"
+          style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+          styles={{ body: { padding: '20px' } }}
+        >
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            {/* Avatar */}
+            <div className="relative">
               <Avatar
-                size={120}
+                size={80}
                 src={getImageUrl(student.profileImage)}
                 icon={<UserOutlined />}
-                className="rounded-3xl border-4 shadow-lg group-hover:scale-105 transition-transform duration-300"
+                className="rounded-2xl border-2 shadow-md"
                 style={{ borderColor: token.colorBgContainer }}
               />
-              <div 
-                className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 shadow-sm"
-                style={{ backgroundColor: student.isActive ? token.colorSuccess : token.colorError, borderColor: token.colorBgContainer }}
+              <div
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-md flex items-center justify-center border-2"
+                style={{
+                  backgroundColor: student.isActive ? token.colorSuccess : token.colorError,
+                  borderColor: token.colorBgContainer
+                }}
               >
-                {student.isActive ? <CheckCircleOutlined style={{ color: '#fff', fontSize: '14px' }} /> : <StopOutlined style={{ color: '#fff', fontSize: '14px' }} />}
+                {student.isActive ?
+                  <CheckCircleOutlined style={{ color: '#fff', fontSize: '11px' }} /> :
+                  <StopOutlined style={{ color: '#fff', fontSize: '11px' }} />
+                }
               </div>
             </div>
-            
-            <div className="flex-grow text-center md:text-left">
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
-                <Title level={2} className="!mb-0 text-3xl font-bold tracking-tight" style={{ color: token.colorText }}>
+
+            {/* Name & Info */}
+            <div className="flex-grow text-center sm:text-left">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
+                <Title level={4} className="!mb-0 font-semibold" style={{ color: token.colorText }}>
                   {student.name}
                 </Title>
-                <Tag 
-                  className="rounded-full px-3 py-1 font-bold uppercase tracking-wide text-[10px]"
-                  style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, borderColor: token.colorPrimaryBorder }}
+                <Tag
+                  className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase m-0"
+                  style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, border: 'none' }}
                 >
                   {student.branchName}
                 </Tag>
               </div>
-              
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-6 gap-y-2 text-sm mb-6" style={{ color: token.colorTextSecondary }}>
-                <span className="flex items-center gap-2 font-medium">
-                  <IdcardOutlined style={{ color: token.colorTextTertiary }} /> {student.rollNumber}
+
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs mb-3" style={{ color: token.colorTextSecondary }}>
+                <span className="flex items-center gap-1.5">
+                  <IdcardOutlined style={{ color: token.colorTextTertiary, fontSize: '12px' }} />
+                  {student.rollNumber}
                 </span>
-                <span className="hidden md:inline w-1 h-1 rounded-full bg-gray-300" />
-                <span className="flex items-center gap-2 font-medium">
-                  <BankOutlined style={{ color: token.colorTextTertiary }} /> Batch of {student.batch?.name || 'N/A'}
+                <span className="hidden sm:inline text-text-tertiary">•</span>
+                <span className="flex items-center gap-1.5">
+                  <BankOutlined style={{ color: token.colorTextTertiary, fontSize: '12px' }} />
+                  Batch {student.batch?.name || 'N/A'}
                 </span>
               </div>
 
-              <div className="flex flex-wrap justify-center md:justify-start gap-2">
-                <Tag color={getCategoryColor(student.category)} className="rounded-lg border-0 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0">
+              <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
+                <Tag color={getCategoryColor(student.category)} className="rounded-md text-[10px] font-semibold uppercase m-0 px-2">
                   {student.category}
                 </Tag>
-                <Tag className="rounded-lg border-0 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0" style={{ backgroundColor: token.colorFillQuaternary, color: token.colorTextSecondary }}>
+                <Tag className="rounded-md text-[10px] font-semibold uppercase m-0 px-2" style={{ backgroundColor: token.colorFillSecondary, color: token.colorTextSecondary, border: 'none' }}>
                   {student.admissionType}
                 </Tag>
                 {student.clearanceStatus && (
-                  <Tag 
-                    className="rounded-lg border-0 px-3 py-1 font-bold text-[10px] uppercase tracking-wider m-0"
+                  <Tag
+                    className="rounded-md text-[10px] font-semibold uppercase m-0 px-2"
                     color={student.clearanceStatus === "CLEARED" ? "success" : "warning"}
                   >
                     {student.clearanceStatus}
@@ -556,117 +493,114 @@ export default function StudentProfile() {
                 )}
               </div>
             </div>
-
-            <div className="hidden lg:flex items-center gap-10 pl-10 border-l" style={{ borderColor: token.colorBorderSecondary }}>
-              <div className="text-center">
-                <div className="text-3xl font-bold" style={{ color: token.colorText }}>{stats?.passPercentage || 0}%</div>
-                <div className="text-[10px] uppercase font-bold tracking-widest mt-1" style={{ color: token.colorTextTertiary }}>Pass Rate</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold" style={{ color: token.colorSuccess }}>{stats?.feePercentage || 0}%</div>
-                <div className="text-[10px] uppercase font-bold tracking-widest mt-1" style={{ color: token.colorTextTertiary }}>Fees Paid</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Contact Info Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-8 border-t" style={{ borderColor: token.colorBorderSecondary }}>
-            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: token.colorPrimary }}>
-                <MailOutlined className="text-xl" />
-              </div>
-              <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Email Address</Text>
-                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.email}</Text>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: token.colorSuccess }}>
-                <PhoneOutlined className="text-xl" />
-              </div>
-              <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Phone Number</Text>
-                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.contact || "N/A"}</Text>
-              </div>
-            </div>
-            <div className="flex items-center gap-4 p-4 rounded-2xl transition-colors border border-transparent group" style={{ backgroundColor: token.colorFillQuaternary }}>
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-colors" style={{ backgroundColor: token.colorBgContainer, color: '#a855f7' }}>
-                <CalendarOutlined className="text-xl" />
-              </div>
-              <div className="min-w-0">
-                <Text className="text-[10px] uppercase font-bold tracking-wider block mb-0.5" style={{ color: token.colorTextTertiary }}>Date of Birth</Text>
-                <Text ellipsis className="text-sm font-semibold block" style={{ color: token.colorText }}>{student.dob?.slice(0, 10) || "N/A"}</Text>
-              </div>
-            </div>
           </div>
         </Card>
 
-        {/* Detailed Tabs Container */}
-        <Card bordered={false} className="rounded-2xl border shadow-sm overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }} styles={{ body: { padding: 0 } }}>
-          <Tabs 
-            defaultActiveKey="1" 
-            className="custom-tabs"
+        {/* Quick Info Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <InfoCard
+            icon={<MailOutlined className="text-base" />}
+            label="Email"
+            value={student.email}
+            color={token.colorPrimary}
+          />
+          <InfoCard
+            icon={<PhoneOutlined className="text-base" />}
+            label="Phone"
+            value={student.contact}
+            color={token.colorSuccess}
+          />
+          <InfoCard
+            icon={<CalendarOutlined className="text-base" />}
+            label="Date of Birth"
+            value={student.dob?.slice(0, 10)}
+            color="#a855f7"
+          />
+          <InfoCard
+            icon={<TeamOutlined className="text-base" />}
+            label="Parent Contact"
+            value={student.parentContact}
+            color="#f59e0b"
+          />
+        </div>
+
+        {/* Tabs Container */}
+        <Card
+          bordered={false}
+          className="rounded-xl shadow-sm overflow-hidden"
+          style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+          styles={{ body: { padding: 0 } }}
+        >
+          <Tabs
+            defaultActiveKey="1"
+            className="[&_.ant-tabs-nav]:px-4 [&_.ant-tabs-nav]:pt-2"
             items={[
               {
                 key: "1",
                 label: (
-                  <span className="flex items-center px-4 py-3 font-bold text-xs uppercase tracking-widest">
-                    <UserOutlined className="mr-2" /> Personal Details
+                  <span className="flex items-center text-xs font-medium">
+                    <UserOutlined className="mr-1.5" /> Personal
                   </span>
                 ),
                 children: (
-                  <div className="p-8">
-                    <Row gutter={[48, 32]}>
-                      <Col xs={24} lg={12}>
-                        <div className="space-y-6">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1 h-6 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
-                            <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Academic Profile</Title>
+                  <div className="p-5">
+                    <Row gutter={[16, 16]}>
+                      {/* Academic Info */}
+                      <Col xs={24} md={12}>
+                        <div className="mb-3 flex items-center gap-2">
+                          <BookOutlined style={{ color: token.colorPrimary }} />
+                          <Text className="text-xs font-semibold uppercase tracking-wide" style={{ color: token.colorTextSecondary }}>
+                            Academic Info
+                          </Text>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Roll Number</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.rollNumber}</Text>
                           </div>
-                          <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
-                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Roll Number</Text>
-                              <Text className="font-bold" style={{ color: token.colorText }}>{student.rollNumber}</Text>
-                            </div>
-                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Branch</Text>
-                              <Tag className="m-0 px-3 py-1 rounded-full border-0 font-bold text-[10px] uppercase tracking-wide" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}>
-                                {student.branchName}
-                              </Tag>
-                            </div>
-                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Batch</Text>
-                              <Text className="font-bold" style={{ color: token.colorText }}>{student.batch?.name || "N/A"}</Text>
-                            </div>
-                            <div className="p-4 flex justify-between items-center">
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Admission Type</Text>
-                              <Tag className="m-0 px-3 py-1 rounded-full border-0 font-bold text-[10px] uppercase tracking-wide" style={{ backgroundColor: token.colorBgContainerDisabled, color: token.colorTextSecondary }}>
-                                {student.admissionType}
-                              </Tag>
-                            </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Branch</Text>
+                            <Tag className="m-0 text-[10px] rounded-md" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, border: 'none' }}>
+                              {student.branchName}
+                            </Tag>
+                          </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Batch</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.batch?.name || "N/A"}</Text>
+                          </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Admission Type</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.admissionType}</Text>
                           </div>
                         </div>
                       </Col>
 
-                      <Col xs={24} lg={12}>
-                        <div className="space-y-6">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-1 h-6 rounded-full" style={{ backgroundColor: token.colorSuccess }} />
-                            <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Contact & Address</Title>
+                      {/* Contact & Address */}
+                      <Col xs={24} md={12}>
+                        <div className="mb-3 flex items-center gap-2">
+                          <HomeOutlined style={{ color: token.colorSuccess }} />
+                          <Text className="text-xs font-semibold uppercase tracking-wide" style={{ color: token.colorTextSecondary }}>
+                            Contact & Address
+                          </Text>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs shrink-0" style={{ color: token.colorTextSecondary }}>Address</Text>
+                            <Text className="text-xs font-semibold text-right max-w-[60%]" style={{ color: token.colorText }}>
+                              {student.address || "N/A"}, {student.city}, {student.district}, {student.state} - {student.pinCode}
+                            </Text>
                           </div>
-                          <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
-                            <div className="p-4 flex justify-between items-start border-b" style={{ borderColor: token.colorBorderSecondary }}>
-                              <Text className="font-medium shrink-0 mr-4" style={{ color: token.colorTextSecondary }}>Home Address</Text>
-                              <Text className="font-bold text-right max-w-[60%]" style={{ color: token.colorText }}>{student.address || "N/A"}, {student.city}, {student.district}, {student.state} - {student.pinCode}</Text>
-                            </div>
-                            <div className="p-4 flex justify-between items-center border-b" style={{ borderColor: token.colorBorderSecondary }}>
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Parent/Guardian</Text>
-                              <Text className="font-bold" style={{ color: token.colorText }}>{student.parentName || "N/A"}</Text>
-                            </div>
-                            <div className="p-4 flex justify-between items-center">
-                              <Text className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Contact</Text>
-                              <Text className="font-bold" style={{ color: token.colorText }}>{student.parentContact || "N/A"}</Text>
-                            </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Parent/Guardian</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.parentName || "N/A"}</Text>
+                          </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Parent Contact</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.parentContact || "N/A"}</Text>
+                          </div>
+                          <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
+                            <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Gender</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.gender || "N/A"}</Text>
                           </div>
                         </div>
                       </Col>
@@ -675,50 +609,48 @@ export default function StudentProfile() {
                 ),
               },
               {
-                key: "4",
+                key: "2",
                 label: (
-                  <span className="flex items-center px-4 py-3 font-bold text-xs uppercase tracking-widest">
-                    <FileTextOutlined className="mr-2" /> Academic Records
+                  <span className="flex items-center text-xs font-medium">
+                    <FileTextOutlined className="mr-1.5" /> Documents
                   </span>
                 ),
                 children: (
-                  <div className="p-8">
+                  <div className="p-5">
                     {student.document?.length > 0 ? (
-                      <Row gutter={[20, 20]}>
+                      <Row gutter={[12, 12]}>
                         {student.document.map((doc, idx) => (
-                          <Col xs={24} sm={12} md={8} lg={6} key={idx}>
+                          <Col xs={12} sm={8} md={6} key={idx}>
                             <Card
                               hoverable
                               bordered={false}
-                              className="rounded-2xl border shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300"
+                              className="rounded-xl border overflow-hidden group"
                               style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
-                              styles={{ body: { padding: '16px' } }}
+                              styles={{ body: { padding: '12px' } }}
                               onClick={() => window.open(getImageUrl(doc.fileUrl), "_blank")}
                             >
-                              <div className="h-48 rounded-xl flex items-center justify-center p-4 mb-4 border overflow-hidden transition-colors" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                              <div
+                                className="h-28 rounded-lg flex items-center justify-center mb-2 overflow-hidden"
+                                style={{ backgroundColor: token.colorFillQuaternary }}
+                              >
                                 <img
                                   src={getImageUrl(doc.fileUrl)}
                                   alt={doc.fileName}
-                                  className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-500"
+                                  className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
                                 />
                               </div>
-                              <div className="px-1">
-                                <Text className="text-xs uppercase font-bold tracking-wider block truncate mb-1" style={{ color: token.colorText }}>
-                                  {doc.type.replaceAll("_", " ")}
-                                </Text>
-                                <Text className="text-[10px] truncate block font-medium" style={{ color: token.colorTextTertiary }}>
-                                  {doc.fileName}
-                                </Text>
-                              </div>
+                              <Text className="text-[10px] uppercase font-semibold block truncate" style={{ color: token.colorText }}>
+                                {doc.type.replaceAll("_", " ")}
+                              </Text>
                             </Card>
                           </Col>
                         ))}
                       </Row>
                     ) : (
-                      <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+                      <div className="py-12 text-center rounded-xl border border-dashed" style={{ borderColor: token.colorBorderSecondary }}>
                         <Empty description={false} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                        <Title level={5} className="mt-4 !font-normal" style={{ color: token.colorTextSecondary }}>No documents found</Title>
-                        <Button type="primary" onClick={openUploadModal} className="mt-6 rounded-xl font-bold px-8 h-10 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
+                        <Text className="text-xs block mt-2" style={{ color: token.colorTextSecondary }}>No documents uploaded</Text>
+                        <Button type="primary" onClick={openUploadModal} size="small" className="mt-4 rounded-lg text-xs">
                           Upload Document
                         </Button>
                       </div>
@@ -727,39 +659,49 @@ export default function StudentProfile() {
                 ),
               },
               {
-                key: "5",
+                key: "3",
                 label: (
-                  <span className="flex items-center px-4 py-3 font-bold text-xs uppercase tracking-widest">
-                    <BulbOutlined className="mr-2" /> Placements
+                  <span className="flex items-center text-xs font-medium">
+                    <BulbOutlined className="mr-1.5" /> Placements
                   </span>
                 ),
                 children: (
-                  <div className="p-8">
+                  <div className="p-5">
                     {(student.placements || []).length > 0 ? (
-                      <Row gutter={[20, 20]}>
+                      <Row gutter={[12, 12]}>
                         {(student.placements || []).map((p, i) => (
-                          <Col xs={24} md={12} lg={8} key={i}>
-                            <div className="p-6 rounded-2xl border hover:shadow-md transition-all duration-300" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}>
-                              <div className="flex justify-between items-start mb-4">
-                                <Title level={5} className="!mb-0 text-lg font-bold leading-tight flex-1 mr-2" style={{ color: token.colorText }}>{p.companyName}</Title>
-                                <Tag color={getPlacementStatusColor(p.status)} className="m-0 px-2 py-1 rounded-md border-0 font-bold uppercase tracking-wider text-[10px]">
+                          <Col xs={24} sm={12} lg={8} key={i}>
+                            <div
+                              className="p-4 rounded-xl border"
+                              style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+                            >
+                              <div className="flex justify-between items-start mb-3">
+                                <Title level={5} className="!mb-0 !text-sm font-semibold" style={{ color: token.colorText }}>
+                                  {p.companyName}
+                                </Title>
+                                <Tag color={getPlacementStatusColor(p.status)} className="m-0 text-[10px] rounded-md">
                                   {p.status}
                                 </Tag>
                               </div>
-                              <div className="p-4 rounded-xl border mb-4" style={{ backgroundColor: token.colorSuccessBg, borderColor: token.colorSuccessBorder }}>
-                                <Text className="text-[10px] uppercase font-bold tracking-widest block mb-1" style={{ color: token.colorSuccess }}>Annual CTC</Text>
-                                <Text className="text-2xl font-black leading-none" style={{ color: token.colorSuccessText }}>
-                                  ₹ {p.salary?.toFixed(2)} <span className="text-xs font-bold">LPA</span>
+                              <div
+                                className="p-3 rounded-lg mb-3"
+                                style={{ backgroundColor: token.colorSuccessBg }}
+                              >
+                                <Text className="text-[10px] uppercase font-semibold block" style={{ color: token.colorSuccess }}>
+                                  Annual CTC
+                                </Text>
+                                <Text className="text-lg font-bold" style={{ color: token.colorSuccessText }}>
+                                  ₹ {p.salary?.toFixed(2)} <span className="text-xs font-medium">LPA</span>
                                 </Text>
                               </div>
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <SolutionOutlined className="text-sm" style={{ color: token.colorTextTertiary }} />
-                                  <Text className="text-sm font-semibold truncate" style={{ color: token.colorTextSecondary }}>{p.jobRole}</Text>
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
+                                  <SolutionOutlined style={{ fontSize: '11px' }} />
+                                  <span className="truncate">{p.jobRole}</span>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  <CalendarOutlined className="text-sm" style={{ color: token.colorTextTertiary }} />
-                                  <Text className="text-sm font-semibold" style={{ color: token.colorTextSecondary }}>{formatDate(p.offerDate)}</Text>
+                                <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
+                                  <CalendarOutlined style={{ fontSize: '11px' }} />
+                                  <span>{formatDate(p.offerDate)}</span>
                                 </div>
                               </div>
                             </div>
@@ -767,92 +709,73 @@ export default function StudentProfile() {
                         ))}
                       </Row>
                     ) : (
-                      <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
-                        <Empty description={<span className="font-medium" style={{ color: token.colorTextSecondary }}>No placement offers found yet</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                      <div className="py-12 text-center rounded-xl border border-dashed" style={{ borderColor: token.colorBorderSecondary }}>
+                        <Empty description={<span className="text-xs" style={{ color: token.colorTextSecondary }}>No placement offers yet</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
                       </div>
                     )}
                   </div>
                 ),
               },
               {
-                key: "6",
+                key: "4",
                 label: (
-                  <span className="flex items-center px-4 py-3 font-bold text-xs uppercase tracking-widest">
-                    <LaptopOutlined className="mr-2" /> Career Track
+                  <span className="flex items-center text-xs font-medium">
+                    <LaptopOutlined className="mr-1.5" /> Internships
                   </span>
                 ),
                 children: (
-                  <div className="p-8 space-y-10">
-                    <section>
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-1 h-6 rounded-full" style={{ backgroundColor: '#6366f1' }} />
-                        <Title level={4} className="!mb-0 font-bold" style={{ color: token.colorText }}>Internship History</Title>
-                      </div>
-                      
-                      {(student.internshipApplications || []).length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          {(student.internshipApplications || [])
-                            .sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate))
-                            .map((app, i) => {
-                              const isSelf = !app.internshipId || !app.internship;
-                              return (
-                                <div key={i} className="p-6 rounded-2xl border hover:shadow-md transition-all duration-300" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}>
-                                  <div className="flex justify-between items-start mb-4">
-                                    <div>
+                  <div className="p-5">
+                    {(student.internshipApplications || []).length > 0 ? (
+                      <Row gutter={[12, 12]}>
+                        {(student.internshipApplications || [])
+                          .sort((a, b) => new Date(b.appliedDate) - new Date(a.appliedDate))
+                          .map((app, i) => {
+                            const isSelf = !app.internshipId || !app.internship;
+                            return (
+                              <Col xs={24} sm={12} key={i}>
+                                <div
+                                  className="p-4 rounded-xl border"
+                                  style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+                                >
+                                  <div className="flex justify-between items-start mb-2">
+                                    <div className="flex-1 min-w-0">
                                       {isSelf && (
-                                        <Tag className="m-0 mb-2 px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider" style={{ backgroundColor: '#f3e8ff', color: '#9333ea', borderColor: '#e9d5ff' }}>
+                                        <Tag className="m-0 mb-1.5 text-[9px] rounded-md" style={{ backgroundColor: '#f3e8ff', color: '#9333ea', border: 'none' }}>
                                           Self-Identified
                                         </Tag>
                                       )}
-                                      <Title level={5} className="!mb-1 text-lg font-bold" style={{ color: token.colorText }}>
+                                      <Title level={5} className="!mb-0 !text-sm font-semibold truncate" style={{ color: token.colorText }}>
                                         {isSelf ? app.companyName : app.internship?.title}
                                       </Title>
-                                      <Text className="font-bold text-xs uppercase tracking-wide block" style={{ color: '#6366f1' }}>
-                                        {!isSelf ? app.internship?.industry?.companyName : 'External Position'}
+                                      <Text className="text-[10px] font-semibold uppercase" style={{ color: '#6366f1' }}>
+                                        {!isSelf ? app.internship?.industry?.companyName : 'External'}
                                       </Text>
                                     </div>
-                                    <Tag color={getInternshipStatusColor(app.status)} className="m-0 px-2 py-1 rounded-full border-0 font-bold uppercase tracking-widest text-[10px]">
+                                    <Tag color={getInternshipStatusColor(app.status)} className="m-0 text-[10px] rounded-md shrink-0">
                                       {app.status}
                                     </Tag>
                                   </div>
-                                  
-                                  <div className="grid grid-cols-2 gap-4 py-4 border-y mb-4" style={{ borderColor: token.colorBorderSecondary }}>
+
+                                  <div className="flex gap-4 pt-2 mt-2 border-t text-xs" style={{ borderColor: token.colorBorderSecondary, color: token.colorTextSecondary }}>
                                     <div>
-                                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1.5" style={{ color: token.colorTextTertiary }}>Duration</Text>
-                                      <Text className="font-bold text-sm" style={{ color: token.colorText }}>{app.internship?.duration || app.internshipDuration || 'N/A'}</Text>
+                                      <span className="text-[10px] uppercase block" style={{ color: token.colorTextTertiary }}>Duration</span>
+                                      <span className="font-medium">{app.internship?.duration || app.internshipDuration || 'N/A'}</span>
                                     </div>
                                     <div>
-                                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1.5" style={{ color: token.colorTextTertiary }}>Applied On</Text>
-                                      <Text className="font-bold text-sm" style={{ color: token.colorText }}>{formatDate(app.appliedDate)}</Text>
+                                      <span className="text-[10px] uppercase block" style={{ color: token.colorTextTertiary }}>Applied</span>
+                                      <span className="font-medium">{formatDate(app.appliedDate)}</span>
                                     </div>
                                   </div>
-                                  
-                                  {(app.status === "JOINED" || app.status === "COMPLETED") && (
-                                    <div>
-                                      <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-2" style={{ color: token.colorTextTertiary }}>
-                                        <span>Course Progress</span>
-                                        <span>{getInternshipProgress(app.internship?.startDate, app.internship?.endDate)}%</span>
-                                      </div>
-                                      <Progress
-                                        percent={getInternshipProgress(app.internship?.startDate, app.internship?.endDate)}
-                                        size="small"
-                                        showInfo={false}
-                                        strokeColor="#4f46e5"
-                                        trailColor={token.colorFillQuaternary}
-                                        className="!m-0"
-                                      />
-                                    </div>
-                                  )}
                                 </div>
-                              );
-                            })}
-                        </div>
-                      ) : (
-                        <div className="py-20 text-center rounded-2xl border border-dashed flex flex-col items-center justify-center" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
-                          <Empty description={<span className="font-medium" style={{ color: token.colorTextSecondary }}>No internship history recorded</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                        </div>
-                      )}
-                    </section>
+                              </Col>
+                            );
+                          })}
+                      </Row>
+                    ) : (
+                      <div className="py-12 text-center rounded-xl border border-dashed" style={{ borderColor: token.colorBorderSecondary }}>
+                        <Empty description={<span className="text-xs" style={{ color: token.colorTextSecondary }}>No internship history</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                      </div>
+                    )}
                   </div>
                 ),
               },
@@ -861,62 +784,52 @@ export default function StudentProfile() {
         </Card>
       </div>
 
-      {/* Modals */}
+      {/* Edit Modal */}
       <Modal
-        title={<span className="text-xl font-bold" style={{ color: token.colorText }}>Edit Student Details</span>}
+        title={<span className="text-base font-semibold" style={{ color: token.colorText }}>Edit Profile</span>}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         confirmLoading={imageUploading}
         onOk={() => form.submit()}
-        width={700}
-        className="rounded-2xl overflow-hidden"
-        styles={{ content: { borderRadius: '24px', padding: '24px' } }}
+        width={640}
+        className="rounded-xl"
+        styles={{ content: { borderRadius: '16px', padding: '20px' } }}
         footer={[
-          <Button key="back" onClick={() => setIsModalOpen(false)} className="rounded-xl h-10 font-medium">
+          <Button key="back" onClick={() => setIsModalOpen(false)} className="rounded-lg h-9 text-xs">
             Cancel
           </Button>,
-          <Button key="submit" type="primary" loading={imageUploading} onClick={() => form.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
+          <Button key="submit" type="primary" loading={imageUploading} onClick={() => form.submit()} className="rounded-lg h-9 text-xs font-medium">
             Save Changes
           </Button>,
         ]}
       >
-        <Form form={form} layout="vertical" onFinish={handleEditSubmit} className="mt-6">
-          <Row gutter={24}>
+        <Form form={form} layout="vertical" onFinish={handleEditSubmit} className="mt-4">
+          <Row gutter={16}>
             {/* Profile Image Upload */}
             <Col span={24}>
-              <Form.Item label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Profile Image</span>}>
-                <div className="flex items-center gap-6 p-4 rounded-2xl border" style={{ backgroundColor: token.colorFillQuaternary, borderColor: token.colorBorderSecondary }}>
+              <Form.Item label={<span className="text-xs font-medium" style={{ color: token.colorTextSecondary }}>Profile Image</span>}>
+                <div className="flex items-center gap-4 p-3 rounded-xl" style={{ backgroundColor: token.colorFillQuaternary }}>
                   <Avatar
-                    size={80}
+                    size={56}
                     src={getImageUrl(student?.profileImage)}
                     icon={<UserOutlined />}
-                    className="border-2 shadow-md"
+                    className="border-2"
                     style={{ borderColor: token.colorBgContainer }}
                   />
-                  <ImgCrop
-                    rotationSlider
-                    aspect={1}
-                    quality={0.8}
-                    modalTitle="Crop Profile Image"
-                    modalOk="Crop"
-                    modalCancel="Cancel"
-                  >
+                  <ImgCrop rotationSlider aspect={1} quality={0.8} modalTitle="Crop Image">
                     <Upload
                       listType="picture-card"
                       fileList={profileImageList}
-                      onChange={({ fileList: newFileList }) => {
-                        setProfileImageList(newFileList);
-                      }}
+                      onChange={({ fileList: newFileList }) => setProfileImageList(newFileList)}
                       beforeUpload={(file) => {
-                        const isJpgOrPng =
-                          file.type === "image/jpeg" || file.type === "image/jpg" || file.type === "image/png";
+                        const isJpgOrPng = file.type === "image/jpeg" || file.type === "image/jpg" || file.type === "image/png";
                         if (!isJpgOrPng) {
-                          toast.error("You can only upload JPG/JPEG/PNG files!");
+                          toast.error("Only JPG/PNG files allowed!");
                           return Upload.LIST_IGNORE;
                         }
                         const isLt2M = file.size / 1024 / 1024 < 2;
                         if (!isLt2M) {
-                          toast.error("Image must be smaller than 2MB!");
+                          toast.error("Image must be < 2MB!");
                           return Upload.LIST_IGNORE;
                         }
                         return false;
@@ -925,9 +838,9 @@ export default function StudentProfile() {
                       className="avatar-uploader"
                     >
                       {profileImageList.length < 1 && (
-                        <div className="flex flex-col items-center justify-center" style={{ color: token.colorTextTertiary }}>
-                          <CameraOutlined className="text-xl mb-1" />
-                          <div className="text-xs font-medium">Upload</div>
+                        <div className="flex flex-col items-center text-xs" style={{ color: token.colorTextTertiary }}>
+                          <CameraOutlined className="mb-1" />
+                          <span>Upload</span>
                         </div>
                       )}
                     </Upload>
@@ -937,70 +850,43 @@ export default function StudentProfile() {
             </Col>
 
             <Col span={12}>
-              <Form.Item name="name" label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Name</span>} rules={[{ required: true }]}>
-                <Input prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
+              <Form.Item name="name" label={<span className="text-xs font-medium">Name</span>} rules={[{ required: true }]}>
+                <Input prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-                <Form.Item
-                  name="email"
-                  label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Email</span>}
-                  rules={[{ required: true, type: "email" }]}
-                >
-                  <Input prefix={<MailOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
-                </Form.Item>
-              </Col>
-
-            <Col span={12}>
-              <Form.Item
-                name="contact"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Contact</span>}
-                rules={[{ required: true }]}
-              >
-                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
-              </Form.Item>
-            </Col>
-
-              <Col span={12}>
-                <Form.Item
-                  name="category"
-                  label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Category</span>}
-                  rules={[{ required: true }]}
-                >
-                  <Select placeholder="Select Category" className="h-11 rounded-lg">
-                    <Option value="GENERAL">General</Option>
-                    <Option value="SC">SC</Option>
-                    <Option value="ST">ST</Option>
-                    <Option value="OBC">OBC</Option>
-                  </Select>
-                </Form.Item>
-              </Col> 
-
-            <Col span={12}>
-              <Form.Item
-                name="parentName"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Name</span>}
-                rules={[{ required: true }]}
-              >
-                <Input prefix={<TeamOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
+              <Form.Item name="email" label={<span className="text-xs font-medium">Email</span>} rules={[{ required: true, type: "email" }]}>
+                <Input prefix={<MailOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="parentContact"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Parent Contact</span>}
-                rules={[{ required: true }]}
-              >
-                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-11" />
+              <Form.Item name="contact" label={<span className="text-xs font-medium">Contact</span>} rules={[{ required: true }]}>
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="gender"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Gender</span>}
-                rules={[{ required: true }]}
-              >
-                <Select placeholder="Gender" className="h-11 rounded-lg">
+              <Form.Item name="category" label={<span className="text-xs font-medium">Category</span>} rules={[{ required: true }]}>
+                <Select placeholder="Select" className="h-9 rounded-lg text-xs">
+                  <Option value="GENERAL">General</Option>
+                  <Option value="SC">SC</Option>
+                  <Option value="ST">ST</Option>
+                  <Option value="OBC">OBC</Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="parentName" label={<span className="text-xs font-medium">Parent Name</span>} rules={[{ required: true }]}>
+                <Input prefix={<TeamOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-9 text-xs" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="parentContact" label={<span className="text-xs font-medium">Parent Contact</span>} rules={[{ required: true }]}>
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextTertiary }} />} className="rounded-lg h-9 text-xs" />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="gender" label={<span className="text-xs font-medium">Gender</span>} rules={[{ required: true }]}>
+                <Select placeholder="Select" className="h-9 rounded-lg text-xs">
                   <Option value="Male">Male</Option>
                   <Option value="Female">Female</Option>
                   <Option value="Others">Others</Option>
@@ -1008,114 +894,74 @@ export default function StudentProfile() {
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="dob"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Date of Birth</span>}
-                rules={[{ required: false }]}
-              >
-                <Input type="date" className="rounded-lg h-11" />
+              <Form.Item name="dob" label={<span className="text-xs font-medium">Date of Birth</span>}>
+                <Input type="date" className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="pinCode"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Pin Code</span>}
-                rules={[{ required: true }]}
-              >
-                <Input className="rounded-lg h-11" />
+              <Form.Item name="pinCode" label={<span className="text-xs font-medium">Pin Code</span>} rules={[{ required: true }]}>
+                <Input className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="address"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Address</span>}
-                rules={[{ required: true }]}
-              >
-                <Input className="rounded-lg h-11" />
+              <Form.Item name="address" label={<span className="text-xs font-medium">Address</span>} rules={[{ required: true }]}>
+                <Input className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="city"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>City/Village</span>}
-                rules={[{ required: true }]}
-              >
-                <Input className="rounded-lg h-11" />
+              <Form.Item name="city" label={<span className="text-xs font-medium">City/Village</span>} rules={[{ required: true }]}>
+                <Input className="rounded-lg h-9 text-xs" />
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="state"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>State</span>}
-                rules={[{ required: true, message: 'Please select state' }]}
-              >
-                <Select 
+              <Form.Item name="state" label={<span className="text-xs font-medium">State</span>} rules={[{ required: true }]}>
+                <Select
                   placeholder="Select State"
                   showSearch
-                  className="h-11 rounded-lg"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                  }
+                  className="h-9 rounded-lg text-xs"
+                  filterOption={(input, option) => option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0}
                   onChange={(value) => {
                     setSelectedState(value);
                     setSelectedDistrict("");
-                    form.setFieldsValue({ district: undefined, tehsil: undefined }); // Reset district and tehsil when state changes
+                    form.setFieldsValue({ district: undefined, tehsil: undefined });
                   }}
                 >
                   {Object.keys(stateDistrictTehsilData).sort().map((state) => (
-                    <Option key={state} value={state}>
-                      {state}
-                    </Option>
+                    <Option key={state} value={state}>{state}</Option>
                   ))}
                 </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="district"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>District</span>}
-                rules={[{ required: true, message: 'Please select district' }]}
-              >
-                <Select 
+              <Form.Item name="district" label={<span className="text-xs font-medium">District</span>} rules={[{ required: true }]}>
+                <Select
                   placeholder={selectedState ? "Select District" : "Select State First"}
                   disabled={!selectedState}
                   showSearch
-                  className="h-11 rounded-lg"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                  }
+                  className="h-9 rounded-lg text-xs"
+                  filterOption={(input, option) => option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0}
                   onChange={(value) => {
                     setSelectedDistrict(value);
-                    form.setFieldsValue({ tehsil: undefined }); // Reset tehsil when district changes
+                    form.setFieldsValue({ tehsil: undefined });
                   }}
                 >
                   {selectedState && Object.keys(stateDistrictTehsilData[selectedState] || {}).sort().map((district) => (
-                    <Option key={district} value={district}>
-                      {district}
-                    </Option>
+                    <Option key={district} value={district}>{district}</Option>
                   ))}
                 </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item
-                name="tehsil"
-                label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Tehsil</span>}
-                rules={[{ required: true, message: 'Please select tehsil' }]}
-              >
-                <Select 
+              <Form.Item name="tehsil" label={<span className="text-xs font-medium">Tehsil</span>} rules={[{ required: true }]}>
+                <Select
                   placeholder={selectedDistrict ? "Select Tehsil" : "Select District First"}
                   disabled={!selectedDistrict}
                   showSearch
-                  className="h-11 rounded-lg"
-                  filterOption={(input, option) =>
-                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
-                  }
+                  className="h-9 rounded-lg text-xs"
+                  filterOption={(input, option) => option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0}
                 >
                   {selectedState && selectedDistrict && stateDistrictTehsilData[selectedState]?.[selectedDistrict]?.map((tehsil) => (
-                    <Option key={tehsil} value={tehsil}>
-                      {tehsil}
-                    </Option>
+                    <Option key={tehsil} value={tehsil}>{tehsil}</Option>
                   ))}
                 </Select>
               </Form.Item>
@@ -1124,29 +970,26 @@ export default function StudentProfile() {
         </Form>
       </Modal>
 
+      {/* Upload Document Modal */}
       <Modal
-        title={<span className="text-xl font-bold" style={{ color: token.colorText }}>Upload Document</span>}
+        title={<span className="text-base font-semibold" style={{ color: token.colorText }}>Upload Document</span>}
         open={uploadModal}
         onCancel={() => setUploadModal(false)}
         onOk={() => uploadForm.submit()}
-        className="rounded-2xl"
-        styles={{ content: { borderRadius: '24px', padding: '24px' } }}
+        className="rounded-xl"
+        styles={{ content: { borderRadius: '16px', padding: '20px' } }}
         footer={[
-          <Button key="back" onClick={() => setUploadModal(false)} className="rounded-xl h-10 font-medium">
+          <Button key="back" onClick={() => setUploadModal(false)} className="rounded-lg h-9 text-xs">
             Cancel
           </Button>,
-          <Button key="submit" type="primary" loading={uploading} onClick={() => uploadForm.submit()} className="rounded-xl h-10 font-bold px-6 shadow-lg" style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}>
+          <Button key="submit" type="primary" loading={uploading} onClick={() => uploadForm.submit()} className="rounded-lg h-9 text-xs font-medium">
             Upload
           </Button>,
         ]}
       >
-        <Form form={uploadForm} layout="vertical" onFinish={handleUpload} className="mt-6">
-          <Form.Item
-            name="type"
-            label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Document Type</span>}
-            rules={[{ required: true }]}
-          >
-            <Select placeholder="Select type" className="h-11 rounded-lg">
+        <Form form={uploadForm} layout="vertical" onFinish={handleUpload} className="mt-4">
+          <Form.Item name="type" label={<span className="text-xs font-medium">Document Type</span>} rules={[{ required: true }]}>
+            <Select placeholder="Select type" className="h-9 rounded-lg text-xs">
               <Option value="MARKSHEET_10TH">10th Marksheet</Option>
               <Option value="MARKSHEET_12TH">12th Marksheet</Option>
               <Option value="CASTE_CERTIFICATE">Caste Certificate</Option>
@@ -1154,12 +997,12 @@ export default function StudentProfile() {
               <Option value="OTHER">Other</Option>
             </Select>
           </Form.Item>
-          <Form.Item label={<span className="font-medium" style={{ color: token.colorTextSecondary }}>Upload File</span>}>
+          <Form.Item label={<span className="text-xs font-medium">Upload File</span>}>
             <Upload
               beforeUpload={(file) => {
                 const isUnderLimit = file.size / 1024 <= 200;
                 if (!isUnderLimit) {
-                  toast.error("File must be less than 200KB.");
+                  toast.error("File must be < 200KB.");
                   return Upload.LIST_IGNORE;
                 }
                 setFileList([file]);
@@ -1171,12 +1014,7 @@ export default function StudentProfile() {
               listType="picture"
               className="w-full"
             >
-              <Button
-                loading={uploading}
-                icon={<UploadOutlined />}
-                className="w-full h-12 rounded-xl border-dashed"
-                style={{ borderColor: token.colorBorder }}
-              >
+              <Button loading={uploading} icon={<UploadOutlined />} className="w-full h-10 rounded-lg border-dashed text-xs">
                 Select File (Max 200KB)
               </Button>
             </Upload>
@@ -1185,4 +1023,4 @@ export default function StudentProfile() {
       </Modal>
     </div>
   );
-};
+}

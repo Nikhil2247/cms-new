@@ -129,6 +129,11 @@ export const studentService = {
     return response.data;
   },
 
+  async deleteMonthlyReport(reportId) {
+    const response = await API.delete(`/student/monthly-reports/${reportId}`);
+    return response.data;
+  },
+
   // =====================
   // Documents
   // =====================
@@ -178,6 +183,14 @@ export const studentService = {
   // =====================
   async submitTechnicalQuery(data) {
     const response = await API.post('/student/technical-queries', data);
+    return response.data;
+  },
+
+  // =====================
+  // Mentor
+  // =====================
+  async getMyMentor() {
+    const response = await API.get('/student/my-mentor');
     return response.data;
   },
 

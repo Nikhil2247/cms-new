@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   Steps,
@@ -14,6 +14,7 @@ import {
   Col,
   Tag,
   Statistic,
+  Select,
 } from 'antd';
 import {
   InboxOutlined,
@@ -24,8 +25,10 @@ import {
   UploadOutlined,
   UserAddOutlined,
   MailOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { bulkService } from '../../../services/bulk.service';
+import { stateService } from '../../../services/state.service';
 
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
@@ -37,6 +40,28 @@ const BulkUserCreate = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Institution selector state
+  const [institutions, setInstitutions] = useState([]);
+  const [selectedInstitution, setSelectedInstitution] = useState(null);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(false);
+
+  // Fetch institutions on mount
+  useEffect(() => {
+    fetchInstitutions();
+  }, []);
+
+  const fetchInstitutions = async () => {
+    setLoadingInstitutions(true);
+    try {
+      const response = await stateService.getInstitutions({ limit: 1000 });
+      setInstitutions(response.data || response.institutions || []);
+    } catch (error) {
+      message.error('Failed to fetch institutions');
+    } finally {
+      setLoadingInstitutions(false);
+    }
+  };
 
   // Step 0: Upload File
   const handleFileChange = (info) => {
@@ -96,9 +121,14 @@ const BulkUserCreate = () => {
       return;
     }
 
+    if (!selectedInstitution) {
+      message.warning('Please select an institution first');
+      return;
+    }
+
     setLoading(true);
     try {
-      const result = await bulkService.validateUsers(file);
+      const result = await bulkService.validateUsers(file, selectedInstitution);
       setValidationResult(result);
       setCurrentStep(1);
       message.success('Validation completed');
@@ -115,10 +145,15 @@ const BulkUserCreate = () => {
     setCurrentStep(2);
 
     try {
-      const result = await bulkService.uploadUsers(file, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      });
+      const result = await bulkService.uploadUsers(
+        file,
+        (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setUploadProgress(percentCompleted);
+        },
+        true, // useAsync
+        selectedInstitution
+      );
 
       setUploadResult(result);
       setCurrentStep(3);
@@ -328,14 +363,45 @@ const BulkUserCreate = () => {
         {/* Step 0: Upload File */}
         {currentStep === 0 && (
           <Card>
+            {/* Institution Selector */}
+            <div style={{ marginBottom: '16px' }}>
+              <Text strong style={{ display: 'block', marginBottom: '8px' }}>
+                Select Institution <span style={{ color: 'red' }}>*</span>
+              </Text>
+              <Select
+                placeholder="Select an institution"
+                value={selectedInstitution}
+                onChange={setSelectedInstitution}
+                loading={loadingInstitutions}
+                style={{ width: '100%', maxWidth: 400 }}
+                showSearch
+                optionFilterProp="label"
+                suffixIcon={<BankOutlined />}
+                options={institutions.map((inst) => ({
+                  value: inst.id,
+                  label: inst.name,
+                }))}
+              />
+            </div>
+
+            {!selectedInstitution && (
+              <Alert
+                message="Select an Institution"
+                description="You must select an institution before uploading users."
+                type="warning"
+                showIcon
+                style={{ marginBottom: '16px' }}
+              />
+            )}
+
             <Alert
-              title="Important Information"
+              message="Important Information"
               description={
                 <ul style={{ marginBottom: 0 }}>
                   <li>Ensure all email addresses are unique and valid</li>
-                  <li>Valid roles: principal, teacher, student, state_admin</li>
-                  <li>Passwords will be auto-generated if not provided</li>
-                  <li>Users will receive credentials via email</li>
+                  <li>Valid roles: FACULTY, MENTOR, PRINCIPAL</li>
+                  <li>Passwords will be auto-generated (Welcome@123)</li>
+                  <li>Users will need to change password on first login</li>
                 </ul>
               }
               type="info"
@@ -350,11 +416,16 @@ const BulkUserCreate = () => {
               onChange={handleFileChange}
               accept=".csv,.xlsx,.xls"
               maxCount={1}
+              disabled={!selectedInstitution}
             >
               <p className="ant-upload-drag-icon">
-                <InboxOutlined />
+                <InboxOutlined style={{ opacity: selectedInstitution ? 1 : 0.5 }} />
               </p>
-              <p className="ant-upload-text">Click or drag file to this area to upload</p>
+              <p className="ant-upload-text">
+                {selectedInstitution
+                  ? 'Click or drag file to this area to upload'
+                  : 'Please select an institution first'}
+              </p>
               <p className="ant-upload-hint">
                 Support for CSV and Excel files only. Maximum file size is 10MB.
               </p>
@@ -371,7 +442,12 @@ const BulkUserCreate = () => {
             )}
 
             <div style={{ marginTop: '24px', textAlign: 'right' }}>
-              <Button type="primary" onClick={handleNext} disabled={!file} loading={loading}>
+              <Button
+                type="primary"
+                onClick={handleNext}
+                disabled={!file || !selectedInstitution}
+                loading={loading}
+              >
                 Validate File
               </Button>
             </div>

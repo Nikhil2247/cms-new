@@ -312,7 +312,7 @@ const StaffList = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 !space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-text-primary">Staff Members</h1>
@@ -374,7 +374,7 @@ const StaffList = () => {
         </div>
       </Card>
 
-      <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="bg-background rounded-xl  border-border shadow-sm overflow-hidden">
         <DataTable
           columns={columns}
           dataSource={list}

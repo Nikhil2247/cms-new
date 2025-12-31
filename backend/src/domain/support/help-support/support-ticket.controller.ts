@@ -53,7 +53,7 @@ export class SupportTicketController {
    * Access: STATE_DIRECTORATE only
    */
   @Get()
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async getAllTickets(@Query() query: any) {
     const filters: any = {};
 
@@ -81,27 +81,27 @@ export class SupportTicketController {
 
   /**
    * Get ticket statistics
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Get('statistics')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async getStatistics() {
     return this.ticketService.getStatistics();
   }
 
   /**
    * Get assignable users for ticket assignment
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Get('assignable-users')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async getAssignableUsers() {
     return this.ticketService.getAssignableUsers();
   }
 
   /**
    * Get a single ticket by ID
-   * Access: Owner or STATE_DIRECTORATE
+   * Access: Owner or STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Get(':id')
   async getTicketById(@Param('id') id: string, @Request() req: any) {
@@ -110,7 +110,7 @@ export class SupportTicketController {
     // Check access
     const isOwner = ticket.submittedById === req.user.userId;
     const isAssigned = ticket.assignedToId === req.user.userId;
-    const isAdmin = req.user.role === 'STATE_DIRECTORATE';
+    const isAdmin = ['STATE_DIRECTORATE', 'SYSTEM_ADMIN'].includes(req.user.role);
 
     if (!isOwner && !isAssigned && !isAdmin) {
       throw new HttpException('Ticket not found', HttpStatus.NOT_FOUND);
@@ -121,7 +121,7 @@ export class SupportTicketController {
 
   /**
    * Respond to a ticket
-   * Access: Owner or STATE_DIRECTORATE
+   * Access: Owner or STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Post(':id/respond')
   async respondToTicket(
@@ -134,7 +134,7 @@ export class SupportTicketController {
     // Check access
     const isOwner = ticket.submittedById === req.user.userId;
     const isAssigned = ticket.assignedToId === req.user.userId;
-    const isAdmin = req.user.role === 'STATE_DIRECTORATE';
+    const isAdmin = ['STATE_DIRECTORATE', 'SYSTEM_ADMIN'].includes(req.user.role);
 
     if (!isOwner && !isAssigned && !isAdmin) {
       throw new HttpException('Unauthorized', HttpStatus.FORBIDDEN);
@@ -150,10 +150,10 @@ export class SupportTicketController {
 
   /**
    * Assign ticket to a user
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Patch(':id/assign')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async assignTicket(
     @Param('id') id: string,
     @Body() data: AssignTicketDto,
@@ -164,10 +164,10 @@ export class SupportTicketController {
 
   /**
    * Update ticket status
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Patch(':id/status')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async updateStatus(
     @Param('id') id: string,
     @Body() data: UpdateTicketStatusDto,
@@ -178,10 +178,10 @@ export class SupportTicketController {
 
   /**
    * Resolve a ticket
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Patch(':id/resolve')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async resolveTicket(
     @Param('id') id: string,
     @Body() data: ResolveTicketDto,
@@ -195,10 +195,10 @@ export class SupportTicketController {
 
   /**
    * Close a ticket
-   * Access: STATE_DIRECTORATE only
+   * Access: STATE_DIRECTORATE or SYSTEM_ADMIN
    */
   @Patch(':id/close')
-  @Roles('STATE_DIRECTORATE')
+  @Roles('STATE_DIRECTORATE', 'SYSTEM_ADMIN')
   async closeTicket(
     @Param('id') id: string,
     @Body() data: CloseTicketDto,

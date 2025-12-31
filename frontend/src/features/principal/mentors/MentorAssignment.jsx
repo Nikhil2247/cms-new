@@ -13,7 +13,6 @@ import {
   Input,
   Row,
   Col,
-  Statistic,
   Popconfirm,
   Dropdown,
   Segmented,
@@ -32,7 +31,7 @@ import {
   TeamOutlined,
   UserOutlined,
   CheckCircleOutlined,
-  CloseCircleOutlined,
+  WarningOutlined,
   EditOutlined,
   SwapOutlined,
   BankOutlined,
@@ -601,65 +600,112 @@ const MentorAssignment = () => {
     }
   };
 
+  // Small Stat Card Component
+  const StatCard = ({ title, value, secondaryValue, subtitle, icon, iconBgColor, iconColor, valueColor, tooltip }) => {
+    const cardContent = (
+      <Card
+        className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
+        styles={{ body: { padding: '16px 12px' } }}
+      >
+        <div className="flex flex-col items-center text-center">
+          <div
+            className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
+            style={{ backgroundColor: iconBgColor }}
+          >
+            {React.cloneElement(icon, {
+              style: { fontSize: '20px', color: iconColor },
+            })}
+          </div>
+          <Text className="text-xs font-medium text-gray-600 mb-1">{title}</Text>
+          <div className="flex items-baseline justify-center gap-1">
+            <span
+              style={{
+                fontSize: '28px',
+                fontWeight: 700,
+                color: valueColor,
+                lineHeight: 1,
+              }}
+            >
+              {value}
+            </span>
+            {secondaryValue !== undefined && (
+              <>
+                <span style={{ fontSize: '16px', color: '#d1d5db', fontWeight: 500 }}>/</span>
+                <span style={{ fontSize: '16px', fontWeight: 600, color: '#6b7280' }}>
+                  {secondaryValue}
+                </span>
+              </>
+            )}
+          </div>
+          {subtitle && (
+            <Text className="text-[10px] text-gray-400 mt-1">{subtitle}</Text>
+          )}
+        </div>
+      </Card>
+    );
+
+    return tooltip ? <Tooltip title={tooltip}>{cardContent}</Tooltip> : cardContent;
+  };
+
+  const statCards = [
+    {
+      title: 'Total Mentors',
+      value: stats?.mentors?.total || 0,
+      subtitle: 'All mentor profiles',
+      icon: <TeamOutlined />,
+      iconBgColor: '#dbeafe',
+      iconColor: '#3b82f6',
+      valueColor: '#3b82f6',
+    },
+    {
+      title: 'Active Mentors',
+      value: stats?.mentors?.assigned || 0,
+      secondaryValue: stats?.mentors?.total || 0,
+      subtitle: 'Currently assigned',
+      icon: <CheckCircleOutlined />,
+      iconBgColor: '#dcfce7',
+      iconColor: '#22c55e',
+      valueColor: '#22c55e',
+    },
+    {
+      title: 'External Mentors',
+      value: stats?.mentors?.external || 0,
+      subtitle: 'From other institutions',
+      icon: <GlobalOutlined />,
+      iconBgColor: '#f3e8ff',
+      iconColor: '#9333ea',
+      valueColor: stats?.mentors?.external > 0 ? '#9333ea' : '#6b7280',
+      tooltip: 'Mentors from other institutions assigned to your students',
+    },
+    {
+      title: 'Students with Mentor',
+      value: stats?.students?.withMentor || 0,
+      secondaryValue: stats?.students?.total || 0,
+      subtitle: 'Mentor assigned',
+      icon: <UserOutlined />,
+      iconBgColor: '#dcfce7',
+      iconColor: '#22c55e',
+      valueColor: '#22c55e',
+    },
+    {
+      title: 'Unassigned Students',
+      value: stats?.students?.withoutMentor || 0,
+      subtitle: 'Awaiting assignment',
+      icon: <WarningOutlined />,
+      iconBgColor: '#fee2e2',
+      iconColor: '#ef4444',
+      valueColor: stats?.students?.withoutMentor > 0 ? '#ef4444' : '#22c55e',
+    },
+  ];
+
   return (
     <div className="p-4 md:p-6 bg-background-secondary min-h-screen space-y-6">
       {/* Statistics Cards */}
-      <Row gutter={[16, 16]}>
-        <Col xs={12} sm={12} lg={4}>
-          <Card variant="borderless" className="rounded-xl border border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Mentors</Text>}
-              value={stats?.mentors?.total || 0}
-              prefix={<TeamOutlined className="text-primary" />}
-              styles={{ content: { color: 'var(--ant-primary-color)', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} lg={4}>
-          <Card variant="borderless" className="rounded-xl border border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Active Mentors</Text>}
-              value={stats?.mentors?.assigned || 0}
-              suffix={<span className="text-xs text-text-tertiary font-normal">/ {stats?.mentors?.total || 0}</span>}
-              prefix={<CheckCircleOutlined className="text-success" />}
-              styles={{ content: { color: 'var(--ant-success-color)', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} lg={4}>
-          <Card variant="borderless" className="rounded-xl border border-border shadow-sm">
-            <Tooltip title="Mentors from other institutions assigned to your students">
-              <Statistic
-                title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">External Mentors</Text>}
-                value={stats?.mentors?.external || 0}
-                prefix={<GlobalOutlined className="text-purple-500" />}
-                styles={{ content: { color: stats?.mentors?.external > 0 ? 'rgb(168, 85, 247)' : 'var(--ant-text-color-secondary)', fontWeight: 'bold' } }}
-              />
-            </Tooltip>
-          </Card>
-        </Col>
-        <Col xs={12} sm={12} lg={4}>
-          <Card variant="borderless" className="rounded-xl border border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Students with Mentor</Text>}
-              value={stats?.students?.withMentor || 0}
-              suffix={<span className="text-xs text-text-tertiary font-normal">/ {stats?.students?.total || 0}</span>}
-              prefix={<UserOutlined className="text-success" />}
-              styles={{ content: { color: 'var(--ant-success-color)', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <Card variant="borderless" className="rounded-xl border border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Unassigned Students</Text>}
-              value={stats?.students?.withoutMentor || 0}
-              prefix={<CloseCircleOutlined className="text-error" />}
-              styles={{ content: { color: stats?.students?.withoutMentor > 0 ? 'var(--ant-error-color)' : 'var(--ant-success-color)', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        {statCards.map((card, idx) => (
+          <StatCard key={idx} {...card} />
+        ))}
+      </div>
 
       <Card
         title={<span className="text-text-primary font-semibold">Mentor Assignment</span>}
@@ -691,14 +737,14 @@ const MentorAssignment = () => {
             </Button>
           </Space>
         }
-        className="rounded-2xl border-border shadow-sm overflow-hidden"
+        className="rounded-2xl  shadow-sm overflow-hidden"
       >
         <div className="mb-8">
           <h3 className="text-xs uppercase tracking-widest text-text-tertiary font-bold mb-4 flex items-center gap-2">
             <TeamOutlined />
             Current Mentor Assignments
           </h3>
-          <div className="bg-background rounded-xl border border-border overflow-hidden">
+          <div className="bg-background rounded-xl  overflow-hidden">
             <Table
               columns={assignmentColumns}
               dataSource={uniqueMentorAssignments}
@@ -711,7 +757,7 @@ const MentorAssignment = () => {
         </div>
 
         <div>
-          <div className="flex justify-between items-center mb-6 pb-2 border-b border-border/50">
+          <div className="flex justify-between items-center mb-6 pb-2 ">
             <h3 className="text-xs uppercase tracking-widest text-text-tertiary font-bold m-0 flex items-center gap-2">
               <UserOutlined />
               All Students
@@ -762,7 +808,7 @@ const MentorAssignment = () => {
             </div>
           </div>
 
-          <div className="bg-background rounded-xl border border-border overflow-hidden shadow-sm">
+          <div className="bg-background rounded-xl  overflow-hidden shadow-sm">
             <Table
               rowSelection={rowSelection}
               columns={studentColumns}
@@ -840,7 +886,7 @@ const MentorAssignment = () => {
                 {selectedStudents.length} student(s) selected for assignment
               </Text>
             </div>
-            <div className="rounded-xl border border-border overflow-hidden">
+            <div className="rounded-xl border  overflow-hidden">
               <Table
                 rowSelection={rowSelection}
                 columns={[
@@ -901,7 +947,7 @@ const MentorAssignment = () => {
       >
         {editingStudent && (
           <Form form={editForm} layout="vertical" className="mt-4">
-            <div className="mb-6 p-5 bg-background-tertiary/50 rounded-2xl border border-border/50">
+            <div className="mb-6 p-5 bg-background-tertiary/50 rounded-2xl border /50">
               <Row gutter={16}>
                 <Col span={12}>
                   <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Student</Text>

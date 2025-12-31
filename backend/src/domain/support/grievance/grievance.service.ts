@@ -177,6 +177,8 @@ export class GrievanceService {
           `A new grievance "${data.title}" has been assigned to you by ${student.user.name}`,
           { grievanceId: grievance.id, studentName: student.user.name }
         );
+        // Invalidate faculty cache for assigned mentor
+        await this.cache.del(`grievances:faculty:${data.assignedToId}`);
       }
 
       // Invalidate cache
@@ -307,12 +309,15 @@ export class GrievanceService {
    */
   async getGrievancesByFaculty(facultyUserId: string) {
     try {
+      console.log('[GrievanceService.getGrievancesByFaculty] facultyUserId:', facultyUserId);
+
       const cacheKey = `grievances:faculty:${facultyUserId}`;
 
-      return await this.cache.getOrSet(
+      const result = await this.cache.getOrSet(
         cacheKey,
         async () => {
-          return await this.prisma.grievance.findMany({
+          console.log('[GrievanceService.getGrievancesByFaculty] Cache miss, querying DB...');
+          const grievances = await this.prisma.grievance.findMany({
             where: {
               OR: [
                 { assignedToId: facultyUserId },
@@ -322,9 +327,14 @@ export class GrievanceService {
             include: this.getGrievanceListInclude(),
             orderBy: { createdAt: 'desc' },
           });
+          console.log('[GrievanceService.getGrievancesByFaculty] Found grievances:', grievances.length);
+          return grievances;
         },
         this.CACHE_TTL,
       );
+
+      console.log('[GrievanceService.getGrievancesByFaculty] Returning grievances:', Array.isArray(result) ? result.length : 'cached');
+      return result;
     } catch (error) {
       this.logger.error(`Failed to get grievances for faculty ${facultyUserId}: ${error.message}`, error.stack);
       throw error;

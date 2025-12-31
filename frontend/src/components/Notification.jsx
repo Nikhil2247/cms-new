@@ -149,24 +149,32 @@ const NotificationDropdown = () => {
 
   const dropdownContent = (
     <div
-      className={`notification-dropdown ${darkMode ? 'dark' : ''} w-[380px] max-h-[480px] bg-background rounded-xl shadow-soft-lg overflow-hidden`}
+      className="w-[380px] max-h-[480px] rounded-2xl overflow-hidden"
+      style={{
+        backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+        boxShadow: darkMode
+          ? '0 20px 50px -12px rgba(0, 0, 0, 0.5)'
+          : '0 20px 50px -12px rgba(0, 0, 0, 0.15)',
+      }}
     >
       {/* Header */}
       <div
-        className="px-5 py-4 border-b border-border/50"
+        className="px-5 py-4"
+        style={{
+          backgroundColor: darkMode ? '#0f172a' : '#f8fafc',
+        }}
       >
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Title level={5} className="!m-0">
-              Notifications
-            </Title>
+            <BellOutlined className="text-primary text-lg" />
+            <Text strong className="text-base">Notifications</Text>
             {isConnected && (
               <Tooltip title="Real-time connected">
-                <WifiOutlined className="text-green-500 text-xs" />
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
               </Tooltip>
             )}
           </div>
-          <Space>
+          <Space size={4}>
             {unreadCount > 0 && (
               <Tooltip title="Mark all as read">
                 <Button
@@ -174,6 +182,7 @@ const NotificationDropdown = () => {
                   size="small"
                   icon={<CheckOutlined />}
                   onClick={handleMarkAllAsRead}
+                  className="hover:bg-primary/10 rounded-lg"
                 />
               </Tooltip>
             )}
@@ -186,19 +195,20 @@ const NotificationDropdown = () => {
                   setOpen(false);
                   setDrawerOpen(true);
                 }}
+                className="hover:bg-primary/10 rounded-lg"
               />
             </Tooltip>
           </Space>
         </div>
         {unreadCount > 0 && (
-          <Tag color="blue" className="mb-0">
+          <Tag color="blue" className="rounded-full text-xs px-2.5">
             {unreadCount} unread
           </Tag>
         )}
       </div>
 
       {/* Notification List */}
-      <div className="max-h-[360px] overflow-y-auto flex flex-col">
+      <div className="max-h-[340px] overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Spin />
@@ -207,48 +217,54 @@ const NotificationDropdown = () => {
           notifications.slice(0, 5).map((item, index) => (
             <div
               key={item.id || index}
-              className={`
-                notification-item cursor-pointer transition-all duration-200 border-b border-border/50 flex items-start gap-4 p-4
-                ${!item.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''}
-              `}
+              className="cursor-pointer transition-all duration-200 flex items-start gap-3 px-4 py-3 hover:bg-primary/5"
+              style={{
+                backgroundColor: !item.read
+                  ? darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)'
+                  : 'transparent',
+              }}
               onClick={() => {
                 if (!item.read) handleMarkAsRead(item.id);
               }}
             >
               <Avatar
-                size={40}
-                className="bg-background-tertiary flex items-center justify-center shrink-0"
+                size={36}
+                className="shrink-0 flex items-center justify-center"
+                style={{
+                  backgroundColor: darkMode ? '#334155' : '#f1f5f9',
+                  color: darkMode ? '#94a3b8' : '#64748b',
+                }}
               >
                 {getNotificationIcon(item.type)}
               </Avatar>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1 gap-2">
+                <div className="flex items-center justify-between gap-2">
                   <Text strong className={`text-sm truncate ${!item.read ? 'text-primary' : ''}`}>
                     {item.title}
                   </Text>
                   {!item.read && (
-                    <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                    <span className="w-1.5 h-1.5 bg-primary rounded-full shrink-0" />
                   )}
                 </div>
                 <Text
                   type="secondary"
-                  className="text-xs line-clamp-2 block mb-2"
+                  className="text-xs line-clamp-2 block mt-0.5"
                 >
                   {item.body}
                 </Text>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between mt-2">
                   <Text type="secondary" className="text-[10px]">
                     {formatTimeAgo(item.createdAt || item.timestamp)}
                   </Text>
-                  <Space size="small">
+                  <Space size={4}>
                     {!item.read && (
                       <Tooltip title="Mark as read">
                         <Button
                           type="text"
                           size="small"
-                          icon={<CheckOutlined className="text-[10px]" />}
+                          icon={<CheckOutlined className="text-xs" />}
                           onClick={(e) => handleMarkAsRead(item.id, e)}
-                          className="h-auto p-0"
+                          className="h-6 w-6 p-0 rounded-md hover:bg-success/10 hover:text-success"
                         />
                       </Tooltip>
                     )}
@@ -262,10 +278,9 @@ const NotificationDropdown = () => {
                         <Button
                           type="text"
                           size="small"
-                          danger
-                          icon={<DeleteOutlined className="text-[10px]" />}
+                          icon={<DeleteOutlined className="text-xs" />}
                           onClick={(e) => e.stopPropagation()}
-                          className="h-auto p-0"
+                          className="h-6 w-6 p-0 rounded-md hover:bg-error/10 hover:text-error"
                         />
                       </Popconfirm>
                     </Tooltip>
@@ -276,9 +291,9 @@ const NotificationDropdown = () => {
           ))
         ) : (
           <Empty
-            image={<InboxOutlined className="text-5xl text-text-tertiary" />}
+            image={<InboxOutlined className="text-4xl text-text-tertiary" />}
             description={
-              <Text type="secondary">No notifications yet</Text>
+              <Text type="secondary" className="text-sm">No notifications yet</Text>
             }
             className="py-10"
           />
@@ -288,16 +303,21 @@ const NotificationDropdown = () => {
       {/* Footer */}
       {notifications.length > 5 && (
         <div
-          className="px-5 py-3 border-t border-border/50 text-center"
+          className="px-4 py-3 text-center"
+          style={{
+            backgroundColor: darkMode ? '#0f172a' : '#f8fafc',
+          }}
         >
           <Button
             type="link"
+            size="small"
             onClick={() => {
               setOpen(false);
               setDrawerOpen(true);
             }}
+            className="text-xs"
           >
-            View all {notifications.length} notifications
+            View all {notifications.length} notifications →
           </Button>
         </div>
       )}
@@ -317,7 +337,7 @@ const NotificationDropdown = () => {
           <Button
             type="text"
             icon={<BellOutlined className="text-lg" />}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface text-text-secondary hover:bg-primary/10 hover:text-primary hover:scale-105 active:scale-95 transition-all duration-200"
           />
         </Badge>
       </Dropdown>
@@ -366,52 +386,52 @@ const NotificationDropdown = () => {
             <Spin />
           </div>
         ) : filteredNotifications.length > 0 ? (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1">
             {filteredNotifications.map((item, index) => (
               <div
                 key={item.id || index}
                 className={`
-                  notification-item cursor-pointer transition-all duration-200 border-b border-border/50 flex items-start gap-4 p-4
-                  ${!item.read ? 'bg-primary-50 dark:bg-primary-900/20' : ''}
+                  cursor-pointer transition-all duration-200 flex items-start gap-3 p-3 rounded-xl hover:bg-primary/5
+                  ${!item.read ? 'bg-primary/5' : ''}
                 `}
                 onClick={() => {
                   if (!item.read) handleMarkAsRead(item.id);
                 }}
               >
                 <Avatar
-                  size={40}
-                  className="bg-background-tertiary flex items-center justify-center shrink-0"
+                  size={38}
+                  className="bg-background-tertiary flex items-center justify-center shrink-0 text-text-tertiary"
                 >
                   {getNotificationIcon(item.type)}
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1 gap-2">
+                  <div className="flex items-center justify-between gap-2">
                     <Text strong className={`text-sm truncate ${!item.read ? 'text-primary' : ''}`}>
                       {item.title}
                     </Text>
                     {!item.read && (
-                      <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                      <span className="w-1.5 h-1.5 bg-primary rounded-full shrink-0" />
                     )}
                   </div>
                   <Text
                     type="secondary"
-                    className="text-xs line-clamp-2 block mb-2"
+                    className="text-xs line-clamp-2 block mt-0.5"
                   >
                     {item.body}
                   </Text>
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between mt-2">
                     <Text type="secondary" className="text-[10px]">
                       {formatTimeAgo(item.createdAt || item.timestamp)}
                     </Text>
-                    <Space size="small">
+                    <Space size={4}>
                       {!item.read && (
                         <Tooltip title="Mark as read">
                           <Button
                             type="text"
                             size="small"
-                            icon={<CheckOutlined className="text-[10px]" />}
+                            icon={<CheckOutlined className="text-xs" />}
                             onClick={(e) => handleMarkAsRead(item.id, e)}
-                            className="h-auto p-0"
+                            className="h-6 w-6 p-0 rounded-md hover:bg-success/10 hover:text-success"
                           />
                         </Tooltip>
                       )}
@@ -425,10 +445,9 @@ const NotificationDropdown = () => {
                           <Button
                             type="text"
                             size="small"
-                            danger
-                            icon={<DeleteOutlined className="text-[10px]" />}
+                            icon={<DeleteOutlined className="text-xs" />}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-auto p-0"
+                            className="h-6 w-6 p-0 rounded-md hover:bg-error/10 hover:text-error"
                           />
                         </Popconfirm>
                       </Tooltip>
@@ -440,13 +459,13 @@ const NotificationDropdown = () => {
           </div>
         ) : (
           <Empty
-            image={<InboxOutlined style={{ fontSize: 48, color: token.colorTextDisabled }} />}
+            image={<InboxOutlined className="text-4xl text-text-tertiary" />}
             description={
-              <Text type="secondary">
+              <Text type="secondary" className="text-sm">
                 {searchText ? 'No matching notifications' : 'No notifications yet'}
               </Text>
             }
-            style={{ padding: '40px 0' }}
+            className="py-10"
           />
         )}
       </Drawer>

@@ -63,6 +63,7 @@ export class PrincipalService {
           pendingMonthlyReports,
           pendingGrievances,
           selfIdentifiedApplications,
+          studentsByBranch,
         ] = await Promise.all([
           this.prisma.student.count({ where: { institutionId } }),
           this.prisma.student.count({ where: { institutionId, isActive: true } }),
@@ -117,6 +118,23 @@ export class PrincipalService {
               ],
             },
           }),
+          // Students grouped by branch/course
+          this.prisma.branch.findMany({
+            where: { institutionId },
+            select: {
+              id: true,
+              name: true,
+              _count: {
+                select: {
+                  students: true,
+                },
+              },
+              students: {
+                where: { isActive: true },
+                select: { id: true },
+              },
+            },
+          }),
         ]);
 
         // Pending joining letters now comes from the count query above
@@ -126,6 +144,14 @@ export class PrincipalService {
         const completionRate = totalSelfIdentifiedInternships > 0
           ? Math.round((completedInternships / totalSelfIdentifiedInternships) * 100)
           : 0;
+
+        // Format students by branch data
+        const formattedStudentsByBranch = studentsByBranch.map((branch) => ({
+          branchId: branch.id,
+          branchName: branch.name,
+          totalStudents: branch._count.students,
+          activeStudents: branch.students.length,
+        }));
 
         return {
           institution: {
@@ -158,6 +184,8 @@ export class PrincipalService {
             total: totalBatches,
             active: activeBatches,
           },
+          // Students grouped by branch/course
+          studentsByBranch: formattedStudentsByBranch,
         };
       },
       { ttl: 300, tags: ['principal', `institution:${institutionId}`] },

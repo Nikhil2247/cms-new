@@ -7,8 +7,13 @@ import API from './api';
  */
 export const stateService = {
   // Dashboard
-  async getDashboard() {
-    const response = await API.get('/state/dashboard');
+  async getDashboard(params = {}) {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams ? `/state/dashboard?${queryParams}` : '/state/dashboard';
+    const response = await API.get(url);
     return response.data;
   },
 
@@ -393,6 +398,22 @@ export const stateService = {
   // Get company details with all institutions and students
   async getCompanyDetails(companyId) {
     const response = await API.get(`/state/companies/${encodeURIComponent(companyId)}`);
+    return response.data;
+  },
+
+  // ==================== COLLEGE-WISE BREAKDOWN ====================
+
+  // Get college-wise breakdown for dashboard stats
+  // type: 'students' | 'reports' | 'mentors' | 'visits'
+  async getCollegeWiseBreakdown(type, params = {}) {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams
+      ? `/state/dashboard/college-breakdown/${type}?${queryParams}`
+      : `/state/dashboard/college-breakdown/${type}`;
+    const response = await API.get(url);
     return response.data;
   },
 };

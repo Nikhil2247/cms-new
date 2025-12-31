@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Typography, Tag, Avatar, Row, Col, Button, Modal, Form, Input, message, Space, Tooltip } from 'antd';
+import { Card, Typography, Avatar, Row, Col, Button, Modal, Form, Input, message, Tooltip } from 'antd';
 import {
-  BankOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
   PhoneOutlined,
@@ -12,12 +11,11 @@ import {
   SaveOutlined,
   CloseOutlined,
 } from '@ant-design/icons';
-import { formatDisplayDate, formatCurrency, getStatusColor } from '../../utils/applicationUtils';
+import { formatDisplayDate, formatCurrency } from '../../utils/applicationUtils';
 import { getImageUrl } from '../../../../../utils/imageUtils';
-import { getStatusIcon } from '../applicationHelpers';
 import studentService from '../../../../../services/student.service';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
 
 const ApplicationDetailsTab = ({ application, isSelfIdentified, internship, industry, onApplicationUpdate }) => {
@@ -61,57 +59,22 @@ const ApplicationDetailsTab = ({ application, isSelfIdentified, internship, indu
 
   return (
   <>
-  <div className="space-y-6">
-    {/* Company/Internship Info */}
-    <Card
-      className="rounded-xl"
-      extra={
-        isSelfIdentified && (
-          <Tooltip title="Edit company information">
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              onClick={handleOpenEditModal}
-            >
-              Edit
-            </Button>
-          </Tooltip>
-        )
-      }
-    >
-      <div className="flex items-start gap-4">
-        <Avatar
-          src={industry?.logo ? getImageUrl(industry.logo) : null}
-          icon={<BankOutlined />}
-          size={64}
-          className="bg-blue-100 text-blue-600"
-        />
-        <div className="flex-1">
-          <Title level={4} className="mb-1">
-            {isSelfIdentified
-              ? application.companyName
-              : industry?.companyName || 'N/A'}
-          </Title>
-          <Text type="secondary">
-            {isSelfIdentified
-              ? application.jobProfile
-              : internship?.title || 'Internship'}
-          </Text>
-          <div className="mt-2">
-            <Tag
-              color={getStatusColor(application.status)}
-              icon={getStatusIcon(application.status)}
-              className="rounded-full"
-            >
-              {application.status?.replace(/_/g, ' ')}
-            </Tag>
-            {isSelfIdentified && (
-              <Tag color="purple" className="ml-2">Self-Identified</Tag>
-            )}
-          </div>
-        </div>
+  <div className="space-y-4 p-4">
+    {/* Edit Button for Self-Identified */}
+    {isSelfIdentified && (
+      <div className="flex justify-end">
+        <Tooltip title="Edit company information">
+          <Button
+            type="default"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={handleOpenEditModal}
+          >
+            Edit Details
+          </Button>
+        </Tooltip>
       </div>
-    </Card>
+    )}
 
     {/* Details Grid */}
     <Row gutter={[16, 16]}>

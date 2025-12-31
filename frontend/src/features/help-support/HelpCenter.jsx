@@ -33,7 +33,7 @@ import {
 import { helpSupportService, SUPPORT_CATEGORIES, TICKET_PRIORITY } from '../../services/helpSupport.service';
 import { useAuth } from '../../hooks/useAuth';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 // Enhanced markdown-like text to HTML converter with table support
@@ -266,26 +266,25 @@ const HelpCenter = () => {
 
   return (
     <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto !space-y-4">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
-              <CustomerServiceOutlined className="text-lg" />
-            </div>
-            <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Help & Support Center
-              </Title>
-              <Paragraph className="text-text-secondary text-sm mb-0">
-                Find answers to common questions or submit a support ticket
-              </Paragraph>
-            </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-lg font-semibold text-text-primary">Help & Support Center</h1>
+            <Text className="text-text-tertiary text-sm">Find answers or submit a support ticket</Text>
           </div>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => setTicketModalVisible(true)}
+            className="rounded-lg shadow-md shadow-primary/20"
+          >
+            Submit Ticket
+          </Button>
         </div>
 
         {/* Search Card */}
-        <Card className="rounded-2xl border-border shadow-sm bg-surface" styles={{ body: { padding: '24px' } }}>
+        <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '16px' } }}>
           <Input
             size="large"
             placeholder="Search for help articles..."
@@ -293,29 +292,27 @@ const HelpCenter = () => {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             allowClear
-            className="rounded-xl h-12 bg-background border-border"
+            className="rounded-lg h-11 border-border"
           />
         </Card>
 
-        <Row gutter={[24, 24]}>
+        <Row gutter={[16, 16]}>
           {/* Categories Sidebar */}
           <Col xs={24} md={6}>
-            <Card 
-              title={
-                <div className="flex items-center gap-2">
-                  <BookOutlined className="text-primary" />
-                  <span className="font-bold text-text-primary">Categories</span>
-                </div>
-              }
-              className="rounded-2xl border-border shadow-sm bg-surface"
-              size="small"
+            <Card
+              className="rounded-xl border-border shadow-sm !mb-3"
+              styles={{ body: { padding: '12px' } }}
             >
-              <Space direction="vertical" style={{ width: '100%' }} size="small">
+              <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3 block">
+                <BookOutlined className="mr-1.5" />Categories
+              </Text>
+              <Space direction="vertical" style={{ width: '100%' }} size={4}>
                 <Button
                   type={selectedCategory === null ? 'primary' : 'text'}
                   block
+                  size="small"
                   onClick={() => setSelectedCategory(null)}
-                  className={`rounded-lg h-10 text-left justify-start ${selectedCategory === null ? 'font-bold' : 'text-text-secondary'}`}
+                  className={`rounded-lg text-left justify-start ${selectedCategory === null ? 'font-medium' : 'text-text-secondary'}`}
                 >
                   All Articles ({faqs.length})
                 </Button>
@@ -324,8 +321,9 @@ const HelpCenter = () => {
                     key={cat.category}
                     type={selectedCategory === cat.category ? 'primary' : 'text'}
                     block
+                    size="small"
                     onClick={() => setSelectedCategory(cat.category)}
-                    className={`rounded-lg h-10 text-left justify-start ${selectedCategory === cat.category ? 'font-bold' : 'text-text-secondary'}`}
+                    className={`rounded-lg text-left justify-start ${selectedCategory === cat.category ? 'font-medium' : 'text-text-secondary'}`}
                   >
                     {cat.label} ({cat.count})
                   </Button>
@@ -336,15 +334,12 @@ const HelpCenter = () => {
             {/* Popular Articles */}
             {popularFaqs.length > 0 && (
               <Card
-                title={
-                  <div className="flex items-center gap-2">
-                    <FireOutlined className="text-orange-500" />
-                    <span className="font-bold text-text-primary">Popular Articles</span>
-                  </div>
-                }
-                className="mt-4 rounded-2xl border-border shadow-sm bg-surface"
-                size="small"
+                className="mt-3 rounded-xl border-border shadow-sm"
+                styles={{ body: { padding: '12px' } }}
               >
+                <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3 block">
+                  <FireOutlined className="mr-1.5 text-orange-500" />Popular
+                </Text>
                 <Space direction="vertical" style={{ width: '100%' }} size={0}>
                   {popularFaqs.slice(0, 5).map((faq, index) => (
                     <div
@@ -355,7 +350,6 @@ const HelpCenter = () => {
                         setSearchQuery('');
                         setSearchResults(null);
                         setActiveKey(faq.id);
-                        // Scroll to the FAQ after a short delay to allow state updates
                         setTimeout(() => {
                           document.getElementById(`faq-${faq.id}`)?.scrollIntoView({
                             behavior: 'smooth',
@@ -364,11 +358,11 @@ const HelpCenter = () => {
                         }, 100);
                       }}
                     >
-                      <Text className="text-text-primary text-sm leading-snug line-clamp-2 hover:text-primary">
+                      <Text className="text-text-primary text-xs leading-snug line-clamp-2 hover:text-primary">
                         {index + 1}. {faq.title}
                       </Text>
-                      <Text className="text-text-tertiary text-xs flex items-center gap-1 mt-1">
-                        <EyeOutlined /> {faq.viewCount} views
+                      <Text className="text-text-tertiary text-[10px] flex items-center gap-1 mt-0.5">
+                        <EyeOutlined /> {faq.viewCount}
                       </Text>
                     </div>
                   ))}
@@ -376,22 +370,23 @@ const HelpCenter = () => {
               </Card>
             )}
 
-            {/* Submit Ticket Card */}
-            <Card className="mt-4 rounded-2xl border-border shadow-sm bg-surface" size="small">
-              <Title level={5} className="mb-2 text-text-primary flex items-center gap-2">
+            {/* Need Help Card */}
+            <Card className="mt-3 rounded-xl border-border shadow-sm bg-primary/5" styles={{ body: { padding: '12px' } }}>
+              <Text className="text-sm font-medium text-text-primary flex items-center gap-1.5 mb-2">
                 <QuestionCircleOutlined className="text-warning" /> Need more help?
-              </Title>
-              <Text className="text-text-secondary block mb-4 text-sm">
-                Can't find what you're looking for? Submit a ticket and we'll help you out.
+              </Text>
+              <Text className="text-text-tertiary block mb-3 text-xs">
+                Can't find what you're looking for?
               </Text>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
                 block
+                size="small"
                 onClick={() => setTicketModalVisible(true)}
-                className="rounded-xl h-10 font-bold shadow-lg shadow-primary/20"
+                className="rounded-lg"
               >
-                Submit a Ticket
+                Submit Ticket
               </Button>
             </Card>
           </Col>
@@ -403,7 +398,7 @@ const HelpCenter = () => {
                 <Spin tip="Searching..." />
               </div>
             ) : displayFAQs.length === 0 ? (
-              <Card className="rounded-2xl border-border shadow-sm bg-surface text-center py-12">
+              <Card className="rounded-xl border-border shadow-sm text-center py-12">
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
@@ -412,7 +407,7 @@ const HelpCenter = () => {
                     </span>
                   }
                 >
-                  <Button type="primary" onClick={() => setTicketModalVisible(true)} className="rounded-xl h-10 font-bold mt-4">
+                  <Button type="primary" onClick={() => setTicketModalVisible(true)} className="rounded-lg mt-4">
                     Submit a Ticket
                   </Button>
                 </Empty>
@@ -420,12 +415,12 @@ const HelpCenter = () => {
             ) : (
               <>
                 {searchResults !== null && (
-                  <Text className="text-text-secondary block mb-4 font-medium">
+                  <Text className="text-text-tertiary block mb-3 text-sm">
                     Found {searchResults.length} results for "{searchQuery}"
                   </Text>
                 )}
 
-                <Card className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden" styles={{ body: { padding: 0 } }}>
+                <Card className="rounded-xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
                   <Collapse
                     accordion
                     activeKey={activeKey}
@@ -438,22 +433,22 @@ const HelpCenter = () => {
                       id: `faq-${faq.id}`,
                       className: "border-b border-border last:border-0 hover:bg-background-secondary/30 transition-colors",
                       label: (
-                        <div className="py-3" id={`faq-${faq.id}`}>
-                          <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                              <QuestionCircleOutlined className="text-primary text-sm" />
+                        <div className="py-2" id={`faq-${faq.id}`}>
+                          <div className="flex items-start gap-2">
+                            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                              <QuestionCircleOutlined className="text-primary text-xs" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <Text strong className="text-text-primary text-[15px] block mb-1.5 leading-snug">{faq.title}</Text>
-                              <Space size={8} wrap>
-                                <Tag color={getCategoryInfo(faq.category).color} className="rounded-md border-0 font-bold uppercase tracking-wider text-[10px] m-0">
+                              <Text strong className="text-text-primary text-sm block mb-1 leading-snug">{faq.title}</Text>
+                              <Space size={6} wrap>
+                                <Tag color={getCategoryInfo(faq.category).color} className="rounded border-0 text-[10px] m-0">
                                   {getCategoryInfo(faq.category).label}
                                 </Tag>
-                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
-                                  <EyeOutlined /> {faq.viewCount} views
+                                <Text className="text-text-tertiary text-[10px] flex items-center gap-1">
+                                  <EyeOutlined /> {faq.viewCount}
                                 </Text>
-                                <Text className="text-text-tertiary text-xs flex items-center gap-1">
-                                  <LikeOutlined /> {faq.helpfulCount || 0} found helpful
+                                <Text className="text-text-tertiary text-[10px] flex items-center gap-1">
+                                  <LikeOutlined /> {faq.helpfulCount || 0}
                                 </Text>
                               </Space>
                             </div>
@@ -461,22 +456,22 @@ const HelpCenter = () => {
                         </div>
                       ),
                       children: (
-                        <div className="pb-5 pl-11 pr-4">
+                        <div className="pb-4 pl-9 pr-4">
                           {faq.summary && (
-                            <div className="bg-primary/5 border-l-4 border-primary rounded-r-lg p-3 mb-4">
-                              <Text className="text-text-secondary text-sm italic">{faq.summary}</Text>
+                            <div className="bg-primary/5 border-l-3 border-primary rounded-r-lg p-2.5 mb-3">
+                              <Text className="text-text-secondary text-xs italic">{faq.summary}</Text>
                             </div>
                           )}
                           <div
-                            className="faq-content text-text-secondary leading-relaxed mb-6"
+                            className="faq-content text-text-secondary text-sm leading-relaxed mb-4"
                             dangerouslySetInnerHTML={{ __html: renderMarkdown(faq.content) }}
                           />
 
-                          <Divider className="my-4 border-border/50" />
+                          <Divider className="my-3 border-border/50" />
 
                           <div className="flex items-center justify-between">
-                            <Text className="text-xs text-text-tertiary font-medium">Was this helpful?</Text>
-                            <Space>
+                            <Text className="text-[10px] text-text-tertiary">Was this helpful?</Text>
+                            <Space size={4}>
                               <Button
                                 size="small"
                                 icon={<LikeOutlined />}
@@ -484,7 +479,7 @@ const HelpCenter = () => {
                                   e.stopPropagation();
                                   handleVote(faq.id, 'up');
                                 }}
-                                className="rounded-md text-xs hover:text-success hover:border-success"
+                                className="rounded text-xs hover:text-success hover:border-success"
                               >
                                 Yes
                               </Button>
@@ -495,7 +490,7 @@ const HelpCenter = () => {
                                   e.stopPropagation();
                                   handleVote(faq.id, 'down');
                                 }}
-                                className="rounded-md text-xs hover:text-error hover:border-error"
+                                className="rounded text-xs hover:text-error hover:border-error"
                               >
                                 No
                               </Button>
@@ -513,97 +508,85 @@ const HelpCenter = () => {
 
         {/* Submit Ticket Modal */}
         <Modal
-          title={
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                <PlusOutlined />
-              </div>
-              <span className="text-text-primary font-bold">Submit Support Ticket</span>
-            </div>
-          }
+          title="Submit Support Ticket"
           open={ticketModalVisible}
           onCancel={() => {
             setTicketModalVisible(false);
             ticketForm.resetFields();
           }}
           footer={null}
-          width={600}
-          className="rounded-2xl overflow-hidden"
+          width={520}
         >
           <Form
             form={ticketForm}
             layout="vertical"
             onFinish={handleSubmitTicket}
-            className="pt-4"
+            className="pt-2"
           >
             <Form.Item
               name="subject"
-              label={<span className="font-medium text-text-primary">Subject</span>}
+              label="Subject"
               rules={[
                 { required: true, message: 'Please enter a subject' },
                 { min: 5, message: 'Subject must be at least 5 characters' },
               ]}
             >
-              <Input placeholder="Brief description of your issue" className="rounded-lg h-11 bg-background border-border" />
+              <Input placeholder="Brief description of your issue" className="rounded-lg" />
             </Form.Item>
 
-            <Row gutter={16}>
-              <Col span={12}>
-                <Form.Item
-                  name="category"
-                  label={<span className="font-medium text-text-primary">Category</span>}
-                  rules={[{ required: true, message: 'Please select a category' }]}
-                >
-                  <Select placeholder="Select category" className="rounded-lg h-11">
-                    {Object.values(SUPPORT_CATEGORIES).map((cat) => (
-                      <Select.Option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-              <Col span={12}>
-                <Form.Item
-                  name="priority"
-                  label={<span className="font-medium text-text-primary">Priority</span>}
-                  initialValue="MEDIUM"
-                >
-                  <Select className="rounded-lg h-11">
-                    {Object.values(TICKET_PRIORITY).map((p) => (
-                      <Select.Option key={p.value} value={p.value}>
-                        <Tag color={p.color} className="mr-0 rounded-md border-0 font-bold text-[10px] uppercase tracking-wider">{p.label}</Tag>
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-              </Col>
-            </Row>
+            <div className="grid grid-cols-2 gap-4">
+              <Form.Item
+                name="category"
+                label="Category"
+                rules={[{ required: true, message: 'Please select a category' }]}
+              >
+                <Select placeholder="Select category" className="rounded-lg">
+                  {Object.values(SUPPORT_CATEGORIES).map((cat) => (
+                    <Select.Option key={cat.value} value={cat.value}>
+                      {cat.label}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item
+                name="priority"
+                label="Priority"
+                initialValue="MEDIUM"
+              >
+                <Select className="rounded-lg">
+                  {Object.values(TICKET_PRIORITY).map((p) => (
+                    <Select.Option key={p.value} value={p.value}>
+                      <Tag color={p.color} className="mr-0 rounded border-0 text-[10px]">{p.label}</Tag>
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </div>
 
             <Form.Item
               name="description"
-              label={<span className="font-medium text-text-primary">Description</span>}
+              label="Description"
               rules={[
                 { required: true, message: 'Please describe your issue' },
                 { min: 20, message: 'Description must be at least 20 characters' },
               ]}
             >
               <TextArea
-                rows={6}
-                placeholder="Please describe your issue in detail. Include any relevant information that might help us resolve it faster."
-                className="rounded-lg bg-background border-border p-3"
+                rows={5}
+                placeholder="Please describe your issue in detail..."
+                className="rounded-lg"
               />
             </Form.Item>
 
-            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-border">
-              <Button onClick={() => setTicketModalVisible(false)} className="rounded-xl h-10 font-medium">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button onClick={() => setTicketModalVisible(false)} className="rounded-lg">
                 Cancel
               </Button>
-              <Button 
-                type="primary" 
-                htmlType="submit" 
+              <Button
+                type="primary"
+                htmlType="submit"
                 loading={submittingTicket}
-                className="rounded-xl h-10 font-bold bg-primary border-0 shadow-lg shadow-primary/20"
+                className="rounded-lg"
               >
                 Submit Ticket
               </Button>

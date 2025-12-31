@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   Request,
   UseInterceptors,
@@ -31,6 +32,19 @@ export class DocumentsController {
     const ipAddress = req.ip || req.headers['x-forwarded-for'];
     const userAgent = req.headers['user-agent'];
     return this.documentsService.uploadDocument(req.user.userId, file, metadata, ipAddress, userAgent);
+  }
+
+  @Get('presigned-url')
+  async getPresignedUrl(
+    @Query('url') fileUrl: string,
+    @Query('expiresIn') expiresIn?: string,
+  ) {
+    if (!fileUrl) {
+      throw new BadRequestException('File URL is required');
+    }
+    const expiry = expiresIn ? parseInt(expiresIn, 10) : 3600;
+    const presignedUrl = await this.documentsService.getPresignedUrl(fileUrl, expiry);
+    return { url: presignedUrl };
   }
 
   @Get(':id')

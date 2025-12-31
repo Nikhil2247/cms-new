@@ -11,7 +11,6 @@ import {
   Modal,
   Row,
   Col,
-  Statistic,
   Avatar,
   Empty,
   Spin,
@@ -71,7 +70,7 @@ import { getTotalExpectedCount } from '../../../utils/monthlyCycle';
 
 dayjs.extend(relativeTime);
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { RangePicker } = DatePicker;
 
 const SelfIdentifiedInternships = () => {
@@ -774,19 +773,87 @@ const SelfIdentifiedInternships = () => {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <Title level={2} className="!mb-2 !text-text-primary">
-            Self-Identified Internships
-          </Title>
-          <Text className="text-text-secondary text-base">
-            Track and manage student-sourced internship placements
-          </Text>
+  // Small Stat Card Component
+  const StatCard = ({ title, value, subtitle, icon, iconBgColor, iconColor, valueColor }) => (
+    <Card
+      className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
+      styles={{ body: { padding: '16px 12px' } }}
+    >
+      <div className="flex flex-col items-center text-center">
+        <div
+          className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
+          style={{ backgroundColor: iconBgColor }}
+        >
+          {React.cloneElement(icon, {
+            style: { fontSize: '20px', color: iconColor },
+          })}
         </div>
-        <Space wrap>
+        <Text className="text-xs font-medium text-gray-600 mb-1">{title}</Text>
+        <span
+          style={{
+            fontSize: '28px',
+            fontWeight: 700,
+            color: valueColor,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </span>
+        {subtitle && (
+          <Text className="text-[10px] text-gray-400 mt-1">{subtitle}</Text>
+        )}
+      </div>
+    </Card>
+  );
+
+  const statCards = [
+    {
+      title: 'Total Internships',
+      value: stats.total,
+      subtitle: 'All placements',
+      icon: <ShopOutlined />,
+      iconBgColor: '#dbeafe',
+      iconColor: '#3b82f6',
+      valueColor: '#3b82f6',
+    },
+    {
+      title: 'Ongoing',
+      value: stats.ongoing,
+      subtitle: 'Currently active',
+      icon: <RiseOutlined />,
+      iconBgColor: '#dcfce7',
+      iconColor: '#22c55e',
+      valueColor: '#22c55e',
+    },
+    {
+      title: 'Completed',
+      value: stats.completed,
+      subtitle: 'Successfully finished',
+      icon: <CheckCircleOutlined />,
+      iconBgColor: '#f3e8ff',
+      iconColor: '#9333ea',
+      valueColor: '#9333ea',
+    },
+    {
+      title: 'Companies',
+      value: stats.uniqueCompanies,
+      subtitle: 'Partner organizations',
+      icon: <BankOutlined />,
+      iconBgColor: '#fef9c3',
+      iconColor: '#eab308',
+      valueColor: '#eab308',
+    },
+  ];
+
+  return (
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen space-y-4">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-semibold text-text-primary">Self-Identified Internships</h1>
+          <Text className="text-text-tertiary text-sm">Track student-sourced placements</Text>
+        </div>
+        <Space wrap size="small">
           {selectedRowKeys.length > 0 && (
             <Dropdown
               menu={{
@@ -853,7 +920,8 @@ const SelfIdentifiedInternships = () => {
             >
               <Button
                 loading={bulkActionLoading}
-                className="rounded-xl"
+                className="rounded-lg"
+                size="middle"
               >
                 <Space>
                   Bulk Actions ({selectedRowKeys.length})
@@ -866,14 +934,16 @@ const SelfIdentifiedInternships = () => {
             icon={<ReloadOutlined />}
             onClick={handleRefresh}
             loading={loading}
-            className="rounded-xl"
+            className="rounded-lg"
+            size="middle"
           >
             Refresh
           </Button>
           <Button
             type="primary"
             icon={<DownloadOutlined />}
-            className="rounded-xl shadow-lg shadow-primary/20"
+            className="rounded-lg shadow-md shadow-primary/20"
+            size="middle"
           >
             Export
           </Button>
@@ -881,48 +951,11 @@ const SelfIdentifiedInternships = () => {
       </div>
 
       {/* Stats */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Internships</Text>}
-              value={stats.total}
-              prefix={<ShopOutlined className="text-primary mr-2" />}
-              styles={{ content: { color: 'var(--ant-primary-color)', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Ongoing</Text>}
-              value={stats.ongoing}
-              prefix={<RiseOutlined className="text-success mr-2" />}
-              styles={{ content: { color: 'rgb(var(--color-success))', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Completed</Text>}
-              value={stats.completed}
-              prefix={<CheckCircleOutlined className="text-info mr-2" />}
-              styles={{ content: { color: 'rgb(var(--color-info))', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card className="rounded-2xl border-border shadow-sm">
-            <Statistic
-              title={<Text className="text-[10px] uppercase font-bold text-text-tertiary">Companies</Text>}
-              value={stats.uniqueCompanies}
-              prefix={<BankOutlined className="text-secondary mr-2" />}
-              styles={{ content: { color: 'rgb(var(--color-secondary-500))', fontWeight: 'bold' } }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {statCards.map((card, idx) => (
+          <StatCard key={idx} {...card} />
+        ))}
+      </div>
 
       {/* Filters */}
       <Card className="rounded-2xl border-border shadow-sm">
@@ -957,12 +990,12 @@ const SelfIdentifiedInternships = () => {
       </Card>
 
       {/* Table */}
-      <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
+      <Card className="rounded-2xl border-border shadow-sm !mt-4" styles={{ body: { padding: 0 } }}>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           items={tabItems}
-          className="px-4 pt-4"
+          className="!px-4 pt-4"
         />
         <Table
           columns={columns}

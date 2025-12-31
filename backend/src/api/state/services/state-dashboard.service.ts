@@ -25,27 +25,35 @@ export class StateDashboardService {
   /**
    * Get State Directorate Dashboard Statistics
    * Uses domain services where available, with state-level aggregation
+   * @param params - Optional month/year for filtering time-sensitive data
    */
-  async getDashboardStats() {
-    const cacheKey = 'state:dashboard:stats';
+  async getDashboardStats(params?: { month?: number; year?: number }) {
+    const now = new Date();
+
+    // Use provided month/year or default to current
+    const targetMonth = params?.month ?? (now.getMonth() + 1);
+    const targetYear = params?.year ?? now.getFullYear();
+
+    // Include month/year in cache key for filtered requests
+    const cacheKey = params?.month && params?.year
+      ? `state:dashboard:stats:${targetMonth}-${targetYear}`
+      : 'state:dashboard:stats';
 
     return this.cache.getOrSet(
       cacheKey,
       async () => {
-        const now = new Date();
         const lastWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         const lastMonthDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-        // Current and previous month dates for detailed stats
-        const currentMonth = now.getMonth() + 1;
-        const currentYear = now.getFullYear();
-        const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-        const prevMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+        // Target and previous month dates for detailed stats
+        const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+        const prevMonthYear = targetMonth === 1 ? targetYear - 1 : targetYear;
 
-        // Start of current month and previous month
-        const startOfCurrentMonth = new Date(currentYear, currentMonth - 1, 1);
+        // Start/end of target month and previous month
+        const startOfTargetMonth = new Date(targetYear, targetMonth - 1, 1);
+        const endOfTargetMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
         const startOfPrevMonth = new Date(prevMonthYear, prevMonth - 1, 1);
-        const endOfPrevMonth = new Date(currentYear, currentMonth - 1, 0);
+        const endOfPrevMonth = new Date(targetYear, targetMonth - 1, 0);
 
         // Use parallel queries for efficiency
         // Only count self-identified internships (not placement-based)
@@ -142,21 +150,21 @@ export class StateDashboardService {
             select: { studentId: true },
             distinct: ['studentId'],
           }),
-          // Faculty visits - this month (only for internships that have started)
+          // Faculty visits - target month (only for internships that have started)
           this.prisma.facultyVisitLog.count({
             where: {
-              visitDate: { gte: startOfCurrentMonth },
+              visitDate: { gte: startOfTargetMonth, lte: endOfTargetMonth },
               application: {
-                startDate: { lte: now },
+                startDate: { lte: endOfTargetMonth },
               },
             },
           }),
-          // Faculty visits - last month (only for internships that have started)
+          // Faculty visits - previous month (only for internships that have started)
           this.prisma.facultyVisitLog.count({
             where: {
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
-                startDate: { lte: now },
+                startDate: { lte: endOfPrevMonth },
               },
             },
           }),
@@ -164,19 +172,19 @@ export class StateDashboardService {
           this.prisma.facultyVisitLog.count({
             where: {
               application: {
-                startDate: { lte: now },
+                startDate: { lte: endOfTargetMonth },
               },
             },
           }),
-          // Monthly reports - submitted this month (with auto-approval, all are APPROVED)
+          // Monthly reports - submitted for target month (with auto-approval, all are APPROVED)
           this.prisma.monthlyReport.count({
             where: {
-              reportMonth: currentMonth,
-              reportYear: currentYear,
+              reportMonth: targetMonth,
+              reportYear: targetYear,
               status: 'APPROVED',
             },
           }),
-          // Monthly reports - submitted last month (with auto-approval, all are APPROVED)
+          // Monthly reports - submitted previous month (with auto-approval, all are APPROVED)
           this.prisma.monthlyReport.count({
             where: {
               reportMonth: prevMonth,
@@ -186,11 +194,11 @@ export class StateDashboardService {
           }),
           // Monthly reports - pending review (should be 0 with auto-approval, kept for legacy)
           this.prisma.monthlyReport.count({ where: { status: 'SUBMITTED' } }),
-          // Monthly reports - approved this month
+          // Monthly reports - approved for target month
           this.prisma.monthlyReport.count({
             where: {
-              reportMonth: currentMonth,
-              reportYear: currentYear,
+              reportMonth: targetMonth,
+              reportYear: targetYear,
               status: 'APPROVED',
             },
           }),
@@ -215,15 +223,15 @@ export class StateDashboardService {
         // Students with no mentor (total students - students with active mentors)
         const studentsWithNoMentor = Math.max(0, totalStudents - studentsWithActiveMentors);
 
-        // Fetch internships currently in their training period with dates for monthly cycle calculation
-        // Requires startDate to be set and in the past, with endDate in the future or not set
+        // Fetch internships in their training period during the target month
+        // Requires startDate to be set and before end of target month, with endDate after start of target month or not set
         const internshipsInTraining = await this.prisma.internshipApplication.findMany({
           where: {
             isSelfIdentified: true,
             status: ApplicationStatus.APPROVED,
-            startDate: { not: null, lte: now },
+            startDate: { not: null, lte: endOfTargetMonth },
             OR: [
-              { endDate: { gte: now } },
+              { endDate: { gte: startOfTargetMonth } },
               { endDate: null },
             ],
           },
@@ -354,9 +362,9 @@ export class StateDashboardService {
     );
   }
 
-  // Backwards-compatible alias
-  async getDashboard() {
-    return this.getDashboardStats();
+  // Backwards-compatible alias - passes month/year params to getDashboardStats
+  async getDashboard(params?: { month?: number; year?: number }) {
+    return this.getDashboardStats(params);
   }
 
   /**
@@ -852,6 +860,229 @@ export class StateDashboardService {
         };
       },
       { ttl: 900, tags: ['state', 'compliance'] }, // OPTIMIZED: Increased from 5 to 15 minutes
+    );
+  }
+
+  /**
+   * Get college-wise breakdown for dashboard statistics
+   * Returns institution-wise data for students, reports, mentors, or visits
+   * @param type - Type of breakdown (students, reports, mentors, visits)
+   * @param params - Optional month/year filter params
+   */
+  async getCollegeWiseBreakdown(
+    type: 'students' | 'reports' | 'mentors' | 'visits',
+    params?: { month?: number; year?: number }
+  ) {
+    // Use provided month/year or default to current
+    const now = new Date();
+    const targetMonth = params?.month ?? (now.getMonth() + 1);
+    const targetYear = params?.year ?? now.getFullYear();
+
+    // Include month/year in cache key for filtered requests
+    const cacheKey = params?.month && params?.year
+      ? `state:dashboard:college-breakdown:${type}:${targetMonth}-${targetYear}`
+      : `state:dashboard:college-breakdown:${type}`;
+
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const startOfMonth = new Date(targetYear, targetMonth - 1, 1);
+        const endOfMonth = new Date(targetYear, targetMonth, 0, 23, 59, 59, 999);
+
+        // Get all active institutions
+        const institutions = await this.prisma.institution.findMany({
+          where: { isActive: true },
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+          orderBy: { name: 'asc' },
+        });
+
+        switch (type) {
+          case 'students': {
+            // Get student counts per institution
+            const studentCounts = await this.prisma.student.groupBy({
+              by: ['institutionId'],
+              where: { isActive: true },
+              _count: { id: true },
+            });
+
+            // Get active internship counts per institution
+            const internshipCounts = await this.prisma.internshipApplication.groupBy({
+              by: ['studentId'],
+              where: {
+                isSelfIdentified: true,
+                status: ApplicationStatus.APPROVED,
+              },
+            });
+
+            // Get student institutionIds for internships
+            const studentsWithInternships = await this.prisma.student.findMany({
+              where: {
+                id: { in: internshipCounts.map(i => i.studentId) },
+                isActive: true,
+              },
+              select: { institutionId: true },
+            });
+
+            // Count internships per institution
+            const internshipsByInstitution = new Map<string, number>();
+            for (const s of studentsWithInternships) {
+              const count = internshipsByInstitution.get(s.institutionId) || 0;
+              internshipsByInstitution.set(s.institutionId, count + 1);
+            }
+
+            return institutions.map(inst => ({
+              id: inst.id,
+              institutionName: inst.name,
+              institutionCode: inst.code,
+              totalStudents: studentCounts.find(c => c.institutionId === inst.id)?._count.id || 0,
+              activeInternships: internshipsByInstitution.get(inst.id) || 0,
+            }));
+          }
+
+          case 'reports': {
+            // Get reports submitted for the target month per institution
+            const reportsThisMonth = await this.prisma.monthlyReport.findMany({
+              where: {
+                reportMonth: targetMonth,
+                reportYear: targetYear,
+                status: 'APPROVED',
+              },
+              select: {
+                student: { select: { institutionId: true } },
+              },
+            });
+
+            // Count reports per institution
+            const reportsByInstitution = new Map<string, number>();
+            for (const r of reportsThisMonth) {
+              const instId = r.student.institutionId;
+              const count = reportsByInstitution.get(instId) || 0;
+              reportsByInstitution.set(instId, count + 1);
+            }
+
+            // Get expected reports per institution (students with active internships during target month)
+            const internshipsInTraining = await this.prisma.internshipApplication.findMany({
+              where: {
+                isSelfIdentified: true,
+                status: ApplicationStatus.APPROVED,
+                startDate: { not: null, lte: endOfMonth },
+                OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
+              },
+              select: {
+                student: { select: { institutionId: true } },
+              },
+            });
+
+            const expectedByInstitution = new Map<string, number>();
+            for (const i of internshipsInTraining) {
+              const instId = i.student.institutionId;
+              const count = expectedByInstitution.get(instId) || 0;
+              expectedByInstitution.set(instId, count + 1);
+            }
+
+            return institutions.map(inst => ({
+              id: inst.id,
+              institutionName: inst.name,
+              institutionCode: inst.code,
+              reportsSubmitted: reportsByInstitution.get(inst.id) || 0,
+              reportsExpected: expectedByInstitution.get(inst.id) || 0,
+            }));
+          }
+
+          case 'mentors': {
+            // Get mentor/faculty counts per institution
+            const mentorCounts = await this.prisma.user.groupBy({
+              by: ['institutionId'],
+              where: {
+                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                active: true,
+                institutionId: { not: null },
+              },
+              _count: { id: true },
+            });
+
+            // Get students with active mentor assignments per institution
+            const assignmentCounts = await this.prisma.mentorAssignment.findMany({
+              where: { isActive: true },
+              select: {
+                student: { select: { institutionId: true } },
+              },
+            });
+
+            const assignedByInstitution = new Map<string, number>();
+            for (const a of assignmentCounts) {
+              const instId = a.student.institutionId;
+              const count = assignedByInstitution.get(instId) || 0;
+              assignedByInstitution.set(instId, count + 1);
+            }
+
+            return institutions.map(inst => ({
+              id: inst.id,
+              institutionName: inst.name,
+              institutionCode: inst.code,
+              totalMentors: mentorCounts.find(c => c.institutionId === inst.id)?._count.id || 0,
+              assignedStudents: assignedByInstitution.get(inst.id) || 0,
+            }));
+          }
+
+          case 'visits': {
+            // Get visits this month per institution
+            const visitsThisMonth = await this.prisma.facultyVisitLog.findMany({
+              where: { visitDate: { gte: startOfMonth } },
+              select: {
+                application: {
+                  select: {
+                    student: { select: { institutionId: true } },
+                  },
+                },
+              },
+            });
+
+            const visitsByInstitution = new Map<string, number>();
+            for (const v of visitsThisMonth) {
+              const instId = v.application.student.institutionId;
+              const count = visitsByInstitution.get(instId) || 0;
+              visitsByInstitution.set(instId, count + 1);
+            }
+
+            // Get expected visits per institution
+            const internshipsInTraining = await this.prisma.internshipApplication.findMany({
+              where: {
+                isSelfIdentified: true,
+                status: ApplicationStatus.APPROVED,
+                startDate: { not: null, lte: now },
+                OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
+              },
+              select: {
+                student: { select: { institutionId: true } },
+              },
+            });
+
+            const expectedByInstitution = new Map<string, number>();
+            for (const i of internshipsInTraining) {
+              const instId = i.student.institutionId;
+              const count = expectedByInstitution.get(instId) || 0;
+              expectedByInstitution.set(instId, count + 1);
+            }
+
+            return institutions.map(inst => ({
+              id: inst.id,
+              institutionName: inst.name,
+              institutionCode: inst.code,
+              visitsCompleted: visitsByInstitution.get(inst.id) || 0,
+              visitsExpected: expectedByInstitution.get(inst.id) || 0,
+            }));
+          }
+
+          default:
+            return [];
+        }
+      },
+      { ttl: 900, tags: ['state', 'dashboard', 'breakdown'] },
     );
   }
 }

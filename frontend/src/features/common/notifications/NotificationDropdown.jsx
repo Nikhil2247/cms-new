@@ -7,14 +7,17 @@ import {
   Empty,
   Space,
   Tag,
+  Avatar,
   Tooltip,
   Popconfirm,
   Drawer,
   Spin,
   Input,
+  List,
 } from 'antd';
 import {
   BellOutlined,
+  DeleteOutlined,
   CheckOutlined,
   EyeOutlined,
   ClearOutlined,
@@ -22,22 +25,14 @@ import {
   SearchOutlined,
   WifiOutlined,
 } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { useNotifications } from './useNotifications';
-import NotificationItem from './NotificationItem';
-import { searchNotifications } from './notificationUtils.jsx';
+import { getNotificationIcon, getNotificationColor, formatTimeAgo } from './notificationUtils.jsx';
 
 const { Text, Title } = Typography;
 
-/**
- * Notification dropdown component for the header
- * Shows recent notifications with real-time updates
- */
-const NotificationDropdown = ({ maxItems = 5 }) => {
-  const navigate = useNavigate();
+const NotificationDropdown = ({ maxItems = 10 }) => {
   const { darkMode } = useTheme();
-
   const [open, setOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [searchText, setSearchText] = useState('');
@@ -53,111 +48,245 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
     clearAll,
   } = useNotifications();
 
-  // Filter notifications by search in drawer
+  // Filter notifications by search
   const filteredNotifications = useMemo(() => {
     if (!searchText) return notifications;
-    return searchNotifications(notifications, searchText);
+    const search = searchText.toLowerCase();
+    return notifications.filter((n) =>
+      n.title?.toLowerCase().includes(search) ||
+      n.body?.toLowerCase().includes(search)
+    );
   }, [notifications, searchText]);
 
-  // Handle view all click - open drawer instead of navigating
-  const handleViewAll = () => {
-    setOpen(false);
-    setDrawerOpen(true);
+  const recentNotifications = notifications.slice(0, maxItems);
+
+  const handleMarkAsRead = async (id, e) => {
+    e?.stopPropagation();
+    await markAsRead(id);
   };
 
-  // Handle opening drawer
-  const handleOpenDrawer = () => {
-    setOpen(false);
-    setDrawerOpen(true);
+  const handleDelete = async (id, e) => {
+    e?.stopPropagation();
+    await deleteNotification(id);
   };
 
-  // Dropdown content
   const dropdownContent = (
     <div
-      className={`notification-dropdown ${darkMode ? 'dark' : ''} w-[380px] max-h-[520px] bg-surface rounded-2xl shadow-2xl border border-border overflow-hidden animate-fade-in`}
+      style={{
+        width: '380px',
+        maxHeight: '500px',
+        background: darkMode ? '#1f2937' : '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+        border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+        overflow: 'hidden',
+      }}
     >
       {/* Header */}
-      <div className="px-5 py-4 border-b border-border bg-surface sticky top-0 z-10">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Title level={5} className="!m-0 !text-gray-900 dark:!text-white">
+      <div
+        style={{
+          padding: '16px 20px',
+          borderBottom: `1px solid ${darkMode ? '#374151' : '#f0f0f0'}`,
+          background: darkMode ? '#111827' : '#f9fafb',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Title level={5} style={{ margin: 0, color: darkMode ? '#ffffff' : '#1f2937', fontWeight: 600 }}>
               Notifications
             </Title>
+            {unreadCount > 0 && (
+              <Badge count={unreadCount} style={{ backgroundColor: '#3b82f6' }} />
+            )}
             {isConnected && (
               <Tooltip title="Real-time connected">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <span style={{ width: 8, height: 8, backgroundColor: '#22c55e', borderRadius: '50%', display: 'inline-block' }} />
               </Tooltip>
             )}
           </div>
           <Space>
-            {unreadCount > 0 && (
-              <Tooltip title="Mark all as read">
-                <Button
-                  type="text"
-                  size="small"
-                  className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                  icon={<CheckOutlined />}
-                  onClick={markAllAsRead}
-                />
-              </Tooltip>
+            {notifications.length > 0 && (
+              <>
+                <Tooltip title="Mark all as read">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<CheckOutlined />}
+                    onClick={markAllAsRead}
+                    style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}
+                  />
+                </Tooltip>
+                <Popconfirm
+                  title="Clear all notifications?"
+                  description="This action cannot be undone."
+                  onConfirm={clearAll}
+                  okText="Yes"
+                  cancelText="No"
+                >
+                  <Tooltip title="Clear all">
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={<ClearOutlined />}
+                      style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}
+                    />
+                  </Tooltip>
+                </Popconfirm>
+              </>
             )}
-            <Tooltip title="Expand to side panel">
-              <Button
-                type="text"
-                size="small"
-                className="text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-800"
-                icon={<EyeOutlined />}
-                onClick={handleOpenDrawer}
-              />
-            </Tooltip>
           </Space>
         </div>
-        {unreadCount > 0 && (
-          <div className="flex items-center gap-2">
-            <Tag color="blue" className="m-0 rounded-full border-0 font-bold px-2 py-0 text-[10px] uppercase tracking-wider">
-              {unreadCount} New
-            </Tag>
-          </div>
-        )}
       </div>
 
-      {/* Notification List */}
-      <div className="max-h-[380px] overflow-y-auto flex flex-col bg-surface">
+      {/* Notifications List */}
+      <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-3">
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
             <Spin size="small" />
-            <Text className="text-gray-400 text-xs font-medium">Checking for updates...</Text>
-          </div>
-        ) : notifications.length > 0 ? (
-          notifications.slice(0, maxItems).map((item) => (
-            <NotificationItem
-              key={item.id}
-              notification={item}
-              onMarkAsRead={markAsRead}
-              onDelete={deleteNotification}
-              compact
-            />
-          ))
-        ) : (
-          <div className="py-16 flex flex-col items-center justify-center px-6">
-            <div className="w-16 h-16 bg-background-secondary rounded-full flex items-center justify-center mb-4">
-              <InboxOutlined className="text-3xl text-gray-300 dark:text-slate-600" />
+            <div style={{ marginTop: 8 }}>
+              <Text style={{ color: darkMode ? '#9ca3af' : '#6b7280', fontSize: 12 }}>
+                Loading notifications...
+              </Text>
             </div>
-            <Text className="text-gray-500 dark:text-slate-400 font-medium">All caught up!</Text>
-            <Text className="text-gray-400 dark:text-slate-500 text-xs text-center mt-1">No new notifications at the moment.</Text>
           </div>
+        ) : recentNotifications.length === 0 ? (
+          <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+            <InboxOutlined style={{ fontSize: '48px', color: darkMode ? '#4b5563' : '#d1d5db' }} />
+            <div style={{ marginTop: 12 }}>
+              <Text style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}>
+                No notifications yet
+              </Text>
+            </div>
+          </div>
+        ) : (
+          <List
+            dataSource={recentNotifications}
+            renderItem={(notification) => (
+              <div
+                style={{
+                  padding: '12px 20px',
+                  cursor: 'pointer',
+                  background: notification.read
+                    ? darkMode ? '#1f2937' : '#ffffff'
+                    : darkMode ? '#374151' : '#eff6ff',
+                  borderBottom: `1px solid ${darkMode ? '#374151' : '#f3f4f6'}`,
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = darkMode ? '#374151' : '#f0f9ff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = notification.read
+                    ? darkMode ? '#1f2937' : '#ffffff'
+                    : darkMode ? '#374151' : '#eff6ff';
+                }}
+                onClick={() => !notification.read && handleMarkAsRead(notification.id)}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <Avatar
+                    icon={getNotificationIcon(notification.type)}
+                    style={{
+                      backgroundColor: darkMode ? '#374151' : '#f3f4f6',
+                      color: darkMode ? '#9ca3af' : '#6b7280',
+                      flexShrink: 0,
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                      <Text
+                        strong={!notification.read}
+                        style={{
+                          color: darkMode ? '#ffffff' : '#1f2937',
+                          fontSize: '14px',
+                          lineHeight: '1.4',
+                        }}
+                        ellipsis={{ tooltip: notification.title }}
+                      >
+                        {notification.title}
+                      </Text>
+                      {!notification.read && (
+                        <span
+                          style={{
+                            width: '8px',
+                            height: '8px',
+                            backgroundColor: '#3b82f6',
+                            borderRadius: '50%',
+                            flexShrink: 0,
+                            marginLeft: '8px',
+                            marginTop: '4px',
+                          }}
+                        />
+                      )}
+                    </div>
+                    <Text
+                      style={{
+                        color: darkMode ? '#9ca3af' : '#6b7280',
+                        fontSize: '13px',
+                        lineHeight: '1.4',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {notification.body}
+                    </Text>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Tag color={getNotificationColor(notification.type)} style={{ fontSize: '10px', margin: 0, borderRadius: '9999px' }}>
+                          {notification.type?.replace(/_/g, ' ').toLowerCase()}
+                        </Tag>
+                        <Text style={{ color: darkMode ? '#6b7280' : '#9ca3af', fontSize: '11px' }}>
+                          {formatTimeAgo(notification.createdAt)}
+                        </Text>
+                      </div>
+                      <Space size={4}>
+                        {!notification.read && (
+                          <Tooltip title="Mark as read">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EyeOutlined style={{ fontSize: 12 }} />}
+                              onClick={(e) => handleMarkAsRead(notification.id, e)}
+                              style={{ color: darkMode ? '#6b7280' : '#9ca3af', padding: '0 4px' }}
+                            />
+                          </Tooltip>
+                        )}
+                        <Tooltip title="Delete">
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<DeleteOutlined style={{ fontSize: 12 }} />}
+                            onClick={(e) => handleDelete(notification.id, e)}
+                            style={{ color: darkMode ? '#6b7280' : '#9ca3af', padding: '0 4px' }}
+                          />
+                        </Tooltip>
+                      </Space>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          />
         )}
       </div>
 
       {/* Footer */}
-      {notifications.length > 0 && (
-        <div className="px-5 py-3 border-t border-border bg-background-secondary/50 text-center">
-          <Button 
-            type="link" 
-            onClick={handleViewAll}
-            className="text-blue-600 font-semibold text-xs"
+      {notifications.length > maxItems && (
+        <div
+          style={{
+            padding: '12px 20px',
+            borderTop: `1px solid ${darkMode ? '#374151' : '#f0f0f0'}`,
+            background: darkMode ? '#111827' : '#f9fafb',
+            textAlign: 'center',
+          }}
+        >
+          <Button
+            type="link"
+            style={{ color: '#3b82f6', padding: 0, height: 'auto', fontWeight: 500 }}
+            onClick={() => { setOpen(false); setDrawerOpen(true); }}
           >
-            View all notifications
+            View all notifications ({notifications.length})
           </Button>
         </div>
       )}
@@ -172,101 +301,227 @@ const NotificationDropdown = ({ maxItems = 5 }) => {
         open={open}
         onOpenChange={setOpen}
         placement="bottomRight"
-        overlayClassName="notification-dropdown-overlay"
+        overlayStyle={{ zIndex: 1050 }}
       >
-        <Badge 
-          count={unreadCount} 
-          size="small" 
-          offset={[-4, 4]}
-          className="hover:scale-110 transition-transform"
-        >
+        <Badge count={unreadCount} size="small" offset={[-2, 2]}>
           <Button
             type="text"
-            icon={<BellOutlined className="text-xl" />}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-gray-600 dark:text-gray-300 shadow-sm hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-blue-900/50 transition-all duration-200"
+            icon={<BellOutlined style={{ fontSize: 18 }} />}
+            style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '10px',
+              border: `1px solid ${darkMode ? '#374151' : '#e5e7eb'}`,
+              background: darkMode ? '#1f2937' : '#ffffff',
+              color: darkMode ? '#9ca3af' : '#6b7280',
+            }}
           />
         </Badge>
       </Dropdown>
 
-      {/* Full Notification Drawer */}
+      {/* All Notifications Drawer */}
       <Drawer
         title={
-          <div className="flex items-center justify-between w-full pr-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600">
-                <BellOutlined />
-              </div>
-              <span className="font-bold text-gray-900 dark:text-white">Recent Activity</span>
-            </div>
-            <div className="flex items-center gap-2">
-              {notifications.length > 0 && (
-                <Popconfirm
-                  title="Clear all?"
-                  description="This will remove all notifications."
-                  onConfirm={clearAll}
-                  okText="Yes"
-                  cancelText="No"
-                  placement="bottomRight"
-                >
-                  <Button type="text" danger size="small" className="text-xs font-semibold px-2">
-                    Clear All
-                  </Button>
-                </Popconfirm>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '16px', fontWeight: 600, color: darkMode ? '#ffffff' : '#1f2937' }}>
+                All Notifications
+              </span>
+              {isConnected && (
+                <Tooltip title="Real-time connected">
+                  <WifiOutlined style={{ color: '#22c55e', fontSize: 14 }} />
+                </Tooltip>
               )}
             </div>
+            <Space size={4}>
+              {notifications.length > 0 && (
+                <>
+                  <Tooltip title="Mark all as read">
+                    <Button type="text" size="small" icon={<CheckOutlined />} onClick={markAllAsRead} />
+                  </Tooltip>
+                  <Popconfirm
+                    title="Clear all notifications?"
+                    description="This action cannot be undone."
+                    onConfirm={clearAll}
+                    okText="Yes"
+                    cancelText="No"
+                  >
+                    <Tooltip title="Clear all">
+                      <Button type="text" size="small" icon={<ClearOutlined />} danger />
+                    </Tooltip>
+                  </Popconfirm>
+                </>
+              )}
+            </Space>
           </div>
         }
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        width={420}
         placement="right"
-        className="notification-drawer"
-        styles={{ 
-          header: { borderBottom: '1px solid #f3f4f6', padding: '20px 24px' },
-          body: { padding: 0, background: darkMode ? '#0f172a' : '#ffffff' },
-          content: { background: darkMode ? '#0f172a' : '#ffffff', borderRadius: '24px 0 0 24px' }
+        width={420}
+        onClose={() => setDrawerOpen(false)}
+        open={drawerOpen}
+        styles={{
+          body: { padding: 0, background: darkMode ? '#1f2937' : '#ffffff' },
+          header: {
+            background: darkMode ? '#111827' : '#f9fafb',
+            borderBottom: `1px solid ${darkMode ? '#374151' : '#f0f0f0'}`,
+          },
+          content: { background: darkMode ? '#1f2937' : '#ffffff' },
         }}
       >
-        <div className="p-5 bg-background-secondary/50 dark:bg-surface sticky top-0 z-10 border-b border-border">
+        {/* Search */}
+        <div style={{ padding: '16px', borderBottom: `1px solid ${darkMode ? '#374151' : '#f0f0f0'}` }}>
           <Input
             placeholder="Search notifications..."
-            prefix={<SearchOutlined className="text-gray-400" />}
+            prefix={<SearchOutlined style={{ color: darkMode ? '#6b7280' : '#9ca3af' }} />}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             allowClear
-            className="rounded-xl h-10 bg-surface border-border"
+            style={{
+              borderRadius: '8px',
+              background: darkMode ? '#374151' : '#f9fafb',
+              border: `1px solid ${darkMode ? '#4b5563' : '#e5e7eb'}`,
+            }}
           />
         </div>
 
-        <div className="flex flex-col bg-surface min-h-full">
+        {/* Notifications List */}
+        <div style={{ overflowY: 'auto', height: 'calc(100vh - 140px)' }}>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-3">
-              <Spin />
-              <Text className="text-gray-400 font-medium">Loading notifications...</Text>
+            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: '16px' }}>
+                <Text style={{ color: darkMode ? '#9ca3af' : '#6b7280' }}>Loading notifications...</Text>
+              </div>
             </div>
-          ) : filteredNotifications.length > 0 ? (
-            <div className="flex flex-col">
-              {filteredNotifications.map((item) => (
-                <NotificationItem
-                  key={item.id}
-                  notification={item}
-                  onMarkAsRead={markAsRead}
-                  onDelete={deleteNotification}
-                />
-              ))}
+          ) : filteredNotifications.length === 0 ? (
+            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
+              <InboxOutlined style={{ fontSize: '64px', color: darkMode ? '#4b5563' : '#d1d5db' }} />
+              <div style={{ marginTop: 16 }}>
+                <Text style={{ color: darkMode ? '#9ca3af' : '#6b7280', fontSize: '16px' }}>
+                  {searchText ? 'No matching notifications' : 'No notifications yet'}
+                </Text>
+              </div>
             </div>
           ) : (
-            <div className="py-24 flex flex-col items-center justify-center px-8 text-center">
-              <div className="w-20 h-20 bg-background-secondary rounded-full flex items-center justify-center mb-6">
-                <InboxOutlined className="text-4xl text-gray-300 dark:text-slate-600" />
-              </div>
-              <Title level={5} className="!mb-2 dark:!text-white">
-                {searchText ? 'No results found' : 'No notifications'}
-              </Title>
-              <Text className="text-gray-500 dark:text-slate-400">
-                {searchText ? `No notifications matching "${searchText}"` : "We'll notify you when something important happens."}
-              </Text>
-            </div>
+            <List
+              dataSource={filteredNotifications}
+              renderItem={(notification) => (
+                <div
+                  style={{
+                    padding: '14px 16px',
+                    cursor: 'pointer',
+                    background: notification.read
+                      ? 'transparent'
+                      : darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)',
+                    borderBottom: `1px solid ${darkMode ? '#374151' : '#f3f4f6'}`,
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = darkMode ? '#374151' : '#f5f5f5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = notification.read
+                      ? 'transparent'
+                      : darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.05)';
+                  }}
+                  onClick={() => !notification.read && handleMarkAsRead(notification.id)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '8px',
+                        background: darkMode ? '#374151' : '#f3f4f6',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        color: darkMode ? '#9ca3af' : '#6b7280',
+                      }}
+                    >
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
+                        <Text
+                          strong={!notification.read}
+                          style={{ color: darkMode ? '#ffffff' : '#1f2937', fontSize: '14px', lineHeight: '1.4' }}
+                        >
+                          {notification.title}
+                        </Text>
+                        {!notification.read && (
+                          <span
+                            style={{
+                              width: '8px',
+                              height: '8px',
+                              backgroundColor: '#3b82f6',
+                              borderRadius: '50%',
+                              flexShrink: 0,
+                              marginLeft: '8px',
+                              marginTop: '4px',
+                            }}
+                          />
+                        )}
+                      </div>
+                      <Text
+                        style={{
+                          color: darkMode ? '#9ca3af' : '#6b7280',
+                          fontSize: '13px',
+                          lineHeight: '1.5',
+                          display: 'block',
+                          marginBottom: '8px',
+                        }}
+                      >
+                        {notification.body}
+                      </Text>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Space size={4}>
+                          <Tag
+                            color={getNotificationColor(notification.type)}
+                            style={{ fontSize: '10px', margin: 0, borderRadius: '4px' }}
+                          >
+                            {notification.type?.replace(/_/g, ' ').toLowerCase()}
+                          </Tag>
+                          <Text style={{ color: darkMode ? '#6b7280' : '#9ca3af', fontSize: '11px' }}>
+                            {formatTimeAgo(notification.createdAt)}
+                          </Text>
+                        </Space>
+                        <Space size={0}>
+                          {!notification.read && (
+                            <Tooltip title="Mark as read">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EyeOutlined style={{ fontSize: 14 }} />}
+                                onClick={(e) => handleMarkAsRead(notification.id, e)}
+                                style={{ color: darkMode ? '#6b7280' : '#9ca3af', padding: '4px' }}
+                              />
+                            </Tooltip>
+                          )}
+                          <Popconfirm
+                            title="Delete this notification?"
+                            onConfirm={(e) => handleDelete(notification.id, e)}
+                            okText="Delete"
+                            cancelText="Cancel"
+                          >
+                            <Tooltip title="Delete">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DeleteOutlined style={{ fontSize: 14 }} />}
+                                onClick={(e) => e.stopPropagation()}
+                                style={{ color: darkMode ? '#6b7280' : '#9ca3af', padding: '4px' }}
+                              />
+                            </Tooltip>
+                          </Popconfirm>
+                        </Space>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            />
           )}
         </div>
       </Drawer>

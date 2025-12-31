@@ -166,7 +166,6 @@ const Layouts = () => {
         <Content
           className="overflow-auto hide-scrollbar transition-colors duration-300"
           style={{
-            background: '#f8fafc',
             minHeight: 'calc(100vh - 52px)',
           }}
         >

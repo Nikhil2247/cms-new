@@ -1,13 +1,9 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, Tabs, Empty, Spin, Button, Typography, Row, Col, Tag, Statistic, theme } from 'antd';
+import { Card, Empty, Spin, Button, Typography, Tag, theme } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  ExportOutlined,
-  BankOutlined,
   RocketOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
   PlusOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -20,12 +16,11 @@ import { useMonthlyReports, useFacultyVisits } from './hooks/useApplications';
 import { fetchApplications } from '../store/studentSlice';
 import {
   selectApplicationsLoading,
-  selectPlatformApplications,
   selectSelfIdentifiedApplications,
   selectApplicationsLastFetched,
 } from '../store/studentSelectors';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const MyApplications = () => {
   const navigate = useNavigate();
@@ -34,39 +29,19 @@ const MyApplications = () => {
 
   // Redux state
   const loading = useSelector(selectApplicationsLoading);
-  const applications = useSelector(selectPlatformApplications);
   const selfIdentifiedApplications = useSelector(selectSelfIdentifiedApplications);
   const lastFetched = useSelector(selectApplicationsLastFetched);
 
   // Memoize derived data
   const derivedData = useMemo(() => {
-    const platformCount = applications?.length || 0;
     const selfIdentifiedCount = selfIdentifiedApplications?.length || 0;
-    const totalCount = platformCount + selfIdentifiedCount;
-    const hasPlatformApplications = platformCount > 0;
     const hasSelfIdentifiedApplications = selfIdentifiedCount > 0;
-    const hasAnyApplications = totalCount > 0;
-
-    // Count by status
-    const allApps = [...(applications || []), ...(selfIdentifiedApplications || [])];
-    const activeCount = allApps.filter(a =>
-      ['SELECTED', 'APPROVED', 'JOINED'].includes(a.status)
-    ).length;
-    const pendingCount = allApps.filter(a =>
-      ['APPLIED', 'SHORTLISTED', 'PENDING'].includes(a.status)
-    ).length;
 
     return {
-      platformCount,
       selfIdentifiedCount,
-      totalCount,
-      hasPlatformApplications,
       hasSelfIdentifiedApplications,
-      hasAnyApplications,
-      activeCount,
-      pendingCount,
     };
-  }, [applications, selfIdentifiedApplications]);
+  }, [selfIdentifiedApplications]);
 
   // Fetch applications on mount
   useEffect(() => {
@@ -82,7 +57,6 @@ const MyApplications = () => {
   // State
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showDetailsView, setShowDetailsView] = useState(false);
-  const [activeTab, setActiveTab] = useState('platform');
 
   const {
     reports: monthlyReports,
@@ -137,7 +111,7 @@ const MyApplications = () => {
   // Render loading state
   if (loading && !lastFetched) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: token.colorBgLayout }}>
+      <div className="min-h-screen flex items-center justify-center">
         <Spin size="large" />
       </div>
     );
@@ -146,7 +120,7 @@ const MyApplications = () => {
   // Render details view
   if (showDetailsView && selectedApplication) {
     return (
-      <div className="min-h-screen p-4 md:p-6" style={{ backgroundColor: token.colorBgLayout }}>
+      <div className="min-h-screen p-4 md:p-5">
         <ApplicationDetailsView
           application={selectedApplication}
           onBack={handleCloseDetailsView}
@@ -166,224 +140,88 @@ const MyApplications = () => {
     );
   }
 
-  // Tab items for Ant Design 5
-  const tabItems = [
-    {
-      key: 'platform',
-      label: (
-        <span className="flex items-center gap-2">
-          <BankOutlined />
-          Platform Internships
-          <Tag color="blue" className="rounded-md font-bold">{derivedData.platformCount}</Tag>
-        </span>
-      ),
-      children: derivedData.hasPlatformApplications ? (
-        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
-          <ApplicationsTable
-            applications={applications}
-            loading={loading}
-            onViewDetails={handleViewDetails}
-          />
-        </Card>
-      ) : (
-        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
-          <Empty
-            image={<BankOutlined style={{ fontSize: 60, color: token.colorTextDisabled }} />}
-            imageStyle={{ height: 80 }}
-            description={
-              <div className="text-center py-4">
-                <Title level={4} className="mb-2" style={{ color: token.colorTextSecondary }}>No applications yet</Title>
-                <Text style={{ color: token.colorTextTertiary }}>Browse available internships and start applying</Text>
-              </div>
-            }
-          >
-            <Button
-              type="primary"
-              icon={<ExportOutlined />}
-              onClick={() => navigate('/internships')}
-              size="large"
-              className="rounded-xl h-11 px-6 font-bold shadow-lg"
-              style={{ backgroundColor: token.colorPrimary, boxShadow: `0 10px 15px -3px ${token.colorPrimary}40` }}
-            >
-              Browse Internships
-            </Button>
-          </Empty>
-        </Card>
-      ),
-    },
-    {
-      key: 'self-identified',
-      label: (
-        <span className="flex items-center gap-2">
-          <RocketOutlined />
-          Self-Identified
-          <Tag color="purple" className="rounded-md font-bold">{derivedData.selfIdentifiedCount}</Tag>
-        </span>
-      ),
-      children: derivedData.hasSelfIdentifiedApplications ? (
-        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
-          <ApplicationsTable
-            applications={selfIdentifiedApplications}
-            loading={loading}
-            onViewDetails={handleViewDetails}
-            isSelfIdentified
-          />
-        </Card>
-      ) : (
-        <Card bordered={false} className="rounded-2xl shadow-sm" style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}>
-          <Empty
-            image={<RocketOutlined style={{ fontSize: 60, color: token.colorTextDisabled }} />}
-            imageStyle={{ height: 80 }}
-            description={
-              <div className="text-center py-4">
-                <Title level={4} className="mb-2" style={{ color: token.colorTextSecondary }}>No self-identified internships</Title>
-                <Text style={{ color: token.colorTextTertiary }}>Submit internships you found from other platforms</Text>
-              </div>
-            }
-          >
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/self-identified-internship')}
-              size="large"
-              className="rounded-xl h-11 px-6 font-bold shadow-lg"
-              style={{ backgroundColor: '#9333ea', boxShadow: '0 10px 15px -3px rgba(147, 51, 234, 0.4)' }}
-            >
-              Add Self-Identified Internship
-            </Button>
-          </Empty>
-        </Card>
-      ),
-    },
-  ];
-
   return (
-    <div className="p-4 md:p-8 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
+    <div className="p-4 md:p-5 min-h-screen">
       {/* Header Section */}
-      <div className="mb-8 animate-fade-in">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div 
-              className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-sm"
-              style={{ 
-                backgroundColor: token.colorBgContainer, 
-                border: `1px solid ${token.colorBorderSecondary}`,
-                color: token.colorPrimary 
-              }}
-            >
-              <BankOutlined className="text-2xl" />
-            </div>
-            <div>
-              <Title level={2} className="!mb-1 !text-2xl lg:!text-3xl tracking-tight" style={{ color: token.colorText }}>
-                My Applications
-              </Title>
-              <Text style={{ color: token.colorTextSecondary }}>
-                Track and manage your internship applications
-              </Text>
-            </div>
-          </div>
-
-          <div className="flex gap-3">
-            <Button
-              icon={<ReloadOutlined spin={loading} />}
-              onClick={refetch}
-              loading={loading}
-              className="rounded-xl h-11 px-4"
-              style={{ 
-                borderColor: token.colorBorder, 
-                color: token.colorTextSecondary,
-                backgroundColor: token.colorBgContainer
-              }}
-            >
-              Refresh
-            </Button>
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/self-identified-internship')}
-              className="rounded-xl h-11 px-6 font-bold shadow-lg border-0"
-              style={{ 
-                backgroundColor: token.colorPrimary,
-                boxShadow: `0 10px 15px -3px ${token.colorPrimary}40`
-              }}
-            >
-              Add Internship
-            </Button>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-6 rounded-full bg-purple-500" />
+          <div>
+            <h1 className="text-lg font-semibold text-text-primary m-0">My Applications</h1>
+            <Text className="text-xs text-text-tertiary">Manage your internship applications</Text>
           </div>
         </div>
 
-        {/* Quick Stats */}
-        <Row gutter={[16, 16]}>
-          <Col xs={12} sm={6}>
-            <Card 
-              bordered={false} 
-              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
-            >
-              <Statistic
-                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Total Applications</span>}
-                value={derivedData.totalCount}
-                prefix={<BankOutlined style={{ color: token.colorPrimary }} className="mr-2" />}
-                valueStyle={{ fontWeight: 700, color: token.colorText }}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card 
-              bordered={false} 
-              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
-            >
-              <Statistic
-                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Active Internships</span>}
-                value={derivedData.activeCount}
-                valueStyle={{ color: token.colorSuccess, fontWeight: 700 }}
-                prefix={<CheckCircleOutlined style={{ color: token.colorSuccess }} className="mr-2" />}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card 
-              bordered={false} 
-              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
-            >
-              <Statistic
-                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Pending</span>}
-                value={derivedData.pendingCount}
-                valueStyle={{ color: token.colorWarning, fontWeight: 700 }}
-                prefix={<ClockCircleOutlined style={{ color: token.colorWarning }} className="mr-2" />}
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={6}>
-            <Card 
-              bordered={false} 
-              className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
-              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorderSecondary}` }}
-            >
-              <Statistic
-                title={<span className="text-xs font-bold uppercase tracking-wider" style={{ color: token.colorTextQuaternary }}>Self-Identified</span>}
-                value={derivedData.selfIdentifiedCount}
-                valueStyle={{ color: '#8b5cf6', fontWeight: 700 }}
-                prefix={<RocketOutlined style={{ color: '#8b5cf6' }} className="mr-2" />}
-              />
-            </Card>
-          </Col>
-        </Row>
+        <div className="flex gap-2">
+          <Button
+            type="text"
+            icon={<ReloadOutlined spin={loading} />}
+            onClick={refetch}
+            className="rounded-lg"
+          />
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => navigate('/self-identified-internship')}
+            size="small"
+            className="rounded-lg"
+          >
+            Add Internship
+          </Button>
+        </div>
       </div>
 
-      {/* Tabs */}
-      <Tabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={tabItems}
-        className="applications-tabs custom-tabs"
-        size="large"
-      />
+      {/* Applications List */}
+      <Card
+        className="rounded-xl border border-gray-100 shadow-sm"
+        styles={{ body: { padding: 0 } }}
+      >
+        {/* Card Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <RocketOutlined className="text-purple-500" />
+            <Text className="font-medium text-text-primary">Self-Identified Internships</Text>
+            <Tag color="purple" className="rounded-full text-xs ml-1">
+              {derivedData.selfIdentifiedCount}
+            </Tag>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-4">
+          {derivedData.hasSelfIdentifiedApplications ? (
+            <ApplicationsTable
+              applications={selfIdentifiedApplications}
+              loading={loading}
+              onViewDetails={handleViewDetails}
+              isSelfIdentified
+            />
+          ) : (
+            <Empty
+              image={<RocketOutlined className="text-5xl text-gray-300" />}
+              imageStyle={{ height: 60 }}
+              description={
+                <div className="text-center py-2">
+                  <Text className="text-sm text-text-secondary block mb-1">No internships yet</Text>
+                  <Text className="text-xs text-text-tertiary">Add your self-identified internship to get started</Text>
+                </div>
+              }
+            >
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/self-identified-internship')}
+                className="rounded-lg"
+                style={{ backgroundColor: '#9333ea' }}
+              >
+                Add Self-Identified Internship
+              </Button>
+            </Empty>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };
 
 export default MyApplications;
-

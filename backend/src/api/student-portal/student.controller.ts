@@ -468,4 +468,13 @@ export class StudentController {
   async submitTechnicalQuery(@Req() req, @Body() queryDto: any) {
     return this.studentService.submitTechnicalQuery(req.user.userId, queryDto);
   }
+
+  // Mentor
+  @Get('my-mentor')
+  @Roles(Role.STUDENT)
+  @ApiOperation({ summary: 'Get assigned mentor for the student' })
+  @ApiResponse({ status: 200, description: 'Mentor information retrieved successfully' })
+  async getMyMentor(@Req() req) {
+    return this.studentService.getMyMentor(req.user.userId);
+  }
 }

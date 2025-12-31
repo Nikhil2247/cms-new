@@ -11,19 +11,13 @@ import {
   Form,
   Select,
   Tabs,
-  Row,
-  Col,
-  Statistic,
-  Badge,
   Avatar,
   Empty,
   Spin,
   Timeline,
   Tooltip,
   Descriptions,
-  Divider,
   Alert,
-  Progress,
   Steps,
 } from 'antd';
 import {
@@ -59,7 +53,7 @@ import { useAuth } from '../../../hooks/useAuth';
 
 dayjs.extend(relativeTime);
 
-const { Title, Text, Paragraph } = Typography;
+const { Text, Paragraph } = Typography;
 const { TextArea } = Input;
 
 // Escalation level labels
@@ -571,29 +565,24 @@ const Grievances = () => {
     },
   ];
 
-  // Stat cards
-  const StatCard = ({ title, value, icon, color, percentage }) => (
-    <Card className="rounded-2xl border-border shadow-sm hover:shadow-md transition-all h-full">
-      <div className="flex items-start justify-between">
-        <div>
-          <Text className="text-[10px] uppercase font-bold tracking-wider text-text-tertiary block mb-1">
-            {title}
-          </Text>
-          <Text className="text-3xl font-bold" style={{ color }}>{value}</Text>
-          {percentage !== undefined && (
-            <div className="mt-2">
-              <Progress
-                percent={percentage}
-                size="small"
-                strokeColor={color}
-                showInfo={false}
-              />
-            </div>
-          )}
+  // Small Stat Card Component
+  const StatCard = ({ title, value, icon, color, subtitle }) => (
+    <Card
+      className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
+      styles={{ body: { padding: '16px 12px' } }}
+    >
+      <div className="flex flex-col items-center text-center">
+        <div
+          className="w-11 h-11 rounded-full flex items-center justify-center mb-2"
+          style={{ backgroundColor: `${color}15` }}
+        >
+          {React.cloneElement(icon, { style: { fontSize: '18px', color } })}
         </div>
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}15` }}>
-          {React.cloneElement(icon, { className: 'text-xl', style: { color } })}
-        </div>
+        <Text className="text-xs font-medium text-gray-600 mb-1">{title}</Text>
+        <span style={{ fontSize: '26px', fontWeight: 700, color, lineHeight: 1 }}>
+          {value}
+        </span>
+        {subtitle && <Text className="text-[10px] text-gray-400 mt-1">{subtitle}</Text>}
       </div>
     </Card>
   );
@@ -651,200 +640,52 @@ const Grievances = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 bg-background-secondary min-h-screen !space-y-4">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <Title level={2} className="!mb-2 !text-text-primary">
+          <h1 className="text-lg font-semibold text-text-primary">
             {isState ? 'State Grievance Dashboard' : 'Grievance Management'}
-          </Title>
-          <Text className="text-text-secondary text-base">
-            {isState
-              ? 'Monitor and manage grievances across all institutions in your jurisdiction'
-              : 'Track, manage, and resolve student grievances with proper escalation'}
+          </h1>
+          <Text className="text-text-tertiary text-sm">
+            {isState ? 'Monitor grievances across all institutions' : 'Track and resolve student grievances'}
           </Text>
         </div>
-        <Space>
-          <Button
-            icon={<ReloadOutlined />}
-            onClick={handleRefresh}
-            loading={loading}
-            className="rounded-xl"
-          >
-            Refresh
-          </Button>
-        </Space>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={handleRefresh}
+          loading={loading}
+          className="rounded-lg"
+        >
+          Refresh
+        </Button>
       </div>
 
       {/* Stats */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="Total"
-            value={stats.total}
-            icon={<AlertOutlined />}
-            color="#1890ff"
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="Pending"
-            value={stats.pending}
-            icon={<ClockCircleOutlined />}
-            color="#faad14"
-            percentage={stats.total > 0 ? Math.round((stats.pending / stats.total) * 100) : 0}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="Escalated"
-            value={stats.escalated}
-            icon={<RiseOutlined />}
-            color="#ff4d4f"
-            percentage={stats.total > 0 ? Math.round((stats.escalated / stats.total) * 100) : 0}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="In Progress"
-            value={stats.inProgress}
-            icon={<ExclamationCircleOutlined />}
-            color="#722ed1"
-            percentage={stats.total > 0 ? Math.round((stats.inProgress / stats.total) * 100) : 0}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="Resolved"
-            value={stats.resolved}
-            icon={<CheckCircleOutlined />}
-            color="#52c41a"
-            percentage={stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={4}>
-          <StatCard
-            title="Rejected"
-            value={stats.rejected}
-            icon={<CloseCircleOutlined />}
-            color="#8c8c8c"
-          />
-        </Col>
-      </Row>
-
-      {/* Escalation Level Breakdown */}
-      <Card className="rounded-2xl border-border shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
-          <Title level={5} className="!mb-0 !text-text-primary">
-            <RiseOutlined className="mr-2 text-warning" />
-            Escalation Level Distribution
-          </Title>
-        </div>
-        <Row gutter={[16, 16]}>
-          <Col xs={24} sm={6}>
-            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Text className="text-[10px] uppercase font-bold tracking-wider text-blue-600 block mb-1">
-                    Faculty Mentor
-                  </Text>
-                  <Text className="text-2xl font-bold text-blue-700">{stats.byEscalationLevel.mentor}</Text>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <UserOutlined className="text-blue-600 text-lg" />
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col xs={24} sm={6}>
-            <div className="p-4 bg-orange-50 rounded-xl border border-orange-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Text className="text-[10px] uppercase font-bold tracking-wider text-orange-600 block mb-1">
-                    Principal
-                  </Text>
-                  <Text className="text-2xl font-bold text-orange-700">{stats.byEscalationLevel.principal}</Text>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <BankOutlined className="text-orange-600 text-lg" />
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col xs={24} sm={6}>
-            <div className="p-4 bg-red-50 rounded-xl border border-red-100">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Text className="text-[10px] uppercase font-bold tracking-wider text-red-600 block mb-1">
-                    State Directorate
-                  </Text>
-                  <Text className="text-2xl font-bold text-red-700">{stats.byEscalationLevel.stateDirectorate}</Text>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
-                  <TeamOutlined className="text-red-600 text-lg" />
-                </div>
-              </div>
-            </div>
-          </Col>
-          <Col xs={24} sm={6}>
-            <div className="p-4 bg-gray-50 rounded-xl border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Text className="text-[10px] uppercase font-bold tracking-wider text-gray-600 block mb-1">
-                    Not Assigned
-                  </Text>
-                  <Text className="text-2xl font-bold text-gray-700">{stats.byEscalationLevel.notSet}</Text>
-                </div>
-                <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center">
-                  <ClockCircleOutlined className="text-gray-600 text-lg" />
-                </div>
-              </div>
-            </div>
-          </Col>
-        </Row>
-        {stats.byEscalationLevel.notSet > 0 && isState && (
-          <Alert
-            title={`${stats.byEscalationLevel.notSet} Grievances Need Migration`}
-            description="These grievances were submitted before the escalation system was implemented. Click the button to assign them to Faculty Mentor level."
-            type="warning"
-            showIcon
-            className="mt-4 rounded-lg"
-            action={
-              <Button
-                size="small"
-                type="primary"
-                onClick={async () => {
-                  try {
-                    const response = await API.post('/grievances/migrate/escalation-levels');
-                    toast.success(`Migrated ${response.data?.migratedCount || 0} grievances successfully`);
-                    fetchGrievances();
-                  } catch (error) {
-                    toast.error('Failed to migrate grievances');
-                  }
-                }}
-              >
-                Migrate Now
-              </Button>
-            }
-          />
-        )}
-      </Card>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard title="Total" value={stats.total} icon={<AlertOutlined />} color="#3b82f6" subtitle="All grievances" />
+        <StatCard title="Pending" value={stats.pending} icon={<ClockCircleOutlined />} color="#f59e0b" subtitle="Awaiting action" />
+        <StatCard title="Escalated" value={stats.escalated} icon={<RiseOutlined />} color="#ef4444" subtitle="Needs attention" />
+        <StatCard title="In Progress" value={stats.inProgress} icon={<ExclamationCircleOutlined />} color="#8b5cf6" subtitle="Being handled" />
+        <StatCard title="Resolved" value={stats.resolved} icon={<CheckCircleOutlined />} color="#22c55e" subtitle="Completed" />
+        <StatCard title="Rejected" value={stats.rejected} icon={<CloseCircleOutlined />} color="#6b7280" subtitle="Closed" />
+      </div>
 
       {/* Alert for escalated grievances */}
       {stats.escalated > 0 && (
         <Alert
-          title="Escalated Grievances Require Attention"
-          description={`You have ${stats.escalated} escalated grievances that need immediate attention.`}
+          message={`${stats.escalated} escalated grievances need immediate attention`}
           type="error"
           showIcon
           icon={<RiseOutlined />}
-          className="rounded-xl"
+          className="rounded-lg"
+          closable
         />
       )}
 
       {/* Filters */}
-      <Card className="rounded-2xl border-border shadow-sm">
-        <div className="flex flex-wrap gap-4 items-center">
+      <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '12px 16px' } }}>
+        <div className="flex flex-wrap gap-3 items-center">
           <Input
             placeholder="Search by title or student name..."
             prefix={<SearchOutlined className="text-text-tertiary" />}
@@ -894,12 +735,12 @@ const Grievances = () => {
       </Card>
 
       {/* Tabs & Table */}
-      <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
+      <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
         <Tabs
           activeKey={activeTab}
           onChange={setActiveTab}
           items={tabItems}
-          className="px-4 pt-4"
+          className="!px-4 pt-3"
         />
         <Table
           columns={baseColumns}
@@ -971,7 +812,7 @@ const Grievances = () => {
         }
       >
         {selectedGrievance && (
-          <div className="space-y-4">
+          <div className="!space-y-4">
             {/* Status Banner */}
             <Alert
               title={`Status: ${getStatusConfig(selectedGrievance.status).text}`}

@@ -26,6 +26,7 @@ import {
   Tooltip,
   Calendar,
   Popconfirm,
+  Progress,
 } from 'antd';
 import {
   UserOutlined,
@@ -49,13 +50,17 @@ import {
   EyeOutlined,
   DownloadOutlined,
   TableOutlined,
+  RiseOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
 import principalService from '../../../services/principal.service';
 
-const { Title, Text } = Typography;
+const { Text, Title } = Typography;
 
 const { RangePicker } = DatePicker;
 
@@ -221,13 +226,18 @@ const FacultyProgress = () => {
     setEditStudent(student);
     // Normalize status to uppercase
     const status = student.internshipStatus?.toUpperCase?.() || student.internshipStatus || 'ONGOING';
-    editForm.setFieldsValue({
-      companyName: student.companyName || '',
-      jobProfile: student.jobProfile || '',
-      stipend: student.stipend ? parseInt(student.stipend) : null,
-      internshipDuration: student.internshipDuration || '',
-      internshipStatus: status,
-    });
+    // Reset form first, then set new values
+    editForm.resetFields();
+    // Use setTimeout to ensure form is ready after reset
+    setTimeout(() => {
+      editForm.setFieldsValue({
+        companyName: student.companyName || '',
+        jobProfile: student.jobProfile || '',
+        stipend: student.stipend ? Number(student.stipend) : null,
+        internshipDuration: student.internshipDuration || '',
+        internshipStatus: status,
+      });
+    }, 0);
     setEditVisible(true);
   };
 
@@ -467,62 +477,81 @@ const FacultyProgress = () => {
   // Render faculty sidebar
   const renderFacultySidebar = () => (
     <Card
-      className="h-full rounded-2xl border-border shadow-sm"
-      styles={{ body: { padding: 0, height: '100%', display: 'flex', flexDirection: 'column' } }}
+      className="rounded-xl border-border shadow-sm overflow-hidden"
+      styles={{ body: { padding: 0, height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' } }}
     >
-      <div className="p-4 border-b border-border">
-        <Title level={5} className="!mb-3 !text-text-primary flex items-center gap-2">
-          <TeamOutlined className="text-primary" />
-          Faculty Members
-        </Title>
+      {/* Sidebar Header */}
+      <div className="px-4 py-3 bg-primary/5 border-b border-border">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TeamOutlined className="text-primary" />
+            <Text className="font-semibold text-primary">Faculty Members</Text>
+          </div>
+          <Text className="text-text-tertiary text-sm">{facultyList.length} faculty</Text>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="p-3 border-b border-border space-y-2">
         <Input
-          placeholder="Search faculty..."
-          prefix={<SearchOutlined className="text-text-tertiary" />}
+          placeholder="Search Faculty..."
+          prefix={<UserOutlined className="text-text-tertiary" />}
           onChange={(e) => debouncedSearch(e.target.value)}
           className="rounded-lg"
           allowClear
         />
       </div>
-      <div className="flex-1 overflow-auto">
+
+      {/* Faculty List */}
+      <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="p-4 space-y-3">
+          <div className="p-3 space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton.Button key={i} active block style={{ height: 60 }} />
+              <div key={i} className="flex items-center gap-3 p-2">
+                <Skeleton.Avatar active size={40} />
+                <div className="flex-1">
+                  <Skeleton.Input active size="small" block />
+                </div>
+              </div>
             ))}
           </div>
         ) : filteredFaculty.length === 0 ? (
           <Empty description="No faculty found" className="py-10" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
-          <div className="flex flex-col">
+          <div>
             {filteredFaculty.map((faculty, index) => (
               <div
                 key={faculty.id || index}
                 onClick={() => handleFacultySelect(faculty)}
-                className={`cursor-pointer px-4 py-3 transition-all border-l-4 hover:bg-background-tertiary/50 flex items-center gap-3 w-full ${
-                  index !== filteredFaculty.length - 1 ? 'border-b border-border/50' : ''
-                } ${
+                className={`cursor-pointer px-4 py-3 transition-all flex items-center gap-3 border-b border-border/50 hover:bg-primary/5 ${
                   selectedFaculty?.id === faculty.id
-                    ? 'bg-primary/5 border-l-primary'
-                    : 'border-l-transparent'
+                    ? 'bg-primary/8 border-l-[3px] border-l-primary'
+                    : 'border-l-[3px] border-l-transparent'
                 }`}
               >
                 <Avatar
                   size={40}
                   icon={<UserOutlined />}
-                  className={selectedFaculty?.id === faculty.id ? 'bg-primary text-white' : 'bg-background-tertiary text-text-tertiary'}
+                  className={`shrink-0 ${
+                    selectedFaculty?.id === faculty.id
+                      ? 'bg-primary/20 text-primary'
+                      : 'bg-background-tertiary text-text-tertiary'
+                  }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <Text className="block font-medium text-text-primary truncate">{faculty.name}</Text>
-                  <Text className="text-xs text-text-tertiary">{faculty.employeeId || faculty.email}</Text>
-                </div>
-                <div className="flex flex-col items-end">
-                  <Badge
-                    count={faculty.assignedCount}
-                    showZero
-                    color="var(--ant-primary-color)"
-                    className="mb-1"
-                  />
-                  <Text className="text-[10px] text-text-tertiary uppercase">Students</Text>
+                  <Text className={`block font-medium truncate text-sm ${
+                    selectedFaculty?.id === faculty.id ? 'text-text-primary' : 'text-text-primary'
+                  }`}>
+                    {faculty.name}
+                  </Text>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <Tag color="blue" className="rounded-full text-[10px] px-1.5 py-0 m-0 leading-4">
+                      {faculty.assignedCount || 0}
+                    </Tag>
+                    <Text className="text-xs text-text-tertiary truncate">
+                      {faculty.designation || 'Faculty'}
+                    </Text>
+                  </div>
                 </div>
               </div>
             ))}
@@ -539,94 +568,43 @@ const FacultyProgress = () => {
     const stats = facultyDetails?.stats || {};
 
     return (
-      <Card className="rounded-2xl border-border shadow-sm mb-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Faculty Info */}
-          <div className="flex items-start gap-4">
-            <Avatar size={64} icon={<UserOutlined />} className="bg-primary text-white shrink-0" />
-            <div>
-              <Title level={4} className="!mb-1 !text-text-primary">{selectedFaculty.name}</Title>
-              <Space orientation="vertical" size={2}>
-                {selectedFaculty.employeeId && (
-                  <Text className="text-sm text-text-secondary flex items-center gap-2">
-                    <UserOutlined className="text-text-tertiary" />
-                    {selectedFaculty.employeeId}
-                  </Text>
-                )}
-                {selectedFaculty.email && (
-                  <Text className="text-sm text-text-secondary flex items-center gap-2">
-                    <MailOutlined className="text-text-tertiary" />
-                    {selectedFaculty.email}
-                  </Text>
-                )}
-                {selectedFaculty.phone && (
-                  <Text className="text-sm text-text-secondary flex items-center gap-2">
-                    <PhoneOutlined className="text-text-tertiary" />
-                    {selectedFaculty.phone}
-                  </Text>
-                )}
-              </Space>
+      <Card className="rounded-xl border-border shadow-sm mb-4" styles={{ body: { padding: '14px 16px' } }}>
+        <div className="flex items-center gap-3">
+          <Avatar
+            size={44}
+            icon={<UserOutlined />}
+            className="bg-primary/10 text-primary shrink-0"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <Text strong className="text-text-primary truncate">{selectedFaculty.name}</Text>
+              <Text className="text-xs text-text-tertiary">
+                • {selectedFaculty.designation || 'Faculty'} • {selectedFaculty.employeeId || selectedFaculty.email}
+              </Text>
             </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="flex-1">
-            <Row gutter={[16, 16]}>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-primary/5 rounded-xl">
-                  <Statistic
-                    value={stats.totalStudents || 0}
-                    styles={{ content: { color: 'var(--ant-primary-color)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Students</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-success/5 rounded-xl">
-                  <Statistic
-                    value={stats.totalVisits || 0}
-                    styles={{ content: { color: 'var(--ant-success-color)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Total Visits</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-background-tertiary rounded-xl">
-                  <Statistic
-                    value={stats.visitsLastMonth || 0}
-                    styles={{ content: { color: 'var(--ant-text-color-secondary)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Last Month</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-secondary/5 rounded-xl">
-                  <Statistic
-                    value={stats.visitsThisMonth || 0}
-                    styles={{ content: { color: 'var(--ant-secondary-color, #722ed1)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">This Month</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-warning/5 rounded-xl">
-                  <Statistic
-                    value={stats.scheduledNextMonth || 0}
-                    styles={{ content: { color: 'var(--ant-warning-color)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Scheduled</Text>
-                </div>
-              </Col>
-              <Col xs={12} sm={8} lg={4}>
-                <div className="text-center p-3 bg-error/5 rounded-xl">
-                  <Statistic
-                    value={stats.missedVisits || 0}
-                    styles={{ content: { color: stats.missedVisits > 0 ? 'var(--ant-error-color)' : 'var(--ant-success-color)', fontSize: 24, fontWeight: 'bold' } }}
-                  />
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary">Missed</Text>
-                </div>
-              </Col>
-            </Row>
+            {/* Stats Tags below name */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Tag color="blue" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                <TeamOutlined className="mr-1" />{stats.totalStudents || 0} Students
+              </Tag>
+              <Tag color="green" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                <CheckCircleOutlined className="mr-1" />{stats.totalVisits || 0} Visits
+              </Tag>
+              <Tag color="purple" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                <RiseOutlined className="mr-1" />{stats.visitsThisMonth || 0} This Month
+              </Tag>
+              <Tag color="cyan" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                <ClockCircleOutlined className="mr-1" />{stats.visitsLastMonth || 0} Last Month
+              </Tag>
+              <Tag color="orange" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                <ScheduleOutlined className="mr-1" />{stats.scheduledNextMonth || 0} Scheduled
+              </Tag>
+              {stats.missedVisits > 0 && (
+                <Tag color="red" className="rounded-full m-0 px-2 py-0 text-[11px]">
+                  <WarningOutlined className="mr-1" />{stats.missedVisits} Missed
+                </Tag>
+              )}
+            </div>
           </div>
         </div>
       </Card>
@@ -635,15 +613,15 @@ const FacultyProgress = () => {
 
   // Render students tab
   const renderStudentsTab = () => (
-    <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
-      <div className="p-4 border-b border-border flex justify-between items-center">
-        <Title level={5} className="!mb-0 !text-text-primary flex items-center gap-2">
-          <TeamOutlined className="text-primary" />
-          Assigned Students
-        </Title>
-        <Text className="text-text-tertiary">
-          {facultyDetails?.students?.length || 0} students
+    <Card
+      className="rounded-xl border-border shadow-sm overflow-hidden"
+      styles={{ body: { padding: 0 } }}
+    >
+      <div className="px-4 py-3 border-b border-border flex justify-between items-center">
+        <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
+          <TeamOutlined className="mr-1.5" />Assigned Students
         </Text>
+        <Tag className="rounded-full text-xs px-2">{facultyDetails?.students?.length || 0}</Tag>
       </div>
       <Table
         columns={studentColumns}
@@ -653,12 +631,22 @@ const FacultyProgress = () => {
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
-          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} students`,
+          showTotal: (total, range) => (
+            <span className="text-text-tertiary">
+              Showing <strong>{range[0]}-{range[1]}</strong> of <strong>{total}</strong> students
+            </span>
+          ),
         }}
-        scroll={{ x: 800 }}
-        className="custom-table"
+        scroll={{ x: 900 }}
+        className="[&_.ant-table-thead>tr>th]:bg-background-tertiary/30 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-text-secondary [&_.ant-table-thead>tr>th]:text-xs [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-row:hover>td]:bg-primary/[0.02]"
         locale={{
-          emptyText: <Empty description="No students assigned" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+          emptyText: (
+            <Empty
+              description="No students assigned to this faculty"
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              className="py-12"
+            />
+          ),
         }}
       />
     </Card>
@@ -691,15 +679,16 @@ const FacultyProgress = () => {
 
   // Render visits tab
   const renderVisitsTab = () => (
-    <div className="space-y-6">
-      {/* Filters and View Toggle */}
-      <Card className="rounded-2xl border-border shadow-sm">
-        <div className="flex flex-wrap gap-4 items-center justify-between">
-          <Space wrap>
+    <div className="!space-y-4">
+      {/* Filters Card */}
+      <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '12px 16px' } }}>
+        <div className="flex flex-wrap gap-3 items-center justify-between">
+          <div className="flex flex-wrap gap-2 items-center">
             <Select
               value={visitStatusFilter}
               onChange={setVisitStatusFilter}
-              className="w-40"
+              className="w-32"
+              size="small"
               placeholder="Status"
             >
               <Select.Option value="all">All Status</Select.Option>
@@ -712,84 +701,75 @@ const FacultyProgress = () => {
               value={visitDateRange}
               onChange={setVisitDateRange}
               format="DD/MM/YYYY"
-              className="w-64"
-              placeholder={['Start Date', 'End Date']}
+              className="w-56"
+              size="small"
+              placeholder={['Start', 'End']}
             />
             {(visitStatusFilter !== 'all' || visitDateRange) && (
               <Button
+                type="text"
+                size="small"
                 onClick={() => {
                   setVisitStatusFilter('all');
                   setVisitDateRange(null);
                 }}
+                className="text-text-tertiary hover:text-error"
               >
-                Clear Filters
+                Clear
               </Button>
             )}
-          </Space>
-          <Space>
-            <Button
-              icon={visitViewMode === 'table' ? <CalendarOutlined /> : <TableOutlined />}
-              onClick={() => setVisitViewMode(visitViewMode === 'table' ? 'calendar' : 'table')}
-            >
-              {visitViewMode === 'table' ? 'Calendar View' : 'Table View'}
-            </Button>
-          </Space>
+          </div>
+          <Button
+            icon={visitViewMode === 'table' ? <CalendarOutlined /> : <TableOutlined />}
+            onClick={() => setVisitViewMode(visitViewMode === 'table' ? 'calendar' : 'table')}
+            size="small"
+            className="rounded-lg"
+          >
+            {visitViewMode === 'table' ? 'Calendar' : 'Table'}
+          </Button>
         </div>
       </Card>
 
       {/* Visit Summary */}
-      {facultyDetails?.visitSummary && (
-        <Card className="rounded-2xl border-border shadow-sm">
-          <Title level={5} className="!mb-4 !text-text-primary flex items-center gap-2">
-            <CalendarOutlined className="text-primary" />
-            Monthly Visit Summary
-          </Title>
-          <Row gutter={[16, 16]}>
+      {facultyDetails?.visitSummary && facultyDetails.visitSummary.length > 0 && (
+        <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '12px' } }}>
+          <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3 block">
+            <CalendarOutlined className="mr-1.5" />Monthly Summary
+          </Text>
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
             {facultyDetails.visitSummary.map((month, index) => (
-              <Col xs={12} sm={8} md={6} lg={4} key={index}>
-                <div className={`p-3 rounded-xl border ${
-                  month.isPast && month.visits === 0
-                    ? 'border-error/30 bg-error/5'
-                    : month.visits > 0
-                    ? 'border-success/30 bg-success/5'
-                    : 'border-border bg-background-tertiary/30'
+              <div key={index} className={`p-2 rounded-lg border text-center ${
+                month.isPast && month.visits === 0
+                  ? 'border-error/30 bg-error/5'
+                  : month.visits > 0
+                  ? 'border-success/30 bg-success/5'
+                  : 'border-border bg-background-tertiary/30'
+              }`}>
+                <Text className="block text-[10px] font-medium text-text-primary">
+                  {month.monthName?.substring(0, 3)}
+                </Text>
+                <span className={`text-sm font-bold ${
+                  month.isPast && month.visits === 0 ? 'text-error' : month.visits > 0 ? 'text-success' : 'text-text-tertiary'
                 }`}>
-                  <Text className="block text-sm font-semibold text-text-primary">
-                    {month.monthName} {month.year}
-                  </Text>
-                  <div className="flex items-center gap-2 mt-1">
-                    {month.isPast && month.visits === 0 ? (
-                      <>
-                        <ExclamationCircleOutlined className="text-error" />
-                        <Text className="text-error text-xs font-medium">Missed</Text>
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircleOutlined className={month.visits > 0 ? 'text-success' : 'text-text-tertiary'} />
-                        <Text className={`text-xs font-medium ${month.visits > 0 ? 'text-success' : 'text-text-tertiary'}`}>
-                          {month.visits} visit{month.visits !== 1 ? 's' : ''}
-                        </Text>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </Col>
+                  {month.visits}
+                </span>
+              </div>
             ))}
-          </Row>
+          </div>
         </Card>
       )}
 
       {/* Detailed Visits - Table or Calendar View */}
       {visitViewMode === 'table' ? (
-        <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
-          <div className="p-4 border-b border-border flex justify-between items-center">
-            <Title level={5} className="!mb-0 !text-text-primary flex items-center gap-2">
-              <FileTextOutlined className="text-primary" />
-              Visit Details
-            </Title>
-            <Text className="text-text-tertiary">
-              {filteredVisits.length} visits
+        <Card
+          className="rounded-xl border-border shadow-sm overflow-hidden"
+          styles={{ body: { padding: 0 } }}
+        >
+          <div className="px-4 py-3 border-b border-border flex justify-between items-center">
+            <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
+              <FileTextOutlined className="mr-1.5" />Visit Details
             </Text>
+            <Tag className="rounded-full text-xs px-2">{filteredVisits.length}</Tag>
           </div>
           <Table
             columns={visitColumns}
@@ -799,28 +779,35 @@ const FacultyProgress = () => {
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} visits`,
+              showTotal: (total, range) => (
+                <span className="text-text-tertiary">
+                  Showing <strong>{range[0]}-{range[1]}</strong> of <strong>{total}</strong> visits
+                </span>
+              ),
             }}
             scroll={{ x: 1000 }}
-            className="custom-table"
+            className="[&_.ant-table-thead>tr>th]:bg-background-tertiary/30 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-text-secondary [&_.ant-table-thead>tr>th]:text-xs [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-row:hover>td]:bg-primary/[0.02]"
             expandable={{
               expandedRowRender: (record) => (
-                <div className="p-4 bg-background-tertiary/30 rounded-xl mx-4 my-2">
-                  <Row gutter={[24, 16]}>
+                <div className="p-4 bg-gradient-to-br from-background-tertiary/50 to-transparent rounded-xl mx-2 my-2 border border-border/50">
+                  <Row gutter={[20, 16]}>
                     <Col xs={24} md={12}>
                       <Descriptions
                         column={1}
                         size="small"
-                        className="bg-background rounded-lg p-3"
+                        className="[&_.ant-descriptions-item-label]:text-text-tertiary [&_.ant-descriptions-item-label]:font-medium"
                       >
-                        <Descriptions.Item label="Duration">
-                          {record.visitDuration || 'N/A'}
+                        <Descriptions.Item label="Title of Project/Work">
+                          {record.titleOfProjectWork || 'N/A'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Student Performance">
-                          {record.studentPerformance || 'N/A'}
+                        <Descriptions.Item label="Assistance Required from Institute">
+                          {record.assistanceRequiredFromInstitute || 'N/A'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Work Environment">
-                          {record.workEnvironment || 'N/A'}
+                        <Descriptions.Item label="Response from Organisation">
+                          {record.responseFromOrganisation || 'N/A'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Remarks of Organisation Supervisor">
+                          {record.remarksOfOrganisationSupervisor || 'N/A'}
                         </Descriptions.Item>
                       </Descriptions>
                     </Col>
@@ -828,16 +815,16 @@ const FacultyProgress = () => {
                       <Descriptions
                         column={1}
                         size="small"
-                        className="bg-background rounded-lg p-3"
+                        className="[&_.ant-descriptions-item-label]:text-text-tertiary [&_.ant-descriptions-item-label]:font-medium"
                       >
-                        <Descriptions.Item label="Industry Support">
-                          {record.industrySupport || 'N/A'}
+                        <Descriptions.Item label="Significant Change in Plan">
+                          {record.significantChangeInPlan || 'N/A'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Skills Development">
-                          {record.skillsDevelopment || 'N/A'}
+                        <Descriptions.Item label="Observations about Student">
+                          {record.observationsAboutStudent || 'N/A'}
                         </Descriptions.Item>
-                        <Descriptions.Item label="Remarks">
-                          {record.remarks || 'N/A'}
+                        <Descriptions.Item label="Feedback Shared with Student">
+                          {record.feedbackSharedWithStudent || 'N/A'}
                         </Descriptions.Item>
                       </Descriptions>
                     </Col>
@@ -847,12 +834,18 @@ const FacultyProgress = () => {
               rowExpandable: () => true,
             }}
             locale={{
-              emptyText: <Empty description="No visits recorded" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+              emptyText: (
+                <Empty
+                  description="No visits recorded"
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  className="py-12"
+                />
+              ),
             }}
           />
         </Card>
       ) : (
-        <Card className="rounded-2xl border-border shadow-sm">
+        <Card className="rounded-xl border-border shadow-sm">
           <Calendar
             cellRender={(current, info) => {
               if (info.type === 'date') {
@@ -871,10 +864,12 @@ const FacultyProgress = () => {
     {
       key: 'students',
       label: (
-        <span className="flex items-center gap-2 py-2">
+        <span className="flex items-center gap-2 px-1">
           <TeamOutlined />
-          Assigned Students
-          <Badge count={facultyDetails?.students?.length || 0} showZero className="ml-1" />
+          <span>Assigned Students</span>
+          <span className="ml-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
+            {facultyDetails?.students?.length || 0}
+          </span>
         </span>
       ),
       children: renderStudentsTab(),
@@ -882,10 +877,12 @@ const FacultyProgress = () => {
     {
       key: 'visits',
       label: (
-        <span className="flex items-center gap-2 py-2">
+        <span className="flex items-center gap-2 px-1">
           <CarOutlined />
-          Faculty Visits
-          <Badge count={facultyDetails?.visits?.length || 0} showZero className="ml-1" />
+          <span>Faculty Visits</span>
+          <span className="ml-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-bold">
+            {facultyDetails?.visits?.length || 0}
+          </span>
         </span>
       ),
       children: renderVisitsTab(),
@@ -893,16 +890,12 @@ const FacultyProgress = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+    <div className="p-4 md:p-6 min-h-screen">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
-          <Title level={2} className="!mb-1 !text-text-primary">
-            Faculty Progress Tracking
-          </Title>
-          <Text className="text-text-secondary text-base">
-            Monitor faculty visits and student assignments across your institution
-          </Text>
+          <h1 className="text-lg font-semibold text-text-primary">Faculty Progress Tracking</h1>
+          <Text className="text-text-tertiary text-sm">Monitor faculty visits and student assignments</Text>
         </div>
         <Button
           icon={<ReloadOutlined />}
@@ -913,7 +906,7 @@ const FacultyProgress = () => {
             }
           }}
           loading={loading || detailsLoading}
-          className="rounded-lg shadow-sm"
+          className="rounded-lg"
         >
           Refresh
         </Button>
@@ -943,7 +936,7 @@ const FacultyProgress = () => {
                   onChange={setActiveTab}
                   items={tabItems}
                   size="large"
-                  className="custom-tabs-large"
+                  className="[&_.ant-tabs-tab]:rounded-lg [&_.ant-tabs-tab]:px-4 [&_.ant-tabs-tab-active]:bg-primary/5 [&_.ant-tabs-ink-bar]:bg-primary [&_.ant-tabs-ink-bar]:h-[3px] [&_.ant-tabs-ink-bar]:rounded-full"
                 />
               </div>
             )
@@ -962,9 +955,14 @@ const FacultyProgress = () => {
       {/* Edit Internship Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-text-primary">
-            <EditOutlined className="text-warning" />
-            <span>Edit Internship Details</span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
+              <EditOutlined className="text-warning" />
+            </div>
+            <div>
+              <span className="text-text-primary font-semibold">Edit Internship Details</span>
+              <p className="text-xs text-text-tertiary font-normal mb-0">Update student internship information</p>
+            </div>
           </div>
         }
         open={editVisible}
@@ -974,19 +972,26 @@ const FacultyProgress = () => {
         }}
         width={600}
         footer={null}
+        forceRender
+        destroyOnClose={false}
+        className="[&_.ant-modal-header]:pb-4 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-border"
       >
         <Form
           form={editForm}
           layout="vertical"
           onFinish={handleEditSubmit}
-          className="mt-4"
+          className="mt-5"
         >
           {editStudent && (
-            <div className="p-3 rounded-lg bg-primary/5 mb-4">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 mb-5">
               <div className="flex items-center gap-3">
-                <Avatar size={40} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                <Avatar
+                  size={48}
+                  icon={<UserOutlined />}
+                  className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary border-2 border-primary/10"
+                />
                 <div>
-                  <Text className="font-bold text-text-primary block">{editStudent.name}</Text>
+                  <Text className="font-bold text-text-primary block text-base">{editStudent.name}</Text>
                   <Text className="text-text-secondary text-sm">{editStudent.rollNumber}</Text>
                 </div>
               </div>
@@ -997,37 +1002,51 @@ const FacultyProgress = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="companyName"
-                label="Company Name"
+                label={<span className="font-medium">Company Name</span>}
                 rules={[{ required: true, message: 'Company name is required' }]}
               >
-                <Input placeholder="Enter company name" />
+                <Input placeholder="Enter company name" className="rounded-lg" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item name="jobProfile" label="Job Profile / Role">
-                <Input placeholder="Enter job profile" />
+              <Form.Item
+                name="jobProfile"
+                label={<span className="font-medium">Job Profile / Role</span>}
+              >
+                <Input placeholder="Enter job profile" className="rounded-lg" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col xs={24} md={8}>
-              <Form.Item name="stipend" label="Monthly Stipend (₹)">
+              <Form.Item
+                name="stipend"
+                label={<span className="font-medium">Monthly Stipend (₹)</span>}
+              >
                 <InputNumber
                   placeholder="Enter stipend"
-                  className="w-full"
+                  className="w-full rounded-lg"
                   min={0}
+                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                  parser={value => value.replace(/\$\s?|(,*)/g, '')}
                 />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="internshipDuration" label="Duration">
-                <Input placeholder="e.g., 6 months" />
+              <Form.Item
+                name="internshipDuration"
+                label={<span className="font-medium">Duration</span>}
+              >
+                <Input placeholder="e.g., 6 months" className="rounded-lg" />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item name="internshipStatus" label="Status">
-                <Select placeholder="Select status">
+              <Form.Item
+                name="internshipStatus"
+                label={<span className="font-medium">Status</span>}
+              >
+                <Select placeholder="Select status" className="rounded-lg">
                   <Select.Option value="ONGOING">Ongoing</Select.Option>
                   <Select.Option value="IN_PROGRESS">In Progress</Select.Option>
                   <Select.Option value="COMPLETED">Completed</Select.Option>
@@ -1037,14 +1056,14 @@ const FacultyProgress = () => {
             </Col>
           </Row>
 
-          <Divider className="my-4" />
+          <Divider className="my-5" />
           <div className="flex justify-end gap-3">
             <Button
               onClick={() => {
                 setEditVisible(false);
                 editForm.resetFields();
               }}
-              icon={<CloseOutlined />}
+              className="rounded-lg px-5"
             >
               Cancel
             </Button>
@@ -1053,6 +1072,7 @@ const FacultyProgress = () => {
               htmlType="submit"
               loading={editLoading}
               icon={<SaveOutlined />}
+              className="rounded-lg px-5 shadow-md shadow-primary/20"
             >
               Save Changes
             </Button>
@@ -1063,9 +1083,14 @@ const FacultyProgress = () => {
       {/* Visit Report Details Modal */}
       <Modal
         title={
-          <div className="flex items-center gap-2 text-text-primary">
-            <EyeOutlined className="text-primary" />
-            <span>Visit Report Details</span>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <EyeOutlined className="text-primary" />
+            </div>
+            <div>
+              <span className="text-text-primary font-semibold">Visit Report Details</span>
+              <p className="text-xs text-text-tertiary font-normal mb-0">Complete visit information and feedback</p>
+            </div>
           </div>
         }
         open={reportDetailsVisible}
@@ -1073,45 +1098,54 @@ const FacultyProgress = () => {
           setReportDetailsVisible(false);
           setSelectedReport(null);
         }}
-        footer={[
-          <Button key="close" onClick={() => setReportDetailsVisible(false)}>
+        footer={
+          <Button
+            onClick={() => setReportDetailsVisible(false)}
+            className="rounded-lg"
+          >
             Close
-          </Button>,
-        ]}
-        width={700}
+          </Button>
+        }
+        width={720}
+        className="[&_.ant-modal-header]:pb-4 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-border"
       >
         {selectedReport && (
-          <div className="space-y-4">
-            {/* Visit Header */}
-            <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-secondary/5">
-              <Row gutter={[16, 8]}>
-                <Col xs={12}>
-                  <Text className="text-xs text-text-tertiary block">Faculty</Text>
-                  <Text className="font-medium text-text-primary">{selectedFaculty?.name}</Text>
+          <div className="space-y-5 mt-5">
+            {/* Visit Header Card */}
+            <div className="p-5 rounded-xl bg-gradient-to-br from-primary/8 via-primary/5 to-transparent border border-primary/10">
+              <Row gutter={[20, 16]}>
+                <Col xs={12} sm={6}>
+                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Faculty</Text>
+                  <Text className="font-semibold text-text-primary">{selectedFaculty?.name}</Text>
                 </Col>
-                <Col xs={12}>
-                  <Text className="text-xs text-text-tertiary block">Visit Date</Text>
-                  <Text className="font-medium text-text-primary">
+                <Col xs={12} sm={6}>
+                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Visit Date</Text>
+                  <Text className="font-semibold text-text-primary">
                     {dayjs(selectedReport.visitDate).format('DD MMM YYYY')}
                   </Text>
                 </Col>
-                <Col xs={12}>
-                  <Text className="text-xs text-text-tertiary block">Student</Text>
-                  <Text className="font-medium text-text-primary">{selectedReport.studentName}</Text>
-                  <Text className="text-xs text-text-secondary block">{selectedReport.studentRollNumber}</Text>
+                <Col xs={12} sm={6}>
+                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Student</Text>
+                  <Text className="font-semibold text-text-primary block">{selectedReport.studentName}</Text>
+                  <Text className="text-xs text-text-secondary font-mono">{selectedReport.studentRollNumber}</Text>
                 </Col>
-                <Col xs={12}>
-                  <Text className="text-xs text-text-tertiary block">Visit Type</Text>
-                  <Space>
+                <Col xs={12} sm={6}>
+                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Visit Type</Text>
+                  <div className="flex items-center gap-2">
                     {getVisitTypeIcon(selectedReport.visitType)}
-                    <Text className="text-text-primary">{selectedReport.visitType}</Text>
-                  </Space>
+                    <Text className="font-semibold text-text-primary">{selectedReport.visitType}</Text>
+                  </div>
                 </Col>
               </Row>
             </div>
 
             {/* Visit Details */}
-            <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+            <Descriptions
+              bordered
+              column={{ xs: 1, sm: 2 }}
+              size="small"
+              className="[&_.ant-descriptions-item-label]:bg-background-tertiary/50 [&_.ant-descriptions-item-label]:font-semibold [&_.ant-descriptions-item-label]:text-text-secondary"
+            >
               <Descriptions.Item label="Company">
                 {selectedReport.companyName || 'N/A'}
               </Descriptions.Item>
@@ -1122,52 +1156,41 @@ const FacultyProgress = () => {
                 {selectedReport.visitDuration || 'N/A'}
               </Descriptions.Item>
               <Descriptions.Item label="Status">
-                <Tag color={getVisitStatusColor(selectedReport.status)}>
+                <Tag color={getVisitStatusColor(selectedReport.status)} className="rounded-full font-medium">
                   {selectedReport.status || 'Completed'}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Overall Rating" span={2}>
                 {selectedReport.overallRating ? (
-                  <Rate disabled value={selectedReport.overallRating} />
+                  <div className="flex items-center gap-3">
+                    <Rate disabled value={selectedReport.overallRating} />
+                    <span className="text-sm text-text-secondary">({selectedReport.overallRating}/5)</span>
+                  </div>
                 ) : (
-                  <Text className="text-text-tertiary">Not rated</Text>
+                  <Text className="text-text-tertiary italic">Not rated</Text>
                 )}
               </Descriptions.Item>
-              {selectedReport.studentPerformance && (
-                <Descriptions.Item label="Student Performance" span={2}>
-                  {selectedReport.studentPerformance}
-                </Descriptions.Item>
-              )}
-              {selectedReport.workEnvironment && (
-                <Descriptions.Item label="Work Environment" span={2}>
-                  {selectedReport.workEnvironment}
-                </Descriptions.Item>
-              )}
-              {selectedReport.industrySupport && (
-                <Descriptions.Item label="Industry Support" span={2}>
-                  {selectedReport.industrySupport}
-                </Descriptions.Item>
-              )}
-              {selectedReport.skillsDevelopment && (
-                <Descriptions.Item label="Skills Development" span={2}>
-                  {selectedReport.skillsDevelopment}
-                </Descriptions.Item>
-              )}
-              {selectedReport.remarks && (
-                <Descriptions.Item label="Remarks" span={2}>
-                  <pre className="whitespace-pre-wrap text-sm m-0">{selectedReport.remarks}</pre>
-                </Descriptions.Item>
-              )}
-              {selectedReport.recommendations && (
-                <Descriptions.Item label="Recommendations" span={2}>
-                  {selectedReport.recommendations}
-                </Descriptions.Item>
-              )}
-              {selectedReport.issuesIdentified && (
-                <Descriptions.Item label="Issues Identified" span={2}>
-                  {selectedReport.issuesIdentified}
-                </Descriptions.Item>
-              )}
+              <Descriptions.Item label="Title of Project/Work" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.titleOfProjectWork || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Assistance Required from Institute" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.assistanceRequiredFromInstitute || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Response from Organisation" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.responseFromOrganisation || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Remarks of Organisation Supervisor" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.remarksOfOrganisationSupervisor || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Significant Change in Plan" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.significantChangeInPlan || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Observations about Student" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.observationsAboutStudent || 'N/A'}</div>
+              </Descriptions.Item>
+              <Descriptions.Item label="Feedback Shared with Student" span={2}>
+                <div className="whitespace-pre-wrap text-sm">{selectedReport.feedbackSharedWithStudent || 'N/A'}</div>
+              </Descriptions.Item>
             </Descriptions>
           </div>
         )}

@@ -290,10 +290,34 @@ export class DocumentsService {
   }
 
   /**
+   * Get presigned URL for a file
+   * Works with both direct MinIO URLs and file keys
+   */
+  async getPresignedUrl(fileUrlOrKey: string, expiresIn: number = 3600): Promise<string> {
+    try {
+      // Extract key from URL if it's a full URL
+      let key = fileUrlOrKey;
+      if (fileUrlOrKey.startsWith('http://') || fileUrlOrKey.startsWith('https://')) {
+        key = this.extractKeyFromMinioUrl(fileUrlOrKey);
+        if (!key) {
+          throw new NotFoundException('Invalid file URL');
+        }
+      }
+
+      // Generate presigned URL
+      const presignedUrl = await this.fileStorageService.getSignedUrl(key, expiresIn);
+      return presignedUrl;
+    } catch (error) {
+      this.logger.error(`Failed to get presigned URL for: ${fileUrlOrKey}`, error.stack);
+      throw error;
+    }
+  }
+
+  /**
    * Extract MinIO key from URL
    * URL format: http://localhost:9000/bucket-name/path/to/file.ext
    */
-  private extractKeyFromMinioUrl(url: string): string | null {
+  extractKeyFromMinioUrl(url: string): string | null {
     try {
       if (!url) return null;
 

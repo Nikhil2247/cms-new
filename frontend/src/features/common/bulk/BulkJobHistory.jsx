@@ -149,6 +149,10 @@ const BulkJobHistory = () => {
   };
 
   const handleCancelJob = async (jobId) => {
+    if (!jobId || jobId.startsWith('pending-')) {
+      message.error('Cannot cancel this job - job ID not available');
+      return;
+    }
     try {
       await bulkService.cancelJob(jobId);
       message.success('Job cancelled successfully');
@@ -159,6 +163,10 @@ const BulkJobHistory = () => {
   };
 
   const handleRetryJob = async (jobId) => {
+    if (!jobId || jobId.startsWith('pending-')) {
+      message.error('Cannot retry this job - job ID not available');
+      return;
+    }
     try {
       await bulkService.retryJob(jobId);
       message.success('Job queued for retry');
@@ -287,36 +295,41 @@ const BulkJobHistory = () => {
     {
       title: 'Actions',
       key: 'actions',
-      render: (_, record) => (
-        <Space size="small">
-          <Tooltip title="View Details">
-            <Button
-              type="text"
-              icon={<EyeOutlined />}
-              onClick={() => handleViewDetails(record)}
-            />
-          </Tooltip>
-          {record.status === 'QUEUED' && (
-            <Tooltip title="Cancel">
+      render: (_, record) => {
+        const hasValidJobId = record.jobId && !record.jobId.startsWith('pending-');
+        return (
+          <Space size="small">
+            <Tooltip title="View Details">
               <Button
                 type="text"
-                danger
-                icon={<StopOutlined />}
-                onClick={() => handleCancelJob(record.jobId)}
+                icon={<EyeOutlined />}
+                onClick={() => handleViewDetails(record)}
               />
             </Tooltip>
-          )}
-          {record.status === 'FAILED' && (
-            <Tooltip title="Retry">
-              <Button
-                type="text"
-                icon={<RedoOutlined />}
-                onClick={() => handleRetryJob(record.jobId)}
-              />
-            </Tooltip>
-          )}
-        </Space>
-      ),
+            {record.status === 'QUEUED' && (
+              <Tooltip title={hasValidJobId ? 'Cancel' : 'Cannot cancel - job not queued yet'}>
+                <Button
+                  type="text"
+                  danger
+                  icon={<StopOutlined />}
+                  onClick={() => handleCancelJob(record.jobId)}
+                  disabled={!hasValidJobId}
+                />
+              </Tooltip>
+            )}
+            {record.status === 'FAILED' && (
+              <Tooltip title={hasValidJobId ? 'Retry' : 'Cannot retry - no job ID'}>
+                <Button
+                  type="text"
+                  icon={<RedoOutlined />}
+                  onClick={() => handleRetryJob(record.jobId)}
+                  disabled={!hasValidJobId}
+                />
+              </Tooltip>
+            )}
+          </Space>
+        );
+      },
     },
   ];
 

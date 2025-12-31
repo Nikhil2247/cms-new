@@ -71,8 +71,8 @@ export class FileStorageService implements OnModuleInit {
       endpoint: this.endpoint,
       region: this.configService.get<string>('MINIO_REGION', 'us-east-1'),
       credentials: {
-        accessKeyId: this.configService.get<string>('MINIO_ACCESS_KEY', 'minioadmin'),
-        secretAccessKey: this.configService.get<string>('MINIO_SECRET_KEY', 'minioadmin'),
+        accessKeyId: this.configService.get<string>('MINIO_ROOT_USER', 'minioadmin'),
+        secretAccessKey: this.configService.get<string>('MINIO_ROOT_PASSWORD', 'minioadmin123'),
       },
       forcePathStyle: true,
     });

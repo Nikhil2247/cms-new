@@ -8,82 +8,58 @@ import {
   Typography,
   Row,
   Col,
-  Divider,
-  Alert,
   Table,
   Tag,
   Badge,
-  Space,
-  Modal,
-  Descriptions,
+  Drawer,
   Timeline,
-  Upload,
-  Steps,
   Empty,
-  message as antdMessage,
+  Divider,
+  Spin,
+  Modal,
 } from 'antd';
 import {
   PlusOutlined,
   SendOutlined,
   EyeOutlined,
-  InboxOutlined,
-  AlertOutlined,
-  FileTextOutlined,
-  CalendarOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  ClockCircleOutlined,
+  ExclamationCircleOutlined,
   UserOutlined,
   TeamOutlined,
   GlobalOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons';
-import { grievanceService } from '../../../services/grievance.service';
 import { studentService } from '../../../services/student.service';
+import API from '../../../services/api';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
-const { Dragger } = Upload;
 
-// Escalation level labels and order
 const ESCALATION_LEVELS = {
-  MENTOR: { label: 'Faculty Mentor', color: 'blue', icon: <UserOutlined />, order: 0 },
-  PRINCIPAL: { label: 'Principal', color: 'orange', icon: <TeamOutlined />, order: 1 },
-  STATE_DIRECTORATE: { label: 'State Directorate', color: 'red', icon: <GlobalOutlined />, order: 2 },
+  MENTOR: { label: 'Faculty Mentor', color: 'blue', icon: <UserOutlined /> },
+  PRINCIPAL: { label: 'Principal', color: 'orange', icon: <TeamOutlined /> },
+  STATE_DIRECTORATE: { label: 'State Directorate', color: 'red', icon: <GlobalOutlined /> },
 };
 
-// Constants - Must match Prisma GrievanceCategory enum
 const CATEGORIES = [
-  { value: 'INTERNSHIP_RELATED', label: 'Internship Related', description: 'Issues related to your internship' },
-  { value: 'MENTOR_RELATED', label: 'Mentor Related', description: 'Issues with faculty mentor support' },
-  { value: 'INDUSTRY_RELATED', label: 'Industry Related', description: 'Industry partner related issues' },
-  { value: 'PAYMENT_ISSUE', label: 'Payment Issue', description: 'Stipend or payment concerns' },
-  { value: 'WORKPLACE_HARASSMENT', label: 'Workplace Harassment', description: 'Harassment at workplace' },
-  { value: 'WORK_CONDITION', label: 'Work Condition', description: 'Working conditions concerns' },
-  { value: 'WORK_ENVIRONMENT', label: 'Work Environment', description: 'Issues with work environment' },
-  { value: 'SAFETY_CONCERN', label: 'Safety Concern', description: 'Safety related issues' },
-  { value: 'HARASSMENT', label: 'Harassment', description: 'General harassment concerns' },
-  { value: 'MENTORSHIP', label: 'Mentorship', description: 'Mentorship quality issues' },
-  { value: 'LEARNING_OPPORTUNITY', label: 'Learning Opportunity', description: 'Lack of learning opportunities' },
-  { value: 'DISCRIMINATION', label: 'Discrimination', description: 'Discrimination concerns' },
-  { value: 'WORK_HOURS', label: 'Work Hours', description: 'Issues with work hours' },
-  { value: 'DOCUMENTATION', label: 'Documentation', description: 'Documentation related issues' },
-  { value: 'OTHER', label: 'Other', description: 'Other concerns' },
+  { value: 'INTERNSHIP_RELATED', label: 'Internship Related' },
+  { value: 'MENTOR_RELATED', label: 'Mentor Related' },
+  { value: 'INDUSTRY_RELATED', label: 'Industry Related' },
+  { value: 'PAYMENT_ISSUE', label: 'Payment Issue' },
+  { value: 'WORKPLACE_HARASSMENT', label: 'Workplace Harassment' },
+  { value: 'WORK_CONDITION', label: 'Work Condition' },
+  { value: 'SAFETY_CONCERN', label: 'Safety Concern' },
+  { value: 'OTHER', label: 'Other' },
 ];
 
 const PRIORITIES = [
-  { value: 'LOW', label: 'Low', color: 'default', description: 'Non-urgent matters' },
-  { value: 'MEDIUM', label: 'Medium', color: 'blue', description: 'Standard priority' },
-  { value: 'HIGH', label: 'High', color: 'orange', description: 'Requires prompt attention' },
-  { value: 'URGENT', label: 'Urgent', color: 'red', description: 'Requires immediate attention' },
-];
-
-const STATUSES = [
-  { value: 'SUBMITTED', label: 'Submitted', color: 'blue', badge: 'processing' },
-  { value: 'IN_REVIEW', label: 'In Review', color: 'orange', badge: 'warning' },
-  { value: 'ESCALATED', label: 'Escalated', color: 'red', badge: 'error' },
-  { value: 'RESOLVED', label: 'Resolved', color: 'green', badge: 'success' },
-  { value: 'CLOSED', label: 'Closed', color: 'default', badge: 'default' },
+  { value: 'LOW', label: 'Low', color: 'green' },
+  { value: 'MEDIUM', label: 'Medium', color: 'orange' },
+  { value: 'HIGH', label: 'High', color: 'red' },
+  { value: 'URGENT', label: 'Urgent', color: 'magenta' },
 ];
 
 const SubmitGrievance = () => {
@@ -92,37 +68,38 @@ const SubmitGrievance = () => {
   const [submitting, setSubmitting] = useState(false);
   const [grievances, setGrievances] = useState([]);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
-  const [detailModalVisible, setDetailModalVisible] = useState(false);
-  const [fileList, setFileList] = useState([]);
-  const [userInfo, setUserInfo] = useState(null);
-
-  useEffect(() => {
-    const loginData = localStorage.getItem('loginResponse');
-    if (loginData) {
-      try {
-        const parsed = JSON.parse(loginData);
-        setUserInfo(parsed.user);
-      } catch (e) {
-        console.error('Failed to parse loginResponse:', e);
-      }
-    }
-  }, []);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [assignedMentor, setAssignedMentor] = useState(null);
 
   useEffect(() => {
     fetchMyGrievances();
+    fetchAssignedMentor();
   }, []);
+
+  const fetchAssignedMentor = async () => {
+    try {
+      const response = await API.get('/student/my-mentor');
+      console.log('[SubmitGrievance] Mentor response:', response.data);
+      const assignment = response.data?.data;
+      console.log('[SubmitGrievance] Mentor assignment:', assignment);
+      console.log('[SubmitGrievance] Mentor object:', assignment?.mentor);
+      setAssignedMentor(assignment?.mentor || null);
+    } catch (error) {
+      console.error('Error fetching mentor:', error);
+      setAssignedMentor(null);
+    }
+  };
 
   const fetchMyGrievances = async () => {
     try {
       setLoading(true);
-      // Use student portal endpoint - same as dashboard (works with JWT auth)
       const response = await studentService.getGrievances();
-      // Handle both array and paginated response formats
-      const grievancesList = response?.data || response?.grievances || response || [];
-      setGrievances(Array.isArray(grievancesList) ? grievancesList : []);
+      const list = response?.data || response?.grievances || response || [];
+      setGrievances(Array.isArray(list) ? list : []);
     } catch (error) {
       console.error('Error fetching grievances:', error);
-      toast.error('Failed to load your grievances');
+      toast.error('Failed to load grievances');
     } finally {
       setLoading(false);
     }
@@ -131,68 +108,61 @@ const SubmitGrievance = () => {
   const handleSubmit = async (values) => {
     try {
       setSubmitting(true);
-
-      const grievanceData = {
+      const payload = {
         category: values.category,
-        title: values.subject,  // Backend expects 'title', form uses 'subject'
+        title: values.subject,
         description: values.description,
-        severity: values.priority,  // Backend expects 'severity', form uses 'priority'
-        attachments: fileList.map(file => file.response?.url || file.url).filter(Boolean),
+        severity: values.priority,
+        assignedToId: assignedMentor?.id,
       };
-
-      // Use student portal endpoint for consistency
-      await studentService.submitGrievance(grievanceData);
-      toast.success('Grievance submitted successfully!');
+      console.log('[SubmitGrievance] Submitting grievance with payload:', payload);
+      console.log('[SubmitGrievance] assignedMentor:', assignedMentor);
+      console.log('[SubmitGrievance] assignedToId:', assignedMentor?.id);
+      await studentService.submitGrievance(payload);
+      toast.success('Grievance submitted successfully');
+      setModalVisible(false);
       form.resetFields();
-      setFileList([]);
       fetchMyGrievances();
     } catch (error) {
-      console.error('Error submitting grievance:', error);
       toast.error(error.response?.data?.message || 'Failed to submit grievance');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleViewDetail = (record) => {
-    setSelectedGrievance(record);
-    setDetailModalVisible(true);
+  const handleOpenModal = () => {
+    if (!assignedMentor) {
+      toast.error('No mentor assigned. Please contact your institution.');
+      return;
+    }
+    setModalVisible(true);
   };
 
-  const getStatusConfig = (status) => {
-    return STATUSES.find(s => s.value === status) || STATUSES[0];
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'RESOLVED':
+      case 'CLOSED':
+        return <CheckCircleOutlined className="text-green-500" />;
+      case 'ESCALATED':
+      case 'REJECTED':
+        return <CloseCircleOutlined className="text-red-500" />;
+      case 'IN_PROGRESS':
+      case 'IN_REVIEW':
+        return <ClockCircleOutlined className="text-orange-500" />;
+      default:
+        return <ExclamationCircleOutlined className="text-blue-500" />;
+    }
   };
 
-  const getPriorityConfig = (priority) => {
-    return PRIORITIES.find(p => p.value === priority) || PRIORITIES[1];
-  };
-
-  const getCategoryConfig = (category) => {
-    return CATEGORIES.find(c => c.value === category) || CATEGORIES[6];
-  };
-
-  const uploadProps = {
-    name: 'file',
-    multiple: true,
-    fileList,
-    onChange(info) {
-      setFileList(info.fileList);
-      if (info.file.status === 'done') {
-        antdMessage.success(`${info.file.name} file uploaded successfully`);
-      } else if (info.file.status === 'error') {
-        antdMessage.error(`${info.file.name} file upload failed`);
-      }
-    },
-    onRemove(file) {
-      setFileList(fileList.filter(f => f.uid !== file.uid));
-    },
-    beforeUpload(file) {
-      const isLt5M = file.size / 1024 / 1024 < 5;
-      if (!isLt5M) {
-        antdMessage.error('File must be smaller than 5MB!');
-      }
-      return isLt5M;
-    },
+  const getStatusColor = (status) => {
+    const colors = {
+      SUBMITTED: 'processing',
+      IN_REVIEW: 'warning',
+      ESCALATED: 'error',
+      RESOLVED: 'success',
+      CLOSED: 'default',
+    };
+    return colors[status] || 'default';
   };
 
   const columns = [
@@ -200,15 +170,20 @@ const SubmitGrievance = () => {
       title: 'Subject',
       dataIndex: 'title',
       key: 'title',
-      render: (text) => <Text strong>{text}</Text>,
+      render: (text, record) => (
+        <div className="flex items-center gap-2">
+          {getStatusIcon(record.status)}
+          <Text className="text-sm font-medium">{text}</Text>
+        </div>
+      ),
     },
     {
       title: 'Category',
       dataIndex: 'category',
       key: 'category',
       render: (category) => {
-        const config = getCategoryConfig(category);
-        return <Tag color="blue">{config.label}</Tag>;
+        const config = CATEGORIES.find(c => c.value === category);
+        return <Tag className="rounded-md text-[10px] m-0">{config?.label || category}</Tag>;
       },
     },
     {
@@ -216,535 +191,201 @@ const SubmitGrievance = () => {
       dataIndex: 'severity',
       key: 'severity',
       render: (severity) => {
-        const config = getPriorityConfig(severity);
-        return <Tag color={config.color}>{config.label}</Tag>;
+        const config = PRIORITIES.find(p => p.value === severity);
+        return <Tag color={config?.color} className="rounded-md text-[10px] m-0">{config?.label || severity}</Tag>;
       },
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      render: (status) => {
-        const config = getStatusConfig(status);
-        return <Badge status={config.badge} text={config.label} />;
-      },
+      render: (status) => <Badge status={getStatusColor(status)} text={<span className="text-xs">{status?.replace(/_/g, ' ')}</span>} />,
     },
     {
-      title: 'Current Level',
-      dataIndex: 'escalationLevel',
-      key: 'escalationLevel',
-      render: (level) => {
-        if (!level) return <Tag>Pending</Tag>;
-        const config = ESCALATION_LEVELS[level];
-        return (
-          <Tag color={config?.color} icon={config?.icon}>
-            {config?.label || level}
-          </Tag>
-        );
-      },
-    },
-    {
-      title: 'Assigned To',
-      dataIndex: 'assignedTo',
-      key: 'assignedTo',
-      render: (assignedTo) => {
-        if (!assignedTo) return <Text type="secondary">-</Text>;
-        return (
-          <Space size="small">
-            <UserOutlined />
-            <Text>{assignedTo.name}</Text>
-          </Space>
-        );
-      },
-    },
-    {
-      title: 'Submitted',
+      title: 'Date',
       dataIndex: 'submittedDate',
       key: 'submittedDate',
       render: (date, record) => {
-        const displayDate = date || record.createdAt;
-        return displayDate ? dayjs(displayDate).format('MMM DD, YYYY') : 'N/A';
+        const d = date || record.createdAt;
+        return <Text className="text-xs text-text-secondary">{d ? dayjs(d).format('MMM D, YYYY') : 'N/A'}</Text>;
       },
     },
     {
-      title: 'Actions',
+      title: '',
       key: 'actions',
+      width: 60,
       render: (_, record) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EyeOutlined />}
-          onClick={() => handleViewDetail(record)}
-        >
-          View
-        </Button>
+        <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => { setSelectedGrievance(record); setDrawerVisible(true); }} />
       ),
     },
   ];
 
   return (
-    <div className="h-full overflow-y-auto hide-scrollbar">
-        <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6 bg-background-secondary min-h-screen">
-          {/* Header */}
-          <div>
-            <Title level={2} className="mb-1 text-text-primary">
-              Submit Grievance
-            </Title>
-            <Text className="text-text-secondary text-base">
-              Report your concerns and track their resolution
-            </Text>
-          </div>
+    <div className="p-4 md:p-5 min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+        <div>
+          <Title level={4} className="!mb-0 !text-lg">My Grievances</Title>
+          <Text className="text-xs text-text-tertiary">Submit and track your concerns</Text>
+        </div>
+        <Button type="primary" icon={<PlusOutlined />} onClick={handleOpenModal} className="rounded-lg text-xs h-8">
+          New Grievance
+        </Button>
+      </div>
 
-          {/* Info Alert */}
-          <Alert
-            title="How Grievances Work"
-            description="Submit any academic, internship, or placement-related concerns. Our team will review and address them promptly. You can track the status of your grievances below."
-            type="info"
-            showIcon
-            closable
-            className="rounded-xl border-primary/20 bg-primary-50/50"
-          />
-
-          {/* Submit Form */}
-          <Card
-            className="rounded-2xl border-border shadow-sm overflow-hidden"
-            styles={{ body: { padding: '24px' } }}
-          >
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b border-border/50">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                <FileTextOutlined className="text-lg text-primary" />
-              </div>
-              <Title level={4} className="!mb-0 text-text-primary">
-                Submit New Grievance
-              </Title>
-            </div>
-
-            <Form
-              form={form}
-              layout="vertical"
-              onFinish={handleSubmit}
-              className="mt-2"
-            >
-              <Row gutter={24}>
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="category"
-                    label={<span className="font-medium text-text-primary">Category</span>}
-                    rules={[{ required: true, message: 'Please select a category' }]}
-                  >
-                    <Select
-                      placeholder="Select category"
-                      size="large"
-                      className="rounded-lg h-12"
-                      popupStyle={{ borderRadius: '12px', padding: '8px' }}
-                    >
-                      {CATEGORIES.map(cat => (
-                        <Option key={cat.value} value={cat.value}>
-                          <div className="py-1">
-                            <div className="font-semibold text-text-primary">{cat.label}</div>
-                            <div className="text-[10px] text-text-tertiary leading-tight">{cat.description}</div>
-                          </div>
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24} md={12}>
-                  <Form.Item
-                    name="priority"
-                    label={<span className="font-medium text-text-primary">Priority</span>}
-                    rules={[{ required: true, message: 'Please select priority' }]}
-                    initialValue="MEDIUM"
-                  >
-                    <Select
-                      placeholder="Select priority level"
-                      size="large"
-                      className="rounded-lg h-12"
-                      popupStyle={{ borderRadius: '12px', padding: '8px' }}
-                    >
-                      {PRIORITIES.map(pri => (
-                        <Option key={pri.value} value={pri.value}>
-                          <div className="flex items-center gap-2">
-                            <Tag color={pri.color} className="m-0 rounded-md border-0 font-medium px-2">{pri.label}</Tag>
-                            <span className="text-[10px] text-text-tertiary">
-                              {pri.description}
-                            </span>
-                          </div>
-                        </Option>
-                      ))}
-                    </Select>
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24}>
-                  <Form.Item
-                    name="subject"
-                    label={<span className="font-medium text-text-primary">Subject</span>}
-                    rules={[
-                      { required: true, message: 'Please enter a subject' },
-                      { min: 10, message: 'Subject must be at least 10 characters' },
-                    ]}
-                  >
-                    <Input
-                      placeholder="Brief summary of your concern"
-                      size="large"
-                      className="rounded-lg h-12 bg-background border-border"
-                    />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24}>
-                  <Form.Item
-                    name="description"
-                    label={<span className="font-medium text-text-primary">Detailed Description</span>}
-                    rules={[
-                      { required: true, message: 'Please describe your grievance' },
-                      { min: 50, message: 'Description must be at least 50 characters' },
-                    ]}
-                  >
-                    <TextArea
-                      rows={6}
-                      placeholder="Provide detailed information about your concern. Include relevant dates, people involved, and any actions you've already taken."
-                      className="rounded-lg bg-background border-border p-4"
-                    />
-                  </Form.Item>
-                </Col>
-
-                <Col xs={24}>
-                  <Form.Item
-                    name="attachments"
-                    label={<span className="font-medium text-text-primary">Attachments (Optional)</span>}
-                    extra={<Text className="text-[10px] text-text-tertiary italic">Upload supporting documents (max 5MB per file)</Text>}
-                  >
-                    <Dragger {...uploadProps} className="bg-background-tertiary/30 rounded-xl border-dashed border-border hover:border-primary/50 transition-colors">
-                      <p className="ant-upload-drag-icon text-primary/60">
-                        <InboxOutlined className="text-4xl" />
-                      </p>
-                      <p className="text-text-primary font-medium text-sm">
-                        Click or drag file to this area to upload
-                      </p>
-                      <p className="text-text-tertiary text-xs mt-1">
-                        Support for single or bulk upload. Max size 5MB.
-                      </p>
-                    </Dragger>
-                  </Form.Item>
-                </Col>
-              </Row>
-
-              <Divider className="my-6 border-border/50" />
-
-              <div className="flex justify-end gap-3">
-                <Button
-                  onClick={() => form.resetFields()}
-                  size="large"
-                  className="rounded-xl px-6 h-12 border-border text-text-secondary hover:text-text-primary hover:border-text-tertiary"
-                >
-                  Reset
-                </Button>
-                <Button
-                  type="primary"
-                  htmlType="submit"
-                  icon={<SendOutlined />}
-                  loading={submitting}
-                  size="large"
-                  className="rounded-xl px-8 h-12 shadow-lg shadow-primary/20 font-bold bg-primary hover:bg-primary-600 border-0"
-                >
-                  Submit Grievance
-                </Button>
-              </div>
-            </Form>
-          </Card>
-
-          {/* My Grievances */}
-          <Card
-            className="rounded-2xl border-border shadow-sm overflow-hidden"
-            styles={{ body: { padding: 0 } }}
-          >
-            <div className="px-6 py-5 border-b border-border/50 flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-warning/10 flex items-center justify-center shrink-0">
-                <AlertOutlined className="text-warning" />
-              </div>
-              <Title level={4} className="!mb-0 text-text-primary text-lg">
-                My Grievances
-              </Title>
-            </div>
-            
-            <Table
-              dataSource={grievances}
-              columns={columns}
-              rowKey="id"
-              loading={loading}
-              pagination={{
-                pageSize: 5,
-                showSizeChanger: true,
-                showTotal: (total) => `Total ${total} grievances`,
-              }}
-              locale={{
-                emptyText: (
-                  <div className="py-12 flex flex-col items-center justify-center">
-                    <Empty description={false} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                    <Text className="text-text-tertiary mt-2">No grievances submitted yet</Text>
-                  </div>
-                ),
-              }}
-              className="custom-table"
-            />
-          </Card>
-
-          {/* Detail Modal */}
-          <Modal
-            title={
-              <div className="flex items-center gap-3 py-1">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                  <FileTextOutlined className="text-primary" />
-                </div>
-                <span className="font-bold text-text-primary text-lg">Grievance Details</span>
-              </div>
-            }
-            open={detailModalVisible}
-            onCancel={() => {
-              setDetailModalVisible(false);
-              setSelectedGrievance(null);
+      {/* Grievances Table */}
+      <Card className="rounded-xl border" styles={{ body: { padding: 0 } }}>
+        {loading ? (
+          <div className="flex justify-center py-16"><Spin size="small" /></div>
+        ) : (
+          <Table
+            dataSource={grievances}
+            columns={columns}
+            rowKey="id"
+            size="small"
+            pagination={{ pageSize: 10, showSizeChanger: false, size: 'small' }}
+            locale={{
+              emptyText: (
+                <Empty description="No grievances submitted" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+                  <Button type="primary" size="small" icon={<PlusOutlined />} onClick={handleOpenModal}>
+                    Submit First Grievance
+                  </Button>
+                </Empty>
+              ),
             }}
-            footer={
-              <div className="flex justify-end py-2 px-4">
-                <Button onClick={() => setDetailModalVisible(false)} className="rounded-xl px-6 h-10 font-medium">
-                  Close
-                </Button>
+            className="[&_.ant-table-thead_th]:bg-gray-50 [&_.ant-table-thead_th]:text-[10px] [&_.ant-table-thead_th]:font-semibold [&_.ant-table-thead_th]:uppercase [&_.ant-table-thead_th]:text-text-tertiary"
+          />
+        )}
+      </Card>
+
+      {/* Create Modal */}
+      <Modal
+        title={<span className="text-sm font-semibold">Submit Grievance</span>}
+        open={modalVisible}
+        onCancel={() => { setModalVisible(false); form.resetFields(); }}
+        footer={null}
+        width={500}
+        className="[&_.ant-modal-content]:rounded-xl"
+      >
+        <Form form={form} layout="vertical" onFinish={handleSubmit} className="mt-4">
+          <Row gutter={12}>
+            <Col span={12}>
+              <Form.Item name="category" label={<span className="text-xs font-medium">Category</span>} rules={[{ required: true }]}>
+                <Select placeholder="Select" className="h-9 text-xs">
+                  {CATEGORIES.map(c => <Select.Option key={c.value} value={c.value}>{c.label}</Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="priority" label={<span className="text-xs font-medium">Priority</span>} rules={[{ required: true }]} initialValue="MEDIUM">
+                <Select placeholder="Select" className="h-9 text-xs">
+                  {PRIORITIES.map(p => <Select.Option key={p.value} value={p.value}><Tag color={p.color} className="m-0 text-[10px]">{p.label}</Tag></Select.Option>)}
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="subject" label={<span className="text-xs font-medium">Subject</span>} rules={[{ required: true }, { min: 10, message: 'Min 10 characters' }]}>
+            <Input placeholder="Brief summary of your concern" className="rounded-lg h-9 text-xs" />
+          </Form.Item>
+
+          <Form.Item name="description" label={<span className="text-xs font-medium">Description</span>} rules={[{ required: true }, { min: 50, message: 'Min 50 characters' }]}>
+            <TextArea rows={4} placeholder="Provide detailed information about your concern..." className="rounded-lg text-xs" />
+          </Form.Item>
+
+          <Divider className="my-3" />
+
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => { setModalVisible(false); form.resetFields(); }} className="rounded-lg h-8 text-xs">Cancel</Button>
+            <Button type="primary" htmlType="submit" icon={<SendOutlined />} loading={submitting} className="rounded-lg h-8 text-xs">Submit</Button>
+          </div>
+        </Form>
+      </Modal>
+
+      {/* Detail Drawer */}
+      <Drawer
+        title={<span className="text-sm font-semibold">Grievance Details</span>}
+        open={drawerVisible}
+        onClose={() => { setDrawerVisible(false); setSelectedGrievance(null); }}
+        width={400}
+        className="[&_.ant-drawer-body]:p-4"
+      >
+        {selectedGrievance && (
+          <div className="space-y-4">
+            {/* Status */}
+            <div className="p-3 rounded-xl bg-gray-50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {getStatusIcon(selectedGrievance.status)}
+                <Text className="text-sm font-semibold">{selectedGrievance.status?.replace(/_/g, ' ')}</Text>
               </div>
-            }
-            width={700}
-            className="rounded-2xl overflow-hidden"
-            styles={{ mask: { backdropFilter: 'blur(4px)' } }}
-          >
-            {selectedGrievance && (
-              <div className="py-2 space-y-6">
-                <div className="flex justify-between items-center bg-background-tertiary p-4 rounded-xl border border-border/50">
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      status={getStatusConfig(selectedGrievance.status).badge}
-                    />
-                    <Text strong className="text-lg text-text-primary">
-                      {getStatusConfig(selectedGrievance.status).label}
-                    </Text>
-                  </div>
-                  <Tag color={getPriorityConfig(selectedGrievance.severity).color} className="rounded-lg px-3 py-1 m-0 border-0 font-medium">
-                    {getPriorityConfig(selectedGrievance.severity).label} Priority
-                  </Tag>
+              <Tag color={PRIORITIES.find(p => p.value === selectedGrievance.severity)?.color} className="m-0 rounded-md text-[10px]">
+                {selectedGrievance.severity}
+              </Tag>
+            </div>
+
+            {/* Info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-gray-50">
+                <Text className="text-[10px] text-text-tertiary uppercase block">Category</Text>
+                <Text className="text-xs font-medium">{CATEGORIES.find(c => c.value === selectedGrievance.category)?.label}</Text>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <Text className="text-[10px] text-text-tertiary uppercase block">Escalation</Text>
+                <Text className="text-xs font-medium">{ESCALATION_LEVELS[selectedGrievance.escalationLevel]?.label || 'Pending'}</Text>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-50">
+                <Text className="text-[10px] text-text-tertiary uppercase block">Submitted</Text>
+                <Text className="text-xs font-medium">{dayjs(selectedGrievance.submittedDate || selectedGrievance.createdAt).format('MMM D, YYYY')}</Text>
+              </div>
+              {selectedGrievance.assignedTo && (
+                <div className="p-3 rounded-lg bg-gray-50">
+                  <Text className="text-[10px] text-text-tertiary uppercase block">Assigned To</Text>
+                  <Text className="text-xs font-medium">{selectedGrievance.assignedTo.name}</Text>
                 </div>
+              )}
+            </div>
 
-                <Alert
-                  title={<span className="font-bold text-xs uppercase tracking-wide">Status Information</span>}
-                  description={
-                    <Text className="text-sm block mt-1">
-                      {selectedGrievance.status === 'RESOLVED'
-                        ? 'Your grievance has been resolved.'
-                        : selectedGrievance.status === 'IN_REVIEW'
-                        ? 'We are actively reviewing your grievance.'
-                        : selectedGrievance.status === 'ESCALATED'
-                        ? 'Your grievance has been escalated for priority handling.'
-                        : 'Your grievance has been submitted and is pending review.'}
-                    </Text>
-                  }
-                  type={
-                    selectedGrievance.status === 'RESOLVED'
-                      ? 'success'
-                      : selectedGrievance.status === 'ESCALATED'
-                      ? 'error'
-                      : 'info'
-                  }
-                  showIcon
-                  className="rounded-xl border-0 shadow-sm"
-                />
+            {/* Content */}
+            <div>
+              <Text className="text-[10px] text-text-tertiary uppercase font-semibold block mb-1">Subject</Text>
+              <Text className="text-sm font-semibold">{selectedGrievance.title}</Text>
+            </div>
 
-                {/* Escalation Chain Visualization */}
-                <div className="bg-background-tertiary/30 p-5 rounded-2xl border border-border/60">
-                  <Title level={5} className="!mb-4 text-xs uppercase tracking-widest text-text-tertiary font-bold">
-                    Escalation Progress
-                  </Title>
-                  <Steps
-                    current={ESCALATION_LEVELS[selectedGrievance.escalationLevel]?.order ?? -1}
-                    size="small"
-                    items={[
-                      {
-                        title: 'Faculty Mentor',
-                        description: selectedGrievance.escalationLevel === 'MENTOR' ? 'Current Level' : '',
-                        icon: <UserOutlined />,
-                      },
-                      {
-                        title: 'Principal',
-                        description: selectedGrievance.escalationLevel === 'PRINCIPAL' ? 'Current Level' : '',
-                        icon: <TeamOutlined />,
-                      },
-                      {
-                        title: 'State Directorate',
-                        description: selectedGrievance.escalationLevel === 'STATE_DIRECTORATE' ? 'Current Level' : '',
-                        icon: <GlobalOutlined />,
-                      },
-                    ]}
-                  />
-                  {selectedGrievance.assignedTo && (
-                    <div className="mt-4 pt-4 border-t border-border/50">
-                      <Text className="text-xs text-text-tertiary">Currently Assigned To:</Text>
-                      <div className="flex items-center gap-2 mt-1">
-                        <UserOutlined className="text-primary" />
-                        <Text strong>{selectedGrievance.assignedTo.name}</Text>
-                        <Tag color="blue" className="ml-2">{selectedGrievance.assignedTo.role}</Tag>
-                      </div>
-                    </div>
-                  )}
-                </div>
+            <div>
+              <Text className="text-[10px] text-text-tertiary uppercase font-semibold block mb-1">Description</Text>
+              <Paragraph className="text-xs text-text-secondary mb-0 whitespace-pre-wrap">{selectedGrievance.description}</Paragraph>
+            </div>
 
-                <div className="bg-surface rounded-xl border border-border/60 overflow-hidden">
-                  <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/60">
-                    <div className="p-4">
-                      <Text className="text-xs uppercase font-bold text-text-tertiary block mb-1">Subject</Text>
-                      <Text className="text-text-primary font-medium">{selectedGrievance.title}</Text>
-                    </div>
-                    <div className="p-4">
-                      <Text className="text-xs uppercase font-bold text-text-tertiary block mb-1">Category</Text>
-                      <Text className="text-text-primary font-medium">{getCategoryConfig(selectedGrievance.category).label}</Text>
-                    </div>
-                    <div className="p-4 border-t border-border/60 md:border-t-0">
-                      <Text className="text-xs uppercase font-bold text-text-tertiary block mb-1">Submitted On</Text>
-                      <Space className="text-text-primary font-medium">
-                        <CalendarOutlined className="text-primary" />
-                        {dayjs(selectedGrievance.submittedDate || selectedGrievance.createdAt).format('MMMM DD, YYYY HH:mm')}
-                      </Space>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-background-tertiary/30 p-5 rounded-2xl border border-border/60">
-                  <Title level={5} className="!mb-3 text-xs uppercase tracking-widest text-text-tertiary font-bold flex items-center gap-2">
-                    <FileTextOutlined /> Concern Details
-                  </Title>
-                  <Paragraph className="text-text-primary text-sm leading-relaxed mb-0 whitespace-pre-line">
-                    {selectedGrievance.description}
-                  </Paragraph>
-                </div>
-
-                {selectedGrievance.resolution && (
-                  <div className="bg-success-50/50 p-5 rounded-2xl border border-success-border/30">
-                    <Title level={5} className="!mb-3 text-xs uppercase tracking-widest text-success-700 font-bold flex items-center gap-2">
-                      <CheckCircleOutlined /> Resolution
-                    </Title>
-                    <Paragraph className="text-text-primary font-medium mb-3 whitespace-pre-line">{selectedGrievance.resolution}</Paragraph>
-                    {selectedGrievance.resolvedDate && (
-                      <Text className="text-xs text-success-600 block italic">
-                        Resolved on: {dayjs(selectedGrievance.resolvedDate).format('MMMM DD, YYYY HH:mm')}
-                      </Text>
-                    )}
-                  </div>
-                )}
-
-                <div className="pt-4 border-t border-border/50">
-                  <Title level={5} className="!mb-6 text-xs uppercase tracking-widest text-text-tertiary font-bold">Status History</Title>
-                  <div className="px-2">
-                    {/* Show detailed status history from API if available */}
-                    {selectedGrievance.statusHistory && selectedGrievance.statusHistory.length > 0 ? (
-                      <Timeline
-                        items={selectedGrievance.statusHistory.map((history, index) => ({
-                          color: history.toStatus === 'RESOLVED' ? 'green' :
-                                 history.toStatus === 'ESCALATED' ? 'red' :
-                                 history.toStatus === 'IN_REVIEW' ? 'orange' : 'blue',
-                          children: (
-                            <div key={index} className="pb-2">
-                              <Text strong className="text-text-primary">{history.action}</Text>
-                              {history.escalationLevel && (
-                                <Tag color={ESCALATION_LEVELS[history.escalationLevel]?.color} className="ml-2" size="small">
-                                  {ESCALATION_LEVELS[history.escalationLevel]?.label}
-                                </Tag>
-                              )}
-                              <br />
-                              <Text className="text-xs text-text-secondary">
-                                {history.changedBy?.name && `By: ${history.changedBy.name} • `}
-                                {dayjs(history.createdAt).format("MMMM DD, YYYY HH:mm")}
-                              </Text>
-                              {history.remarks && (
-                                <>
-                                  <br />
-                                  <Text className="text-xs italic text-text-tertiary">"{history.remarks}"</Text>
-                                </>
-                              )}
-                            </div>
-                          ),
-                        }))}
-                      />
-                    ) : (
-                      <Timeline
-                        items={[
-                          {
-                            color: "blue",
-                            children: (
-                              <div className="pb-4">
-                                <Text strong className="text-text-primary">Submitted</Text>
-                                <br />
-                                <Text className="text-xs text-text-secondary">
-                                  {dayjs(selectedGrievance.submittedDate || selectedGrievance.createdAt).format("MMMM DD, YYYY HH:mm")}
-                                </Text>
-                              </div>
-                            ),
-                          },
-                          ...(selectedGrievance.addressedDate
-                            ? [
-                                {
-                                  color: "orange",
-                                  children: (
-                                    <div className="pb-4">
-                                      <Text strong className="text-text-primary">Under Review</Text>
-                                      <br />
-                                      <Text className="text-xs text-text-secondary">
-                                        {dayjs(selectedGrievance.addressedDate).format("MMMM DD, YYYY HH:mm")}
-                                      </Text>
-                                    </div>
-                                  ),
-                                },
-                              ]
-                            : []),
-                          ...(selectedGrievance.escalatedAt
-                            ? [
-                                {
-                                  color: "red",
-                                  children: (
-                                    <div className="pb-4">
-                                      <Text strong className="text-text-primary">Escalated</Text>
-                                      <br />
-                                      <Text className="text-xs text-text-secondary">
-                                        {dayjs(selectedGrievance.escalatedAt).format("MMMM DD, YYYY HH:mm")}
-                                      </Text>
-                                    </div>
-                                  ),
-                                },
-                              ]
-                            : []),
-                          ...(selectedGrievance.resolvedDate
-                            ? [
-                                {
-                                  color: "green",
-                                  children: (
-                                    <div>
-                                      <Text strong className="text-text-primary">Resolved</Text>
-                                      <br />
-                                      <Text className="text-xs text-text-secondary">
-                                        {dayjs(selectedGrievance.resolvedDate).format("MMMM DD, YYYY HH:mm")}
-                                      </Text>
-                                    </div>
-                                  ),
-                                },
-                              ]
-                            : []),
-                        ]}
-                      />
-                    )}
-                  </div>
-                </div>
+            {/* Resolution */}
+            {selectedGrievance.resolution && (
+              <div className="p-3 rounded-xl bg-green-50 border border-green-100">
+                <Text className="text-[10px] text-text-tertiary uppercase font-semibold block mb-1">Resolution</Text>
+                <Paragraph className="text-xs mb-0">{selectedGrievance.resolution}</Paragraph>
               </div>
             )}
-          </Modal>
-        </div>
-      </div>
+
+            {/* History */}
+            {selectedGrievance.statusHistory?.length > 0 && (
+              <div>
+                <Text className="text-[10px] text-text-tertiary uppercase font-semibold block mb-3">History</Text>
+                <Timeline
+                  items={selectedGrievance.statusHistory.map((h, i) => ({
+                    color: h.toStatus === 'RESOLVED' ? 'green' : h.toStatus === 'ESCALATED' ? 'red' : 'blue',
+                    children: (
+                      <div key={i}>
+                        <Text className="text-xs font-medium block">{h.action}</Text>
+                        <Text className="text-[10px] text-text-tertiary">{dayjs(h.createdAt).format('MMM D, YYYY h:mm A')}</Text>
+                        {h.remarks && <Text className="text-[10px] text-text-secondary block italic">"{h.remarks}"</Text>}
+                      </div>
+                    ),
+                  }))}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </Drawer>
+    </div>
   );
 };
 

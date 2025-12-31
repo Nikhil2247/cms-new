@@ -42,6 +42,28 @@ const StudentList = () => {
     include: ['branches', 'batches']
   });
 
+  // Deduplicate branches by id to avoid duplicate filter options
+  const uniqueBranches = useMemo(() => {
+    if (!activeBranches) return [];
+    const seen = new Set();
+    return activeBranches.filter(branch => {
+      if (seen.has(branch.id)) return false;
+      seen.add(branch.id);
+      return true;
+    });
+  }, [activeBranches]);
+
+  // Deduplicate batches by id
+  const uniqueBatches = useMemo(() => {
+    if (!activeBatches) return [];
+    const seen = new Set();
+    return activeBatches.filter(batch => {
+      if (seen.has(batch.id)) return false;
+      seen.add(batch.id);
+      return true;
+    });
+  }, [activeBatches]);
+
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState({
     search: '',
@@ -330,7 +352,7 @@ const StudentList = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 !space-y-4">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold text-text-primary">Students</h1>
@@ -377,7 +399,7 @@ const StudentList = () => {
             className="w-full md:w-[200px]"
             onChange={(value) => handleFilterChange('branchId', value)}
           >
-            {activeBranches?.map(branch => (
+            {uniqueBranches.map(branch => (
               <Option key={branch.id} value={branch.id}>{branch.name}</Option>
             ))}
           </Select>
@@ -387,7 +409,7 @@ const StudentList = () => {
             className="w-full md:w-[150px]"
             onChange={(value) => handleFilterChange('batchId', value)}
           >
-            {activeBatches?.map(batch => (
+            {uniqueBatches.map(batch => (
               <Option key={batch.id} value={batch.id}>{batch.name}</Option>
             ))}
           </Select>
@@ -403,7 +425,7 @@ const StudentList = () => {
         </div>
       </Card>
 
-      <div className="bg-background rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="bg-background rounded-xl  border-border shadow-sm overflow-hidden">
         <DataTable
           columns={columns}
           dataSource={list}

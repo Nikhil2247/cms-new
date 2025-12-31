@@ -38,8 +38,14 @@ export class StateController {
   @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
   @ApiOperation({ summary: 'Get state directorate dashboard data' })
-  async getDashboard() {
-    return this.stateService.getDashboard();
+  async getDashboard(
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.stateService.getDashboard({
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
+    });
   }
 
   @Get('dashboard/critical-alerts')
@@ -52,6 +58,19 @@ export class StateController {
   @ApiOperation({ summary: 'Get action items for state dashboard' })
   async getDashboardActions() {
     return this.stateService.getActionItems();
+  }
+
+  @Get('dashboard/college-breakdown/:type')
+  @ApiOperation({ summary: 'Get college-wise breakdown for dashboard stats' })
+  async getCollegeBreakdown(
+    @Param('type') type: 'students' | 'reports' | 'mentors' | 'visits',
+    @Query('month') month?: string,
+    @Query('year') year?: string,
+  ) {
+    return this.stateService.getCollegeWiseBreakdown(type, {
+      month: month ? Number(month) : undefined,
+      year: year ? Number(year) : undefined,
+    });
   }
 
   @Get('compliance/summary')
