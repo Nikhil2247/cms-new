@@ -128,7 +128,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
             View All <RightOutlined />
           </Button>
         }
-        className="h-full border border-border rounded-xl"
+        className="h-full border border-border !rounded-xl"
         styles={{ body: { padding: letters.length > 0 ? 0 : 24 } }}
       >
         {letters.length > 0 ? (

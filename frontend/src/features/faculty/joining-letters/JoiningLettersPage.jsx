@@ -33,7 +33,6 @@ import {
   UserOutlined,
   CalendarOutlined,
   BankOutlined,
-  ArrowLeftOutlined,
   DownloadOutlined,
   DeleteOutlined,
   UploadOutlined,
@@ -474,14 +473,6 @@ const JoiningLettersPage = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-3">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/dashboard')}
-              className="rounded-lg"
-            />
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm">
-              <FileProtectOutlined className="text-lg" />
-            </div>
             <div>
               <div className="flex items-center gap-3">
                 <Title level={2} className="mb-0 text-text-primary text-2xl">
@@ -572,7 +563,7 @@ const JoiningLettersPage = () => {
 
         {/* Search and Table */}
         <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <div className="p-4 border-b border-border">
+          <div className="p-4 border-b border-gray-200">
             <Input
               placeholder="Search by student name or roll number..."
               prefix={<SearchOutlined className="text-text-tertiary" />}
@@ -587,7 +578,7 @@ const JoiningLettersPage = () => {
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            className="px-4"
+            className="!px-4"
           />
 
           <Table

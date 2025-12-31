@@ -1,9 +1,8 @@
 import React from 'react';
-import { Button, Tooltip, Layout, Divider } from 'antd';
+import { Button, Tooltip, Layout, Badge } from 'antd';
 import {
   MenuOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
+  ArrowRightOutlined,
   SunOutlined,
   MoonOutlined,
   UserOutlined,
@@ -24,66 +23,108 @@ const LayoutHeader = ({
   onProfileClick,
   onLogoutClick,
 }) => {
+  const headerStyle = darkMode
+    ? {
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        height: '52px',
+        lineHeight: '52px',
+        padding: '0 20px',
+        background: 'rgba(15, 23, 42, 0.98)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      }
+    : {
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        height: '56px',
+        lineHeight: '56px',
+        padding: '0 20px',
+        background: 'rgba(255, 255, 255, 0.98)',
+        backdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(0,0,0,0.06)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+      };
+
+  const buttonStyle = {
+    width: '36px',
+    height: '36px',
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: '8px',
+    transition: 'all 0.2s ease',
+  };
+
   return (
-    <Header
-      className="sticky top-0 z-40 flex items-center justify-between h-16 px-4 md:px-6 bg-surface border-b border-border shadow-sm transition-all duration-300"
-      style={{
-        lineHeight: 'normal',
-        paddingInline: '24px',
-      }}
-    >
+    <Header style={headerStyle} className="flex items-center justify-between shadow-sm">
       {/* Left Section */}
-      <div className="flex items-center gap-3">
-        <Tooltip title={isDesktop ? (collapsed ? "Expand sidebar" : "Collapse sidebar") : "Open menu"}>
-          <Button
-            type="text"
-            icon={
-              isDesktop ? (
-                collapsed ? <MenuUnfoldOutlined className="text-lg" /> : <MenuFoldOutlined className="text-lg" />
-              ) : (
-                <MenuOutlined className="text-lg" />
-              )
-            }
-            onClick={() => (isDesktop ? onToggleCollapse() : onMobileOpen())}
-            className="w-10 h-10 flex items-center justify-center rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
-          />
-        </Tooltip>
+      <div className="flex items-center gap-2">
+        <Button
+          type="text"
+          icon={isDesktop ? (collapsed ? <ArrowRightOutlined /> : <MenuOutlined />) : <MenuOutlined />}
+          onClick={() => (isDesktop ? onToggleCollapse() : onMobileOpen())}
+          size="small"
+          style={{
+            ...buttonStyle,
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+          }}
+          className={`hover:${darkMode ? 'bg-gray-700' : 'bg-blue-50'} transition-colors`}
+        />
       </div>
 
       {/* Right Section */}
-      <div className="flex items-center gap-2 md:gap-3">
-        {/* Theme Toggle */}
-        <Tooltip title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
-          <Button
-            type="text"
-            ref={themeRef}
-            icon={
-              darkMode ? (
-                <SunOutlined className="text-lg text-amber-400" />
-              ) : (
-                <MoonOutlined className="text-lg text-indigo-500" />
-              )
-            }
-            onClick={toggleTheme}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-slate-600 transition-all duration-200"
-          />
-        </Tooltip>
+      <div className="flex items-center gap-2">
+        {/* Theme Toggle Button */}
+        <Button
+          type="text"
+          ref={themeRef}
+          icon={darkMode ? <SunOutlined /> : <MoonOutlined />}
+          onClick={toggleTheme}
+          size="small"
+          style={{
+            ...buttonStyle,
+            width: 36,
+            height: 36,
+          }}
+          className={`
+            hover:scale-105 transition-all duration-200 ease-in-out
+            ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-blue-50'}
+          `}
+        />
 
         {/* Notifications */}
-        <div className="relative">
+        <Badge>
           <NotificationDropdown />
-        </div>
-
-        {/* Divider */}
-        <div className="h-6 w-px bg-gray-200 dark:bg-slate-700 mx-2" />
+        </Badge>
 
         {/* User Profile Button */}
-        <Tooltip title="View profile">
+        <Tooltip title="Profile" placement="bottom">
           <Button
             type="text"
-            icon={<UserOutlined className="text-lg" />}
+            icon={<UserOutlined />}
             onClick={onProfileClick}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-100 dark:hover:border-slate-600 transition-all duration-200"
+            size="small"
+            style={{
+              ...buttonStyle,
+              width: 36,
+              height: 36,
+            }}
+            className={`
+              hover:scale-105 transition-all duration-200 ease-in-out
+              ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-blue-50'}
+            `}
           />
         </Tooltip>
 
@@ -92,10 +133,17 @@ const LayoutHeader = ({
           type="primary"
           danger
           onClick={onLogoutClick}
+          size="small"
           icon={<LogoutOutlined />}
-          className="h-10 px-4 rounded-xl font-medium text-sm flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 active:scale-95 bg-red-500 hover:bg-red-600 border-red-500 hover:border-red-600"
+          style={{
+            borderRadius: 6,
+            height: 32,
+            fontSize: 13,
+            padding: '0 14px',
+          }}
+          className="hover:scale-105 transition-all duration-200"
         >
-          <span className="hidden sm:inline">Logout</span>
+          Logout
         </Button>
       </div>
     </Header>

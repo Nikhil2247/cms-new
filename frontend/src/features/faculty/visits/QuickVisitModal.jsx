@@ -13,6 +13,7 @@ import {
   Col,
   Alert,
   Spin,
+  Divider,
 } from 'antd';
 import {
   CameraOutlined,
@@ -203,8 +204,16 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             gpsAccuracy: location.accuracy,
           }),
         }),
-        // Optional notes
-        ...(values.notes && { notes: values.notes, observationsAboutStudent: values.notes }),
+        // Project Information fields
+        titleOfProjectWork: values.titleOfProjectWork || null,
+        assistanceRequiredFromInstitute: values.assistanceRequiredFromInstitute || null,
+        responseFromOrganisation: values.responseFromOrganisation || null,
+        remarksOfOrganisationSupervisor: values.remarksOfOrganisationSupervisor || null,
+        significantChangeInPlan: values.significantChangeInPlan || null,
+        // Observations & Feedback fields
+        observationsAboutStudent: values.observationsAboutStudent || null,
+        feedbackSharedWithStudent: values.feedbackSharedWithStudent || null,
+        notes: values.notes || null,
         // Photos
         ...(photoUrls.length > 0 && { visitPhotos: photoUrls }),
       };
@@ -257,104 +266,207 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           Log Visit
         </Button>,
       ]}
-      width={600}
+      width={900}
       destroyOnHidden
     >
       <Form form={form} layout="vertical" className="mt-4">
-        {/* Student Selection - Required */}
-        <Form.Item
-          name="studentId"
-          label="Student"
-          rules={[{ required: true, message: 'Please select a student' }]}
-        >
-          <Select
-            placeholder="Select student"
-            showSearch
-            loading={loading}
-            filterOption={(input, option) =>
-              option.children?.toLowerCase?.().includes(input.toLowerCase())
-            }
-            onChange={handleStudentSelect}
-            size="large"
-          >
-            {students?.map((item) => {
-              // Handle both nested (MentorAssignment) and flat student structures
-              const student = item.student || item;
-              return (
-                <Option key={student.id} value={student.id}>
-                  {student.name} {student.rollNumber ? `(${student.rollNumber})` : ''}
-                </Option>
-              );
-            })}
-          </Select>
-        </Form.Item>
-
-        {/* Visit Type - Required */}
-        <Form.Item
-          name="visitType"
-          label="Visit Type"
-          rules={[{ required: true, message: 'Please select visit type' }]}
-        >
-          <Select
-            placeholder="Select visit type"
-            onChange={handleVisitTypeChange}
-            size="large"
-          >
-            <Option value="PHYSICAL">Physical Visit</Option>
-            <Option value="VIRTUAL">Virtual Visit</Option>
-            <Option value="TELEPHONIC">Telephonic</Option>
-          </Select>
-        </Form.Item>
+        {/* Basic Information */}
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="studentId"
+              label="Student"
+              rules={[{ required: true, message: 'Please select a student' }]}
+            >
+              <Select
+                placeholder="Select student"
+                showSearch
+                loading={loading}
+                filterOption={(input, option) =>
+                  option.children?.toLowerCase?.().includes(input.toLowerCase())
+                }
+                onChange={handleStudentSelect}
+              >
+                {students?.map((item) => {
+                  const student = item.student || item;
+                  return (
+                    <Option key={student.id} value={student.id}>
+                      {student.name} {student.rollNumber ? `(${student.rollNumber})` : ''}
+                    </Option>
+                  );
+                })}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item
+              name="visitType"
+              label="Visit Type"
+              rules={[{ required: true, message: 'Please select visit type' }]}
+            >
+              <Select
+                placeholder="Select visit type"
+                onChange={handleVisitTypeChange}
+              >
+                <Option value="PHYSICAL">Physical Visit</Option>
+                <Option value="VIRTUAL">Virtual Visit</Option>
+                <Option value="TELEPHONIC">Telephonic</Option>
+              </Select>
+            </Form.Item>
+          </Col>
+        </Row>
 
         {/* Location - Required for Physical Visits */}
         {visitType === 'PHYSICAL' && (
-          <Form.Item
-            name="visitLocation"
-            label="Location"
-            rules={[
-              {
-                required: true,
-                message: 'Please enter location or capture GPS coordinates',
-              },
-            ]}
-          >
-            <Space.Compact style={SPACE_COMPACT_STYLE}>
-              <Input
-                placeholder="Enter location or use GPS"
-                size="large"
-                prefix={<EnvironmentOutlined />}
+          <>
+            <Form.Item
+              name="visitLocation"
+              label="Location"
+              rules={[
+                {
+                  required: true,
+                  message: 'Please enter location or capture GPS coordinates',
+                },
+              ]}
+            >
+              <Space.Compact style={SPACE_COMPACT_STYLE}>
+                <Input
+                  placeholder="Enter location or use GPS"
+                  prefix={<EnvironmentOutlined />}
+                />
+                <Button
+                  type="primary"
+                  icon={<EnvironmentOutlined />}
+                  onClick={captureLocation}
+                  loading={capturing}
+                >
+                  {capturing ? 'Capturing...' : 'GPS'}
+                </Button>
+              </Space.Compact>
+            </Form.Item>
+
+            {location && (
+              <Alert
+                title="GPS Location Captured"
+                description={
+                  <div className="text-xs">
+                    <div>Latitude: {location.latitude.toFixed(6)}</div>
+                    <div>Longitude: {location.longitude.toFixed(6)}</div>
+                    <div>Accuracy: {location.accuracy.toFixed(2)} meters</div>
+                  </div>
+                }
+                type="success"
+                showIcon
+                className="mb-4"
               />
-              <Button
-                type="primary"
-                icon={<EnvironmentOutlined />}
-                onClick={captureLocation}
-                loading={capturing}
-                size="large"
-              >
-                {capturing ? 'Capturing...' : 'GPS'}
-              </Button>
-            </Space.Compact>
-          </Form.Item>
+            )}
+          </>
         )}
 
-        {/* Show location info if captured */}
-        {location && (
-          <Alert
-            title="GPS Location Captured"
-            description={
-              <div className="text-xs">
-                <div>Latitude: {location.latitude.toFixed(6)}</div>
-                <div>Longitude: {location.longitude.toFixed(6)}</div>
-                <div>Accuracy: {location.accuracy.toFixed(2)} meters</div>
-              </div>
-            }
-            type="success"
-            showIcon
-            className="mb-4"
+        {/* Project Information */}
+        <Divider orientation="left" className="!text-sm !my-2">
+          Project Information
+        </Divider>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="titleOfProjectWork" label="Title of Project/Work">
+              <Input
+                placeholder="Enter the title of the project or work..."
+                maxLength={200}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute">
+              <TextArea
+                rows={2}
+                placeholder="Describe any assistance required..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="responseFromOrganisation" label="Response from Organisation">
+              <TextArea
+                rows={2}
+                placeholder="Enter response from organisation..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor">
+              <TextArea
+                rows={2}
+                placeholder="Enter supervisor remarks..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work">
+          <TextArea
+            rows={2}
+            placeholder="Describe any significant changes in the project plan..."
+            maxLength={500}
+            showCount
           />
-        )}
+        </Form.Item>
+
+        {/* Observations & Feedback */}
+        <Divider orientation="left" className="!text-sm !my-2">
+          Observations & Feedback
+        </Divider>
+
+        <Form.Item
+          name="observationsAboutStudent"
+          label="Observations about the Student"
+          extra="Please provide at least 100 words"
+        >
+          <TextArea
+            rows={4}
+            placeholder="Enter your observations about the student (at least 100 words)..."
+            maxLength={2000}
+            showCount
+          />
+        </Form.Item>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+              <TextArea
+                rows={2}
+                placeholder="Enter feedback shared with student..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="notes" label="Additional Notes">
+              <TextArea
+                rows={2}
+                placeholder="Any additional notes or comments..."
+                maxLength={1000}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
         {/* Photo Upload Section */}
+        <Divider orientation="left" className="!text-sm !my-2">
+          Attachments
+        </Divider>
+
         <Form.Item label="Photos (Optional)">
           <Upload
             listType="picture-card"
@@ -373,28 +485,9 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
             {fileList.length >= 5 ? null : uploadButton}
           </Upload>
           <div className="text-gray-500 text-xs mt-2">
-            Upload up to 5 photos. Max 5MB per photo. Drag and drop or click to select.
+            Upload up to 5 photos. Max 5MB per photo.
           </div>
         </Form.Item>
-
-        {/* Optional Notes */}
-        <Form.Item name="notes" label="Notes (Optional)">
-          <TextArea
-            rows={3}
-            placeholder="Add any observations, feedback, or notes about this visit..."
-            maxLength={500}
-            showCount
-          />
-        </Form.Item>
-
-        {/* Quick tip */}
-        <Alert
-          title="Quick Tip"
-          description="This form is designed for rapid visit logging during field visits. All fields are optimized for speed - log a visit in under 10 seconds!"
-          type="info"
-          showIcon
-          className="mt-2"
-        />
       </Form>
     </Modal>
   );

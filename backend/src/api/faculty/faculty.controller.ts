@@ -297,10 +297,13 @@ export class FacultyController {
       throw new BadRequestException('Application not found');
     }
 
-    // Upload to MinIO
+    // Get institution name for folder structure
+    const institutionName = application.student?.Institution?.name || 'default';
+
+    // Upload to MinIO with organized folder structure
     const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionId: application.student?.institutionId || 'default',
-      studentId: application.studentId,
+      institutionName,
+      rollNumber: application.student?.rollNumber || application.studentId,
       documentType: 'joining-letter',
     });
 
@@ -335,10 +338,13 @@ export class FacultyController {
     const faculty = await this.facultyService.getProfile(req.user.userId);
     const docType = body.documentType || 'visit-photo';
 
+    // Get institution name for folder structure
+    const institutionName = faculty?.Institution?.name || 'default';
+
     // Upload to MinIO using 'other' type for visit documents
     const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionId: faculty?.institutionId || 'default',
-      studentId: 'visit-logs',
+      institutionName,
+      rollNumber: 'visit-logs', // Use 'visit-logs' as identifier for faculty visit documents
       documentType: 'other',
       customName: docType, // Store the actual type in customName for reference
     });

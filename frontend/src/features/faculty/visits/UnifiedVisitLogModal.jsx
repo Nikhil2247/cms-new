@@ -152,7 +152,16 @@ const UnifiedVisitLogModal = ({
           visitDate: existingData.visitDate ? dayjs(existingData.visitDate) : dayjs(),
           visitType: existingData.visitType,
           visitLocation: existingData.visitLocation,
-          notes: existingData.notes || existingData.observationsAboutStudent,
+          // Project Information fields
+          titleOfProjectWork: existingData.titleOfProjectWork,
+          assistanceRequiredFromInstitute: existingData.assistanceRequiredFromInstitute,
+          responseFromOrganisation: existingData.responseFromOrganisation,
+          remarksOfOrganisationSupervisor: existingData.remarksOfOrganisationSupervisor,
+          significantChangeInPlan: existingData.significantChangeInPlan,
+          // Observations & Feedback fields
+          observationsAboutStudent: existingData.observationsAboutStudent,
+          feedbackSharedWithStudent: existingData.feedbackSharedWithStudent,
+          notes: existingData.notes,
           status: existingData.status || 'COMPLETED',
         });
         setVisitType(existingData.visitType);
@@ -373,8 +382,15 @@ const UnifiedVisitLogModal = ({
         visitType: values.visitType,
         visitLocation: values.visitLocation || null,
         status: values.status || 'COMPLETED',
-        // Optional fields
-        observationsAboutStudent: values.notes || null,
+        // Project Information fields
+        titleOfProjectWork: values.titleOfProjectWork || null,
+        assistanceRequiredFromInstitute: values.assistanceRequiredFromInstitute || null,
+        responseFromOrganisation: values.responseFromOrganisation || null,
+        remarksOfOrganisationSupervisor: values.remarksOfOrganisationSupervisor || null,
+        significantChangeInPlan: values.significantChangeInPlan || null,
+        // Observations & Feedback fields
+        observationsAboutStudent: values.observationsAboutStudent || null,
+        feedbackSharedWithStudent: values.feedbackSharedWithStudent || null,
         notes: values.notes || null,
         // GPS coordinates
         ...(gpsLocation && {
@@ -439,7 +455,7 @@ const UnifiedVisitLogModal = ({
       }
       open={visible}
       onCancel={onClose}
-      width={700}
+      width={900}
       destroyOnHidden
       footer={[
         <Button key="cancel" onClick={onClose} disabled={submitting}>
@@ -606,19 +622,104 @@ const UnifiedVisitLogModal = ({
           </>
         )}
 
-        {/* Optional Fields */}
+        {/* Project Information */}
         <Divider orientation="left" className="!text-sm !my-2">
-          Optional Information
+          Project Information
         </Divider>
 
-        <Form.Item name="notes" label="Notes / Observations">
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="titleOfProjectWork" label="Title of Project/Work">
+              <Input
+                placeholder="Enter the title of the project or work..."
+                maxLength={200}
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute">
+              <TextArea
+                rows={2}
+                placeholder="Describe any assistance required..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="responseFromOrganisation" label="Response from Organisation">
+              <TextArea
+                rows={2}
+                placeholder="Enter response from organisation..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor">
+              <TextArea
+                rows={2}
+                placeholder="Enter supervisor remarks..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
+
+        <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work">
           <TextArea
-            rows={3}
-            placeholder="Add any observations, feedback, or notes about this visit..."
-            maxLength={1000}
+            rows={2}
+            placeholder="Describe any significant changes in the project plan..."
+            maxLength={500}
             showCount
           />
         </Form.Item>
+
+        {/* Observations & Feedback */}
+        <Divider orientation="left" className="!text-sm !my-2">
+          Observations & Feedback
+        </Divider>
+
+        <Form.Item
+          name="observationsAboutStudent"
+          label="Observations about the Student"
+          extra="Please provide at least 100 words"
+        >
+          <TextArea
+            rows={4}
+            placeholder="Enter your observations about the student (at least 100 words)..."
+            maxLength={2000}
+            showCount
+          />
+        </Form.Item>
+
+        <Row gutter={16}>
+          <Col xs={24} md={12}>
+            <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+              <TextArea
+                rows={2}
+                placeholder="Enter feedback shared with student..."
+                maxLength={500}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+          <Col xs={24} md={12}>
+            <Form.Item name="notes" label="Additional Notes">
+              <TextArea
+                rows={2}
+                placeholder="Any additional notes or comments..."
+                maxLength={1000}
+                showCount
+              />
+            </Form.Item>
+          </Col>
+        </Row>
 
         {/* Document Uploads */}
         <Row gutter={16}>

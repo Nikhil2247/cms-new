@@ -59,6 +59,16 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
         visitDate: currentVisitLog.visitDate ? dayjs(currentVisitLog.visitDate) : null,
         studentId: currentVisitLog.student?.id,
         companyId: currentVisitLog.company?.id,
+        // Project Information fields
+        titleOfProjectWork: currentVisitLog.titleOfProjectWork,
+        assistanceRequiredFromInstitute: currentVisitLog.assistanceRequiredFromInstitute,
+        responseFromOrganisation: currentVisitLog.responseFromOrganisation,
+        remarksOfOrganisationSupervisor: currentVisitLog.remarksOfOrganisationSupervisor,
+        significantChangeInPlan: currentVisitLog.significantChangeInPlan,
+        // Observations & Feedback fields
+        observationsAboutStudent: currentVisitLog.observationsAboutStudent,
+        feedbackSharedWithStudent: currentVisitLog.feedbackSharedWithStudent,
+        notes: currentVisitLog.notes,
       });
     }
   }, [isEdit, currentVisitLog, form, open]);
@@ -133,7 +143,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
       open={open}
       onCancel={handleClose}
       footer={null}
-      width={800}
+      width={900}
       destroyOnHidden
     >
       {dataLoading ? (
@@ -248,25 +258,98 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             />
           </Form.Item>
 
-          <Divider plain>Visit Details</Divider>
+          <Divider plain>Project Information</Divider>
 
-          <Form.Item name="observations" label="Observations">
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="titleOfProjectWork" label="Title of Project/Work">
+                <Input
+                  placeholder="Enter the title of the project or work..."
+                  maxLength={200}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="assistanceRequiredFromInstitute" label="Assistance Required from Institute">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="Describe any assistance required..."
+                  showCount
+                  maxLength={500}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="responseFromOrganisation" label="Response from Organisation">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="Enter response from organisation..."
+                  showCount
+                  maxLength={500}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="remarksOfOrganisationSupervisor" label="Remarks of Organisation Supervisor">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="Enter supervisor remarks..."
+                  showCount
+                  maxLength={500}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="significantChangeInPlan" label="Any Significant Change with Respect to the Plan of Project/Work">
             <Input.TextArea
-              rows={3}
-              placeholder="Record your observations during the visit..."
+              rows={2}
+              placeholder="Describe any significant changes in the project plan..."
               showCount
-              maxLength={1000}
+              maxLength={500}
             />
           </Form.Item>
 
-          <Form.Item name="feedback" label="Feedback">
+          <Divider plain>Observations & Feedback</Divider>
+
+          <Form.Item
+            name="observationsAboutStudent"
+            label="Observations about the Student"
+            extra="Please provide at least 100 words"
+          >
             <Input.TextArea
-              rows={3}
-              placeholder="Record feedback received..."
+              rows={4}
+              placeholder="Enter your observations about the student (at least 100 words)..."
               showCount
-              maxLength={1000}
+              maxLength={2000}
             />
           </Form.Item>
+
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="Enter feedback shared with student..."
+                  showCount
+                  maxLength={500}
+                />
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="notes" label="Additional Notes">
+                <Input.TextArea
+                  rows={2}
+                  placeholder="Any additional notes or comments..."
+                  showCount
+                  maxLength={1000}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
           <Divider plain>Attachments</Divider>
 

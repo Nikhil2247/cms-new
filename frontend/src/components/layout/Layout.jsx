@@ -77,13 +77,22 @@ const Layouts = () => {
       {/* Desktop Sidebar */}
       {screens.lg ? (
         <Sider
-          width={260}
+          width={250}
           collapsedWidth={72}
           collapsible
-          theme="light"
-          className="hide-scrollbar sidebar-enhanced h-full z-50 overflow-hidden bg-surface border-r border-border shadow-sm"
+          theme="dark"
+          className="hide-scrollbar sidebar-enhanced h-full z-50 overflow-hidden"
           collapsed={collapsed}
           trigger={null}
+          style={{
+            background: 'linear-gradient(180deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+            boxShadow: '4px 0 24px rgba(0,0,0,0.25)',
+            borderRight: '1px solid rgba(255,255,255,0.05)',
+            position: 'sticky',
+            top: 0,
+            left: 0,
+            height: '100vh',
+          }}
         >
           <div className="flex flex-col h-full">
             <SidebarLogo collapsed={collapsed} role={role} />
@@ -97,18 +106,27 @@ const Layouts = () => {
           closable
           onClose={() => setMobileOpen(false)}
           open={mobileOpen}
-          width={280}
+          width={260}
           styles={{
-            body: { padding: 0, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' },
+            body: {
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              overflow: 'hidden',
+              background: 'linear-gradient(180deg, #001529 0%, #002140 100%)',
+            },
+            header: {
+              background: '#001529',
+              borderBottom: 'none',
+            },
             content: { maxWidth: '85vw' },
           }}
           classNames={{
-            body: 'bg-surface',
-            header: 'bg-surface border-b border-border px-4 py-3',
             wrapper: 'shadow-2xl',
           }}
           title={
-            <span className="font-bold text-base text-text-primary">Navigation</span>
+            <span className="font-bold text-base text-white">Navigation</span>
           }
         >
           <div className="flex flex-col h-full">
@@ -146,12 +164,11 @@ const Layouts = () => {
 
         {/* Main Content */}
         <Content
-          className={`
-            px-4 py-4 md:px-6 md:py-6
-            overflow-auto
-            hide-scrollbar
-          `}
-          style={{ minHeight: 'calc(100vh - 64px)' }}
+          className="overflow-auto hide-scrollbar transition-colors duration-300"
+          style={{
+            background: '#f8fafc',
+            minHeight: 'calc(100vh - 52px)',
+          }}
         >
           <div className="max-w-[1600px] mx-auto animate-fade-in">
             <Outlet />

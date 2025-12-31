@@ -33,16 +33,16 @@ export interface ImageOptimizationOptions {
 }
 
 export interface StudentDocumentOptions {
-  institutionId: string;
-  studentId: string;
-  documentType: 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'other';
-  month?: string; // e.g., 'january-2025'
+  institutionName: string;
+  rollNumber: string;
+  documentType: 'profile' | 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'document' | 'other';
+  month?: string; // e.g., 'january'
   year?: string;
   customName?: string;
 }
 
 export interface ReportUploadOptions {
-  institutionId?: string;
+  institutionName?: string;
   reportType: string;
   format: string;
 }
@@ -171,6 +171,30 @@ export class FileStorageService implements OnModuleInit {
   }
 
   /**
+   * Sanitize institution name for use as folder name
+   * Removes special characters and replaces spaces with underscores
+   */
+  private sanitizeFolderName(name: string): string {
+    if (!name) return 'default';
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '_') // Replace spaces with underscores
+      .replace(/-+/g, '_') // Replace hyphens with underscores
+      .replace(/_+/g, '_') // Remove duplicate underscores
+      .substring(0, 100); // Limit length
+  }
+
+  /**
+   * Sanitize roll number for use in filenames
+   */
+  private sanitizeRollNumber(rollNumber: string): string {
+    if (!rollNumber) return 'unknown';
+    return rollNumber.replace(/[^a-zA-Z0-9]/g, '');
+  }
+
+  /**
    * Build file path from options
    * Structure: folder/subfolder/filename
    */
@@ -189,66 +213,82 @@ export class FileStorageService implements OnModuleInit {
 
   /**
    * Build student document path
-   * Structure: institutions/{institutionId}/students/{studentId}/{documentType}/{filename}
+   * Structure: {institutionName}/{documentType}/{rollNumber}_{documentType}.{ext}
+   * Examples:
+   *   - dte_punjab/profile/2021001_profile.webp
+   *   - dte_punjab/joining-letters/2021001_joiningletter.pdf
+   *   - dte_punjab/reports/2021001_january_2025_monthlyreport.pdf
+   *   - dte_punjab/documents/2021001_resume_document.pdf
    */
   private buildStudentDocumentPath(
     originalName: string,
     options: StudentDocumentOptions,
   ): string {
-    const { institutionId, studentId, documentType, month, year, customName } = options;
+    const { institutionName, rollNumber, documentType, month, year, customName } = options;
+    const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+    const sanitizedRollNumber = this.sanitizeRollNumber(rollNumber);
     const ext = originalName.split('.').pop()?.toLowerCase() || 'pdf';
 
     let filename: string;
+    let folderPath: string;
 
     switch (documentType) {
+      case 'profile':
+        filename = `${sanitizedRollNumber}_profile.${ext}`;
+        folderPath = `${sanitizedInstitution}/profile`;
+        break;
       case 'joining-letter':
-        filename = `${studentId}_joining-letter.${ext}`;
+        filename = `${sanitizedRollNumber}_joiningletter.${ext}`;
+        folderPath = `${sanitizedInstitution}/joining-letters`;
         break;
       case 'monthly-report':
-        const monthName = month || this.getCurrentMonth();
-        filename = `${studentId}_monthly-report_${monthName}.${ext}`;
+        const monthName = month || new Date().toLocaleString('default', { month: 'long' }).toLowerCase();
+        const yearStr = year || new Date().getFullYear().toString();
+        filename = `${sanitizedRollNumber}_${monthName}_${yearStr}_monthlyreport.${ext}`;
+        folderPath = `${sanitizedInstitution}/reports`;
         break;
       case 'completion-certificate':
-        filename = `${studentId}_completion-certificate.${ext}`;
+        filename = `${sanitizedRollNumber}_completion_certificate.${ext}`;
+        folderPath = `${sanitizedInstitution}/certificates`;
         break;
       case 'offer-letter':
-        filename = `${studentId}_offer-letter.${ext}`;
+        filename = `${sanitizedRollNumber}_offer_letter.${ext}`;
+        folderPath = `${sanitizedInstitution}/offer-letters`;
         break;
       case 'noc':
-        filename = `${studentId}_noc.${ext}`;
+        filename = `${sanitizedRollNumber}_noc.${ext}`;
+        folderPath = `${sanitizedInstitution}/noc`;
+        break;
+      case 'document':
+        const docType = customName?.toLowerCase().replace(/\s+/g, '_') || 'other';
+        filename = `${sanitizedRollNumber}_${docType}_document.${ext}`;
+        folderPath = `${sanitizedInstitution}/documents`;
         break;
       default:
         filename = customName
-          ? `${studentId}_${customName}.${ext}`
-          : `${studentId}_${uuidv4()}.${ext}`;
+          ? `${sanitizedRollNumber}_${customName}.${ext}`
+          : `${sanitizedRollNumber}_${Date.now()}.${ext}`;
+        folderPath = `${sanitizedInstitution}/other`;
     }
 
-    const parts = [
-      'institutions',
-      institutionId,
-      'students',
-      studentId,
-      documentType,
-      filename,
-    ];
-
-    return parts.join('/');
+    return `${folderPath}/${filename}`;
   }
 
   /**
    * Build report path
-   * Structure: institutions/{institutionId}/reports/{reportType}/{filename}
+   * Structure: {institutionName}/reports/{reportType}/{filename}
    * Or: reports/{reportType}/{filename} if no institution
    */
   private buildReportPath(options: ReportUploadOptions): string {
-    const { institutionId, reportType, format } = options;
+    const { institutionName, reportType, format } = options;
     const now = new Date();
     const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
     const filename = `${reportType}_${dateStr}_${timeStr}.${format}`;
 
-    if (institutionId) {
-      return `institutions/${institutionId}/reports/${reportType}/${filename}`;
+    if (institutionName) {
+      const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+      return `${sanitizedInstitution}/reports/${reportType}/${filename}`;
     }
     return `reports/${reportType}/${filename}`;
   }
@@ -325,7 +365,7 @@ export class FileStorageService implements OnModuleInit {
 
   /**
    * Upload a student document with proper naming
-   * Path: institutions/{institutionId}/students/{studentId}/{documentType}/{studentId}_{documentType}.ext
+   * Path: {institutionName}/{documentType}/{rollNumber}_{documentType}.ext
    */
   async uploadStudentDocument(
     file: Express.Multer.File,
@@ -344,8 +384,8 @@ export class FileStorageService implements OnModuleInit {
           Body: file.buffer,
           ContentType: contentType,
           Metadata: {
-            studentId: options.studentId,
-            institutionId: options.institutionId,
+            rollNumber: options.rollNumber,
+            institutionName: options.institutionName,
             documentType: options.documentType,
             ...(options.month && { month: options.month }),
           },
@@ -386,8 +426,8 @@ export class FileStorageService implements OnModuleInit {
         Body: buffer,
         ContentType: contentType,
         Metadata: {
-          studentId: options.studentId,
-          institutionId: options.institutionId,
+          rollNumber: options.rollNumber,
+          institutionName: options.institutionName,
           documentType: options.documentType,
         },
       }),
@@ -411,7 +451,7 @@ export class FileStorageService implements OnModuleInit {
 
   /**
    * Upload a generated report
-   * Path: institutions/{institutionId}/reports/{reportType}/{reportType}_{timestamp}.{format}
+   * Path: {institutionName}/reports/{reportType}/{reportType}_{timestamp}.{format}
    */
   async uploadReport(
     buffer: Buffer,
@@ -431,7 +471,7 @@ export class FileStorageService implements OnModuleInit {
           ContentType: contentType,
           Metadata: {
             reportType: options.reportType,
-            ...(options.institutionId && { institutionId: options.institutionId }),
+            ...(options.institutionName && { institutionName: this.sanitizeFolderName(options.institutionName) }),
           },
         }),
       );
@@ -621,10 +661,33 @@ export class FileStorageService implements OnModuleInit {
   }
 
   /**
-   * List all documents for a student
+   * List all documents for a student by searching across all document type folders
+   * @param institutionName - Name of the institution
+   * @param rollNumber - Student roll number (optional - if not provided, lists all files in institution)
    */
-  async listStudentDocuments(institutionId: string, studentId: string): Promise<string[]> {
-    const prefix = `institutions/${institutionId}/students/${studentId}/`;
+  async listStudentDocuments(institutionName: string, rollNumber?: string): Promise<string[]> {
+    const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+    const prefix = `${sanitizedInstitution}/`;
+    const allFiles = await this.listFiles(prefix);
+
+    if (!rollNumber) {
+      return allFiles;
+    }
+
+    // Filter files that contain the roll number
+    const sanitizedRollNumber = this.sanitizeRollNumber(rollNumber);
+    return allFiles.filter(file => file.includes(`${sanitizedRollNumber}_`));
+  }
+
+  /**
+   * List all documents of a specific type for an institution
+   */
+  async listDocumentsByType(
+    institutionName: string,
+    documentType: 'profile' | 'joining-letters' | 'reports' | 'certificates' | 'offer-letters' | 'noc' | 'documents' | 'other'
+  ): Promise<string[]> {
+    const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+    const prefix = `${sanitizedInstitution}/${documentType}/`;
     return this.listFiles(prefix);
   }
 
@@ -784,13 +847,13 @@ export class FileStorageService implements OnModuleInit {
 
   /**
    * Upload profile image with optimization
-   * Path: institutions/{institutionId}/students/{studentId}/profile/{filename}
+   * Path: {institutionName}/profile/{rollNumber}_profile.webp
    */
   async uploadProfileImage(
     buffer: Buffer,
     originalName: string,
-    institutionId: string,
-    studentId: string,
+    institutionName: string,
+    rollNumber: string,
     options: ImageOptimizationOptions = {},
   ): Promise<UploadResult> {
     this.ensureConnected();
@@ -808,7 +871,9 @@ export class FileStorageService implements OnModuleInit {
       profileOptions,
     );
 
-    const key = `institutions/${institutionId}/students/${studentId}/profile/profile.webp`;
+    const sanitizedInstitution = this.sanitizeFolderName(institutionName);
+    const sanitizedRollNumber = this.sanitizeRollNumber(rollNumber);
+    const key = `${sanitizedInstitution}/profile/${sanitizedRollNumber}_profile.webp`;
 
     try {
       await this.s3Client.send(
@@ -818,8 +883,8 @@ export class FileStorageService implements OnModuleInit {
           Body: optimizedBuffer,
           ContentType: contentType,
           Metadata: {
-            studentId,
-            institutionId,
+            rollNumber: sanitizedRollNumber,
+            institutionName: sanitizedInstitution,
             type: 'profile',
           },
         }),
@@ -831,7 +896,7 @@ export class FileStorageService implements OnModuleInit {
       return {
         key,
         url,
-        filename: 'profile.webp',
+        filename: `${sanitizedRollNumber}_profile.webp`,
         size: optimizedBuffer.length,
         contentType,
       };

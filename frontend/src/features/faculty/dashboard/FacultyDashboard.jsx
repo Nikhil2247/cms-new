@@ -1,6 +1,6 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, message, FloatButton, Layout, theme, Input } from 'antd';
-import { SyncOutlined, CameraOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
+import { Row, Col, Spin, Alert, Modal, message, FloatButton, theme } from 'antd';
+import { SyncOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
@@ -11,7 +11,6 @@ import {
   StatisticsGrid,
   AssignedStudentsList,
   VisitLogsCard,
-  PendingApprovalsCard,
   MonthlyReportsCard,
   JoiningLettersCard,
   StudentDetailsModal,
@@ -34,18 +33,12 @@ const FacultyDashboard = () => {
     students,
     visitLogs,
     mentor,
-    grievances,
-    applications,
     stats,
-    pendingApprovals,
     upcomingVisits,
     error,
     refresh,
     handleDeleteVisitLog,
-    handleApproveApplication,
-    handleRejectApplication,
     handleSubmitFeedback,
-    handleReviewReport,
   } = useFacultyDashboard();
 
   // Local UI state
@@ -83,46 +76,6 @@ const FacultyDashboard = () => {
       },
     });
   }, [handleDeleteVisitLog]);
-
-  // Handle application approval
-  const handleApprove = useCallback(async (application) => {
-    try {
-      await handleApproveApplication(application.id);
-      message.success('Application approved successfully');
-    } catch (err) {
-      message.error('Failed to approve application');
-    }
-  }, [handleApproveApplication]);
-
-  // Handle application rejection
-  const handleReject = useCallback(async (application) => {
-    Modal.confirm({
-      title: 'Reject Application',
-      content: (
-        <div>
-          <p>Are you sure you want to reject this application?</p>
-          <Input.TextArea
-            placeholder="Reason for rejection (optional)"
-            id="rejectionReason"
-            rows={3}
-            className="rounded-lg mt-2"
-          />
-        </div>
-      ),
-      okText: 'Reject',
-      cancelText: 'Cancel',
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        const reason = document.getElementById('rejectionReason')?.value;
-        try {
-          await handleRejectApplication(application.id, reason);
-          message.success('Application rejected');
-        } catch (err) {
-          message.error('Failed to reject application');
-        }
-      },
-    });
-  }, [handleRejectApplication]);
 
   // Open student details modal
   const handleViewStudent = useCallback((studentId) => {
@@ -178,7 +131,7 @@ const FacultyDashboard = () => {
     <>
       <Spin spinning={isLoading} tip="Loading dashboard..." size="large">
         <div 
-          className="p-4 md:p-8 min-h-screen"
+          className="p-4 min-h-screen"
           style={{ backgroundColor: token.colorBgLayout }}
         >
           {/* Subtle Revalidation Indicator */}
@@ -196,7 +149,7 @@ const FacultyDashboard = () => {
             </div>
           )}
 
-          <div className="max-w-[1600px] mx-auto space-y-8 pb-20">
+          <div className="max-w-[1600px] mx-auto !space-y-8 !pb-20">
             {/* Header Section */}
             <DashboardHeader
               facultyName={mentor?.name}
@@ -209,11 +162,16 @@ const FacultyDashboard = () => {
 
             {/* Statistics Grid */}
             <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-              <StatisticsGrid stats={stats} />
+              <StatisticsGrid
+                stats={stats}
+                students={students}
+                monthlyReports={dashboard?.monthlyReports || []}
+                visitLogs={visitLogs}
+              />
             </div>
 
             {/* Main Content Grid */}
-            <div className="space-y-8 animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="!space-y-4 animate-fade-in" style={{ animationDelay: '0.2s' }}>
               {/* Assigned Students List - Full Width */}
               <AssignedStudentsList
                 students={students}
@@ -235,20 +193,7 @@ const FacultyDashboard = () => {
                   />
                 </Col>
 
-                {/* Pending Approvals */}
-                <Col xs={24} xl={12}>
-                  <PendingApprovalsCard
-                    applications={pendingApprovals}
-                    loading={isLoading}
-                    onApprove={handleApprove}
-                    onReject={handleReject}
-                    onViewAll={() => navigate('/approvals')}
-                  />
-                </Col>
-              </Row>
-
-              {/* Monthly Reports & Joining Letters */}
-              <Row gutter={[24, 24]}>
+                {/* Monthly Reports */}
                 <Col xs={24} xl={12}>
                   <MonthlyReportsCard
                     reports={dashboard?.monthlyReports || []}
@@ -257,7 +202,11 @@ const FacultyDashboard = () => {
                     onViewAll={() => navigate('/monthly-reports')}
                   />
                 </Col>
-                <Col xs={24} xl={12}>
+              </Row>
+
+              {/* Joining Letters - Full Width */}
+              <Row gutter={[24, 24]}>
+                <Col xs={24}>
                   <JoiningLettersCard
                     letters={dashboard?.joiningLetters || []}
                     loading={isLoading}

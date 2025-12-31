@@ -36,7 +36,9 @@ export class DocumentsService {
       // Find the student and user associated with this user
       const student = await this.prisma.student.findFirst({
         where: { userId },
-        include: {
+        select: {
+          id: true,
+          rollNumber: true,
           user: {
             select: { name: true, role: true, institutionId: true },
           },
@@ -47,11 +49,19 @@ export class DocumentsService {
         throw new ForbiddenException('Only students can upload documents');
       }
 
-      // Upload to MinIO
+      // Get institution name for folder structure
+      const institution = student.user.institutionId
+        ? await this.prisma.institution.findUnique({
+            where: { id: student.user.institutionId },
+            select: { name: true },
+          })
+        : null;
+
+      // Upload to MinIO with organized folder structure
       const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
-        institutionId: student.user.institutionId || 'default',
-        studentId: student.id,
-        documentType: 'other',
+        institutionName: institution?.name || 'default',
+        rollNumber: student.rollNumber || student.id,
+        documentType: 'document',
         customName: metadata.type,
       });
 

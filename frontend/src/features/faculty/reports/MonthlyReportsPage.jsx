@@ -30,7 +30,6 @@ import {
   UserOutlined,
   CalendarOutlined,
   BankOutlined,
-  ArrowLeftOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -44,7 +43,11 @@ const { Title, Text, Paragraph } = Typography;
 const getStatusConfig = (status) => {
   const configs = {
     DRAFT: { color: 'default', label: 'Draft', icon: <FileTextOutlined /> },
+    SUBMITTED: { color: 'blue', label: 'Submitted', icon: <ClockCircleOutlined /> },
+    UNDER_REVIEW: { color: 'orange', label: 'Under Review', icon: <ClockCircleOutlined /> },
     APPROVED: { color: 'green', label: 'Approved', icon: <CheckCircleOutlined /> },
+    REJECTED: { color: 'red', label: 'Rejected', icon: <CloseCircleOutlined /> },
+    REVISION_REQUIRED: { color: 'warning', label: 'Revision Required', icon: <FileTextOutlined /> },
   };
   return configs[status] || configs.DRAFT;
 };
@@ -101,12 +104,14 @@ const MonthlyReportsPage = () => {
 
   // Filter reports based on tab and search
   const getFilteredReports = () => {
-    let filtered = reports;
+    let filtered = reports || [];
 
-    if (activeTab === 'draft') {
-      filtered = reports.filter(r => r.status === 'DRAFT');
+    if (activeTab === 'submitted') {
+      filtered = filtered.filter(r => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW');
     } else if (activeTab === 'approved') {
-      filtered = reports.filter(r => r.status === 'APPROVED');
+      filtered = filtered.filter(r => r.status === 'APPROVED');
+    } else if (activeTab === 'draft') {
+      filtered = filtered.filter(r => r.status === 'DRAFT');
     }
 
     if (searchText) {
@@ -119,8 +124,9 @@ const MonthlyReportsPage = () => {
     return filtered;
   };
 
-  const draftCount = reports.filter(r => r.status === 'DRAFT').length;
-  const approvedCount = reports.filter(r => r.status === 'APPROVED').length;
+  const submittedCount = (reports || []).filter(r => r.status === 'SUBMITTED' || r.status === 'UNDER_REVIEW').length;
+  const approvedCount = (reports || []).filter(r => r.status === 'APPROVED').length;
+  const draftCount = (reports || []).filter(r => r.status === 'DRAFT').length;
 
   const columns = [
     {
@@ -196,7 +202,11 @@ const MonthlyReportsPage = () => {
       },
       filters: [
         { text: 'Draft', value: 'DRAFT' },
+        { text: 'Submitted', value: 'SUBMITTED' },
+        { text: 'Under Review', value: 'UNDER_REVIEW' },
         { text: 'Approved', value: 'APPROVED' },
+        { text: 'Rejected', value: 'REJECTED' },
+        { text: 'Revision Required', value: 'REVISION_REQUIRED' },
       ],
       onFilter: (value, record) => record.status === value,
     },
@@ -236,17 +246,17 @@ const MonthlyReportsPage = () => {
         <span className="flex items-center gap-2">
           <FileTextOutlined />
           All Reports
-          <Badge count={reports.length} showZero className="ml-1" />
+          <Badge count={(reports || []).length} showZero className="ml-1" />
         </span>
       ),
     },
     {
-      key: 'draft',
+      key: 'submitted',
       label: (
         <span className="flex items-center gap-2">
-          <FileTextOutlined />
-          Draft
-          <Badge count={draftCount} className="ml-1" />
+          <ClockCircleOutlined />
+          Submitted
+          <Badge count={submittedCount} className="ml-1" style={{ backgroundColor: token.colorInfo }} />
         </span>
       ),
     },
@@ -260,6 +270,16 @@ const MonthlyReportsPage = () => {
         </span>
       ),
     },
+    {
+      key: 'draft',
+      label: (
+        <span className="flex items-center gap-2">
+          <FileTextOutlined />
+          Draft
+          <Badge count={draftCount} className="ml-1" />
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -268,17 +288,6 @@ const MonthlyReportsPage = () => {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-3">
-            <Button
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/dashboard')}
-              className="rounded-lg"
-            />
-            <div 
-              className="w-10 h-10 flex items-center justify-center rounded-xl shadow-sm"
-              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, color: token.colorPrimary }}
-            >
-              <FileTextOutlined className="text-lg" />
-            </div>
             <div>
               <div className="flex items-center gap-3">
                 <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
@@ -311,14 +320,14 @@ const MonthlyReportsPage = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
               >
                 <FileTextOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{reports.length}</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{(reports || []).length}</div>
                 <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Total Reports</div>
               </div>
             </div>
@@ -326,22 +335,22 @@ const MonthlyReportsPage = () => {
 
           <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ backgroundColor: token.colorFillQuaternary, color: token.colorText }}
+                style={{ backgroundColor: token.colorInfoBg, color: token.colorInfo }}
               >
-                <FileTextOutlined className="text-lg" />
+                <ClockCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{draftCount}</div>
-                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Draft</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{submittedCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Submitted</div>
               </div>
             </div>
           </Card>
 
           <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center gap-3">
-              <div 
+              <div
                 className="w-10 h-10 rounded-xl flex items-center justify-center"
                 style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}
               >
@@ -373,7 +382,7 @@ const MonthlyReportsPage = () => {
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
-            className="px-4"
+            className="!px-4"
           />
 
           <Table
@@ -419,15 +428,17 @@ const MonthlyReportsPage = () => {
         {selectedReport && (
           <div className="space-y-6">
             {/* Status Banner */}
-            <div 
+            <div
               className="p-4 rounded-xl border"
-              style={{ 
-                backgroundColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBg : 
-                                selectedReport.status === 'REJECTED' ? token.colorErrorBg : 
-                                token.colorWarningBg,
-                borderColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBorder : 
-                             selectedReport.status === 'REJECTED' ? token.colorErrorBorder : 
-                             token.colorWarningBorder
+              style={{
+                backgroundColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBg :
+                                selectedReport.status === 'REJECTED' ? token.colorErrorBg :
+                                selectedReport.status === 'SUBMITTED' || selectedReport.status === 'UNDER_REVIEW' ? token.colorInfoBg :
+                                token.colorFillQuaternary,
+                borderColor: selectedReport.status === 'APPROVED' ? token.colorSuccessBorder :
+                             selectedReport.status === 'REJECTED' ? token.colorErrorBorder :
+                             selectedReport.status === 'SUBMITTED' || selectedReport.status === 'UNDER_REVIEW' ? token.colorInfoBorder :
+                             token.colorBorder
               }}
             >
               <div className="flex items-center justify-between">

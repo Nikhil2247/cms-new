@@ -119,7 +119,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
             View All <RightOutlined />
           </Button>
         }
-        className="h-full rounded-xl"
+        className="h-full !rounded-xl"
         style={{ borderColor: token.colorBorder }}
         styles={{ body: { padding: reports.length > 0 ? 0 : 24 } }}
       >
@@ -162,7 +162,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium truncate mr-2">{report.student?.name || 'Unknown Student'}</span>
+                      <span className="font-medium truncate mr-2">{report.application?.student?.name || report.student?.name || 'Unknown Student'}</span>
                       <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
                         {statusConfig.label}
                       </Tag>

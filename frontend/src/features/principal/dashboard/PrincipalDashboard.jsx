@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Col,
@@ -9,20 +10,17 @@ import {
   Button,
   Badge,
   Tooltip,
-  Progress,
   Alert,
   Tag,
   Modal,
   Table,
 } from 'antd';
 import {
-  TeamOutlined,
-  ReadOutlined,
   BankOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
   EyeOutlined,
-  SolutionOutlined,
+  TeamOutlined,
   AlertOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
@@ -30,18 +28,27 @@ import {
   fetchPrincipalDashboard,
   fetchMentorCoverage,
   fetchAlertsEnhanced,
+  fetchInternshipStats,
+  fetchJoiningLetterStats,
+  fetchComplianceMetrics,
   selectDashboardStats,
   selectDashboardLoading,
   selectDashboardError,
   selectMentorCoverage,
   selectMentorCoverageLoading,
-  selectMentorCoverageError,
   selectAlertsEnhanced,
   selectAlertsEnhancedLoading,
   selectAlertsEnhancedError,
   selectMostRecentFetch,
+  selectInternshipStats,
+  selectInternshipStatsLoading,
+  selectJoiningLetterStats,
+  selectJoiningLetterStatsLoading,
+  selectComplianceMetrics,
+  selectComplianceMetricsLoading,
 } from '../store/principalSlice';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
+import { BasicStatisticsGrid, SubmissionStatusGrid } from './components/DashboardStatCards';
 
 const { Title, Text, Paragraph } = Typography;
 

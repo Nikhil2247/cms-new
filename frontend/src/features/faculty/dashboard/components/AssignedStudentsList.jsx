@@ -419,7 +419,7 @@ const AssignedStudentsList = ({
             allowClear
           />
         }
-        className="h-full rounded-xl"
+        className="h-full !rounded-xl"
         style={{ borderColor: token.colorBorder }}
       >
         <Table

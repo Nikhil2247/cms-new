@@ -155,7 +155,7 @@ export const menuConfig = {
       { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/visit-logs' },
       { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/monthly-reports' },
       { key: 'joining-letters', label: 'Joining Letters', icon: <SafetyCertificateOutlined />, path: '/joining-letters' },
-      { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/approvals' },
+      // { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/approvals' },
     ],
   },
   FACULTY_COMMUNICATION: {

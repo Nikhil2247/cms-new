@@ -446,7 +446,7 @@ export default function FacultyGrievances() {
   ];
 
   return (
-    <div className="h-full overflow-y-auto hide-scrollbar py-4">
+    <div className="h-full overflow-y-auto hide-scrollbar p-6">
       <div className="max-w-7xl mx-auto space-y-4">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -456,64 +456,68 @@ export default function FacultyGrievances() {
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <Row gutter={[16, 16]} className="mb-5">
-          <Col xs={24} sm={12} lg={8} xl={5}>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl shadow-sm border-0 h-full">
-              <div className="text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-blue-200 flex items-center justify-center mb-3">
-                  <FileTextOutlined className="text-2xl !text-blue-700" />
-                </div>
-                <Text className="text-gray-600 text-xs font-semibold uppercase block mb-2">Total</Text>
-                <div className="text-4xl font-bold text-blue-700">{stats.total}</div>
+        {/* Statistics Cards - Compact Horizontal Layout */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
+          <Card className="rounded-lg border border-gray-100 hover:shadow-md transition-all" bodyStyle={{ padding: '12px 14px' }} size="small">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <FileTextOutlined style={{ fontSize: '16px', color: '#3b82f6' }} />
               </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8} xl={5}>
-            <Card className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl shadow-sm border-0 h-full">
-              <div className="text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-orange-200 flex items-center justify-center mb-3">
-                  <ClockCircleOutlined className="text-2xl !text-orange-700" />
-                </div>
-                <Text className="text-gray-600 text-xs font-semibold uppercase block mb-2">Pending</Text>
-                <div className="text-4xl font-bold text-orange-700">{stats.pending}</div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase text-gray-400 truncate">Total</div>
+                <div className="text-xl font-bold text-blue-600">{stats.total}</div>
               </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8} xl={5}>
-            <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 rounded-xl shadow-sm border-0 h-full">
-              <div className="text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-cyan-200 flex items-center justify-center mb-3">
-                  <ExclamationCircleOutlined className="text-2xl !text-cyan-700" />
-                </div>
-                <Text className="text-gray-600 text-xs font-semibold uppercase block mb-2">In Progress</Text>
-                <div className="text-4xl font-bold text-cyan-700">{stats.inProgress}</div>
+            </div>
+          </Card>
+
+          <Card className="rounded-lg border border-gray-100 hover:shadow-md transition-all" bodyStyle={{ padding: '12px 14px' }} size="small">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-orange-100 flex items-center justify-center flex-shrink-0">
+                <ClockCircleOutlined style={{ fontSize: '16px', color: '#f59e0b' }} />
               </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8} xl={5}>
-            <Card className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl shadow-sm border-0 h-full">
-              <div className="text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-red-200 flex items-center justify-center mb-3">
-                  <RiseOutlined className="text-2xl !text-red-700" />
-                </div>
-                <Text className="text-gray-600 text-xs font-semibold uppercase block mb-2">Escalated</Text>
-                <div className="text-4xl font-bold text-red-700">{stats.escalated}</div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase text-gray-400 truncate">Pending</div>
+                <div className="text-xl font-bold text-orange-500">{stats.pending}</div>
               </div>
-            </Card>
-          </Col>
-          <Col xs={24} sm={12} lg={8} xl={4}>
-            <Card className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-sm border-0 h-full">
-              <div className="text-center">
-                <div className="mx-auto w-14 h-14 rounded-full bg-green-200 flex items-center justify-center mb-3">
-                  <CheckCircleOutlined className="text-2xl !text-green-700" />
-                </div>
-                <Text className="text-gray-600 text-xs font-semibold uppercase block mb-2">Resolved</Text>
-                <div className="text-4xl font-bold text-green-700">{stats.resolved}</div>
+            </div>
+          </Card>
+
+          <Card className="rounded-lg border border-gray-100 hover:shadow-md transition-all" bodyStyle={{ padding: '12px 14px' }} size="small">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                <ExclamationCircleOutlined style={{ fontSize: '16px', color: '#06b6d4' }} />
               </div>
-            </Card>
-          </Col>
-        </Row>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase text-gray-400 truncate">In Progress</div>
+                <div className="text-xl font-bold text-cyan-600">{stats.inProgress}</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="rounded-lg border border-gray-100 hover:shadow-md transition-all" bodyStyle={{ padding: '12px 14px' }} size="small">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
+                <RiseOutlined style={{ fontSize: '16px', color: '#ef4444' }} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase text-gray-400 truncate">Escalated</div>
+                <div className="text-xl font-bold text-red-500">{stats.escalated}</div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="rounded-lg border border-gray-100 hover:shadow-md transition-all" bodyStyle={{ padding: '12px 14px' }} size="small">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center flex-shrink-0">
+                <CheckCircleOutlined style={{ fontSize: '16px', color: '#10b981' }} />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase text-gray-400 truncate">Resolved</div>
+                <div className="text-xl font-bold text-green-600">{stats.resolved}</div>
+              </div>
+            </div>
+          </Card>
+        </div>
 
         {/* Alert for pending */}
         {stats.pending > 0 && (

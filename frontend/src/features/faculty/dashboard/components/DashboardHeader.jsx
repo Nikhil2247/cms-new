@@ -3,7 +3,6 @@ import { Typography, Button, Tooltip } from 'antd';
 import {
   UserOutlined,
   ReloadOutlined,
-  IdcardOutlined,
 } from '@ant-design/icons';
 
 const { Title, Paragraph } = Typography;
@@ -17,23 +16,20 @@ const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }
   });
 
   return (
-    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
+    <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center !gap-4 !mb-4">
       <div className="flex items-center">
-        <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
-          <IdcardOutlined className="text-lg" />
-        </div>
         <div>
           <div className="flex items-center gap-3">
-            <Title level={2} className="mb-0 text-text-primary text-2xl">
+            <Title level={4} className="mb-0 text-text-primary text-xl">
               Faculty Dashboard
             </Title>
             {lastFetched && (
-              <span className="text-xs text-text-tertiary">
+              <span className="text-[10px] text-text-tertiary">
                 Updated {new Date(lastFetched).toLocaleTimeString()}
               </span>
             )}
           </div>
-          <Paragraph className="text-text-secondary text-sm mb-0">
+          <Paragraph className="text-text-secondary text-xs mb-0">
             Welcome back, <span className="font-semibold text-primary">{facultyName || 'Faculty'}</span> • {currentDate}
           </Paragraph>
         </div>
@@ -44,7 +40,7 @@ const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }
           <Button
             icon={<ReloadOutlined spin={loading} />}
             onClick={onRefresh}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+            className="w-8 h-8 flex items-center justify-center !rounded-lg bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
           />
         </Tooltip>
       </div>

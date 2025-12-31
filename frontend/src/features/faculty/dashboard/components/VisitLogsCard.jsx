@@ -61,11 +61,11 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
           </Button>
         </Space>
       }
-      className="h-full rounded-xl"
+      className="h-full !rounded-xl"
       style={{ borderColor: token.colorBorder }}
     >
       {visitLogs.length > 0 ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col !gap-3">
           {visitLogs.slice(0, 5).map((visit, index) => {
             const isPast = dayjs(visit.visitDate).isBefore(dayjs());
 

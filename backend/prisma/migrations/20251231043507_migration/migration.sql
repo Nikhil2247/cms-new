@@ -1355,12 +1355,6 @@ CREATE INDEX "User_role_active_createdAt_idx" ON "User"("role", "active", "creat
 CREATE UNIQUE INDEX "Student_userId_key" ON "Student"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Student_rollNumber_key" ON "Student"("rollNumber");
-
--- CreateIndex
-CREATE UNIQUE INDEX "Student_admissionNumber_key" ON "Student"("admissionNumber");
-
--- CreateIndex
 CREATE INDEX "Student_institutionId_idx" ON "Student"("institutionId");
 
 -- CreateIndex

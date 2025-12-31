@@ -157,7 +157,7 @@ const FacultyVisitsSection = ({
           </div>
         ) : visits.length === 0 ? (
           <Empty description="No visits scheduled yet. Visits will be scheduled when your mentor is assigned." />
-        ) : (
+        ) : (     
           <Timeline
             mode="left"
             items={visits.map((visit) => {

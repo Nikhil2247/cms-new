@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Input, Select, Drawer, Descriptions, Avatar, Divider, Progress } from 'antd';
+import { Card, Table, Button, Tag, Space, Input, Select, Modal, Descriptions, Avatar, Divider, Progress, Row, Col } from 'antd';
 import { SearchOutlined, UserOutlined, EyeOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import { fetchAssignedStudents } from '../store/facultySlice';
 import { getImageUrl } from '../../../utils/imageUtils';
@@ -16,7 +16,7 @@ const AssignedStudentsList = React.memo(() => {
   const [searchText, setSearchText] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [batchFilter, setBatchFilter] = useState('all');
-  const [detailDrawer, setDetailDrawer] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => {
@@ -127,7 +127,7 @@ const AssignedStudentsList = React.memo(() => {
           icon={<EyeOutlined />}
           onClick={() => {
             setSelectedStudent(record);
-            setDetailDrawer(true);
+            setDetailModalVisible(true);
           }}
           size="small"
         >
@@ -135,7 +135,7 @@ const AssignedStudentsList = React.memo(() => {
         </Button>
       ),
     },
-  ], [getInternshipStatus, setSelectedStudent, setDetailDrawer]);
+  ], [getInternshipStatus, setSelectedStudent, setDetailModalVisible]);
 
   return (
     <div className="p-6">
@@ -186,142 +186,165 @@ const AssignedStudentsList = React.memo(() => {
         />
       </Card>
 
-      {/* Detail Drawer */}
-      <Drawer
+      {/* Detail Modal */}
+      <Modal
         title="Student Details"
-        placement="right"
-        size="default"
-        onClose={() => {
-          setDetailDrawer(false);
+        width={1000}
+        centered
+        open={detailModalVisible}
+        onCancel={() => {
+          setDetailModalVisible(false);
           setSelectedStudent(null);
         }}
-        open={detailDrawer}
+        footer={[
+          <Button key="close" onClick={() => setDetailModalVisible(false)}>
+            Close
+          </Button>
+        ]}
       >
         {selectedStudent && (
-          <div>
-            <div className="text-center mb-6">
+          <div className="py-4">
+            <div className="flex items-center gap-6 mb-6">
               <Avatar size={100} icon={<UserOutlined />} src={getImageUrl(selectedStudent.profileImage)} />
-              <h2 className="text-xl font-semibold mt-3">{selectedStudent.name}</h2>
-              <p className="text-text-secondary">{selectedStudent.rollNumber}</p>
+              <div>
+                <h2 className="text-2xl font-bold">{selectedStudent.name}</h2>
+                <p className="text-text-secondary text-lg">{selectedStudent.rollNumber}</p>
+                <div className="mt-2 flex gap-4">
+                  <span className="flex items-center gap-2 text-text-secondary">
+                    <MailOutlined /> <a href={`mailto:${selectedStudent.email}`}>{selectedStudent.email}</a>
+                  </span>
+                  <span className="flex items-center gap-2 text-text-secondary">
+                    <PhoneOutlined /> <a href={`tel:${selectedStudent.phone}`}>{selectedStudent.phone}</a>
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <Divider plain>Personal Information</Divider>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Email">
-                <a href={`mailto:${selectedStudent.email}`}>
-                  <MailOutlined /> {selectedStudent.email}
-                </a>
-              </Descriptions.Item>
-              <Descriptions.Item label="Phone">
-                <a href={`tel:${selectedStudent.phone}`}>
-                  <PhoneOutlined /> {selectedStudent.phone}
-                </a>
-              </Descriptions.Item>
-              <Descriptions.Item label="Date of Birth">
-                {selectedStudent.dateOfBirth || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Gender">
-                {selectedStudent.gender || 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
+            <Row gutter={[24, 24]}>
+              {/* Personal Information */}
+              <Col xs={24} md={12}>
+                <Card title="Personal Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Date of Birth">
+                      {selectedStudent.dateOfBirth || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Gender">
+                      {selectedStudent.gender || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Address">
+                      {selectedStudent.address || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="City">
+                      {selectedStudent.city || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="State">
+                      {selectedStudent.state || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Pincode">
+                      {selectedStudent.pincode || 'N/A'}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
 
-            <Divider plain>Academic Information</Divider>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Department">
-                {selectedStudent.department?.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Batch">
-                {selectedStudent.batch?.name}
-              </Descriptions.Item>
-              <Descriptions.Item label="Current Semester">
-                {selectedStudent.currentSemester || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="CGPA">
-                <div className="flex items-center gap-2">
-                  <span>{selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'N/A'}</span>
-                  {selectedStudent.cgpa && (
-                    <Progress
-                      percent={(selectedStudent.cgpa / 10) * 100}
-                      size="small"
-                      style={PROGRESS_STYLE}
-                      showInfo={false}
-                    />
+              {/* Academic Information */}
+              <Col xs={24} md={12}>
+                <Card title="Academic Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Department">
+                      {selectedStudent.department?.name}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Batch">
+                      {selectedStudent.batch?.name}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Current Semester">
+                      {selectedStudent.currentSemester || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="CGPA">
+                      <div className="flex items-center gap-2 w-full">
+                        <span>{selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'N/A'}</span>
+                        {selectedStudent.cgpa && (
+                          <Progress
+                            percent={(selectedStudent.cgpa / 10) * 100}
+                            size="small"
+                            style={PROGRESS_STYLE}
+                            showInfo={false}
+                          />
+                        )}
+                      </div>
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Backlogs">
+                      {selectedStudent.backlogs || 0}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+
+              {/* Guardian Information */}
+              <Col xs={24} md={12}>
+                <Card title="Guardian Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                  <Descriptions column={1} size="small">
+                    <Descriptions.Item label="Guardian Name">
+                      {selectedStudent.guardianName || 'N/A'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Guardian Phone">
+                      {selectedStudent.guardianPhone || 'N/A'}
+                    </Descriptions.Item>
+                  </Descriptions>
+                </Card>
+              </Col>
+
+              {/* Skills */}
+              <Col xs={24} md={12}>
+                <Card title="Skills" size="small" bordered={false} className="bg-gray-50 h-full">
+                  {selectedStudent.skills ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedStudent.skills.split(',').map((skill, idx) => (
+                        <Tag key={idx} color="blue">{skill.trim()}</Tag>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-text-secondary">No skills listed</span>
                   )}
-                </div>
-              </Descriptions.Item>
-              <Descriptions.Item label="Backlogs">
-                {selectedStudent.backlogs || 0}
-              </Descriptions.Item>
-            </Descriptions>
+                </Card>
+              </Col>
 
-            <Divider plain>Contact Information</Divider>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Address">
-                {selectedStudent.address || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="City">
-                {selectedStudent.city || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="State">
-                {selectedStudent.state || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Pincode">
-                {selectedStudent.pincode || 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
+              {/* Current Internship */}
+              <Col xs={24}>
+                {selectedStudent.currentInternship && (
+                  <Card title="Current Internship" size="small" bordered={false} className="bg-blue-50 border-blue-100">
+                    <Descriptions column={{ xs: 1, md: 3 }} size="small">
+                      <Descriptions.Item label="Company">
+                        {selectedStudent.currentInternship.company?.name}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Title">
+                        {selectedStudent.currentInternship.title}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Start Date">
+                        {selectedStudent.currentInternship.startDate}
+                      </Descriptions.Item>
+                      <Descriptions.Item label="Status">
+                        <Tag color="green">Active</Tag>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </Card>
+                )}
+              </Col>
 
-            <Divider plain>Guardian Information</Divider>
-            <Descriptions column={1} bordered size="small">
-              <Descriptions.Item label="Guardian Name">
-                {selectedStudent.guardianName || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Guardian Phone">
-                {selectedStudent.guardianPhone || 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
-
-            {selectedStudent.currentInternship && (
-              <>
-                <Divider plain>Current Internship</Divider>
-                <Descriptions column={1} bordered size="small">
-                  <Descriptions.Item label="Company">
-                    {selectedStudent.currentInternship.company?.name}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Title">
-                    {selectedStudent.currentInternship.title}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Start Date">
-                    {selectedStudent.currentInternship.startDate}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Status">
-                    <Tag color="green">Active</Tag>
-                  </Descriptions.Item>
-                </Descriptions>
-              </>
-            )}
-
-            {selectedStudent.skills && (
-              <>
-                <Divider plain>Skills</Divider>
-                <div className="flex flex-wrap gap-2">
-                  {selectedStudent.skills.split(',').map((skill, idx) => (
-                    <Tag key={idx} color="blue">{skill.trim()}</Tag>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {selectedStudent.resumeUrl && (
-              <>
-                <Divider plain>Documents</Divider>
-                <Button type="link" href={selectedStudent.resumeUrl} target="_blank" rel="noopener noreferrer">
-                  View Resume
-                </Button>
-              </>
-            )}
+              {/* Documents */}
+              <Col xs={24}>
+                {selectedStudent.resumeUrl && (
+                  <Card title="Documents" size="small" bordered={false} className="bg-gray-50">
+                    <Button type="primary" ghost href={selectedStudent.resumeUrl} target="_blank" rel="noopener noreferrer">
+                      View Resume
+                    </Button>
+                  </Card>
+                )}
+              </Col>
+            </Row>
           </div>
         )}
-      </Drawer>
+      </Modal>
     </div>
   );
 });

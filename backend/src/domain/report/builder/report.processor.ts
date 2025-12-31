@@ -133,6 +133,17 @@ export class ReportProcessor extends WorkerHost {
       // Upload to MinIO
       this.logger.log('Uploading file to MinIO');
       const institutionId = filters?.institutionId as string;
+
+      // Get institution name for folder structure
+      let institutionName: string | undefined;
+      if (institutionId) {
+        const institution = await this.prisma.institution.findUnique({
+          where: { id: institutionId },
+          select: { name: true },
+        });
+        institutionName = institution?.name;
+      }
+
       const formatExtMap: Record<ExportFormat, string> = {
         [ExportFormat.EXCEL]: 'xlsx',
         [ExportFormat.PDF]: 'pdf',
@@ -142,7 +153,7 @@ export class ReportProcessor extends WorkerHost {
       const formatExt = formatExtMap[format] || 'xlsx';
 
       const uploadResult = await this.fileStorage.uploadReport(fileBuffer, {
-        institutionId,
+        institutionName,
         reportType,
         format: formatExt,
       });

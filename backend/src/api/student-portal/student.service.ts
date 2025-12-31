@@ -390,6 +390,12 @@ export class StudentService {
             email: true,
             phoneNo: true,
             active: true,
+            Institution: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
         batch: true,

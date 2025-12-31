@@ -249,6 +249,133 @@ body {
 }
 
 /* ============================================
+   Dark Sidebar Menu Styling
+   ============================================ */
+.sidebar-dark-menu.ant-menu-dark {
+  background: transparent !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-title {
+  color: rgba(255, 255, 255, 0.85) !important;
+  border-radius: 8px !important;
+  margin: 2px 0 !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item a,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item span,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-title span {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item .anticon,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-title .anticon {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Hover State */
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item:hover,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-title:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item:hover a,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item:hover span,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-title:hover span {
+  color: #ffffff !important;
+}
+
+/* Selected State */
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item-selected {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item-selected a,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item-selected span,
+.sidebar-dark-menu.ant-menu-dark .ant-menu-item-selected .anticon {
+  color: #60a5fa !important;
+}
+
+/* Submenu Selected */
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  color: #60a5fa !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-selected > .ant-menu-submenu-title .anticon {
+  color: #60a5fa !important;
+}
+
+/* Sub-menu background */
+.sidebar-dark-menu.ant-menu-dark .ant-menu-sub {
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Collapsed Mode - Ensure only icons show */
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-item,
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-submenu-title {
+  padding-inline: 0 !important;
+  text-align: center !important;
+}
+
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-item .anticon,
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-submenu-title .anticon {
+  font-size: 18px !important;
+  line-height: 40px !important;
+  margin: 0 !important;
+}
+
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-item-icon {
+  margin: 0 !important;
+}
+
+/* Hide text in collapsed mode */
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-title-content {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Collapsed tooltip popup */
+.sidebar-dark-menu.ant-menu-inline-collapsed .ant-menu-submenu-popup {
+  left: 72px !important;
+}
+
+/* Popup menu styling for collapsed state */
+.ant-menu-submenu-popup .ant-menu-dark {
+  background: #0f172a !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-dark .ant-menu-item {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-dark .ant-menu-item a {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-dark .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-dark .ant-menu-item-selected {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.ant-menu-submenu-popup .ant-menu-dark .ant-menu-item-selected a {
+  color: #60a5fa !important;
+}
+
+/* Submenu arrow */
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-arrow {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.sidebar-dark-menu.ant-menu-dark .ant-menu-submenu-open > .ant-menu-submenu-title .ant-menu-submenu-arrow {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ============================================
    Custom Utilities
    ============================================ */
 .card-hover {

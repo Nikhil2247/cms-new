@@ -921,6 +921,7 @@ export class FacultyService {
 
   /**
    * Get monthly reports for review
+   * Fetches reports from students assigned via MentorAssignment OR via application.mentorId
    */
   async getMonthlyReports(
     facultyId: string,
@@ -931,10 +932,32 @@ export class FacultyService {
     const limit = Number(params.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const where: Prisma.MonthlyReportWhereInput = {
-      application: {
+    // First, get all student IDs assigned to this faculty via MentorAssignment
+    const assignedStudentIds = await this.prisma.mentorAssignment.findMany({
+      where: {
         mentorId: facultyId,
+        isActive: true,
       },
+      select: { studentId: true },
+    });
+    const studentIds = assignedStudentIds.map((a) => a.studentId);
+
+    // Build where clause to include reports from:
+    // 1. Students assigned via MentorAssignment
+    // 2. Applications where faculty is directly set as mentorId
+    const where: Prisma.MonthlyReportWhereInput = {
+      OR: [
+        // Reports from students assigned via MentorAssignment
+        ...(studentIds.length > 0 ? [{
+          studentId: { in: studentIds },
+        }] : []),
+        // Reports where faculty is directly the mentor on the application
+        {
+          application: {
+            mentorId: facultyId,
+          },
+        },
+      ],
     };
 
     if (status) {
@@ -1973,6 +1996,12 @@ export class FacultyService {
             name: true,
             rollNumber: true,
             institutionId: true,
+            Institution: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
           },
         },
       },

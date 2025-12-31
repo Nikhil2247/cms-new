@@ -1,7 +1,19 @@
 import React from 'react';
 import { Menu, Button, Tooltip } from 'antd';
-import { BugOutlined } from '@ant-design/icons';
+import { FileAddOutlined } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
+
+// Sidebar colors from theme
+const SIDEBAR_COLORS = {
+  text: 'rgba(255, 255, 255, 0.85)',
+  textHover: '#ffffff',
+  textMuted: 'rgba(255, 255, 255, 0.65)',
+  itemHoverBg: 'rgba(255, 255, 255, 0.08)',
+  itemActiveBg: 'rgba(59, 130, 246, 0.2)',
+  itemActiveBorder: '#3b82f6',
+  buttonBg: 'rgba(255, 255, 255, 0.05)',
+  buttonBorder: 'rgba(255, 255, 255, 0.15)',
+};
 
 const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
   const location = useLocation();
@@ -28,12 +40,16 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
     if (activeKeys[0] && !collapsed) {
       setOpenKeys([activeKeys[0]]);
     }
+    // Close all menus when collapsed
+    if (collapsed) {
+      setOpenKeys([]);
+    }
   }, [location.pathname, collapsed]);
 
   const handleOpenChange = (keys) => {
-    // Only keep the last opened key for accordion behavior
-    const latestOpenKey = keys.find((key) => openKeys.indexOf(key) === -1);
-    setOpenKeys(latestOpenKey ? [latestOpenKey] : []);
+    if (!collapsed) {
+      setOpenKeys(keys);
+    }
   };
 
   const handleLinkClick = () => {
@@ -45,37 +61,61 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
   return (
     <div className="flex flex-col flex-1 h-full min-h-0 relative overflow-hidden">
       {/* Menu Container */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin py-2" style={{ maxHeight: isMobile ? 'calc(100vh - 180px)' : 'auto' }}>
+      <div
+        className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar py-2"
+        style={{ maxHeight: isMobile ? 'calc(100vh - 180px)' : 'calc(100vh - 160px)' }}
+      >
         <Menu
           mode="inline"
-          theme="light"
+          theme="dark"
           selectedKeys={[activeKeys[1]]}
-          openKeys={openKeys}
+          openKeys={collapsed ? [] : openKeys}
           onOpenChange={handleOpenChange}
+          inlineCollapsed={collapsed}
           style={{
             borderRight: 0,
             background: 'transparent',
+            padding: collapsed ? '0 4px' : '0 8px',
           }}
-          className="custom-sidebar-menu px-2"
+          className="sidebar-dark-menu"
           items={sections.map((section) => ({
             key: section.key,
             icon: React.cloneElement(section.icon, {
-              className: 'text-lg',
+              style: {
+                fontSize: collapsed ? '18px' : '16px',
+                color: SIDEBAR_COLORS.text,
+              },
             }),
-            label: (
-              <span className="font-semibold text-sm tracking-wide text-text-primary">
+            label: collapsed ? null : (
+              <span
+                style={{
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  letterSpacing: '0.2px',
+                  color: SIDEBAR_COLORS.text,
+                }}
+              >
                 {section.title}
               </span>
             ),
             children: section.items.map((item) => ({
               key: item.key,
               icon: React.cloneElement(item.icon, {
-                className: 'text-base',
+                style: {
+                  fontSize: '14px',
+                  color: SIDEBAR_COLORS.textMuted,
+                },
               }),
               label: (
                 <Link
                   to={item.path}
-                  className="text-sm font-medium transition-colors duration-200 text-text-primary"
+                  style={{
+                    fontSize: '13px',
+                    fontWeight: 450,
+                    letterSpacing: '0.1px',
+                    color: SIDEBAR_COLORS.text,
+                    display: 'block',
+                  }}
                   onClick={handleLinkClick}
                 >
                   {item.label}
@@ -88,48 +128,47 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
 
       {/* Footer Action - Report Issue */}
       <div
-        className={`
-          px-3 py-4
-          border-t border-border
-          bg-background-tertiary
-        `}
+        style={{
+          padding: collapsed ? '16px 8px' : '16px 12px',
+          borderTop: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(0,0,0,0.1)',
+        }}
       >
         {!collapsed ? (
-          <Link to="/my-queries" onClick={handleLinkClick}>
+          <Link to="/support/technical-query" onClick={handleLinkClick}>
             <Button
               type="default"
               block
-              icon={<BugOutlined className="text-sm" />}
-              className="
-                h-10 rounded-xl
-                bg-surface hover:bg-background-secondary
-                border border-border
-                text-text-primary
-                font-medium text-[13px]
-                transition-all duration-200
-                flex items-center justify-center gap-2
-                shadow-sm
-              "
+              icon={<FileAddOutlined />}
+              size="small"
+              style={{
+                height: 36,
+                fontSize: 12,
+                borderRadius: 8,
+                background: SIDEBAR_COLORS.buttonBg,
+                borderColor: SIDEBAR_COLORS.buttonBorder,
+                color: SIDEBAR_COLORS.text,
+              }}
+              className="hover:!bg-white/10 hover:!border-white/25 transition-all"
             >
               Report Issue
             </Button>
           </Link>
         ) : (
           <div className="flex justify-center">
-            <Tooltip title="Report Issue" placement="right">
-              <Link to="/my-queries" onClick={handleLinkClick}>
+            <Tooltip title="Report Technical Issue" placement="right">
+              <Link to="/support/technical-query" onClick={handleLinkClick}>
                 <Button
                   type="default"
                   shape="circle"
-                  icon={<BugOutlined className="text-sm" />}
-                  className="
-                    w-10 h-10
-                    bg-surface hover:bg-background-secondary
-                    border border-border
-                    text-text-primary
-                    transition-all duration-200
-                    flex items-center justify-center
-                  "
+                  size="middle"
+                  icon={<FileAddOutlined style={{ fontSize: 14 }} />}
+                  style={{
+                    background: SIDEBAR_COLORS.buttonBg,
+                    borderColor: SIDEBAR_COLORS.buttonBorder,
+                    color: SIDEBAR_COLORS.text,
+                  }}
+                  className="hover:!bg-white/10 hover:!border-white/25 transition-all"
                 />
               </Link>
             </Tooltip>

@@ -79,12 +79,15 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
+    // Get institution name for folder structure
+    const institutionName = profile.user?.Institution?.name || 'default';
+
     // Upload to MinIO with automatic optimization (resizes, converts to WebP)
     const result = await this.fileStorageService.uploadProfileImage(
       file.buffer,
       file.originalname,
-      profile.institutionId || 'default',
-      profile.id,
+      institutionName,
+      profile.rollNumber || profile.id,
     );
 
     // Store the relative key (not full URL) in database
@@ -196,10 +199,13 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
+    // Get institution name for folder structure
+    const institutionName = profile.user?.Institution?.name || 'default';
+
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionId: profile.institutionId || 'default',
-      studentId: profile.id,
+      institutionName,
+      rollNumber: profile.rollNumber || profile.id,
       documentType: 'joining-letter',
     });
 
@@ -331,12 +337,20 @@ export class StudentController {
     const reportMonth = parseInt(reportDto.reportMonth, 10);
     const reportYear = parseInt(reportDto.reportYear, 10);
 
+    // Get institution name for folder structure
+    const institutionName = profile.user?.Institution?.name || 'default';
+
+    // Get month name
+    const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
+      'july', 'august', 'september', 'october', 'november', 'december'];
+
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionId: profile.institutionId || 'default',
-      studentId: profile.id,
+      institutionName,
+      rollNumber: profile.rollNumber || profile.id,
       documentType: 'monthly-report',
-      month: `${reportMonth}-${reportYear}`,
+      month: monthNames[reportMonth - 1],
+      year: reportYear.toString(),
     });
 
     return this.studentService.uploadReportFile(req.user.userId, {
@@ -390,11 +404,14 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
+    // Get institution name for folder structure
+    const institutionName = profile.user?.Institution?.name || 'default';
+
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionId: profile.institutionId || 'default',
-      studentId: profile.id,
-      documentType: 'other',
+      institutionName,
+      rollNumber: profile.rollNumber || profile.id,
+      documentType: 'document',
       customName: documentDto.type || 'document',
     });
 

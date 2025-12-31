@@ -44,6 +44,13 @@ export const lightTheme = {
   },
 };
 
+// Sidebar specific colors
+const SIDEBAR_BG = '#0f172a';
+const SIDEBAR_ITEM_HOVER = 'rgba(255, 255, 255, 0.08)';
+const SIDEBAR_ITEM_SELECTED = 'rgba(59, 130, 246, 0.15)';
+const SIDEBAR_TEXT = 'rgba(255, 255, 255, 0.85)';
+const SIDEBAR_TEXT_SELECTED = '#ffffff';
+
 export const darkTheme = {
   token: {
     colorPrimary: PRIMARY_DARK,
@@ -78,7 +85,22 @@ export const darkTheme = {
       colorBgElevated: '#0f172a',
     },
     Menu: {
+      // Dark sidebar menu styling
+      darkItemBg: 'transparent',
+      darkSubMenuItemBg: 'transparent',
+      darkItemColor: SIDEBAR_TEXT,
+      darkItemHoverColor: SIDEBAR_TEXT_SELECTED,
+      darkItemHoverBg: SIDEBAR_ITEM_HOVER,
+      darkItemSelectedBg: SIDEBAR_ITEM_SELECTED,
+      darkItemSelectedColor: SIDEBAR_TEXT_SELECTED,
+      darkPopupBg: SIDEBAR_BG,
       itemBg: 'transparent',
+      subMenuItemBg: 'transparent',
+      itemMarginInline: 8,
+      itemPaddingInline: 12,
+      iconMarginInlineEnd: 10,
+      collapsedIconSize: 18,
+      collapsedWidth: 72,
     },
   },
 };

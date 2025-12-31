@@ -330,7 +330,7 @@ const StudentDetailsModal = ({
       key: 'overview',
       label: 'Overview',
       children: (
-        <div className="space-y-4">
+        <div className="!space-y-4">
           {/* Student Info Card */}
           <Card size="small" title="Student Information" className="border-border">
             <Descriptions column={{ xs: 1, sm: 2 }} size="small">
@@ -395,7 +395,7 @@ const StudentDetailsModal = ({
             {isEditingInternship ? (
               <Form form={editForm} layout="vertical" size="small">
                 <Divider orientation="left" className="!text-sm !my-2">Company Information</Divider>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 !gap-4">
                   <Form.Item
                     name="companyName"
                     label="Company Name"
@@ -415,7 +415,7 @@ const StudentDetailsModal = ({
                 </div>
 
                 <Divider orientation="left" className="!text-sm !my-2">HR/Supervisor Details</Divider>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 !gap-4">
                   <Form.Item name="hrName" label="HR/Supervisor Name">
                     <Input placeholder="Enter HR name" />
                   </Form.Item>
@@ -431,7 +431,7 @@ const StudentDetailsModal = ({
                 </div>
 
                 <Divider orientation="left" className="!text-sm !my-2">Internship Details</Divider>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 !gap-4">
                   <Form.Item
                     name="startDate"
                     label="Start Date"
@@ -577,7 +577,7 @@ const StudentDetailsModal = ({
           </Card>
 
           {/* Quick Stats - Done/Expected */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 !gap-4">
             <Card size="small" className="text-center border-border">
               <div className="text-2xl font-bold text-primary">
                 {visits.length}<span className="text-sm font-normal text-text-secondary">/{getExpectedVisits()}</span>
