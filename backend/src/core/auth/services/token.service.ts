@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { createHash } from 'crypto';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { LruCacheService } from '../../cache/lru-cache.service';
 
@@ -187,10 +188,10 @@ export class TokenService {
 
   /**
    * Hash a token for lock key (avoid storing full token)
+   * SECURITY: Uses SHA-256 cryptographic hash instead of simple string slice
    */
   private hashToken(token: string): string {
-    // Simple hash for lock key - just use last 16 chars of token
-    return token.slice(-16);
+    return createHash('sha256').update(token).digest('hex').substring(0, 32);
   }
 
   /**

@@ -34,9 +34,13 @@ const queueLogger = new Logger('QueueModule');
           enableOfflineQueue: false,
           // Required for BullMQ compatibility
           maxRetriesPerRequest: null,
-          // Connection timeouts
-          connectTimeout: 5000,
-          commandTimeout: 3000,
+          // Connection timeouts - increased for DragonflyDB stability
+          connectTimeout: 10000,
+          commandTimeout: 10000,
+          // DragonflyDB compatibility options
+          enableReadyCheck: true,
+          keepAlive: 30000, // Send keepalive every 30 seconds
+          noDelay: true, // Disable Nagle's algorithm for lower latency
           // Retry strategy - stop after 10 attempts to prevent infinite retries
           retryStrategy: (times: number) => {
             if (times > 10) {

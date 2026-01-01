@@ -67,12 +67,20 @@ export class FileStorageService implements OnModuleInit {
     this.endpoint = this.configService.get<string>('MINIO_ENDPOINT', 'http://localhost:9000');
     this.bucket = this.configService.get<string>('MINIO_BUCKET', 'cms-files');
 
+    // SECURITY: Require explicit credentials - no default fallbacks
+    const accessKeyId = this.configService.get<string>('MINIO_ROOT_USER');
+    const secretAccessKey = this.configService.get<string>('MINIO_ROOT_PASSWORD');
+
+    if (!accessKeyId || !secretAccessKey) {
+      throw new Error('MINIO_ROOT_USER and MINIO_ROOT_PASSWORD environment variables are required');
+    }
+
     this.s3Client = new S3Client({
       endpoint: this.endpoint,
       region: this.configService.get<string>('MINIO_REGION', 'us-east-1'),
       credentials: {
-        accessKeyId: this.configService.get<string>('MINIO_ROOT_USER', 'minioadmin'),
-        secretAccessKey: this.configService.get<string>('MINIO_ROOT_PASSWORD', 'minioadmin123'),
+        accessKeyId,
+        secretAccessKey,
       },
       forcePathStyle: true,
     });
@@ -630,24 +638,33 @@ export class FileStorageService implements OnModuleInit {
     this.logger.log(`Deleted: ${key}`);
   }
 
+  // SECURITY: Maximum presigned URL expiry time (1 hour)
+  private readonly MAX_PRESIGNED_EXPIRY = 3600;
+
   /**
    * Get presigned download URL
+   * SECURITY: Expiry time is capped at 1 hour maximum
    */
   async getSignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
+    // Cap expiry time at maximum allowed value
+    const cappedExpiry = Math.min(expiresIn, this.MAX_PRESIGNED_EXPIRY);
     const command = new GetObjectCommand({ Bucket: this.bucket, Key: key });
-    return getSignedUrl(this.s3Client, command, { expiresIn });
+    return getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
   }
 
   /**
    * Get presigned upload URL
+   * SECURITY: Expiry time is capped at 1 hour maximum
    */
   async getUploadUrl(key: string, contentType: string, expiresIn: number = 3600): Promise<string> {
+    // Cap expiry time at maximum allowed value
+    const cappedExpiry = Math.min(expiresIn, this.MAX_PRESIGNED_EXPIRY);
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
       ContentType: contentType,
     });
-    return getSignedUrl(this.s3Client, command, { expiresIn });
+    return getSignedUrl(this.s3Client, command, { expiresIn: cappedExpiry });
   }
 
   /**

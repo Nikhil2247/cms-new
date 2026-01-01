@@ -157,7 +157,8 @@
       "Bash(if exist node_modules rmdir /s /q node_modules)",
       "Bash(if exist dist rmdir /s /q dist)",
       "Bash(node update-imports.js)",
-      "Bash(timeout 15 npm run start:dev)"
+      "Bash(timeout 15 npm run start:dev)",
+      "Bash(npm view:*)"
     ]
   }
 }

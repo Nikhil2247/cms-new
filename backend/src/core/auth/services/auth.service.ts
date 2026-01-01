@@ -5,13 +5,22 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
+
+// SECURITY: Argon2 configuration - using Argon2id variant (recommended for password hashing)
+// Argon2id provides better resistance against side-channel and GPU attacks compared to bcrypt
+export const ARGON2_OPTIONS: argon2.Options = {
+  type: argon2.argon2id,
+  memoryCost: 65536, // 64 MB
+  timeCost: 3,       // 3 iterations
+  parallelism: 4,    // 4 parallel threads
+};
 
 @Injectable()
 export class AuthService {
@@ -78,7 +87,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await argon2.verify(user.password, password);
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for user: ${email}`);
@@ -174,7 +183,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await argon2.verify(user.password, password);
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for student: ${rollNumber}`);
@@ -336,7 +345,7 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const hashedPassword = await argon2.hash(userData.password, ARGON2_OPTIONS);
 
     const user = await this.prisma.user.create({
       data: {
@@ -478,7 +487,7 @@ export class AuthService {
     }
 
     // Hash new password and update user
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -527,7 +536,7 @@ export class AuthService {
     }
 
     // Verify old password
-    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+    const isOldPasswordValid = await argon2.verify(user.password, oldPassword);
 
     if (!isOldPasswordValid) {
       // Log failed password change attempt
@@ -550,7 +559,7 @@ export class AuthService {
     }
 
     // Check if new password is same as old
-    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    const isSamePassword = await argon2.verify(user.password, newPassword);
     if (isSamePassword) {
       throw new BadRequestException(
         'New password must be different from current password',
@@ -558,7 +567,7 @@ export class AuthService {
     }
 
     // Hash new password and update
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -1011,7 +1020,7 @@ export class AuthService {
     const newPassword = this.generateRandomPassword();
 
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
 
     // Update user with new password
     await this.prisma.user.update({
@@ -1144,28 +1153,37 @@ export class AuthService {
   }
 
   /**
-   * Generate random password
-   * Format: 8 characters (uppercase, lowercase, numbers)
+   * Generate cryptographically secure random password
+   * Format: 12 characters (uppercase, lowercase, numbers, special chars)
+   * Uses crypto.randomInt for secure random number generation
    */
   private generateRandomPassword(): string {
     const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     const lowercase = 'abcdefghijklmnopqrstuvwxyz';
     const numbers = '0123456789';
-    const all = uppercase + lowercase + numbers;
+    const special = '!@#$%^&*';
+    const all = uppercase + lowercase + numbers + special;
 
-    let password = '';
+    const passwordChars: string[] = [];
 
-    // Ensure at least one of each type
-    password += uppercase[Math.floor(Math.random() * uppercase.length)];
-    password += lowercase[Math.floor(Math.random() * lowercase.length)];
-    password += numbers[Math.floor(Math.random() * numbers.length)];
+    // SECURITY: Use crypto.randomInt for cryptographically secure random selection
+    // Ensure at least one of each type for password policy compliance
+    passwordChars.push(uppercase[crypto.randomInt(uppercase.length)]);
+    passwordChars.push(lowercase[crypto.randomInt(lowercase.length)]);
+    passwordChars.push(numbers[crypto.randomInt(numbers.length)]);
+    passwordChars.push(special[crypto.randomInt(special.length)]);
 
-    // Fill remaining characters
-    for (let i = 3; i < 8; i++) {
-      password += all[Math.floor(Math.random() * all.length)];
+    // Fill remaining characters (12 total for stronger passwords)
+    for (let i = 4; i < 12; i++) {
+      passwordChars.push(all[crypto.randomInt(all.length)]);
     }
 
-    // Shuffle the password
-    return password.split('').sort(() => Math.random() - 0.5).join('');
+    // SECURITY: Fisher-Yates shuffle using crypto.randomInt for unbiased shuffling
+    for (let i = passwordChars.length - 1; i > 0; i--) {
+      const j = crypto.randomInt(i + 1);
+      [passwordChars[i], passwordChars[j]] = [passwordChars[j], passwordChars[i]];
+    }
+
+    return passwordChars.join('');
   }
 }

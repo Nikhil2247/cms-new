@@ -22,6 +22,23 @@ import { RolesGuard } from '../../core/auth/guards/roles.guard';
 import { Roles } from '../../core/auth/decorators/roles.decorator';
 import { Role } from '../../generated/prisma/client';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
+import {
+  CreateVisitLogDto,
+  UpdateVisitLogDto,
+  ReviewMonthlyReportDto,
+  ApproveMonthlyReportDto,
+  RejectMonthlyReportDto,
+  UpdateSelfIdentifiedApprovalDto,
+  SubmitMonthlyFeedbackDto,
+  UpdateInternshipDto,
+  VerifyJoiningLetterDto,
+  RejectJoiningLetterDto,
+  UploadVisitDocumentDto,
+} from './dto';
+import {
+  validateVisitDocument,
+  validateJoiningLetter,
+} from '../../core/common/utils/file-validation.util';
 
 @ApiTags('Faculty Portal')
 @Controller('faculty')
@@ -66,16 +83,16 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Get student detail' })
   @ApiResponse({ status: 200, description: 'Student detail retrieved successfully' })
-  async getStudentDetail(@Param('id') studentId: string) {
-    return this.facultyService.getStudentDetail(studentId);
+  async getStudentDetail(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getStudentDetail(studentId, req.user.userId);
   }
 
   @Get('students/:id/progress')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Get student progress' })
   @ApiResponse({ status: 200, description: 'Student progress retrieved successfully' })
-  async getStudentProgress(@Param('id') studentId: string) {
-    return this.facultyService.getStudentProgress(studentId);
+  async getStudentProgress(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getStudentProgress(studentId, req.user.userId);
   }
 
   // Visit Logs
@@ -99,7 +116,7 @@ export class FacultyController {
     description: 'Required fields: (applicationId OR studentId), visitType, visitLocation. All other fields are optional. Auto-sets visitDate to now and status to COMPLETED if not provided.',
   })
   @ApiResponse({ status: 201, description: 'Visit log created successfully' })
-  async createVisitLog(@Req() req, @Body() createVisitLogDto: any) {
+  async createVisitLog(@Req() req, @Body() createVisitLogDto: CreateVisitLogDto) {
     return this.facultyService.createVisitLog(req.user.userId, createVisitLogDto);
   }
 
@@ -107,16 +124,16 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Update visit log' })
   @ApiResponse({ status: 200, description: 'Visit log updated successfully' })
-  async updateVisitLog(@Param('id') id: string, @Body() updateVisitLogDto: any) {
-    return this.facultyService.updateVisitLog(id, updateVisitLogDto);
+  async updateVisitLog(@Param('id') id: string, @Body() updateVisitLogDto: UpdateVisitLogDto, @Req() req) {
+    return this.facultyService.updateVisitLog(id, updateVisitLogDto, req.user.userId);
   }
 
   @Delete('visit-logs/:id')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Delete visit log' })
   @ApiResponse({ status: 200, description: 'Visit log deleted successfully' })
-  async deleteVisitLog(@Param('id') id: string) {
-    return this.facultyService.deleteVisitLog(id);
+  async deleteVisitLog(@Param('id') id: string, @Req() req) {
+    return this.facultyService.deleteVisitLog(id, req.user.userId);
   }
 
   // Monthly Reports
@@ -137,8 +154,12 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Review monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report reviewed successfully' })
-  async reviewMonthlyReport(@Param('id') id: string, @Body() reviewDto: any) {
-    return this.facultyService.reviewMonthlyReport(id, reviewDto);
+  async reviewMonthlyReport(@Param('id') id: string, @Body() reviewDto: ReviewMonthlyReportDto, @Req() req) {
+    return this.facultyService.reviewMonthlyReport(id, {
+      facultyId: req.user.userId,
+      reviewComments: reviewDto.remarks,
+      isApproved: reviewDto.status === 'APPROVED',
+    });
   }
 
   // Approvals
@@ -159,8 +180,12 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Approve or reject self-identified internship' })
   @ApiResponse({ status: 200, description: 'Self-identified internship approval updated successfully' })
-  async updateSelfIdentifiedApproval(@Param('id') id: string, @Body() approvalDto: any) {
-    return this.facultyService.updateSelfIdentifiedApproval(id, approvalDto);
+  async updateSelfIdentifiedApproval(@Param('id') id: string, @Body() approvalDto: UpdateSelfIdentifiedApprovalDto, @Req() req) {
+    return this.facultyService.updateSelfIdentifiedApproval(id, {
+      facultyId: req.user.userId,
+      status: approvalDto.status,
+      reviewRemarks: approvalDto.remarks || approvalDto.reason,
+    });
   }
 
   // Feedback
@@ -168,7 +193,7 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Submit monthly feedback for student' })
   @ApiResponse({ status: 201, description: 'Monthly feedback submitted successfully' })
-  async submitMonthlyFeedback(@Req() req, @Body() feedbackDto: any) {
+  async submitMonthlyFeedback(@Req() req, @Body() feedbackDto: SubmitMonthlyFeedbackDto) {
     return this.facultyService.submitMonthlyFeedback(req.user.userId, feedbackDto);
   }
 
@@ -191,15 +216,15 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Get student internships' })
   @ApiResponse({ status: 200, description: 'Student internships retrieved successfully' })
-  async getStudentInternships(@Param('id') studentId: string) {
-    return this.facultyService.getStudentInternships(studentId);
+  async getStudentInternships(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getStudentInternships(studentId, req.user.userId);
   }
 
   @Put('internships/:id')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Update internship application' })
   @ApiResponse({ status: 200, description: 'Internship updated successfully' })
-  async updateInternship(@Param('id') id: string, @Body() updateDto: any, @Req() req) {
+  async updateInternship(@Param('id') id: string, @Body() updateDto: UpdateInternshipDto, @Req() req) {
     return this.facultyService.updateInternship(id, updateDto, req.user.userId);
   }
 
@@ -217,7 +242,7 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Approve monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report approved successfully' })
-  async approveMonthlyReport(@Param('id') id: string, @Body() body: any, @Req() req) {
+  async approveMonthlyReport(@Param('id') id: string, @Body() body: ApproveMonthlyReportDto, @Req() req) {
     return this.facultyService.approveMonthlyReport(id, body.remarks, req.user.userId);
   }
 
@@ -225,7 +250,7 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Reject monthly report' })
   @ApiResponse({ status: 200, description: 'Monthly report rejected successfully' })
-  async rejectMonthlyReport(@Param('id') id: string, @Body() body: any, @Req() req) {
+  async rejectMonthlyReport(@Param('id') id: string, @Body() body: RejectMonthlyReportDto, @Req() req) {
     return this.facultyService.rejectMonthlyReport(id, body.reason, req.user.userId);
   }
 
@@ -256,7 +281,7 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Verify joining letter' })
   @ApiResponse({ status: 200, description: 'Joining letter verified successfully' })
-  async verifyJoiningLetter(@Param('id') id: string, @Body() body: any, @Req() req) {
+  async verifyJoiningLetter(@Param('id') id: string, @Body() body: VerifyJoiningLetterDto, @Req() req) {
     return this.facultyService.verifyJoiningLetter(id, body.remarks, req.user.userId);
   }
 
@@ -264,7 +289,7 @@ export class FacultyController {
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({ summary: 'Reject joining letter' })
   @ApiResponse({ status: 200, description: 'Joining letter rejected successfully' })
-  async rejectJoiningLetter(@Param('id') id: string, @Body() body: any, @Req() req) {
+  async rejectJoiningLetter(@Param('id') id: string, @Body() body: RejectJoiningLetterDto, @Req() req) {
     return this.facultyService.rejectJoiningLetter(id, body.reason, req.user.userId);
   }
 
@@ -289,6 +314,9 @@ export class FacultyController {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
+
+    // SECURITY: Validate file type, size, and magic bytes
+    validateJoiningLetter(file);
 
     // Get application details to determine student info for file path
     const application = await this.facultyService.getApplicationForUpload(applicationId);
@@ -317,22 +345,15 @@ export class FacultyController {
   @ApiResponse({ status: 200, description: 'Document uploaded successfully' })
   async uploadVisitDocument(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { documentType: string },
+    @Body() body: UploadVisitDocumentDto,
     @Req() req,
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
-    if (!allowedTypes.includes(file.mimetype)) {
-      throw new BadRequestException('Invalid file type. Allowed: JPEG, PNG, GIF, PDF');
-    }
-
-    // Max 10MB
-    if (file.size > 10 * 1024 * 1024) {
-      throw new BadRequestException('File size must be less than 10MB');
-    }
+    // SECURITY: Validate file type, size, and magic bytes (prevents file spoofing)
+    validateVisitDocument(file);
 
     // Get faculty for determining storage path
     const faculty = await this.facultyService.getProfile(req.user.userId);
