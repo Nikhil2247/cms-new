@@ -90,9 +90,13 @@ export class LruCacheService implements OnModuleInit {
         return delay;
       },
       enableOfflineQueue: false,
-      maxRetriesPerRequest: 1, // Fail fast on individual requests
-      connectTimeout: 5000, // 5 second connection timeout
-      commandTimeout: 3000, // 3 second command timeout
+      maxRetriesPerRequest: 3, // Allow a few retries for transient failures
+      connectTimeout: 10000, // 10 second connection timeout (increased for DragonflyDB)
+      commandTimeout: 10000, // 10 second command timeout (increased for DragonflyDB)
+      // DragonflyDB compatibility options
+      enableReadyCheck: true,
+      keepAlive: 30000, // Send keepalive every 30 seconds
+      noDelay: true, // Disable Nagle's algorithm for lower latency
     });
 
     // Suppress continuous error logging - only log once per error type

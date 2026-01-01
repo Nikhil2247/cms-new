@@ -3,7 +3,8 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { Prisma, Role } from '../../../generated/prisma/client';
-import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
+import { ARGON2_OPTIONS } from '../../../core/auth/services/auth.service';
 
 /**
  * StateStaffService
@@ -135,7 +136,7 @@ export class StateStaffService {
     }
 
     // Hash the password before storing
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const hashedPassword = await argon2.hash(data.password, ARGON2_OPTIONS);
 
     const staff = await this.prisma.user.create({
       data: {
@@ -364,7 +365,7 @@ export class StateStaffService {
     this.logger.log(`Resetting password for staff: ${existingStaff.email}`);
 
     // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
 
     // Update the user's password
     await this.prisma.user.update({

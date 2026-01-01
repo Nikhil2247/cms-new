@@ -3,8 +3,9 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { BulkUserRowDto, BulkUserResultDto, BulkUserValidationResultDto } from './dto/bulk-user.dto';
 import * as XLSX from 'xlsx';
-import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
 
 @Injectable()
 export class BulkUserService {
@@ -293,7 +294,7 @@ export class BulkUserService {
 
     // Generate default password
     const defaultPassword = 'Welcome@123';
-    const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+    const hashedPassword = await argon2.hash(defaultPassword, ARGON2_OPTIONS);
 
     // Create user
     const user = await this.prisma.user.create({

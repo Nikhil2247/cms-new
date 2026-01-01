@@ -10,6 +10,7 @@ import {
   Headers,
 } from '@nestjs/common';
 import { Request } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './services/auth.service';
 import { TokenService } from './services/token.service';
 import { Public } from './decorators/public.decorator';
@@ -28,6 +29,8 @@ import {
   ChangePasswordDto,
   StudentLoginDto,
   UpdateProfileDto,
+  AdminResetPasswordDto,
+  BulkResetPasswordDto,
 } from './dto';
 
 @Controller('auth')
@@ -39,9 +42,11 @@ export class AuthController {
 
   /**
    * Login endpoint
+   * SECURITY: Rate limited to 5 attempts per minute to prevent brute force attacks
    */
   @Public()
   @Post('login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async login(
     @Body() loginDto: LoginDto,
@@ -60,9 +65,11 @@ export class AuthController {
 
   /**
    * Student login endpoint - login with roll number
+   * SECURITY: Rate limited to 5 attempts per minute to prevent brute force attacks
    */
   @Public()
   @Post('student-login')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async studentLogin(
     @Body() studentLoginDto: StudentLoginDto,
@@ -81,9 +88,11 @@ export class AuthController {
 
   /**
    * Register endpoint
+   * SECURITY: Rate limited to 3 attempts per minute to prevent mass registration
    */
   @Public()
   @Post('register')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.CREATED)
   async register(
     @Body() registerDto: RegisterDto,
@@ -96,9 +105,11 @@ export class AuthController {
 
   /**
    * Refresh token endpoint
+   * SECURITY: Rate limited to 30 requests per minute
    */
   @Public()
   @Post('refresh')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     const tokens = await this.tokenService.refreshTokens(refreshTokenDto.refresh_token);
@@ -112,9 +123,11 @@ export class AuthController {
   /**
    * Extend session endpoint - explicitly extends the user's session
    * Called when user clicks "Extend Session" in the session expiry modal
+   * SECURITY: Rate limited to 10 requests per minute
    */
   @Public()
   @Post('extend-session')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async extendSession(
     @Body() refreshTokenDto: RefreshTokenDto,
@@ -131,9 +144,11 @@ export class AuthController {
 
   /**
    * Forgot password endpoint
+   * SECURITY: Rate limited to 3 attempts per minute to prevent abuse
    */
   @Public()
   @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
     return this.authService.forgotPassword(forgotPasswordDto.email);
@@ -141,9 +156,11 @@ export class AuthController {
 
   /**
    * Reset password endpoint
+   * SECURITY: Rate limited to 5 attempts per minute to prevent token guessing
    */
   @Public()
   @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
     return this.authService.resetPassword(
@@ -260,13 +277,15 @@ export class AuthController {
 
   /**
    * Admin reset user password
+   * SECURITY: Rate limited to 10 requests per minute to prevent abuse
    */
   @Post('admin/reset-password')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN, Role.PRINCIPAL)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async adminResetPassword(
-    @Body() body: { userId: string },
+    @Body() body: AdminResetPasswordDto,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
@@ -277,13 +296,15 @@ export class AuthController {
 
   /**
    * Admin bulk reset passwords
+   * SECURITY: Rate limited to 5 requests per minute due to bulk operation nature
    */
   @Post('admin/bulk-reset')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.STATE_DIRECTORATE, Role.SYSTEM_ADMIN)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
   async bulkResetPasswords(
-    @Body() body: { userIds: string[] },
+    @Body() body: BulkResetPasswordDto,
     @CurrentUser() user: any,
     @Req() req: Request,
   ) {
@@ -291,4 +312,5 @@ export class AuthController {
     const userAgent = req.headers['user-agent'];
     return this.authService.bulkResetPasswords(body.userIds, user.userId, ipAddress, userAgent);
   }
+
 }

@@ -8,7 +8,8 @@ import { Role, InstitutionType, AuditAction, AuditCategory, AuditSeverity } from
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import * as bcrypt from 'bcryptjs';
+import * as argon2 from 'argon2';
+import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
 
 export interface CreateInstitutionData {
   name: string;
@@ -188,7 +189,7 @@ export class InstitutionService {
     // Create principal user if data provided
     if (principalData?.name && principalData?.email) {
       temporaryPassword = principalData.password || this.generateDefaultPassword();
-      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
+      const hashedPassword = await argon2.hash(temporaryPassword, ARGON2_OPTIONS);
 
       principal = await this.prisma.user.create({
         data: {

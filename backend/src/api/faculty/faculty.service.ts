@@ -135,8 +135,22 @@ export class FacultyService {
 
   /**
    * Get student detail
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
    */
-  async getStudentDetail(studentId: string) {
+  async getStudentDetail(studentId: string, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
@@ -394,8 +408,22 @@ export class FacultyService {
 
   /**
    * Get student progress details (self-identified internships only)
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
    */
-  async getStudentProgress(studentId: string) {
+  async getStudentProgress(studentId: string, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
@@ -731,8 +759,9 @@ export class FacultyService {
    *
    * IMPORTANT: When visit is in DRAFT status, only document/photo uploads are allowed.
    * Core visit details (GPS, location, student, dates) are locked after initial creation.
+   * SECURITY: Requires facultyId to verify authorization
    */
-  async updateVisitLog(id: string, updateVisitLogDto: any, facultyId?: string) {
+  async updateVisitLog(id: string, updateVisitLogDto: any, facultyId: string) {
     const visitLog = await this.prisma.facultyVisitLog.findUnique({
       where: { id },
       include: { application: { include: { student: true } } },
@@ -740,6 +769,11 @@ export class FacultyService {
 
     if (!visitLog) {
       throw new NotFoundException('Visit log not found');
+    }
+
+    // SECURITY: Verify faculty owns this visit log
+    if (visitLog.facultyId !== facultyId) {
+      throw new NotFoundException('Visit log not found or you are not authorized to update it');
     }
 
     const oldValues = {
@@ -867,8 +901,9 @@ export class FacultyService {
 
   /**
    * Delete visit log
+   * SECURITY: Requires facultyId to verify authorization
    */
-  async deleteVisitLog(id: string, facultyId?: string) {
+  async deleteVisitLog(id: string, facultyId: string) {
     const visitLog = await this.prisma.facultyVisitLog.findUnique({
       where: { id },
       include: { application: { include: { student: true } } },
@@ -876,6 +911,11 @@ export class FacultyService {
 
     if (!visitLog) {
       throw new NotFoundException('Visit log not found');
+    }
+
+    // SECURITY: Verify faculty owns this visit log
+    if (visitLog.facultyId !== facultyId) {
+      throw new NotFoundException('Visit log not found or you are not authorized to delete it');
     }
 
     const deletedInfo = {
@@ -1341,8 +1381,22 @@ export class FacultyService {
 
   /**
    * Get student internships
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
    */
-  async getStudentInternships(studentId: string) {
+  async getStudentInternships(studentId: string, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
     // OPTIMIZED: Added pagination limit to prevent memory issues with students who have many applications
     const internships = await this.prisma.internshipApplication.findMany({
       where: { studentId },
