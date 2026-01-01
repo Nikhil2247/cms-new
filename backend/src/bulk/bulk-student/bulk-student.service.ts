@@ -143,12 +143,12 @@ export class BulkStudentService {
           value: student.batchName,
           error: 'Batch name is required',
         });
-      } else if (!batchMap.has(student.batchName.toLowerCase())) {
+      } else if (!batchMap.has(student.batchName.trim().toLowerCase())) {
         errors.push({
           row: rowNumber,
           field: 'batchName',
           value: student.batchName,
-          error: `Batch "${student.batchName}" not found in the system. Available batches: ${batches.map(b => b.name).join(', ')}`,
+          error: `Batch "${student.batchName.trim()}" not found in the system. Available batches: ${batches.map(b => b.name).join(', ')}`,
         });
       }
 
@@ -384,15 +384,15 @@ export class BulkStudentService {
     batchMap: Map<string, string>,
     branchMap: Map<string, string>,
   ) {
-    // Get batch ID
-    const batchId = batchMap.get(studentDto.batchName.toLowerCase());
+    // Get batch ID (normalize with trim and lowercase)
+    const batchId = batchMap.get(studentDto.batchName.trim().toLowerCase());
     if (!batchId) {
-      throw new BadRequestException(`Batch "${studentDto.batchName}" not found`);
+      throw new BadRequestException(`Batch "${studentDto.batchName.trim()}" not found`);
     }
 
-    // Get branch ID (optional)
+    // Get branch ID (optional, normalize with trim and lowercase)
     const branchId = studentDto.branchName
-      ? branchMap.get(studentDto.branchName.toLowerCase())
+      ? branchMap.get(studentDto.branchName.trim().toLowerCase())
       : undefined;
 
     // Map DTO to domain CreateStudentData and delegate to domain service

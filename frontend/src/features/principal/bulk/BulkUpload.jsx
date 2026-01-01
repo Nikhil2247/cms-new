@@ -238,10 +238,20 @@ const BulkUpload = () => {
         : bulkService.uploadUsers;
 
       // Send the original file with institutionId for STATE_DIRECTORATE
-      await uploadFn(originalFile, null, true, institutionId);
+      // useAsync = false for synchronous processing
+      const result = await uploadFn(originalFile, null, false, institutionId);
 
-      message.success(`Successfully uploaded ${validationResults.valid.length} ${uploadType}`);
-      setCurrentStep(2);
+      // Check actual result from backend
+      if (result.success === 0 && result.failed > 0) {
+        message.error(`Upload failed: ${result.failedRecords?.[0]?.error || 'Validation errors'}`);
+        console.error('Bulk upload failed records:', result.failedRecords);
+      } else if (result.failed > 0) {
+        message.warning(`Uploaded ${result.success} ${uploadType}, ${result.failed} failed`);
+        setCurrentStep(2);
+      } else {
+        message.success(`Successfully uploaded ${result.success || validationResults.valid.length} ${uploadType}`);
+        setCurrentStep(2);
+      }
     } catch (error) {
       message.error(error?.response?.data?.message || error?.message || 'Failed to upload data');
     } finally {
