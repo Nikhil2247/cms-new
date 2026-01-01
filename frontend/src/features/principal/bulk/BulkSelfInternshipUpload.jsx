@@ -43,7 +43,7 @@ const BulkSelfInternshipUpload = () => {
   const [validationResults, setValidationResults] = useState({ valid: [], invalid: [] });
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [useAsync, setUseAsync] = useState(true);
+  const [useAsync, setUseAsync] = useState(false); // Default to sync for immediate feedback
   const [uploadResult, setUploadResult] = useState(null);
 
   // Institution selector state for STATE_DIRECTORATE
@@ -287,11 +287,19 @@ const BulkSelfInternshipUpload = () => {
 
       if (useAsync && result.jobId) {
         message.success('Upload queued successfully! You can track progress in Job History.');
-        setCurrentStep(2);
       } else {
-        message.success(`Successfully processed ${result.success} internship records`);
-        setCurrentStep(2);
+        // Show appropriate message based on results
+        if (result.success === 0 && result.failed > 0) {
+          message.error(`All ${result.failed} records failed validation`);
+        } else if (result.failed > 0) {
+          message.warning(`Uploaded ${result.success} internships, ${result.failed} failed`);
+        } else {
+          message.success(`Successfully uploaded all ${result.success} internship records`);
+        }
       }
+
+      // Always go to step 2 to show summary
+      setCurrentStep(2);
     } catch (error) {
       message.error(error?.response?.data?.message || error?.message || 'Failed to upload data');
     } finally {
@@ -528,42 +536,131 @@ const BulkSelfInternshipUpload = () => {
         )}
 
         {currentStep === 2 && (
-          <div className="text-center py-8">
-            <CheckCircleOutlined style={{ fontSize: 72, color: '#52c41a' }} />
-            <h2 className="text-2xl font-semibold mt-4">
-              {useAsync && uploadResult?.jobId ? 'Upload Queued!' : 'Upload Successful!'}
-            </h2>
-            <p className="text-gray-600 mt-2">
-              {useAsync && uploadResult?.jobId
-                ? 'Your upload is being processed in the background.'
-                : `Successfully processed ${uploadResult?.success || 0} internship records.`}
-            </p>
-
-            {uploadResult && !useAsync && (
-              <div className="mt-4 text-left max-w-md mx-auto">
-                <div className="bg-gray-50 p-4 rounded">
-                  <p>
-                    <strong>Total:</strong> {uploadResult.total}
-                  </p>
-                  <p className="text-green-600">
-                    <strong>Success:</strong> {uploadResult.success}
-                  </p>
-                  <p className="text-red-600">
-                    <strong>Failed:</strong> {uploadResult.failed}
-                  </p>
+          <div className="py-4">
+            {/* Async Job Queued */}
+            {useAsync && uploadResult?.jobId ? (
+              <div className="text-center py-8">
+                <CheckCircleOutlined style={{ fontSize: 72, color: '#52c41a' }} />
+                <h2 className="text-2xl font-semibold mt-4">Upload Queued!</h2>
+                <p className="text-gray-600 mt-2">
+                  Your upload is being processed in the background.
+                </p>
+                <Space className="mt-6">
+                  <Button type="primary" onClick={resetUpload}>
+                    Upload Another File
+                  </Button>
+                  <Button onClick={() => navigate('/bulk/job-history')}>View Job History</Button>
+                </Space>
+              </div>
+            ) : uploadResult ? (
+              <>
+                {/* Summary Header */}
+                <div className="text-center mb-6">
+                  {uploadResult.success > 0 && uploadResult.failed === 0 ? (
+                    <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />
+                  ) : uploadResult.success === 0 ? (
+                    <CloseCircleOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+                  ) : (
+                    <CheckCircleOutlined style={{ fontSize: 48, color: '#faad14' }} />
+                  )}
+                  <h2 className="text-xl font-semibold mt-4">
+                    {uploadResult.success > 0 && uploadResult.failed === 0
+                      ? 'Upload Successful!'
+                      : uploadResult.success === 0
+                      ? 'Upload Failed'
+                      : 'Upload Completed with Errors'}
+                  </h2>
                 </div>
+
+                {/* Summary Stats */}
+                <Alert
+                  message="Upload Summary"
+                  description={
+                    <div className="flex justify-center gap-8 py-2">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">{uploadResult.total}</div>
+                        <div className="text-gray-500">Total</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">{uploadResult.success}</div>
+                        <div className="text-gray-500">Success</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-red-600">{uploadResult.failed}</div>
+                        <div className="text-gray-500">Failed</div>
+                      </div>
+                    </div>
+                  }
+                  type={uploadResult.failed === 0 ? 'success' : uploadResult.success === 0 ? 'error' : 'warning'}
+                  className="mb-4"
+                />
+
+                {/* Success Records */}
+                {uploadResult.successRecords?.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-green-600">
+                      <CheckCircleOutlined /> Successfully Created ({uploadResult.successRecords.length})
+                    </h3>
+                    <Table
+                      columns={[
+                        { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                        { title: 'Student', dataIndex: 'studentEmail', key: 'studentEmail' },
+                        { title: 'Company', dataIndex: 'companyName', key: 'companyName' },
+                      ]}
+                      dataSource={uploadResult.successRecords}
+                      rowKey="row"
+                      pagination={{ pageSize: 5 }}
+                      size="small"
+                    />
+                  </div>
+                )}
+
+                {/* Failed Records */}
+                {uploadResult.failedRecords?.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold mb-2 text-red-600">
+                      <CloseCircleOutlined /> Failed Records ({uploadResult.failedRecords.length})
+                    </h3>
+                    <Table
+                      columns={[
+                        { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                        { title: 'Student', dataIndex: 'studentEmail', key: 'studentEmail', render: (text) => text || '-' },
+                        { title: 'Company', dataIndex: 'companyName', key: 'companyName', render: (text) => text || '-' },
+                        {
+                          title: 'Error',
+                          dataIndex: 'error',
+                          key: 'error',
+                          render: (text) => <span className="text-red-500">{text}</span>,
+                        },
+                      ]}
+                      dataSource={uploadResult.failedRecords}
+                      rowKey="row"
+                      pagination={{ pageSize: 5 }}
+                      size="small"
+                    />
+                  </div>
+                )}
+
+                <div className="text-center mt-6">
+                  <Space>
+                    <Button type="primary" onClick={resetUpload}>
+                      Upload Another File
+                    </Button>
+                    <Button onClick={() => navigate('/bulk/job-history')}>View Job History</Button>
+                    <Button onClick={() => navigate('/internships/self-identified')}>
+                      View Self-Identified Internships
+                    </Button>
+                  </Space>
+                </div>
+              </>
+            ) : (
+              <div className="text-center py-8">
+                <p>No upload result available.</p>
+                <Button type="primary" onClick={resetUpload} className="mt-4">
+                  Try Again
+                </Button>
               </div>
             )}
-
-            <Space className="mt-6">
-              <Button type="primary" onClick={resetUpload}>
-                Upload Another File
-              </Button>
-              <Button onClick={() => navigate('/bulk/job-history')}>View Job History</Button>
-              <Button onClick={() => navigate('/internships/self-identified')}>
-                View Self-Identified Internships
-              </Button>
-            </Space>
           </div>
         )}
       </Card>

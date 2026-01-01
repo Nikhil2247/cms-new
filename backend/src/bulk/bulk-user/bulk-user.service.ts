@@ -155,6 +155,7 @@ export class BulkUserService {
 
   /**
    * Bulk upload users with batch processing
+   * Supports partial success - valid records are created, invalid ones are skipped
    */
   async bulkUploadUsers(
     users: BulkUserRowDto[],
@@ -165,6 +166,7 @@ export class BulkUserService {
     const startTime = Date.now();
     const successRecords: any[] = [];
     const failedRecords: any[] = [];
+    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
 
     // Audit: Bulk user upload initiated
     this.auditService.log({
@@ -182,63 +184,92 @@ export class BulkUserService {
       },
     }).catch(() => {});
 
-    // First, validate all users
-    const validation = await this.validateUsers(users, institutionId);
+    // Get existing emails for validation
+    const allEmails = users.map(u => u.email?.toLowerCase()).filter(Boolean) as string[];
+    const existingUsers = await this.prisma.user.findMany({
+      where: { email: { in: allEmails } },
+      select: { email: true },
+    });
+    const existingEmailSet = new Set(existingUsers.map(u => u.email?.toLowerCase()));
 
-    if (!validation.isValid) {
-      // If there are validation errors, return them without processing
-      const processingTime = Date.now() - startTime;
-      return {
-        total: users.length,
-        success: 0,
-        failed: users.length,
-        successRecords: [],
-        failedRecords: validation.errors.map(err => ({
-          row: err.row,
-          name: users[err.row - 2]?.name,
-          email: users[err.row - 2]?.email,
-          role: users[err.row - 2]?.role,
-          error: err.error,
-          details: err.field ? `Field: ${err.field}, Value: ${err.value}` : undefined,
-        })),
-        processingTime,
-      };
-    }
+    // Track processed emails within the file
+    const processedEmails = new Set<string>();
 
-    // Process users in batches
-    const batchSize = 10;
-    for (let i = 0; i < users.length; i += batchSize) {
-      const batch = users.slice(i, i + batchSize);
+    // Process users one by one for partial success
+    for (let i = 0; i < users.length; i++) {
+      const user = users[i];
+      const rowNumber = i + 2; // +2 for header row and 0-index
 
-      await Promise.all(
-        batch.map(async (user, batchIndex) => {
-          const rowNumber = i + batchIndex + 2;
-          try {
-            const createdUser = await this.createUser(user, institutionId);
+      // Per-row validation
+      const rowErrors: string[] = [];
 
-            successRecords.push({
-              row: rowNumber,
-              name: user.name,
-              email: user.email,
-              role: user.role,
-              userId: createdUser.id,
-            });
+      // Required field validation
+      if (!user.name?.trim()) {
+        rowErrors.push('Name is required');
+      }
+      if (!user.email?.trim()) {
+        rowErrors.push('Email is required');
+      } else if (!this.isValidEmail(user.email)) {
+        rowErrors.push('Invalid email format');
+      }
+      if (!user.role?.trim()) {
+        rowErrors.push('Role is required');
+      } else if (!validRoles.includes(user.role.toUpperCase())) {
+        rowErrors.push(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+      }
 
-            this.logger.log(`User created: ${user.email} (Row ${rowNumber})`);
-          } catch (error) {
-            failedRecords.push({
-              row: rowNumber,
-              name: user.name,
-              email: user.email,
-              role: user.role,
-              error: error.message,
-              details: error.stack?.split('\n')[0],
-            });
+      // Check for duplicates in database
+      if (user.email && existingEmailSet.has(user.email.toLowerCase())) {
+        rowErrors.push('Email already exists in database');
+      }
 
-            this.logger.error(`Failed to create user: ${user.email} (Row ${rowNumber})`, error.stack);
-          }
-        }),
-      );
+      // Check for duplicates within the file
+      if (user.email && processedEmails.has(user.email.toLowerCase())) {
+        rowErrors.push('Duplicate email in file');
+      }
+
+      // If validation failed, add to failed records
+      if (rowErrors.length > 0) {
+        failedRecords.push({
+          row: rowNumber,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          error: rowErrors.join('; '),
+        });
+        continue;
+      }
+
+      // Mark as processed to detect duplicates within file
+      if (user.email) processedEmails.add(user.email.toLowerCase());
+
+      // Try to create the user
+      try {
+        const createdUser = await this.createUser(user, institutionId);
+
+        successRecords.push({
+          row: rowNumber,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          userId: createdUser.id,
+        });
+
+        // Add to existing set to prevent duplicates in subsequent rows
+        if (user.email) existingEmailSet.add(user.email.toLowerCase());
+
+        this.logger.log(`User created: ${user.email} (Row ${rowNumber})`);
+      } catch (error) {
+        failedRecords.push({
+          row: rowNumber,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          error: error.message,
+        });
+
+        this.logger.error(`Failed to create user: ${user.email} (Row ${rowNumber})`, error.stack);
+      }
     }
 
     const processingTime = Date.now() - startTime;

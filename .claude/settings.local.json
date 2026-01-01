@@ -164,7 +164,11 @@
       "WebFetch(domain:www.pbteched.net)",
       "Bash(docker start:*)",
       "Bash(docker run:*)",
-      "Bash(docker cp:*)"
+      "Bash(docker cp:*)",
+      "WebFetch(domain:www.cert-in.org.in)",
+      "WebFetch(domain:www.meity.gov.in)",
+      "WebFetch(domain:strobes.co)",
+      "WebFetch(domain:pwonlyias.com)"
     ]
   }
 }

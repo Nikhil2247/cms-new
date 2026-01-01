@@ -271,7 +271,7 @@ export class BulkSelfInternshipService {
 
   /**
    * Bulk upload self-identified internships
-   * OPTIMIZED: Uses batch inserts with createMany and transactions
+   * Supports partial success - valid records are created, invalid ones are skipped
    */
   async bulkUploadInternships(
     internships: BulkSelfInternshipRowDto[],
@@ -299,27 +299,6 @@ export class BulkSelfInternshipService {
       },
     }).catch(() => {});
 
-    // First validate
-    const validation = await this.validateInternships(internships, institutionId);
-
-    if (!validation.isValid) {
-      const processingTime = Date.now() - startTime;
-      return {
-        total: internships.length,
-        success: 0,
-        failed: internships.length,
-        successRecords: [],
-        failedRecords: validation.errors.map((err) => ({
-          row: err.row,
-          studentEmail: internships[err.row - 2]?.studentEmail,
-          companyName: internships[err.row - 2]?.companyName,
-          error: err.error,
-          details: err.field ? `Field: ${err.field}, Value: ${err.value}` : undefined,
-        })),
-        processingTime,
-      };
-    }
-
     // Fetch all students for processing
     const students = await this.prisma.student.findMany({
       where: { institutionId },
@@ -341,142 +320,145 @@ export class BulkSelfInternshipService {
       students.filter((s) => s.admissionNumber).map((s) => [s.admissionNumber.toLowerCase(), s]),
     );
 
-    // Prepare batch data
-    const batchData: any[] = [];
-    const rowMapping: Map<number, { internship: BulkSelfInternshipRowDto; studentId: string }> = new Map();
+    // Track processed student identifiers to detect duplicates within file
+    const processedIdentifiers = new Set<string>();
 
+    // Process internships one by one for partial success
     for (let i = 0; i < internships.length; i++) {
       const internship = internships[i];
-      const rowNumber = i + 2;
+      const rowNumber = i + 2; // +2 for header row and 0-index
+
+      // Per-row validation
+      const rowErrors: string[] = [];
+
+      // Student identification - at least one required
+      const hasStudentIdentifier =
+        internship.studentEmail ||
+        internship.studentRollNumber ||
+        internship.enrollmentNumber;
+
+      if (!hasStudentIdentifier) {
+        rowErrors.push('At least one student identifier (Email, Roll Number, or Enrollment Number) is required');
+      }
+
+      // Company name is required
+      if (!internship.companyName?.trim()) {
+        rowErrors.push('Company name is required');
+      }
 
       // Find student
       let student = null;
+      let identifier = '';
 
       if (internship.studentEmail) {
         student = emailToStudentMap.get(internship.studentEmail.toLowerCase());
+        identifier = internship.studentEmail.toLowerCase();
       }
       if (!student && internship.studentRollNumber) {
         student = rollNumberToStudentMap.get(internship.studentRollNumber.toLowerCase());
+        identifier = internship.studentRollNumber.toLowerCase();
       }
       if (!student && internship.enrollmentNumber) {
         student = enrollmentToStudentMap.get(internship.enrollmentNumber.toLowerCase());
+        identifier = internship.enrollmentNumber.toLowerCase();
       }
 
-      if (!student) {
+      if (hasStudentIdentifier && !student) {
+        rowErrors.push('Student not found in the system');
+      }
+
+      // Check for duplicate within file
+      if (identifier && processedIdentifiers.has(identifier)) {
+        rowErrors.push('Duplicate student entry in file');
+      }
+
+      // Validate email formats if provided
+      if (internship.companyEmail && !this.isValidEmail(internship.companyEmail)) {
+        rowErrors.push('Invalid company email format');
+      }
+      if (internship.hrEmail && !this.isValidEmail(internship.hrEmail)) {
+        rowErrors.push('Invalid HR email format');
+      }
+      if (internship.facultyMentorEmail && !this.isValidEmail(internship.facultyMentorEmail)) {
+        rowErrors.push('Invalid faculty mentor email format');
+      }
+
+      // If validation failed, add to failed records
+      if (rowErrors.length > 0) {
         failedRecords.push({
           row: rowNumber,
-          studentEmail: internship.studentEmail,
+          studentEmail: internship.studentEmail || internship.studentRollNumber || internship.enrollmentNumber,
           companyName: internship.companyName,
-          error: 'Student not found',
-          details: undefined,
+          error: rowErrors.join('; '),
         });
         continue;
       }
 
-      const now = new Date();
-      batchData.push({
-        studentId: student.id,
-        isSelfIdentified: true,
-        status: ApplicationStatus.APPLIED,
-        internshipStatus: 'SELF_IDENTIFIED',
+      // Mark identifier as processed
+      if (identifier) processedIdentifiers.add(identifier);
 
-        // Company information
-        companyName: internship.companyName,
-        companyAddress: internship.companyAddress || null,
-        companyContact: internship.companyContact || null,
-        companyEmail: internship.companyEmail || null,
-
-        // HR information
-        hrName: internship.hrName || null,
-        hrDesignation: internship.hrDesignation || null,
-        hrContact: internship.hrContact || null,
-        hrEmail: internship.hrEmail || null,
-
-        // Internship details
-        jobProfile: internship.jobProfile || null,
-        stipend: internship.stipend || null,
-        startDate: internship.startDate ? new Date(internship.startDate) : null,
-        endDate: internship.endDate ? new Date(internship.endDate) : null,
-        internshipDuration: internship.duration || null,
-
-        // Faculty mentor
-        facultyMentorName: internship.facultyMentorName || null,
-        facultyMentorEmail: internship.facultyMentorEmail || null,
-        facultyMentorContact: internship.facultyMentorContact || null,
-        facultyMentorDesignation: internship.facultyMentorDesignation || null,
-
-        // Joining letter - auto-approve joining when letter is provided
-        joiningLetterUrl: internship.joiningLetterUrl || null,
-        joiningLetterUploadedAt: internship.joiningLetterUrl ? now : null,
-        hasJoined: !!internship.joiningLetterUrl, // Auto-set hasJoined when joining letter is provided
-        reviewedBy: internship.joiningLetterUrl ? 'SYSTEM' : null, // Track auto-approval
-
-        applicationDate: now,
-        appliedDate: now,
-      });
-
-      rowMapping.set(batchData.length - 1, { internship, studentId: student.id });
-    }
-
-    // Process in batches using createMany for better performance
-    const batchSize = 50; // Larger batch size for createMany
-    for (let i = 0; i < batchData.length; i += batchSize) {
-      const batch = batchData.slice(i, i + batchSize);
-
+      // Try to create the internship record
       try {
-        // Use transaction for batch insert
-        await this.prisma.$transaction(async (tx) => {
-          await tx.internshipApplication.createMany({
-            data: batch,
-          });
+        const now = new Date();
+        await this.prisma.internshipApplication.create({
+          data: {
+            studentId: student.id,
+            isSelfIdentified: true,
+            status: ApplicationStatus.APPLIED,
+            internshipStatus: 'SELF_IDENTIFIED',
+
+            // Company information
+            companyName: internship.companyName,
+            companyAddress: internship.companyAddress || null,
+            companyContact: internship.companyContact || null,
+            companyEmail: internship.companyEmail || null,
+
+            // HR information
+            hrName: internship.hrName || null,
+            hrDesignation: internship.hrDesignation || null,
+            hrContact: internship.hrContact || null,
+            hrEmail: internship.hrEmail || null,
+
+            // Internship details
+            jobProfile: internship.jobProfile || null,
+            stipend: internship.stipend || null,
+            startDate: internship.startDate ? new Date(internship.startDate) : null,
+            endDate: internship.endDate ? new Date(internship.endDate) : null,
+            internshipDuration: internship.duration || null,
+
+            // Faculty mentor
+            facultyMentorName: internship.facultyMentorName || null,
+            facultyMentorEmail: internship.facultyMentorEmail || null,
+            facultyMentorContact: internship.facultyMentorContact || null,
+            facultyMentorDesignation: internship.facultyMentorDesignation || null,
+
+            // Joining letter - auto-approve joining when letter is provided
+            joiningLetterUrl: internship.joiningLetterUrl || null,
+            joiningLetterUploadedAt: internship.joiningLetterUrl ? now : null,
+            hasJoined: !!internship.joiningLetterUrl,
+            reviewedBy: internship.joiningLetterUrl ? 'SYSTEM' : null,
+
+            applicationDate: now,
+            appliedDate: now,
+          },
         });
 
-        // Mark all in batch as successful
-        for (let j = 0; j < batch.length; j++) {
-          const mappingIndex = i + j;
-          const mapping = rowMapping.get(mappingIndex);
-          if (mapping) {
-            const rowNumber = internships.indexOf(mapping.internship) + 2;
-            successRecords.push({
-              row: rowNumber,
-              studentEmail: mapping.internship.studentEmail || mapping.internship.studentRollNumber || mapping.internship.enrollmentNumber,
-              companyName: mapping.internship.companyName,
-            });
-          }
-        }
+        successRecords.push({
+          row: rowNumber,
+          studentEmail: internship.studentEmail || internship.studentRollNumber || internship.enrollmentNumber,
+          companyName: internship.companyName,
+        });
 
-        this.logger.log(`Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} internships created successfully`);
+        this.logger.log(`Internship created: ${internship.companyName} for ${identifier} (Row ${rowNumber})`);
       } catch (error) {
-        // If batch fails, fall back to individual inserts to identify which ones failed
-        this.logger.warn(`Batch insert failed, falling back to individual inserts: ${error.message}`);
+        failedRecords.push({
+          row: rowNumber,
+          studentEmail: internship.studentEmail || internship.studentRollNumber || internship.enrollmentNumber,
+          companyName: internship.companyName,
+          error: error.message,
+        });
 
-        for (let j = 0; j < batch.length; j++) {
-          const mappingIndex = i + j;
-          const mapping = rowMapping.get(mappingIndex);
-          if (!mapping) continue;
-
-          const rowNumber = internships.indexOf(mapping.internship) + 2;
-
-          try {
-            await this.prisma.internshipApplication.create({
-              data: batch[j],
-            });
-
-            successRecords.push({
-              row: rowNumber,
-              studentEmail: mapping.internship.studentEmail || mapping.internship.studentRollNumber || mapping.internship.enrollmentNumber,
-              companyName: mapping.internship.companyName,
-            });
-          } catch (individualError) {
-            failedRecords.push({
-              row: rowNumber,
-              studentEmail: mapping.internship.studentEmail,
-              companyName: mapping.internship.companyName,
-              error: individualError.message,
-              details: individualError.code || undefined,
-            });
-          }
-        }
+        this.logger.error(`Failed to create internship: ${internship.companyName} (Row ${rowNumber})`, error.stack);
       }
     }
 

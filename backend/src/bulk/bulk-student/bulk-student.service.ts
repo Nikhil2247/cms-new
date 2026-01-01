@@ -248,6 +248,7 @@ export class BulkStudentService {
 
   /**
    * Bulk upload students with batch processing
+   * Supports partial success - valid records are created, invalid ones are skipped
    */
   async bulkUploadStudents(
     students: BulkStudentRowDto[],
@@ -275,71 +276,113 @@ export class BulkStudentService {
       },
     }).catch(() => {});
 
-    // First, validate all students
-    const validation = await this.validateStudents(students, institutionId);
-
-    if (!validation.isValid) {
-      // If there are validation errors, return them without processing
-      const processingTime = Date.now() - startTime;
-      return {
-        total: students.length,
-        success: 0,
-        failed: students.length,
-        successRecords: [],
-        failedRecords: validation.errors.map(err => ({
-          row: err.row,
-          name: students[err.row - 2]?.name,
-          email: students[err.row - 2]?.email,
-          enrollmentNumber: students[err.row - 2]?.enrollmentNumber,
-          error: err.error,
-          details: err.field ? `Field: ${err.field}, Value: ${err.value}` : undefined,
-        })),
-        processingTime,
-      };
-    }
-
     // Use domain service for batch/branch mappings (globally accessible)
     const [batchMap, branchMap] = await Promise.all([
       this.userService.getBatchMap(),
       this.userService.getBranchMap(),
     ]);
 
-    // Process students in batches
-    const batchSize = 10;
-    for (let i = 0; i < students.length; i += batchSize) {
-      const batch = students.slice(i, i + batchSize);
+    // Get existing emails and enrollments for validation
+    const allEmails = students.map(s => s.email?.toLowerCase()).filter(Boolean) as string[];
+    const allEnrollments = students.map(s => s.enrollmentNumber).filter(Boolean) as string[];
 
-      await Promise.all(
-        batch.map(async (student, batchIndex) => {
-          const rowNumber = i + batchIndex + 2;
-          try {
-            const result = await this.createStudent(student, institutionId, batchMap, branchMap);
+    const [existingEmailSet, existingEnrollmentSet] = await Promise.all([
+      this.userService.findExistingEmails(allEmails),
+      this.userService.findExistingEnrollments(allEnrollments),
+    ]);
 
-            successRecords.push({
-              row: rowNumber,
-              name: student.name,
-              email: student.email,
-              enrollmentNumber: student.enrollmentNumber,
-              studentId: result.student.id,
-              userId: result.user.id,
-              temporaryPassword: result.temporaryPassword,
-            });
+    // Track duplicates within the file
+    const processedEmails = new Set<string>();
+    const processedEnrollments = new Set<string>();
 
-            this.logger.log(`Student created: ${student.email} (Row ${rowNumber})`);
-          } catch (error) {
-            failedRecords.push({
-              row: rowNumber,
-              name: student.name,
-              email: student.email,
-              enrollmentNumber: student.enrollmentNumber,
-              error: error.message,
-              details: error.stack?.split('\n')[0],
-            });
+    // Process students one by one for partial success
+    for (let i = 0; i < students.length; i++) {
+      const student = students[i];
+      const rowNumber = i + 2; // +2 for header row and 0-index
 
-            this.logger.error(`Failed to create student: ${student.email} (Row ${rowNumber})`, error.stack);
-          }
-        }),
-      );
+      // Per-row validation
+      const rowErrors: string[] = [];
+
+      // Required field validation
+      if (!student.name?.trim()) {
+        rowErrors.push('Name is required');
+      }
+      if (!student.email?.trim()) {
+        rowErrors.push('Email is required');
+      } else if (!this.isValidEmail(student.email)) {
+        rowErrors.push('Invalid email format');
+      }
+      if (!student.enrollmentNumber?.trim()) {
+        rowErrors.push('Enrollment number is required');
+      }
+      if (!student.batchName?.trim()) {
+        rowErrors.push('Batch name is required');
+      } else if (!batchMap.has(student.batchName.trim().toLowerCase())) {
+        rowErrors.push(`Batch "${student.batchName}" not found`);
+      }
+
+      // Check for duplicates in database
+      if (student.email && existingEmailSet.has(student.email.toLowerCase())) {
+        rowErrors.push('Email already exists in database');
+      }
+      if (student.enrollmentNumber && existingEnrollmentSet.has(student.enrollmentNumber)) {
+        rowErrors.push('Enrollment number already exists in database');
+      }
+
+      // Check for duplicates within the file
+      if (student.email && processedEmails.has(student.email.toLowerCase())) {
+        rowErrors.push('Duplicate email in file');
+      }
+      if (student.enrollmentNumber && processedEnrollments.has(student.enrollmentNumber)) {
+        rowErrors.push('Duplicate enrollment number in file');
+      }
+
+      // If validation failed, add to failed records
+      if (rowErrors.length > 0) {
+        failedRecords.push({
+          row: rowNumber,
+          name: student.name,
+          email: student.email,
+          enrollmentNumber: student.enrollmentNumber,
+          error: rowErrors.join('; '),
+        });
+        continue;
+      }
+
+      // Mark as processed to detect duplicates within file
+      if (student.email) processedEmails.add(student.email.toLowerCase());
+      if (student.enrollmentNumber) processedEnrollments.add(student.enrollmentNumber);
+
+      // Try to create the student
+      try {
+        const result = await this.createStudent(student, institutionId, batchMap, branchMap);
+
+        successRecords.push({
+          row: rowNumber,
+          name: student.name,
+          email: student.email,
+          enrollmentNumber: student.enrollmentNumber,
+          studentId: result.student.id,
+          userId: result.user.id,
+          temporaryPassword: result.temporaryPassword,
+        });
+
+        // Add to existing sets to prevent duplicates in subsequent rows
+        if (student.email) existingEmailSet.add(student.email.toLowerCase());
+        if (student.enrollmentNumber) existingEnrollmentSet.add(student.enrollmentNumber);
+
+        this.logger.log(`Student created: ${student.email} (Row ${rowNumber})`);
+      } catch (error) {
+        failedRecords.push({
+          row: rowNumber,
+          name: student.name,
+          email: student.email,
+          enrollmentNumber: student.enrollmentNumber,
+          error: error.message,
+        });
+
+        this.logger.error(`Failed to create student: ${student.email} (Row ${rowNumber})`, error.stack);
+      }
     }
 
     const processingTime = Date.now() - startTime;

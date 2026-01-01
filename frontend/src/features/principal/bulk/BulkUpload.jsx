@@ -19,6 +19,7 @@ const BulkUpload = () => {
   const [originalFile, setOriginalFile] = useState(null);
   const [validationResults, setValidationResults] = useState({ valid: [], invalid: [] });
   const [uploading, setUploading] = useState(false);
+  const [uploadResult, setUploadResult] = useState(null); // Store upload results for summary
 
   // Institution selector state for STATE_DIRECTORATE
   const [institutions, setInstitutions] = useState([]);
@@ -241,17 +242,20 @@ const BulkUpload = () => {
       // useAsync = false for synchronous processing
       const result = await uploadFn(originalFile, null, false, institutionId);
 
-      // Check actual result from backend
+      // Store the result for display
+      setUploadResult(result);
+
+      // Show appropriate message
       if (result.success === 0 && result.failed > 0) {
-        message.error(`Upload failed: ${result.failedRecords?.[0]?.error || 'Validation errors'}`);
-        console.error('Bulk upload failed records:', result.failedRecords);
+        message.error(`All ${result.failed} records failed validation`);
       } else if (result.failed > 0) {
         message.warning(`Uploaded ${result.success} ${uploadType}, ${result.failed} failed`);
-        setCurrentStep(2);
       } else {
-        message.success(`Successfully uploaded ${result.success || validationResults.valid.length} ${uploadType}`);
-        setCurrentStep(2);
+        message.success(`Successfully uploaded all ${result.success} ${uploadType}`);
       }
+
+      // Always go to step 2 to show summary
+      setCurrentStep(2);
     } catch (error) {
       message.error(error?.response?.data?.message || error?.message || 'Failed to upload data');
     } finally {
@@ -264,6 +268,7 @@ const BulkUpload = () => {
     setFileData([]);
     setOriginalFile(null);
     setValidationResults({ valid: [], invalid: [] });
+    setUploadResult(null);
   };
 
   const validColumns = [
@@ -452,16 +457,103 @@ const BulkUpload = () => {
           </div>
         )}
 
-        {currentStep === 2 && (
-          <div className="text-center py-8">
-            <CheckCircleOutlined style={{ fontSize: 72 }} />
-            <h2 className="text-2xl font-semibold mt-4">Upload Successful!</h2>
-            <p className="text-gray-600 mt-2">
-              Successfully uploaded {validationResults.valid.length} {uploadType}
-            </p>
-            <Button type="primary" onClick={resetUpload} className="mt-4">
-              Upload Another File
-            </Button>
+        {currentStep === 2 && uploadResult && (
+          <div className="py-4">
+            {/* Summary Header */}
+            <div className="text-center mb-6">
+              {uploadResult.success > 0 && uploadResult.failed === 0 ? (
+                <CheckCircleOutlined style={{ fontSize: 48, color: '#52c41a' }} />
+              ) : uploadResult.success === 0 ? (
+                <CloseCircleOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />
+              ) : (
+                <CheckCircleOutlined style={{ fontSize: 48, color: '#faad14' }} />
+              )}
+              <h2 className="text-xl font-semibold mt-4">
+                {uploadResult.success > 0 && uploadResult.failed === 0
+                  ? 'Upload Successful!'
+                  : uploadResult.success === 0
+                  ? 'Upload Failed'
+                  : 'Upload Completed with Errors'}
+              </h2>
+            </div>
+
+            {/* Summary Stats */}
+            <Alert
+              message="Upload Summary"
+              description={
+                <div className="flex justify-center gap-8 py-2">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-600">{uploadResult.total}</div>
+                    <div className="text-gray-500">Total</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">{uploadResult.success}</div>
+                    <div className="text-gray-500">Success</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{uploadResult.failed}</div>
+                    <div className="text-gray-500">Failed</div>
+                  </div>
+                </div>
+              }
+              type={uploadResult.failed === 0 ? 'success' : uploadResult.success === 0 ? 'error' : 'warning'}
+              className="mb-4"
+            />
+
+            {/* Success Records */}
+            {uploadResult.successRecords?.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2 text-green-600">
+                  <CheckCircleOutlined /> Successfully Created ({uploadResult.successRecords.length})
+                </h3>
+                <Table
+                  columns={[
+                    { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                    { title: 'Name', dataIndex: 'name', key: 'name' },
+                    { title: 'Email', dataIndex: 'email', key: 'email' },
+                    uploadType === 'students'
+                      ? { title: 'Enrollment No.', dataIndex: 'enrollmentNumber', key: 'enrollmentNumber' }
+                      : { title: 'Role', dataIndex: 'role', key: 'role' },
+                  ]}
+                  dataSource={uploadResult.successRecords}
+                  rowKey="row"
+                  pagination={{ pageSize: 5 }}
+                  size="small"
+                />
+              </div>
+            )}
+
+            {/* Failed Records */}
+            {uploadResult.failedRecords?.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold mb-2 text-red-600">
+                  <CloseCircleOutlined /> Failed Records ({uploadResult.failedRecords.length})
+                </h3>
+                <Table
+                  columns={[
+                    { title: 'Row', dataIndex: 'row', key: 'row', width: 60 },
+                    { title: 'Name', dataIndex: 'name', key: 'name', render: (text) => text || '-' },
+                    { title: 'Email', dataIndex: 'email', key: 'email', render: (text) => text || '-' },
+                    {
+                      title: 'Error',
+                      dataIndex: 'error',
+                      key: 'error',
+                      render: (text) => <span className="text-red-500">{text}</span>,
+                    },
+                  ]}
+                  dataSource={uploadResult.failedRecords}
+                  rowKey="row"
+                  pagination={{ pageSize: 5 }}
+                  size="small"
+                />
+              </div>
+            )}
+
+            <div className="text-center mt-6">
+              <Button type="primary" onClick={resetUpload}>
+                Upload Another File
+              </Button>
+            </div>
           </div>
         )}
       </Card>
