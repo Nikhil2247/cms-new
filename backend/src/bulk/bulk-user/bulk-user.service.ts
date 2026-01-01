@@ -52,7 +52,7 @@ export class BulkUserService {
    */
   async validateUsers(users: BulkUserRowDto[], institutionId: string): Promise<BulkUserValidationResultDto> {
     const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
-    const validRoles = ['FACULTY', 'MENTOR', 'PRINCIPAL'];
+    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
 
     // OPTIMIZATION: Extract all emails for batch query
     const allEmails = users
@@ -285,9 +285,9 @@ export class BulkUserService {
   private async createUser(userDto: BulkUserRowDto, institutionId: string) {
     // Map role to Prisma Role enum
     const roleMapping: Record<string, Role> = {
-      FACULTY: Role.TEACHER,
-      MENTOR: Role.FACULTY_SUPERVISOR,
-      PRINCIPAL: Role.PRINCIPAL,
+      TEACHER: Role.TEACHER,
+      FACULTY_SUPERVISOR: Role.FACULTY_SUPERVISOR,
+      PLACEMENT_OFFICER: Role.PLACEMENT_OFFICER,
     };
 
     const role = roleMapping[userDto.role] || Role.TEACHER;
@@ -323,7 +323,7 @@ export class BulkUserService {
         'Name': 'John Doe',
         'Email': 'john.doe@example.com',
         'Phone': '9876543210',
-        'Role': 'FACULTY',
+        'Role': 'TEACHER',
         'Designation': 'Professor',
         'Department': 'Computer Science',
         'Employee ID': 'EMP001',
@@ -332,7 +332,7 @@ export class BulkUserService {
         'Name': 'Jane Smith',
         'Email': 'jane.smith@example.com',
         'Phone': '9876543211',
-        'Role': 'MENTOR',
+        'Role': 'FACULTY_SUPERVISOR',
         'Designation': 'Assistant Professor',
         'Department': 'Electronics',
         'Employee ID': 'EMP002',
@@ -360,7 +360,7 @@ export class BulkUserService {
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the user', Example: 'John Doe' },
       { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique)', Example: 'john.doe@example.com' },
       { Field: 'Phone', Required: 'No', Description: 'Contact phone number', Example: '9876543210' },
-      { Field: 'Role', Required: 'Yes', Description: 'User role: FACULTY, MENTOR, or PRINCIPAL', Example: 'FACULTY' },
+      { Field: 'Role', Required: 'Yes', Description: 'User role: TEACHER, FACULTY_SUPERVISOR, or PLACEMENT_OFFICER', Example: 'TEACHER' },
       { Field: 'Designation', Required: 'No', Description: 'Job designation', Example: 'Professor' },
       { Field: 'Department', Required: 'No', Description: 'Department name', Example: 'Computer Science' },
       { Field: 'Employee ID', Required: 'No', Description: 'Employee identification number', Example: 'EMP001' },

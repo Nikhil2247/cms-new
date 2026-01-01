@@ -123,7 +123,7 @@ const BulkUpload = () => {
   const validateStaffData = (data) => {
     const valid = [];
     const invalid = [];
-    const validRoles = ['FACULTY', 'MENTOR', 'PRINCIPAL'];
+    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
 
     data.forEach((row, index) => {
       const errors = [];

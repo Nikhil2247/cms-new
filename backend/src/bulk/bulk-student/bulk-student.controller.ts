@@ -10,6 +10,7 @@ import {
   Res,
   HttpStatus,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiConsumes, ApiBody, ApiQuery } from '@nestjs/swagger';
@@ -27,6 +28,8 @@ import { BulkQueueService } from '../shared/bulk-queue.service';
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class BulkStudentController {
+  private readonly logger = new Logger(BulkStudentController.name);
+
   constructor(
     private readonly bulkStudentService: BulkStudentService,
     private readonly bulkQueueService: BulkQueueService,
@@ -87,6 +90,8 @@ export class BulkStudentController {
     const user = req.user;
     let institutionId: string;
 
+    this.logger.log(`Bulk student upload - User: ${user.userId}, Role: ${user.role}, User InstitutionId: ${user.institutionId}`);
+
     // STATE_DIRECTORATE must provide institutionId in query
     if (user.role === Role.STATE_DIRECTORATE) {
       if (!queryInstitutionId) {
@@ -100,6 +105,8 @@ export class BulkStudentController {
         throw new BadRequestException('Institution ID not found for the user');
       }
     }
+
+    this.logger.log(`Using institutionId: ${institutionId} for bulk upload`);
 
     // Parse file
     const students = await this.bulkStudentService.parseFile(file.buffer, file.originalname);

@@ -68,16 +68,21 @@ export class BulkStudentService {
     const warnings: Array<{ row: number; field?: string; message: string }> = [];
     const validGenders = ['MALE', 'FEMALE', 'OTHER'];
 
-    // Use domain service for batch/branch lookups (DRY principle)
+    this.logger.log(`Validating students for institution: ${institutionId}`);
+
+    // Use domain service for batch/branch lookups (globally accessible)
     const [batchMap, branchMap] = await Promise.all([
-      this.userService.getBatchMap(institutionId),
+      this.userService.getBatchMap(),
       this.userService.getBranchMap(),
     ]);
 
+    // Get all active batches globally for error messages
     const batches = await this.prisma.batch.findMany({
-      where: { institutionId },
+      where: { isActive: true },
       select: { name: true },
     });
+
+    this.logger.log(`Found ${batches.length} global batches: ${batches.map(b => b.name).join(', ')}`);
 
     // OPTIMIZATION: Extract all emails and enrollment numbers for batch queries
     const allEmails = students
@@ -295,9 +300,9 @@ export class BulkStudentService {
       };
     }
 
-    // Use domain service for batch/branch mappings (DRY principle)
+    // Use domain service for batch/branch mappings (globally accessible)
     const [batchMap, branchMap] = await Promise.all([
-      this.userService.getBatchMap(institutionId),
+      this.userService.getBatchMap(),
       this.userService.getBranchMap(),
     ]);
 

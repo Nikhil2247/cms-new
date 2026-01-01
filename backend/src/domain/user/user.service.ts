@@ -120,10 +120,11 @@ export class UserService {
    */
   async validateBatch(
     batchId: string,
-    institutionId: string,
+    institutionId?: string,
   ): Promise<boolean> {
+    // Batches are globally accessible - only check if batch exists and is active
     const batch = await this.prisma.batch.findFirst({
-      where: { id: batchId, institutionId },
+      where: { id: batchId, isActive: true },
       select: { id: true },
     });
     return !!batch;
@@ -154,9 +155,9 @@ export class UserService {
         );
       }
 
-      // Validate batch
-      if (!(await this.validateBatch(data.batchId, institutionId))) {
-        throw new BadRequestException('Invalid batch for this institution');
+      // Validate batch exists and is active
+      if (!(await this.validateBatch(data.batchId))) {
+        throw new BadRequestException('Invalid or inactive batch');
       }
     }
 
@@ -342,11 +343,12 @@ export class UserService {
   }
 
   /**
-   * Get batch map for an institution
+   * Get batch map (globally accessible - all batches)
    */
-  async getBatchMap(institutionId: string): Promise<Map<string, string>> {
+  async getBatchMap(institutionId?: string): Promise<Map<string, string>> {
+    // Batches are globally accessible - no institution filter
     const batches = await this.prisma.batch.findMany({
-      where: { institutionId },
+      where: { isActive: true },
       select: { id: true, name: true },
     });
     // Normalize batch names: trim whitespace and lowercase
