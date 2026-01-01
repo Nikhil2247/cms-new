@@ -35,8 +35,8 @@ export class BulkProcessor extends WorkerHost {
     );
 
     try {
-      // Mark job as started
-      await this.bulkJobService.markAsStarted(job.id);
+      // Mark job as started using the database bulkJobId
+      await this.bulkJobService.markAsStartedById(bulkJobId);
 
       let result: any;
 
@@ -64,8 +64,8 @@ export class BulkProcessor extends WorkerHost {
 
       const processingTime = Date.now() - startTime;
 
-      // Mark job as completed
-      await this.bulkJobService.markAsCompleted(job.id, {
+      // Mark job as completed using bulkJobId
+      await this.bulkJobService.markAsCompletedById(bulkJobId, {
         successCount: result.success,
         failedCount: result.failed,
         successReport: result.successRecords,
@@ -82,8 +82,8 @@ export class BulkProcessor extends WorkerHost {
     } catch (error) {
       this.logger.error(`Error processing job ${job.id}: ${error.message}`, error.stack);
 
-      // Mark job as failed
-      await this.bulkJobService.markAsFailed(job.id, error.message);
+      // Mark job as failed using bulkJobId
+      await this.bulkJobService.markAsFailedById(bulkJobId, error.message);
 
       throw error;
     }
@@ -186,11 +186,12 @@ export class BulkProcessor extends WorkerHost {
   private async updateJobProgress(job: Job, progress: number) {
     await job.updateProgress(progress);
 
+    const bulkJobId = job.data?.bulkJobId;
     const totalRows = job.data?.data?.length || 0;
     const processedRows = Math.floor((progress / 100) * totalRows);
 
-    if (progress > 0 && progress < 100) {
-      await this.bulkJobService.updateProgress(job.id, processedRows, totalRows);
+    if (progress > 0 && progress < 100 && bulkJobId) {
+      await this.bulkJobService.updateProgressById(bulkJobId, processedRows, totalRows);
     }
   }
 

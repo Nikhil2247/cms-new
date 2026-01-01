@@ -94,11 +94,28 @@ const BulkSelfInternshipUpload = () => {
       const errors = [];
       const warnings = [];
 
-      // Get student identifier
-      const studentEmail = row['Student Email'] || row['studentEmail'] || row['Email'];
+      // Normalize column names - match backend expected column names
+      const studentEmail = row['Student Email'] || row['Email'] || row['studentEmail'];
       const rollNumber = row['Roll Number'] || row['rollNumber'] || row['Roll No'];
-      const enrollmentNumber = row['Enrollment Number'] || row['enrollmentNumber'];
+      const enrollmentNumber = row['Enrollment Number'] || row['enrollmentNumber'] || row['Admission Number'];
       const companyName = row['Company Name'] || row['companyName'] || row['Company'];
+      const companyAddress = row['Company Address'] || row['companyAddress'];
+      const companyContact = row['Company Contact'] || row['companyContact'] || row['Company Phone'];
+      const companyEmail = row['Company Email'] || row['companyEmail'];
+      const hrName = row['HR Name'] || row['hrName'] || row['Contact Person'];
+      const hrDesignation = row['HR Designation'] || row['hrDesignation'];
+      const hrContact = row['HR Contact'] || row['hrContact'] || row['HR Phone'];
+      const hrEmail = row['HR Email'] || row['hrEmail'];
+      const jobProfile = row['Job Profile'] || row['jobProfile'] || row['Role'] || row['Position'];
+      const stipend = row['Stipend'] || row['stipend'];
+      const startDate = row['Start Date'] || row['startDate'];
+      const endDate = row['End Date'] || row['endDate'];
+      const duration = row['Duration'] || row['duration'];
+      const facultyMentorName = row['Faculty Mentor Name'] || row['Mentor Name'] || row['facultyMentorName'];
+      const facultyMentorEmail = row['Faculty Mentor Email'] || row['Mentor Email'] || row['facultyMentorEmail'];
+      const facultyMentorContact = row['Faculty Mentor Contact'] || row['Mentor Contact'] || row['facultyMentorContact'];
+      const facultyMentorDesignation = row['Faculty Mentor Designation'] || row['facultyMentorDesignation'];
+      const joiningLetterUrl = row['Joining Letter URL'] || row['joiningLetterUrl'];
 
       // At least one student identifier required
       if (!studentEmail && !rollNumber && !enrollmentNumber) {
@@ -107,42 +124,73 @@ const BulkSelfInternshipUpload = () => {
 
       // Check for duplicates
       const identifier = studentEmail || rollNumber || enrollmentNumber;
-      if (identifier && seenIdentifiers.has(identifier.toLowerCase())) {
+      if (identifier && seenIdentifiers.has(String(identifier).toLowerCase())) {
         errors.push('Duplicate student entry in file');
       } else if (identifier) {
-        seenIdentifiers.add(identifier.toLowerCase());
+        seenIdentifiers.add(String(identifier).toLowerCase());
       }
 
       // Company name is required
-      if (!companyName || companyName.trim() === '') {
+      if (!companyName || String(companyName).trim() === '') {
         errors.push('Company name is required');
       }
 
       // Validate email formats if provided
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (studentEmail && !emailRegex.test(studentEmail)) {
+      if (studentEmail && !emailRegex.test(String(studentEmail))) {
         errors.push('Invalid student email format');
       }
 
-      const companyEmail = row['Company Email'] || row['companyEmail'];
-      if (companyEmail && !emailRegex.test(companyEmail)) {
+      if (companyEmail && !emailRegex.test(String(companyEmail))) {
         warnings.push('Invalid company email format');
       }
 
-      const hrEmail = row['HR Email'] || row['hrEmail'];
-      if (hrEmail && !emailRegex.test(hrEmail)) {
+      if (hrEmail && !emailRegex.test(String(hrEmail))) {
         warnings.push('Invalid HR email format');
       }
 
-      const mentorEmail = row['Faculty Mentor Email'] || row['Mentor Email'];
-      if (mentorEmail && !emailRegex.test(mentorEmail)) {
+      if (facultyMentorEmail && !emailRegex.test(String(facultyMentorEmail))) {
         warnings.push('Invalid faculty mentor email format');
+      }
+
+      // Validate phone numbers
+      if (hrContact && !/^[0-9]{10}$/.test(String(hrContact).replace(/\D/g, ''))) {
+        warnings.push('HR contact should be 10 digits');
+      }
+
+      // Validate date formats
+      if (startDate && isNaN(new Date(startDate).getTime())) {
+        warnings.push('Invalid start date format (use YYYY-MM-DD)');
+      }
+
+      if (endDate && isNaN(new Date(endDate).getTime())) {
+        warnings.push('Invalid end date format (use YYYY-MM-DD)');
       }
 
       const record = {
         ...row,
+        studentEmail,
+        rollNumber,
+        enrollmentNumber,
+        companyName,
+        companyAddress,
+        companyContact,
+        companyEmail,
+        hrName,
+        hrDesignation,
+        hrContact,
+        hrEmail,
+        jobProfile,
+        stipend,
+        startDate,
+        endDate,
+        duration,
+        facultyMentorName,
+        facultyMentorEmail,
+        facultyMentorContact,
+        facultyMentorDesignation,
+        joiningLetterUrl,
         studentIdentifier: studentEmail || rollNumber || enrollmentNumber,
-        companyName: companyName,
         rowNumber: index + 2,
         errors,
         warnings,
@@ -264,17 +312,8 @@ const BulkSelfInternshipUpload = () => {
     { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 60 },
     { title: 'Student', dataIndex: 'studentIdentifier', key: 'studentIdentifier', ellipsis: true },
     { title: 'Company', dataIndex: 'companyName', key: 'companyName', ellipsis: true },
-    {
-      title: 'Job Profile',
-      key: 'jobProfile',
-      render: (_, record) => record['Job Profile'] || record['jobProfile'] || '-',
-      ellipsis: true,
-    },
-    {
-      title: 'Stipend',
-      key: 'stipend',
-      render: (_, record) => record['Stipend'] || record['stipend'] || '-',
-    },
+    { title: 'Job Profile', dataIndex: 'jobProfile', key: 'jobProfile', ellipsis: true, render: (text) => text || '-' },
+    { title: 'HR Name', dataIndex: 'hrName', key: 'hrName', ellipsis: true, render: (text) => text || '-' },
     {
       title: 'Warnings',
       dataIndex: 'warnings',
@@ -292,8 +331,8 @@ const BulkSelfInternshipUpload = () => {
 
   const invalidColumns = [
     { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 60 },
-    { title: 'Student', dataIndex: 'studentIdentifier', key: 'studentIdentifier', ellipsis: true },
-    { title: 'Company', dataIndex: 'companyName', key: 'companyName', ellipsis: true },
+    { title: 'Student', dataIndex: 'studentIdentifier', key: 'studentIdentifier', ellipsis: true, render: (text) => text || 'N/A' },
+    { title: 'Company', dataIndex: 'companyName', key: 'companyName', ellipsis: true, render: (text) => text || '-' },
     {
       title: 'Errors',
       dataIndex: 'errors',

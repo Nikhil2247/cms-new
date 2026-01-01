@@ -68,19 +68,44 @@ const BulkUpload = () => {
     data.forEach((row, index) => {
       const errors = [];
 
-      // Required field validations
-      if (!row.name || row.name.trim() === '') errors.push('Name is required');
-      if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errors.push('Valid email is required');
-      if (!row.rollNumber || row.rollNumber.trim() === '') errors.push('Roll number is required');
-      if (!row.phone || !/^[0-9]{10}$/.test(row.phone.toString())) errors.push('Valid 10-digit phone is required');
-      if (!row.department || row.department.trim() === '') errors.push('Department is required');
-      if (!row.batch || row.batch.trim() === '') errors.push('Batch is required');
-      if (!row.gender || !['male', 'female', 'other'].includes(row.gender.toLowerCase())) {
-        errors.push('Gender must be male, female, or other');
+      // Normalize keys - match backend expected column names
+      const name = row['Name'] || row['name'] || row['Student Name'];
+      const email = row['Email'] || row['email'];
+      const phone = row['Phone'] || row['phone'] || row['Contact'];
+      const enrollmentNumber = row['Enrollment Number'] || row['enrollmentNumber'] || row['Admission Number'];
+      const rollNumber = row['Roll Number'] || row['rollNumber'];
+      const batch = row['Batch'] || row['batch'] || row['Batch Name'];
+      const branch = row['Branch'] || row['branch'] || row['Department'];
+      const semester = row['Semester'] || row['semester'] || row['Current Semester'];
+      const gender = row['Gender'] || row['gender'];
+      const dateOfBirth = row['Date of Birth'] || row['DOB'] || row['dateOfBirth'];
+
+      // Required field validations (matching backend requirements)
+      if (!name || String(name).trim() === '') errors.push('Name is required');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
+      if (!enrollmentNumber || String(enrollmentNumber).trim() === '') errors.push('Enrollment Number is required');
+      if (!batch || String(batch).trim() === '') errors.push('Batch is required');
+
+      // Optional field validations
+      if (gender && !['MALE', 'FEMALE', 'OTHER'].includes(String(gender).toUpperCase())) {
+        errors.push('Gender must be MALE, FEMALE, or OTHER');
+      }
+      if (semester && (isNaN(Number(semester)) || Number(semester) < 1 || Number(semester) > 8)) {
+        errors.push('Semester must be between 1 and 8');
       }
 
       const record = {
         ...row,
+        name,
+        email,
+        phone,
+        enrollmentNumber,
+        rollNumber,
+        batch,
+        branch,
+        semester,
+        gender,
+        dateOfBirth,
         rowNumber: index + 2, // +2 because Excel starts at 1 and header is row 1
         errors: errors,
       };
@@ -98,20 +123,38 @@ const BulkUpload = () => {
   const validateStaffData = (data) => {
     const valid = [];
     const invalid = [];
+    const validRoles = ['FACULTY', 'MENTOR', 'PRINCIPAL'];
 
     data.forEach((row, index) => {
       const errors = [];
 
-      if (!row.name || row.name.trim() === '') errors.push('Name is required');
-      if (!row.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errors.push('Valid email is required');
-      if (!row.employeeId || row.employeeId.trim() === '') errors.push('Employee ID is required');
-      if (!row.phone || !/^[0-9]{10}$/.test(row.phone.toString())) errors.push('Valid 10-digit phone is required');
-      if (!row.department || row.department.trim() === '') errors.push('Department is required');
-      if (!row.role || row.role.trim() === '') errors.push('Role is required');
-      if (!row.designation || row.designation.trim() === '') errors.push('Designation is required');
+      // Normalize keys - match backend expected column names
+      const name = row['Name'] || row['name'] || row['Full Name'];
+      const email = row['Email'] || row['email'];
+      const phone = row['Phone'] || row['phone'] || row['Contact'];
+      const role = row['Role'] || row['role'];
+      const designation = row['Designation'] || row['designation'];
+      const department = row['Department'] || row['department'];
+      const employeeId = row['Employee ID'] || row['employeeId'] || row['Employee Id'];
+
+      // Required field validations (matching backend requirements)
+      if (!name || String(name).trim() === '') errors.push('Name is required');
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
+      if (!role || String(role).trim() === '') {
+        errors.push('Role is required');
+      } else if (!validRoles.includes(String(role).toUpperCase())) {
+        errors.push(`Invalid role. Must be one of: ${validRoles.join(', ')}`);
+      }
 
       const record = {
         ...row,
+        name,
+        email,
+        phone,
+        role: role ? String(role).toUpperCase() : undefined,
+        designation,
+        department,
+        employeeId,
         rowNumber: index + 2,
         errors: errors,
       };
@@ -218,11 +261,11 @@ const BulkUpload = () => {
     { title: 'Name', dataIndex: 'name', key: 'name' },
     { title: 'Email', dataIndex: 'email', key: 'email' },
     {
-      title: uploadType === 'students' ? 'Roll Number' : 'Employee ID',
-      dataIndex: uploadType === 'students' ? 'rollNumber' : 'employeeId',
+      title: uploadType === 'students' ? 'Enrollment No.' : 'Role',
+      dataIndex: uploadType === 'students' ? 'enrollmentNumber' : 'role',
       key: 'id',
     },
-    { title: 'Department', dataIndex: 'department', key: 'department' },
+    { title: uploadType === 'students' ? 'Batch' : 'Department', dataIndex: uploadType === 'students' ? 'batch' : 'department', key: 'extra' },
   ];
 
   const invalidColumns = [

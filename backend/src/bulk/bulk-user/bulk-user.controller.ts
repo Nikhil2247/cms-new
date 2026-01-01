@@ -120,7 +120,7 @@ export class BulkUserController {
       const result = await this.bulkQueueService.queueUserUpload(
         users,
         institutionId,
-        user.sub,
+        user.userId,
         file.originalname,
         file.size,
       );
@@ -132,7 +132,7 @@ export class BulkUserController {
     }
 
     // Process synchronously for smaller files
-    const result = await this.bulkUserService.bulkUploadUsers(users, institutionId, user.sub);
+    const result = await this.bulkUserService.bulkUploadUsers(users, institutionId, user.userId);
 
     return result;
   }

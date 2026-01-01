@@ -14,6 +14,7 @@ import {
   Tag,
   Modal,
   Table,
+  Empty,
 } from 'antd';
 import {
   ExclamationCircleOutlined,
@@ -21,6 +22,7 @@ import {
   EyeOutlined,
   TeamOutlined,
   ReloadOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import {
   fetchPrincipalDashboard,
@@ -86,6 +88,7 @@ const PrincipalDashboard = () => {
   const [dismissedAlerts, setDismissedAlerts] = useState([]);
   const [studentsModal, setStudentsModal] = useState({ visible: false });
   const [mentorsModal, setMentorsModal] = useState({ visible: false });
+  const [companiesModal, setCompaniesModal] = useState({ visible: false });
 
   // Redux selectors for dashboard data
   const dashboardStats = useSelector(selectDashboardStats);
@@ -190,7 +193,7 @@ const PrincipalDashboard = () => {
     totalStudents: stats?.students?.total || 0,
     totalMentors: mentorCoverage?.totalMentors || 0,
     unassignedStudents: alertsEnhanced?.summary?.unassignedStudentsCount || 0,
-    partnerCompanies: internshipStats?.totalCompanies || internshipStats?.companyStats?.total || 0,
+    partnerCompanies: internshipStats?.totalUniqueCompanies || 0,
   }), [stats, mentorCoverage, alertsEnhanced, internshipStats]);
 
   // Memoized data for SubmissionStatusGrid
@@ -433,7 +436,7 @@ const PrincipalDashboard = () => {
               title: 'Unassigned Students',
               data: alertsEnhanced?.alerts?.unassignedStudents || []
             })}
-            onViewCompanies={() => navigate('/principal/internships')}
+            onViewCompanies={() => setCompaniesModal({ visible: true })}
           />
         </div>
 
@@ -681,6 +684,160 @@ const PrincipalDashboard = () => {
               },
             ]}
           />
+        </Modal>
+
+        {/* Partner Companies Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2">
+              <BankOutlined className="text-blue-500" />
+              <span>Partner Companies</span>
+              <Badge count={internshipStats?.totalUniqueCompanies || 0} style={{ backgroundColor: '#3b82f6' }} />
+            </div>
+          }
+          open={companiesModal.visible}
+          onCancel={() => setCompaniesModal({ visible: false })}
+          footer={
+            <Button onClick={() => { setCompaniesModal({ visible: false }); navigate('/principal/internships'); }}>
+              View All Internships
+            </Button>
+          }
+          width={900}
+        >
+          <div className="mb-4 grid grid-cols-4 gap-3">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <div className="text-xl font-bold text-blue-600">
+                {internshipStats?.totalUniqueCompanies || 0}
+              </div>
+              <div className="text-xs text-gray-500">Total Companies</div>
+            </div>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <div className="text-xl font-bold text-green-600">
+                {internshipStats?.approved || 0}
+              </div>
+              <div className="text-xs text-gray-500">Approved</div>
+            </div>
+            <div className="text-center p-3 bg-purple-50 rounded-lg">
+              <div className="text-xl font-bold text-purple-600">
+                {internshipStats?.total || 0}
+              </div>
+              <div className="text-xs text-gray-500">Total Applications</div>
+            </div>
+            <div className="text-center p-3 bg-orange-50 rounded-lg">
+              <div className="text-xl font-bold text-orange-600">
+                {internshipStats?.activeRate || 0}%
+              </div>
+              <div className="text-xs text-gray-500">Active Rate</div>
+            </div>
+          </div>
+          
+          {internshipStatsLoading && (
+            <div className="text-center py-4">
+              <Spin size="small" />
+              <Text className="ml-2 text-xs text-gray-500">Loading companies data...</Text>
+            </div>
+          )}
+
+          <Table
+            dataSource={internshipStats?.byCompany || []}
+            rowKey={(record, index) => record.name || `company-${index}`}
+            pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `Total ${total} companies` }}
+            size="small"
+            loading={internshipStatsLoading}
+            columns={[
+              {
+                title: 'Company Name',
+                dataIndex: 'name',
+                key: 'name',
+                width: '40%',
+                render: (text, record) => (
+                  <div>
+                    <Text strong className="text-sm">{text || 'Unknown Company'}</Text>
+                    {record.industryType && (
+                      <Text type="secondary" className="block text-xs mt-0.5">
+                        🏢 {record.industryType}
+                      </Text>
+                    )}
+                    {record.location && (
+                      <Text type="secondary" className="block text-xs">
+                        📍 {record.location}
+                      </Text>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                title: 'Students Placed',
+                dataIndex: 'count',
+                key: 'count',
+                width: '20%',
+                align: 'center',
+                sorter: (a, b) => (a.count || 0) - (b.count || 0),
+                defaultSortOrder: 'descend',
+                render: (val) => (
+                  <Tag color="blue" className="text-sm font-medium px-3 py-1">
+                    {val || 0}
+                  </Tag>
+                ),
+              },
+              {
+                title: 'Industry Type',
+                dataIndex: 'industryType',
+                key: 'industryType',
+                width: '25%',
+                render: (text) => (
+                  <Tag color="purple" className="text-xs">
+                    {text || 'Other'}
+                  </Tag>
+                ),
+                filters: internshipStats?.byIndustry?.map(ind => ({
+                  text: ind.type,
+                  value: ind.type,
+                })) || [],
+                onFilter: (value, record) => record.industryType === value,
+              },
+              {
+                title: 'Location',
+                dataIndex: 'location',
+                key: 'location',
+                width: '15%',
+                render: (text) => (
+                  <Text type="secondary" className="text-xs">
+                    {text || '-'}
+                  </Text>
+                ),
+              },
+            ]}
+            locale={{
+              emptyText: (
+                <Empty
+                  description={
+                    <div className="py-4">
+                      <Text type="secondary">No partner companies found</Text>
+                      <div className="mt-2 text-xs text-gray-400">
+                        Companies will appear here once students apply for internships
+                      </div>
+                    </div>
+                  }
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
+              )
+            }}
+          />
+          
+          {/* Industry Breakdown */}
+          {internshipStats?.byIndustry && internshipStats.byIndustry.length > 0 && (
+            <div className="mt-4">
+              <Text strong className="block mb-2 text-sm">Industry Breakdown</Text>
+              <div className="flex flex-wrap gap-2">
+                {internshipStats.byIndustry.map((industry, index) => (
+                  <Tag key={index} color="geekblue" className="text-xs px-3 py-1">
+                    {industry.type}: <strong>{industry.count}</strong>
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     </div>
