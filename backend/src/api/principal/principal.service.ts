@@ -16,7 +16,7 @@ import {
   MONTHLY_CYCLE,
 } from '../../common/utils/monthly-cycle.util';
 import * as argon2 from 'argon2';
-import * as XLSX from 'xlsx';
+import { ExcelUtils } from '../../core/common/utils/excel.util';
 import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
 
 // Static month names array - toLocaleString is unreliable in Node.js
@@ -1370,11 +1370,9 @@ export class PrincipalService {
   /**
    * Parse Excel/CSV file buffer to JSON
    */
-  private parseExcelFile(file: Express.Multer.File): any[] {
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    return XLSX.utils.sheet_to_json(worksheet);
+  private async parseExcelFile(file: Express.Multer.File): Promise<any[]> {
+    const { workbook } = await ExcelUtils.read(file.buffer);
+    return ExcelUtils.sheetToJson(workbook, 0);
   }
 
   /**
@@ -1394,7 +1392,7 @@ export class PrincipalService {
     }
 
     const file = files[0];
-    const studentsData = this.parseExcelFile(file);
+    const studentsData = await this.parseExcelFile(file);
 
     if (studentsData.length === 0) {
       throw new BadRequestException('No valid data found in file');
@@ -1447,7 +1445,7 @@ export class PrincipalService {
     }
 
     const file = files[0];
-    const staffData = this.parseExcelFile(file);
+    const staffData = await this.parseExcelFile(file);
 
     if (staffData.length === 0) {
       throw new BadRequestException('No valid data found in file');

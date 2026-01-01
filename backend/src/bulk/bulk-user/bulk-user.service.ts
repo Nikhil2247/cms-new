@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { BulkUserRowDto, BulkUserResultDto, BulkUserValidationResultDto } from './dto/bulk-user.dto';
-import * as XLSX from 'xlsx';
+import { ExcelUtils, addSheetFromJson, createWorkbook, writeToBuffer } from '../../core/common/utils/excel.util';
 import * as argon2 from 'argon2';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
@@ -21,12 +21,10 @@ export class BulkUserService {
    */
   async parseFile(buffer: Buffer, filename: string): Promise<BulkUserRowDto[]> {
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const { workbook } = await ExcelUtils.read(buffer);
 
       // Convert to JSON
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const rawData = ExcelUtils.sheetToJson<Record<string, any>>(workbook, 0, { defval: '' });
 
       // Map CSV columns to DTO fields
       const users: BulkUserRowDto[] = rawData.map((row: any) => ({
@@ -317,7 +315,7 @@ export class BulkUserService {
   /**
    * Download template for bulk user upload
    */
-  getTemplate(): Buffer {
+  async getTemplate(): Promise<Buffer> {
     const templateData = [
       {
         'Name': 'John Doe',
@@ -339,23 +337,6 @@ export class BulkUserService {
       },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 20 }, // Name
-      { wch: 30 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 15 }, // Role
-      { wch: 25 }, // Designation
-      { wch: 20 }, // Department
-      { wch: 15 }, // Employee ID
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
-
-    // Add instructions sheet
     const instructionsData = [
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the user', Example: 'John Doe' },
       { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique)', Example: 'john.doe@example.com' },
@@ -365,17 +346,11 @@ export class BulkUserService {
       { Field: 'Department', Required: 'No', Description: 'Department name', Example: 'Computer Science' },
       { Field: 'Employee ID', Required: 'No', Description: 'Employee identification number', Example: 'EMP001' },
     ];
-    const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
-    instructionsSheet['!cols'] = [
-      { wch: 15 },
-      { wch: 10 },
-      { wch: 50 },
-      { wch: 30 },
-    ];
-    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    return buffer;
+    return ExcelUtils.createFromJson([
+      { name: 'Users', data: templateData },
+      { name: 'Instructions', data: instructionsData },
+    ]);
   }
 
   /**

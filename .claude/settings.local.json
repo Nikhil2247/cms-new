@@ -158,7 +158,8 @@
       "Bash(if exist dist rmdir /s /q dist)",
       "Bash(node update-imports.js)",
       "Bash(timeout 15 npm run start:dev)",
-      "Bash(npm view:*)"
+      "Bash(npm view:*)",
+      "Bash(npm audit:*)"
     ]
   }
 }

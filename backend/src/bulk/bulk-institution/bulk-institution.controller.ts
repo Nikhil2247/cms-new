@@ -172,7 +172,7 @@ export class BulkInstitutionController {
     },
   })
   async downloadTemplate(@Res() res: Response) {
-    const template = this.bulkInstitutionService.getTemplate();
+    const template = await this.bulkInstitutionService.getTemplate();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-institution-upload-template.xlsx');

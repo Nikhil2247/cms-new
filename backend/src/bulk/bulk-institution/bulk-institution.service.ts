@@ -4,7 +4,7 @@ import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prism
 import { BulkInstitutionRowDto, BulkInstitutionResultDto, BulkInstitutionValidationResultDto } from './dto/bulk-institution.dto';
 import { InstitutionService, CreateInstitutionData, CreatePrincipalData } from '../../domain/institution/institution.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import * as XLSX from 'xlsx';
+import { ExcelUtils } from '../../core/common/utils/excel.util';
 
 @Injectable()
 export class BulkInstitutionService {
@@ -21,12 +21,10 @@ export class BulkInstitutionService {
    */
   async parseFile(buffer: Buffer, filename: string): Promise<BulkInstitutionRowDto[]> {
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const { workbook } = await ExcelUtils.read(buffer);
 
       // Convert to JSON
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const rawData = ExcelUtils.sheetToJson<Record<string, any>>(workbook, 0, { defval: '' });
 
       // Map CSV columns to DTO fields
       const institutions: BulkInstitutionRowDto[] = rawData.map((row: any) => ({
@@ -337,7 +335,7 @@ export class BulkInstitutionService {
   /**
    * Download template for bulk institution upload
    */
-  getTemplate(): Buffer {
+  async getTemplate(): Promise<Buffer> {
     const templateData = [
       {
         'Name': 'ABC Engineering College',
@@ -371,29 +369,6 @@ export class BulkInstitutionService {
       },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 30 }, // Name
-      { wch: 15 }, // Code
-      { wch: 15 }, // Type
-      { wch: 35 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 30 }, // Address
-      { wch: 15 }, // City
-      { wch: 15 }, // State
-      { wch: 10 }, // Pin Code
-      { wch: 35 }, // Website
-      { wch: 25 }, // Principal Name
-      { wch: 35 }, // Principal Email
-      { wch: 15 }, // Principal Phone
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Institutions');
-
-    // Add instructions sheet
     const instructionsData = [
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the institution', Example: 'ABC Engineering College' },
       { Field: 'Code', Required: 'Yes', Description: 'Unique institution code', Example: 'ABC001' },
@@ -409,17 +384,11 @@ export class BulkInstitutionService {
       { Field: 'Principal Email', Required: 'No', Description: 'Principal email (required if creating principal)', Example: 'principal@abc.edu' },
       { Field: 'Principal Phone', Required: 'No', Description: 'Principal contact number', Example: '9876543210' },
     ];
-    const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
-    instructionsSheet['!cols'] = [
-      { wch: 20 },
-      { wch: 10 },
-      { wch: 50 },
-      { wch: 30 },
-    ];
-    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    return buffer;
+    return ExcelUtils.createFromJson([
+      { name: 'Institutions', data: templateData },
+      { name: 'Instructions', data: instructionsData },
+    ]);
   }
 
   /**

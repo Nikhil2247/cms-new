@@ -228,7 +228,7 @@ export class BulkSelfInternshipController {
     },
   })
   async downloadTemplate(@Res() res: Response) {
-    const template = this.bulkSelfInternshipService.getTemplate();
+    const template = await this.bulkSelfInternshipService.getTemplate();
 
     res.setHeader(
       'Content-Type',

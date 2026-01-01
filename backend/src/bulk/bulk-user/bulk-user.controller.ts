@@ -208,7 +208,7 @@ export class BulkUserController {
     },
   })
   async downloadTemplate(@Res() res: Response) {
-    const template = this.bulkUserService.getTemplate();
+    const template = await this.bulkUserService.getTemplate();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-user-upload-template.xlsx');

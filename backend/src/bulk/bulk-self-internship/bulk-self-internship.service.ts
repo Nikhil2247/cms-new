@@ -7,7 +7,7 @@ import {
 } from './dto/bulk-self-internship.dto';
 import { ApplicationStatus, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import * as XLSX from 'xlsx';
+import { ExcelUtils } from '../../core/common/utils/excel.util';
 
 @Injectable()
 export class BulkSelfInternshipService {
@@ -23,11 +23,9 @@ export class BulkSelfInternshipService {
    */
   async parseFile(buffer: Buffer, filename: string): Promise<BulkSelfInternshipRowDto[]> {
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const { workbook } = await ExcelUtils.read(buffer);
 
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const rawData = ExcelUtils.sheetToJson<Record<string, any>>(workbook, 0, { defval: '' });
 
       const internships: BulkSelfInternshipRowDto[] = rawData.map((row: any) => ({
         // Student identification
@@ -522,7 +520,7 @@ export class BulkSelfInternshipService {
   /**
    * Get template for bulk upload
    */
-  getTemplate(): Buffer {
+  async getTemplate(): Promise<Buffer> {
     const templateData = [
       {
         'Student Email': 'student1@example.com',
@@ -572,37 +570,6 @@ export class BulkSelfInternshipService {
       },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 25 }, // Student Email
-      { wch: 15 }, // Roll Number
-      { wch: 20 }, // Enrollment Number
-      { wch: 25 }, // Company Name
-      { wch: 30 }, // Company Address
-      { wch: 15 }, // Company Contact
-      { wch: 25 }, // Company Email
-      { wch: 20 }, // HR Name
-      { wch: 20 }, // HR Designation
-      { wch: 15 }, // HR Contact
-      { wch: 25 }, // HR Email
-      { wch: 25 }, // Job Profile
-      { wch: 10 }, // Stipend
-      { wch: 12 }, // Start Date
-      { wch: 12 }, // End Date
-      { wch: 12 }, // Duration
-      { wch: 25 }, // Faculty Mentor Name
-      { wch: 25 }, // Faculty Mentor Email
-      { wch: 15 }, // Faculty Mentor Contact
-      { wch: 20 }, // Faculty Mentor Designation
-      { wch: 40 }, // Joining Letter URL
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Self-Identified Internships');
-
-    // Add instructions sheet
     const instructionsData = [
       { Field: 'Student Email', Required: 'Yes*', Description: 'Student email address (at least one identifier required)', Example: 'student@example.com' },
       { Field: 'Roll Number', Required: 'Yes*', Description: 'Student roll number (alternative identifier)', Example: 'R2023001' },
@@ -629,16 +596,10 @@ export class BulkSelfInternshipService {
       { Field: 'Notes:', Required: '', Description: '* At least one student identifier (Email, Roll Number, or Enrollment Number) is required', Example: '' },
     ];
 
-    const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
-    instructionsSheet['!cols'] = [
-      { wch: 25 },
-      { wch: 10 },
-      { wch: 60 },
-      { wch: 30 },
-    ];
-    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
-
-    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    return ExcelUtils.createFromJson([
+      { name: 'Self-Identified Internships', data: templateData },
+      { name: 'Instructions', data: instructionsData },
+    ]);
   }
 
   // Helper methods

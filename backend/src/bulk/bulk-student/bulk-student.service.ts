@@ -4,7 +4,7 @@ import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prism
 import { BulkStudentRowDto, BulkStudentResultDto, BulkStudentValidationResultDto } from './dto/bulk-student.dto';
 import { UserService, CreateStudentData } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import * as XLSX from 'xlsx';
+import { ExcelUtils } from '../../core/common/utils/excel.util';
 
 @Injectable()
 export class BulkStudentService {
@@ -21,12 +21,10 @@ export class BulkStudentService {
    */
   async parseFile(buffer: Buffer, filename: string): Promise<BulkStudentRowDto[]> {
     try {
-      const workbook = XLSX.read(buffer, { type: 'buffer' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const { workbook } = await ExcelUtils.read(buffer);
 
       // Convert to JSON
-      const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+      const rawData = ExcelUtils.sheetToJson<Record<string, any>>(workbook, 0, { defval: '' });
 
       // Map CSV columns to DTO fields
       const students: BulkStudentRowDto[] = rawData.map((row: any) => ({
@@ -429,7 +427,7 @@ export class BulkStudentService {
   /**
    * Download template for bulk student upload
    */
-  getTemplate(): Buffer {
+  async getTemplate(): Promise<Buffer> {
     const templateData = [
       {
         'Name': 'John Doe',
@@ -467,31 +465,6 @@ export class BulkStudentService {
       },
     ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-
-    // Set column widths
-    worksheet['!cols'] = [
-      { wch: 20 }, // Name
-      { wch: 30 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 20 }, // Enrollment Number
-      { wch: 15 }, // Roll Number
-      { wch: 15 }, // Batch
-      { wch: 20 }, // Branch
-      { wch: 10 }, // Semester
-      { wch: 15 }, // Date of Birth
-      { wch: 10 }, // Gender
-      { wch: 30 }, // Address
-      { wch: 20 }, // Parent Name
-      { wch: 15 }, // Parent Contact
-      { wch: 10 }, // 10th %
-      { wch: 10 }, // 12th %
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
-
-    // Add instructions sheet
     const instructionsData = [
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the student', Example: 'John Doe' },
       { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique)', Example: 'john.doe@example.com' },
@@ -509,17 +482,11 @@ export class BulkStudentService {
       { Field: '10th %', Required: 'No', Description: '10th grade percentage', Example: '85.5' },
       { Field: '12th %', Required: 'No', Description: '12th grade percentage', Example: '88.0' },
     ];
-    const instructionsSheet = XLSX.utils.json_to_sheet(instructionsData);
-    instructionsSheet['!cols'] = [
-      { wch: 20 },
-      { wch: 10 },
-      { wch: 50 },
-      { wch: 30 },
-    ];
-    XLSX.utils.book_append_sheet(workbook, instructionsSheet, 'Instructions');
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    return buffer;
+    return ExcelUtils.createFromJson([
+      { name: 'Students', data: templateData },
+      { name: 'Instructions', data: instructionsData },
+    ]);
   }
 
   /**

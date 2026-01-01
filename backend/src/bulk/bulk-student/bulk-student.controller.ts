@@ -215,7 +215,7 @@ export class BulkStudentController {
     },
   })
   async downloadTemplate(@Res() res: Response) {
-    const template = this.bulkStudentService.getTemplate();
+    const template = await this.bulkStudentService.getTemplate();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=bulk-student-upload-template.xlsx');

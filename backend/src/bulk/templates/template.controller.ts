@@ -120,19 +120,19 @@ export class TemplateController {
 
     switch (type) {
       case 'users':
-        template = this.bulkUserService.getTemplate();
+        template = await this.bulkUserService.getTemplate();
         filename = 'bulk-user-upload-template.xlsx';
         break;
       case 'students':
-        template = this.bulkStudentService.getTemplate();
+        template = await this.bulkStudentService.getTemplate();
         filename = 'bulk-student-upload-template.xlsx';
         break;
       case 'institutions':
-        template = this.bulkInstitutionService.getTemplate();
+        template = await this.bulkInstitutionService.getTemplate();
         filename = 'bulk-institution-upload-template.xlsx';
         break;
       case 'self-internships':
-        template = this.bulkSelfInternshipService.getTemplate();
+        template = await this.bulkSelfInternshipService.getTemplate();
         filename = 'bulk-self-internship-upload-template.xlsx';
         break;
       default:
