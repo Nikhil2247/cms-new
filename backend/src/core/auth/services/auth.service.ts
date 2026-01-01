@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
   Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +11,8 @@ import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { AccountLockoutService } from './account-lockout.service';
+import { MfaService } from './mfa.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
@@ -24,6 +27,8 @@ export class AuthService {
     private prisma: PrismaService,
     private tokenService: TokenService,
     private tokenBlacklistService: TokenBlacklistService,
+    private accountLockoutService: AccountLockoutService,
+    private mfaService: MfaService,
     private auditService: AuditService,
   ) {}
 
@@ -31,6 +36,25 @@ export class AuthService {
    * Validate user credentials
    */
   async validateUser(email: string, password: string, ipAddress?: string, userAgent?: string): Promise<any> {
+    // Check if account is locked before proceeding
+    const lockoutStatus = await this.accountLockoutService.isAccountLockedByEmail(email);
+    if (lockoutStatus.isLocked) {
+      this.logger.warn(`Login attempt on locked account: ${email}`);
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        description: `Login attempt on locked account: ${email}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        ipAddress,
+        userAgent,
+        newValues: { email, reason: 'account_locked', lockedUntil: lockoutStatus.lockedUntil },
+      }).catch(() => {});
+      throw new ForbiddenException(
+        `Account is temporarily locked. Please try again in ${lockoutStatus.minutesRemaining} minutes.`,
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email },
       include: {
@@ -43,6 +67,8 @@ export class AuthService {
         },
       },
     });
+
+    // Note: mfaEnabled field is already included in the user object
 
     if (!user) {
       this.logger.warn(`User not found with email: ${email}`);
@@ -85,6 +111,8 @@ export class AuthService {
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for user: ${email}`);
+      // Record failed attempt for account lockout
+      const newLockoutStatus = await this.accountLockoutService.recordFailedAttempt(user.id);
       // Log failed login attempt - invalid password
       this.auditService.log({
         action: AuditAction.FAILED_LOGIN,
@@ -95,14 +123,31 @@ export class AuthService {
         userRole: user.role,
         description: `Failed login attempt - invalid password: ${email}`,
         category: AuditCategory.SECURITY,
-        severity: AuditSeverity.MEDIUM,
+        severity: newLockoutStatus.isLocked ? AuditSeverity.HIGH : AuditSeverity.MEDIUM,
         institutionId: user.institutionId || undefined,
         ipAddress,
         userAgent,
-        newValues: { email, reason: 'invalid_password' },
+        newValues: {
+          email,
+          reason: 'invalid_password',
+          remainingAttempts: newLockoutStatus.remainingAttempts,
+          accountLocked: newLockoutStatus.isLocked,
+        },
       }).catch(() => {}); // Non-blocking
-      throw new UnauthorizedException('Invalid credentials');
+
+      if (newLockoutStatus.isLocked) {
+        throw new ForbiddenException(
+          `Too many failed attempts. Account is locked for ${newLockoutStatus.minutesRemaining} minutes.`,
+        );
+      }
+
+      throw new UnauthorizedException(
+        `Invalid credentials. ${newLockoutStatus.remainingAttempts} attempts remaining.`,
+      );
     }
+
+    // Reset failed attempts on successful login
+    await this.accountLockoutService.resetFailedAttempts(user.id);
 
     // Update login tracking (non-blocking - don't fail login if this fails)
     this.updateLoginTracking(user.id).catch((err) => {
@@ -216,8 +261,85 @@ export class AuthService {
 
   /**
    * Login user and return tokens
+   * If MFA is enabled, returns mfaRequired: true instead of tokens
    */
   async login(user: any, ipAddress?: string, userAgent?: string) {
+    // Check if user has MFA enabled
+    if (user.mfaEnabled) {
+      this.logger.log(`MFA required for user ${user.email}`);
+      return {
+        mfaRequired: true,
+        userId: user.id,
+        message: 'MFA verification required',
+      };
+    }
+
+    return this.completeLogin(user, ipAddress, userAgent);
+  }
+
+  /**
+   * Complete login after MFA verification
+   */
+  async loginWithMfa(
+    userId: string,
+    mfaCode: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    // Verify MFA code
+    const isValid = await this.mfaService.verifyMfaCode(userId, mfaCode);
+
+    if (!isValid) {
+      this.logger.warn(`Invalid MFA code for user ${userId}`);
+      this.auditService.log({
+        action: AuditAction.FAILED_LOGIN,
+        entityType: 'User',
+        entityId: userId,
+        userId: userId,
+        description: `Failed MFA verification attempt`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        ipAddress,
+        userAgent,
+        newValues: { reason: 'invalid_mfa_code' },
+      }).catch(() => {});
+      throw new UnauthorizedException('Invalid MFA code');
+    }
+
+    // Get full user data
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        Institution: {
+          select: {
+            id: true,
+            name: true,
+            code: true,
+          },
+        },
+      },
+    });
+
+    if (!user || !user.active) {
+      throw new UnauthorizedException('User not found or inactive');
+    }
+
+    // Flatten user data
+    const { password: _, Institution, ...userData } = user;
+    const flattenedUser = {
+      ...userData,
+      institutionName: Institution?.name || null,
+      institutionCode: Institution?.code || null,
+    };
+
+    return this.completeLogin(flattenedUser, ipAddress, userAgent);
+  }
+
+  /**
+   * Complete login - issue tokens and create session
+   * Called after password validation (and MFA if enabled)
+   */
+  private async completeLogin(user: any, ipAddress?: string, userAgent?: string) {
     const payload = {
       sub: user.id,
       email: user.email,
@@ -257,6 +379,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         loginCount: user.loginCount,
+        mfaUsed: user.mfaEnabled || false,
       },
     }).catch(() => {}); // Non-blocking
 
@@ -264,6 +387,7 @@ export class AuthService {
       access_token: accessToken,
       refresh_token: refreshToken,
       user,
+      needsPasswordChange: !user.hasChangedDefaultPassword,
     };
   }
 

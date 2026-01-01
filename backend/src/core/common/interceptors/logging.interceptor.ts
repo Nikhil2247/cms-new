@@ -14,6 +14,7 @@ import { getClientIp, getUserId } from '../utils/request.utils';
  * Logging Interceptor
  * - Logs all HTTP requests and responses
  * - Tracks request duration
+ * - Includes request ID for tracing
  * - Logs user information for authenticated requests
  * - Logs errors with context
  */
@@ -28,10 +29,11 @@ export class LoggingInterceptor implements NestInterceptor {
     const { method, url, headers } = request;
     const userAgent = headers['user-agent'] || 'unknown';
     const clientIp = getClientIp(request);
+    const requestId = (request as any).requestId || 'unknown';
     const startTime = Date.now();
 
     // Log incoming request (user not available yet - JWT guard hasn't run)
-    this.logger.log(`Incoming Request: ${method} ${url} - IP: ${clientIp}`);
+    this.logger.log(`[${requestId}] Incoming: ${method} ${url} - IP: ${clientIp}`);
 
     return next.handle().pipe(
       tap(() => {
@@ -40,11 +42,11 @@ export class LoggingInterceptor implements NestInterceptor {
         const userId = getUserId(request); // Read after guards have run
 
         this.logger.log(
-          `${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId} - Agent: ${this.truncate(userAgent, 50)}`,
+          `[${requestId}] ${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId}`,
         );
 
         if (duration > 1000) {
-          this.logger.warn(`Slow Request Detected: ${method} ${url} took ${duration}ms`);
+          this.logger.warn(`[${requestId}] Slow Request: ${method} ${url} took ${duration}ms`);
         }
       }),
       catchError((error) => {
@@ -53,17 +55,12 @@ export class LoggingInterceptor implements NestInterceptor {
         const userId = getUserId(request);
 
         this.logger.error(
-          `${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId} - Error: ${error.message}`,
+          `[${requestId}] ${method} ${url} ${statusCode} ${duration}ms - IP: ${clientIp} - User: ${userId} - Error: ${error.message}`,
           error.stack,
         );
 
         throw error;
       }),
     );
-  }
-
-  private truncate(str: string, maxLength: number): string {
-    if (!str || str.length <= maxLength) return str;
-    return str.substring(0, maxLength) + '...';
   }
 }

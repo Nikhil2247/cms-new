@@ -4,6 +4,7 @@ import API from "../../../services/api";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import PasswordRequirements, { validatePassword } from "../../../components/common/PasswordRequirements";
 
 const { Text, Title } = Typography;
 
@@ -11,6 +12,7 @@ function ChangePassword() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
+  const [newPassword, setNewPassword] = useState('');
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -80,13 +82,17 @@ function ChangePassword() {
             name="newPassword"
             rules={[
               { required: true, message: "Enter new password" },
-              { min: 6, message: "Min 6 characters" },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue('currentPassword') !== value) {
-                    return Promise.resolve();
+                  if (!value) return Promise.resolve();
+                  if (getFieldValue('currentPassword') === value) {
+                    return Promise.reject(new Error('Must be different from current'));
                   }
-                  return Promise.reject(new Error('Must be different from current'));
+                  const { isValid, errors } = validatePassword(value);
+                  if (!isValid) {
+                    return Promise.reject(new Error(errors[0]));
+                  }
+                  return Promise.resolve();
                 },
               }),
             ]}
@@ -95,8 +101,11 @@ function ChangePassword() {
               placeholder="New password"
               prefix={<LockOutlined className="text-slate-400" />}
               className="rounded-lg h-10"
+              onChange={(e) => setNewPassword(e.target.value)}
             />
           </Form.Item>
+
+          <PasswordRequirements password={newPassword} />
 
           <Form.Item
             name="confirmPassword"

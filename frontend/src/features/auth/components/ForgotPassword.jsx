@@ -32,7 +32,7 @@ const ForgotPassword = () => {
 
   if (emailSent) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+      <div className="flex items-center justify-center min-h-screen  p-4">
         <Card
           bordered={false}
           className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
@@ -64,7 +64,7 @@ const ForgotPassword = () => {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+    <div className="flex items-center justify-center min-h-screen  p-4">
       <Card
         bordered={false}
         className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"

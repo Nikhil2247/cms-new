@@ -81,6 +81,20 @@ model User {
   // Password Management
   hasChangedDefaultPassword Boolean   @default(false)
   passwordChangedAt         DateTime?
+  passwordExpiresAt         DateTime?
+
+  // Password History (prevent reuse)
+  passwordHistory PasswordHistory[] @relation("UserPasswordHistory")
+
+  // Account Lockout (Security)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastFailedLoginAt   DateTime?
+
+  // Optional MFA/2FA (Security)
+  mfaEnabled     Boolean  @default(false)
+  mfaSecret      String?
+  mfaBackupCodes String[] @default([])
 
   // Session Management
   sessions UserSession[] @relation("UserSessions")
@@ -2494,6 +2508,19 @@ model UserSession {
   @@index([invalidatedAt])
   @@index([expiresAt])
   @@map("user_sessions")
+}
+
+// Password History - Prevents password reuse
+model PasswordHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserPasswordHistory", fields: [userId], references: [id], onDelete: Cascade)
+  hash      String   // Bcrypt hash of the password
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@map("password_history")
 }
 
 // =============================================

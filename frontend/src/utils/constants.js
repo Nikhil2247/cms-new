@@ -23,6 +23,14 @@ export const API_ENDPOINTS = {
   LOGOUT: '/auth/logout',
   REFRESH: '/auth/refresh',
   PROFILE: '/auth/profile',
+  CHANGE_PASSWORD: '/auth/change-password',
+
+  // MFA
+  MFA_STATUS: '/auth/mfa/status',
+  MFA_SETUP: '/auth/mfa/setup',
+  MFA_ENABLE: '/auth/mfa/enable',
+  MFA_DISABLE: '/auth/mfa/disable',
+  MFA_VERIFY: '/auth/mfa/verify',
 
   // State
   STATE_DASHBOARD: '/state/dashboard',

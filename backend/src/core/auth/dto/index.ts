@@ -7,3 +7,4 @@ export * from './change-password.dto';
 export * from './student-login.dto';
 export * from './update-profile.dto';
 export * from './admin-reset-password.dto';
+export * from './mfa-login.dto';

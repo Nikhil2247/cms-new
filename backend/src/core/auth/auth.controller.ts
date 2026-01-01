@@ -31,6 +31,7 @@ import {
   UpdateProfileDto,
   AdminResetPasswordDto,
   BulkResetPasswordDto,
+  MfaLoginDto,
 } from './dto';
 
 @Controller('auth')
@@ -84,6 +85,29 @@ export class AuthController {
       userAgent,
     );
     return this.authService.login(user, ipAddress, userAgent);
+  }
+
+  /**
+   * MFA Login verification endpoint
+   * Called after initial login when user has MFA enabled
+   * SECURITY: Rate limited to 5 attempts per minute
+   */
+  @Public()
+  @Post('login/mfa')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  async loginWithMfa(
+    @Body() mfaLoginDto: MfaLoginDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.loginWithMfa(
+      mfaLoginDto.userId,
+      mfaLoginDto.code,
+      ipAddress,
+      userAgent,
+    );
   }
 
   /**

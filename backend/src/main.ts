@@ -6,7 +6,9 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import helmet from 'helmet';
 import { json, urlencoded } from 'express';
 import compression from 'compression';
+import { randomUUID } from 'crypto';
 import { AllExceptionsFilter } from './core/common/filters/all-exceptions.filter';
+import { SanitizePipe } from './core/common/pipes/sanitize.pipe';
 import { validateProductionEnvironment } from './config/env.validation';
 
 // Prefer BACKEND_PORT so generic PORT (often set by other tools) doesn't hijack backend.
@@ -82,12 +84,79 @@ async function bootstrap() {
 
   // ===== SECURITY CONFIGURATION =====
 
-  // Security headers with Helmet (after CORS)
+  // Request ID middleware - adds unique ID to each request for tracing
+  app.use((req: any, res: any, next: any) => {
+    const existingId =
+      req.headers['x-request-id'] ||
+      req.headers['x-correlation-id'] ||
+      req.headers['x-trace-id'];
+    const requestId = existingId || randomUUID();
+    req.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
+    next();
+  });
+  logger.log('Request ID middleware configured');
+
+  // Security middleware - blocks suspicious requests
+  app.use((req: any, res: any, next: any) => {
+    const userAgent = (req.headers['user-agent'] || '').toLowerCase();
+    const blockedAgents = ['sqlmap', 'nikto', 'nmap', 'masscan', 'zgrab', 'gobuster', 'dirbuster'];
+
+    // Block known malicious user agents
+    if (blockedAgents.some((agent) => userAgent.includes(agent))) {
+      logger.warn(`Blocked suspicious user agent: ${userAgent}`);
+      return res.status(403).json({ success: false, statusCode: 403, message: 'Access denied' });
+    }
+
+    // Check for path traversal and injection patterns
+    const url = req.originalUrl || req.url;
+    const suspiciousPatterns = [
+      /\.\.\//, // Path traversal
+      /<script/i, // XSS in URL
+      /union\s+select/i, // SQL injection
+    ];
+
+    if (suspiciousPatterns.some((pattern) => pattern.test(url))) {
+      logger.warn(`Blocked suspicious URL pattern: ${url}`);
+      return res.status(400).json({ success: false, statusCode: 400, message: 'Invalid request' });
+    }
+
+    next();
+  });
+  logger.log('Security middleware configured');
+
+  // Security headers with Helmet (comprehensive configuration)
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === 'production',
+      // Content Security Policy - enabled in production
+      contentSecurityPolicy: process.env.NODE_ENV === 'production' ? {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:', '*'],
+          fontSrc: ["'self'", 'data:'],
+          connectSrc: ["'self'", ...(process.env.ALLOWED_ORIGINS?.split(',') || [])],
+        },
+      } : false,
+      // Cross-Origin settings
       crossOriginEmbedderPolicy: false,
       crossOriginResourcePolicy: { policy: 'cross-origin' },
+      // Additional protections
+      dnsPrefetchControl: { allow: false },
+      frameguard: { action: 'deny' },
+      hidePoweredBy: true,
+      hsts: process.env.NODE_ENV === 'production' ? {
+        maxAge: 31536000,
+        includeSubDomains: true,
+        preload: true,
+      } : false,
+      ieNoOpen: true,
+      noSniff: true,
+      originAgentCluster: true,
+      permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+      xssFilter: true,
     }),
   );
   logger.log('Security headers configured (Helmet)');
@@ -101,6 +170,55 @@ async function bootstrap() {
   app.use(compression());
   logger.log('Response compression enabled');
 
+  // Cookie security settings (for responses that set cookies)
+  app.use((req: any, res: any, next: any) => {
+    // Override cookie method to enforce security settings
+    const originalCookie = res.cookie.bind(res);
+    res.cookie = (name: string, value: string, options: any = {}) => {
+      const secureOptions = {
+        ...options,
+        httpOnly: options.httpOnly !== false, // Default to true
+        secure: process.env.NODE_ENV === 'production' ? true : options.secure,
+        sameSite: options.sameSite || 'strict',
+        maxAge: options.maxAge || 24 * 60 * 60 * 1000, // Default 24 hours
+      };
+      return originalCookie(name, value, secureOptions);
+    };
+    next();
+  });
+  logger.log('Cookie security configured');
+
+  // Origin validation for state-changing requests (CSRF-like protection)
+  // In production, validates Origin header for POST/PUT/PATCH/DELETE requests
+  if (process.env.NODE_ENV === 'production') {
+    app.use((req: any, res: any, next: any) => {
+      const method = req.method.toUpperCase();
+      // Skip safe methods
+      if (['GET', 'HEAD', 'OPTIONS'].includes(method)) {
+        return next();
+      }
+
+      const origin = req.headers['origin'];
+      // Skip if no origin (same-origin requests, API tools)
+      if (!origin) {
+        return next();
+      }
+
+      // Validate origin against allowed origins
+      if (!allowedOrigins.some((allowed: string) => origin === allowed)) {
+        logger.warn(`Blocked request from unauthorized origin: ${origin}`);
+        return res.status(403).json({
+          success: false,
+          statusCode: 403,
+          message: 'Request origin not allowed',
+        });
+      }
+
+      next();
+    });
+    logger.log('Origin validation enabled for state-changing requests');
+  }
+
   // ===== GLOBAL CONFIGURATION =====
 
   // Set global prefix for all routes
@@ -109,9 +227,12 @@ async function bootstrap() {
   });
   logger.log('Global API prefix set to /api');
 
-  // Global validation pipe
+  // Global pipes - SanitizePipe for XSS prevention, ValidationPipe for DTO validation
   logger.log('Setting up global pipes...');
   app.useGlobalPipes(
+    // Sanitize inputs first (XSS prevention)
+    new SanitizePipe(),
+    // Then validate DTOs
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
@@ -122,7 +243,7 @@ async function bootstrap() {
       },
     }),
   );
-  logger.log('Global validation pipes configured');
+  logger.log('Global pipes configured (SanitizePipe + ValidationPipe)');
 
   // Global exception filter
   app.useGlobalFilters(new AllExceptionsFilter());

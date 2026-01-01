@@ -4,6 +4,7 @@ import { LockOutlined, CheckCircleOutlined, CloseCircleOutlined, SafetyOutlined 
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import API from '../../../services/api';
 import { toast } from 'react-hot-toast';
+import PasswordRequirements, { validatePassword } from '../../../components/common/PasswordRequirements';
 
 const { Title, Text } = Typography;
 
@@ -15,6 +16,7 @@ const ResetPassword = () => {
   const [tokenError, setTokenError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const navigate = useNavigate();
 
   const { token: paramToken } = useParams();
@@ -171,15 +173,27 @@ const ResetPassword = () => {
             name="newPassword"
             rules={[
               { required: true, message: 'Enter new password' },
-              { min: 6, message: 'Min 6 characters' },
+              () => ({
+                validator(_, value) {
+                  if (!value) return Promise.resolve();
+                  const { isValid, errors } = validatePassword(value);
+                  if (!isValid) {
+                    return Promise.reject(new Error(errors[0]));
+                  }
+                  return Promise.resolve();
+                },
+              }),
             ]}
           >
             <Input.Password
               placeholder="New password"
               prefix={<LockOutlined className="text-slate-400" />}
               className="rounded-lg h-10"
+              onChange={(e) => setNewPassword(e.target.value)}
             />
           </Form.Item>
+
+          <PasswordRequirements password={newPassword} />
 
           <Form.Item
             name="confirmPassword"

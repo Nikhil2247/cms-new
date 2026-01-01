@@ -37,8 +37,12 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Get error details
     const errorDetails = this.getErrorDetails(exception);
 
+    // Get request ID for tracing
+    const requestId = (request as any).requestId || 'unknown';
+
     // Prepare error context for logging
     const errorContext = {
+      requestId,
       timestamp: new Date().toISOString(),
       path: request.url,
       method: request.method,
@@ -53,7 +57,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     // Log the error with appropriate level
     if (status >= 500) {
       this.logger.error(
-        `Internal Server Error: ${message}`,
+        `[${requestId}] Internal Server Error: ${message}`,
         exception.stack,
         JSON.stringify(errorContext, null, 2),
       );
@@ -61,11 +65,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
       // this.sendToSentry(exception, errorContext);
     } else if (status >= 400) {
       this.logger.warn(
-        `Client Error: ${message}`,
+        `[${requestId}] Client Error: ${message}`,
         JSON.stringify(errorContext, null, 2),
       );
     } else {
-      this.logger.log(`Error: ${message}`, JSON.stringify(errorContext, null, 2));
+      this.logger.log(`[${requestId}] Error: ${message}`, JSON.stringify(errorContext, null, 2));
     }
 
     // Prepare response object
@@ -74,6 +78,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       message,
       errorDetails,
       request.url,
+      requestId,
     );
 
     // Send response
@@ -123,6 +128,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     message: string,
     details: any,
     path: string,
+    requestId: string,
   ): any {
     const isProduction = process.env.NODE_ENV === 'production';
 
@@ -131,6 +137,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       statusCode,
       timestamp: new Date().toISOString(),
       path,
+      requestId, // Include requestId for client-side correlation
       message: isProduction ? this.sanitizeMessage(message, statusCode) : message,
     };
 

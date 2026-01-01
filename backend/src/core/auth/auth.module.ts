@@ -3,9 +3,13 @@ import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
+import { MfaController } from './mfa.controller';
 import { AuthService } from './services/auth.service';
 import { TokenService } from './services/token.service';
 import { TokenBlacklistService } from './services/token-blacklist.service';
+import { AccountLockoutService } from './services/account-lockout.service';
+import { MfaService } from './services/mfa.service';
+import { PasswordPolicyService } from './services/password-policy.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -32,7 +36,7 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, MfaController],
   providers: (() => {
     // Use a generic provider array type to allow conditionally pushing classes
     const baseProviders: Array<any> = [
@@ -41,6 +45,9 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
       AuthService,
       TokenService,
       TokenBlacklistService,
+      AccountLockoutService,
+      MfaService,
+      PasswordPolicyService,
       JwtStrategy,
       JwtAuthGuard,
       OptionalJwtAuthGuard,
@@ -61,6 +68,9 @@ import { AuditModule } from '../../infrastructure/audit/audit.module';
     AuthService,
     TokenService,
     TokenBlacklistService,
+    AccountLockoutService,
+    MfaService,
+    PasswordPolicyService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
     RolesGuard,
