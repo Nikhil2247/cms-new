@@ -31,12 +31,20 @@ const getAllowedOrigins = () => {
   if (process.env.ALLOWED_ORIGINS) {
     return process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
   }
-  // Default origins (include production domains)
+  // Default origins (include all common localhost ports and production domains)
   return [
+    // Common frontend dev ports
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:8000',
+    'http://localhost:8080',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
+    'http://127.0.0.1:3001',
+    'http://127.0.0.1:8000',
+    'http://127.0.0.1:8080',
+    // Production domains
     'https://placeintern.com',
     'https://www.placeintern.com',
     'https://api.placeintern.com',

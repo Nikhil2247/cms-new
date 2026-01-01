@@ -3,8 +3,8 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { Prisma, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
-import * as argon2 from 'argon2';
-import { ARGON2_OPTIONS } from '../../../core/auth/services/auth.service';
+import * as bcrypt from 'bcrypt';
+import { BCRYPT_SALT_ROUNDS } from '../../../core/auth/services/auth.service';
 
 @Injectable()
 export class StatePrincipalService {
@@ -93,7 +93,7 @@ export class StatePrincipalService {
     }
 
     // Hash the password before storing
-    const hashedPassword = await argon2.hash(data.password, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(data.password, BCRYPT_SALT_ROUNDS);
 
     const principal = await this.prisma.user.create({
       data: {
@@ -301,7 +301,7 @@ export class StatePrincipalService {
     this.logger.log(`New password (plain): ${newPassword}`);
 
     // Hash the new password
-    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
     this.logger.log(`New password (hashed): ${hashedPassword}`);
 

@@ -159,7 +159,12 @@
       "Bash(node update-imports.js)",
       "Bash(timeout 15 npm run start:dev)",
       "Bash(npm view:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "WebFetch(domain:pbteched.net)",
+      "WebFetch(domain:www.pbteched.net)",
+      "Bash(docker start:*)",
+      "Bash(docker run:*)",
+      "Bash(docker cp:*)"
     ]
   }
 }

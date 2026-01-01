@@ -108,7 +108,7 @@ model Student {
     id                     String                  @id @default(auto()) @map("_id") @db.ObjectId
     profileImage           String?
     userId                 String                  @unique @db.ObjectId
-    user                   User                    @relation(fields: [userId], references: [id])
+    user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
     rollNumber             String?                 @unique
     branchId               String?                 @db.ObjectId
     branch                 Branch?                 @relation(fields: [branchId], references: [id])
@@ -536,7 +536,7 @@ model ClassAssignment {
     academicYear  String?
     isActive      Boolean      @default(true)
     Batch         Batch        @relation(fields: [batchId], references: [id])
-    teacher       User         @relation(fields: [teacherId], references: [id])
+    teacher       User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
     Institution   Institution? @relation(fields: [institutionId], references: [id])
     institutionId String?      @db.ObjectId
 
@@ -899,11 +899,11 @@ model MentorAssignment {
     studentId String  @db.ObjectId
     student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
     mentorId  String  @db.ObjectId
-    mentor    User    @relation("AssignedMentor", fields: [mentorId], references: [id])
+    mentor    User    @relation("AssignedMentor", fields: [mentorId], references: [id], onDelete: Cascade)
 
     // Assignment tracking
     assignedBy       String   @db.ObjectId
-    assignedByUser   User     @relation("AssignedBy", fields: [assignedBy], references: [id])
+    assignedByUser   User     @relation("AssignedBy", fields: [assignedBy], references: [id], onDelete: Cascade)
     assignmentDate   DateTime @default(now())
     assignmentReason String?
 
@@ -983,7 +983,7 @@ model ComplianceRecord {
 model Industry {
     id     String @id @default(auto()) @map("_id") @db.ObjectId
     userId String @unique @db.ObjectId
-    user   User   @relation(fields: [userId], references: [id])
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     // Company Information
     companyName        String
@@ -1154,7 +1154,7 @@ model InternshipApplication {
 
     // Mentor Assignment
     mentorId         String?   @db.ObjectId
-    mentor           User?     @relation("StudentMentor", fields: [mentorId], references: [id])
+    mentor           User?     @relation("StudentMentor", fields: [mentorId], references: [id], onDelete: Cascade)
     mentorAssignedAt DateTime?
     mentorAssignedBy String?   @db.ObjectId // Principal/Admin who assigned
 
@@ -1368,7 +1368,7 @@ model FacultyVisitLog {
     internship   Internship? @relation(fields: [internshipId], references: [id])
 
     facultyId String @db.ObjectId
-    faculty   User   @relation("FacultyVisits", fields: [facultyId], references: [id])
+    faculty   User   @relation("FacultyVisits", fields: [facultyId], references: [id], onDelete: Cascade)
 
     //location of visit
     visitLocation String?
@@ -1582,7 +1582,7 @@ model IndustryRequest {
 
     // Request context
     requestedBy     String      @db.ObjectId
-    requestedByUser User        @relation("RequestSender", fields: [requestedBy], references: [id])
+    requestedByUser User        @relation("RequestSender", fields: [requestedBy], references: [id], onDelete: Cascade)
     institutionId   String      @db.ObjectId
     institution     Institution @relation(fields: [institutionId], references: [id])
 
@@ -2028,7 +2028,7 @@ model TechnicalQuery {
 
     // Who raised the query
     userId String @db.ObjectId
-    user   User   @relation(fields: [userId], references: [id])
+    user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
     // Core content
     title       String?

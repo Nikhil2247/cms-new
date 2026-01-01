@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Logger,
 } from '@nestjs/common';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../database/prisma.service';
 import { TokenService } from './token.service';
@@ -13,14 +13,8 @@ import { TokenBlacklistService } from './token-blacklist.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
-// SECURITY: Argon2 configuration - using Argon2id variant (recommended for password hashing)
-// Argon2id provides better resistance against side-channel and GPU attacks compared to bcrypt
-export const ARGON2_OPTIONS: argon2.Options = {
-  type: argon2.argon2id,
-  memoryCost: 65536, // 64 MB
-  timeCost: 3,       // 3 iterations
-  parallelism: 4,    // 4 parallel threads
-};
+// SECURITY: Bcrypt salt rounds for password hashing
+export const BCRYPT_SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
@@ -87,7 +81,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const isPasswordValid = await argon2.verify(user.password, password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for user: ${email}`);
@@ -183,7 +177,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is inactive');
     }
 
-    const isPasswordValid = await argon2.verify(user.password, password);
+    const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       this.logger.warn(`Invalid password for student: ${rollNumber}`);
@@ -345,7 +339,7 @@ export class AuthService {
       throw new BadRequestException('User with this email already exists');
     }
 
-    const hashedPassword = await argon2.hash(userData.password, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(userData.password, BCRYPT_SALT_ROUNDS);
 
     const user = await this.prisma.user.create({
       data: {
@@ -487,7 +481,7 @@ export class AuthService {
     }
 
     // Hash new password and update user
-    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -536,7 +530,7 @@ export class AuthService {
     }
 
     // Verify old password
-    const isOldPasswordValid = await argon2.verify(user.password, oldPassword);
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
 
     if (!isOldPasswordValid) {
       // Log failed password change attempt
@@ -559,7 +553,7 @@ export class AuthService {
     }
 
     // Check if new password is same as old
-    const isSamePassword = await argon2.verify(user.password, newPassword);
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
     if (isSamePassword) {
       throw new BadRequestException(
         'New password must be different from current password',
@@ -567,7 +561,7 @@ export class AuthService {
     }
 
     // Hash new password and update
-    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -1020,7 +1014,7 @@ export class AuthService {
     const newPassword = this.generateRandomPassword();
 
     // Hash the new password
-    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
     // Update user with new password
     await this.prisma.user.update({

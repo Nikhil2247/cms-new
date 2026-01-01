@@ -22,8 +22,8 @@ import {
   UserQueryDto,
   BulkUserActionDto,
 } from '../dto/user-management.dto';
-import * as argon2 from 'argon2';
-import { ARGON2_OPTIONS } from '../../../core/auth/services/auth.service';
+import * as bcrypt from 'bcrypt';
+import { BCRYPT_SALT_ROUNDS } from '../../../core/auth/services/auth.service';
 
 @Injectable()
 export class UserManagementService {
@@ -164,7 +164,7 @@ export class UserManagementService {
 
     // Generate random password if not provided
     const password = dto.password || this.generateRandomPassword();
-    const hashedPassword = await argon2.hash(password, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
     const user = await this.prisma.user.create({
       data: {
@@ -388,11 +388,11 @@ export class UserManagementService {
             break;
           case 'resetPassword':
             const newPassword = this.generateRandomPassword();
-            const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+            const hashedPwd = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
             await this.prisma.user.update({
               where: { id: userId },
               data: {
-                password: hashedPassword,
+                password: hashedPwd,
                 hasChangedDefaultPassword: false,
               },
             });
@@ -446,7 +446,7 @@ export class UserManagementService {
     }
 
     const newPassword = this.generateRandomPassword();
-    const hashedPassword = await argon2.hash(newPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
 
     await this.prisma.user.update({
       where: { id: userId },

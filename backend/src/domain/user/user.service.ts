@@ -8,8 +8,8 @@ import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated
 import { PrismaService } from '../../core/database/prisma.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
-import * as argon2 from 'argon2';
-import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
+import * as bcrypt from 'bcrypt';
+import { BCRYPT_SALT_ROUNDS } from '../../core/auth/services/auth.service';
 
 export interface CreateStudentData {
   name: string;
@@ -165,7 +165,7 @@ export class UserService {
     const temporaryPassword =
       options?.password ||
       this.generateTemporaryPassword(data.name, data.admissionNumber || data.rollNumber || data.email);
-    const hashedPassword = await argon2.hash(temporaryPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
 
     // Create user and student in transaction
     const result = await this.prisma.$transaction(async (tx) => {
@@ -272,7 +272,7 @@ export class UserService {
 
     // Generate password
     const temporaryPassword = this.generateSecurePassword();
-    const hashedPassword = await argon2.hash(temporaryPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
 
     const user = await this.prisma.user.create({
       data: {

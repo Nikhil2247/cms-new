@@ -15,9 +15,9 @@ import {
   getExpectedVisitsAsOfToday,
   MONTHLY_CYCLE,
 } from '../../common/utils/monthly-cycle.util';
-import * as argon2 from 'argon2';
+import * as bcrypt from 'bcrypt';
 import { ExcelUtils } from '../../core/common/utils/excel.util';
-import { ARGON2_OPTIONS } from '../../core/auth/services/auth.service';
+import { BCRYPT_SALT_ROUNDS } from '../../core/auth/services/auth.service';
 
 // Static month names array - toLocaleString is unreliable in Node.js
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -1592,7 +1592,7 @@ export class PrincipalService {
 
     // Generate and hash secure temporary password using domain service
     const temporaryPassword = this.userService.generateSecurePassword();
-    const hashedPassword = await argon2.hash(temporaryPassword, ARGON2_OPTIONS);
+    const hashedPassword = await bcrypt.hash(temporaryPassword, BCRYPT_SALT_ROUNDS);
 
     const staff = await this.prisma.user.create({
       data: {
