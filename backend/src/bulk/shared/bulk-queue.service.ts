@@ -183,10 +183,13 @@ export class BulkQueueService {
         },
       );
 
-      // CRITICAL FIX: Update the database record with actual BullMQ job ID
+      // Create a unique job ID combining timestamp and BullMQ job ID to avoid conflicts
+      const uniqueJobId = `${Date.now()}-${queueJob.id}`;
+
+      // Update the database record with unique job ID
       await this.prisma.bulkJob.update({
         where: { id: bulkJob.id },
-        data: { jobId: queueJob.id },
+        data: { jobId: uniqueJobId },
       });
 
       this.logger.log(
@@ -196,7 +199,7 @@ export class BulkQueueService {
       return {
         success: true,
         message: `Bulk ${type.toLowerCase()} upload queued successfully`,
-        jobId: queueJob.id,
+        jobId: uniqueJobId,
         bulkJobId: bulkJob.id,
         status: BulkJobStatus.QUEUED,
       };

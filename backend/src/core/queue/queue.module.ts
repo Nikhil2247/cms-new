@@ -25,18 +25,23 @@ const queueLogger = new Logger('QueueModule');
     BullModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.get<string>('REDIS_PASSWORD'),
+      useFactory: async (configService: ConfigService) => {
+        // Use host/port configuration directly (most compatible with DragonflyDB)
+        const redisHost = configService.get<string>('REDIS_HOST', 'localhost');
+        const redisPort = configService.get<number>('REDIS_PORT', 6379);
+        const redisPassword = configService.get<string>('REDIS_PASSWORD');
+
+        const connection: any = {
+          host: redisHost,
+          port: redisPort,
+          password: redisPassword || undefined,
           // Disable offline queue to prevent memory issues
           enableOfflineQueue: false,
           // Required for BullMQ compatibility
           maxRetriesPerRequest: null,
           // Connection timeouts
-          connectTimeout: 5000,
-          commandTimeout: 3000,
+          connectTimeout: 10000,
+          commandTimeout: 5000,
           // Retry strategy - stop after 10 attempts to prevent infinite retries
           retryStrategy: (times: number) => {
             if (times > 10) {
@@ -44,15 +49,14 @@ const queueLogger = new Logger('QueueModule');
             }
             return Math.min(times * 1000, 30000); // Max 30 seconds
           },
-        },
-        // Simple prefix for DragonflyDB compatibility
-        // DragonflyDB requires --cluster_mode= (empty) or --default_lua_flags=allow-undeclared-keys
-        prefix: 'bull',
-        // Suppress repeated error logs
-        settings: {
-          // BullMQ will use these for worker settings
-        },
-      }),
+        };
+
+        return {
+          connection,
+          // Simple prefix for DragonflyDB compatibility
+          prefix: 'bull',
+        };
+      },
     }),
     // Queue registration with simple names for DragonflyDB compatibility
     BullModule.registerQueue(

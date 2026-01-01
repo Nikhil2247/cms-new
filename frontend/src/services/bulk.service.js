@@ -56,7 +56,7 @@ export const bulkService = {
   },
 
   // Student bulk upload
-  async uploadStudents(file, onProgress, useAsync = true, institutionId = null) {
+  async uploadStudents(file, onProgress, useAsync = false, institutionId = null) {
     const formData = new FormData();
     formData.append('file', file);
     let url = `/bulk/students/upload?async=${useAsync}`;
@@ -87,7 +87,7 @@ export const bulkService = {
   },
 
   // Self-identified internship bulk upload
-  async uploadSelfInternships(file, onProgress, useAsync = true, institutionId = null) {
+  async uploadSelfInternships(file, onProgress, useAsync = false, institutionId = null) {
     const formData = new FormData();
     formData.append('file', file);
     let url = `/bulk/self-internships/upload?async=${useAsync}`;

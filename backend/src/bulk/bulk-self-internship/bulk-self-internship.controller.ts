@@ -130,7 +130,7 @@ export class BulkSelfInternshipController {
       const result = await this.bulkQueueService.queueSelfInternshipUpload(
         internships,
         institutionId,
-        user.sub,
+        user.userId,
         file.originalname,
         file.size,
       );
@@ -145,7 +145,7 @@ export class BulkSelfInternshipController {
     const result = await this.bulkSelfInternshipService.bulkUploadInternships(
       internships,
       institutionId,
-      user.sub,
+      user.userId,
     );
 
     return result;

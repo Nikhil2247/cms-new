@@ -103,7 +103,7 @@ export class BulkInstitutionController {
       // For state-level uploads, use 'SYSTEM' as institutionId
       const result = await this.bulkQueueService.queueInstitutionUpload(
         institutions,
-        user.sub,
+        user.userId,
         file.originalname,
         file.size,
         'SYSTEM',
@@ -116,7 +116,7 @@ export class BulkInstitutionController {
     }
 
     // Process synchronously for smaller files
-    const result = await this.bulkInstitutionService.bulkUploadInstitutions(institutions, user.sub);
+    const result = await this.bulkInstitutionService.bulkUploadInstitutions(institutions, user.userId);
 
     return result;
   }

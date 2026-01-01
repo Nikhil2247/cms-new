@@ -63,7 +63,7 @@ export class BulkJobService {
   }
 
   /**
-   * Mark job as started
+   * Mark job as started (by jobId field)
    */
   async markAsStarted(jobId: string) {
     return this.updateJob(jobId, {
@@ -73,7 +73,21 @@ export class BulkJobService {
   }
 
   /**
-   * Mark job as completed with results
+   * Mark job as started (by database ID)
+   */
+  async markAsStartedById(id: string) {
+    return this.prisma.bulkJob.update({
+      where: { id },
+      data: {
+        status: BulkJobStatus.PROCESSING,
+        startedAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Mark job as completed with results (by jobId field)
    */
   async markAsCompleted(
     jobId: string,
@@ -101,7 +115,39 @@ export class BulkJobService {
   }
 
   /**
-   * Mark job as failed
+   * Mark job as completed with results (by database ID)
+   */
+  async markAsCompletedById(
+    id: string,
+    results: {
+      successCount: number;
+      failedCount: number;
+      successReport?: any;
+      errorReport?: any;
+      warnings?: any;
+      processingTime: number;
+    },
+  ) {
+    return this.prisma.bulkJob.update({
+      where: { id },
+      data: {
+        status: BulkJobStatus.COMPLETED,
+        completedAt: new Date(),
+        processedRows: results.successCount + results.failedCount,
+        successCount: results.successCount,
+        failedCount: results.failedCount,
+        successReport: results.successReport,
+        errorReport: results.errorReport,
+        warnings: results.warnings,
+        processingTime: results.processingTime,
+        progress: 100,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Mark job as failed (by jobId field)
    */
   async markAsFailed(jobId: string, errorMessage: string) {
     const job = await this.prisma.bulkJob.findUnique({
@@ -117,13 +163,48 @@ export class BulkJobService {
   }
 
   /**
-   * Update progress during processing
+   * Mark job as failed (by database ID)
+   */
+  async markAsFailedById(id: string, errorMessage: string) {
+    const job = await this.prisma.bulkJob.findUnique({
+      where: { id },
+    });
+
+    return this.prisma.bulkJob.update({
+      where: { id },
+      data: {
+        status: BulkJobStatus.FAILED,
+        completedAt: new Date(),
+        errorMessage,
+        retryCount: (job?.retryCount || 0) + 1,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  /**
+   * Update progress during processing (by jobId field)
    */
   async updateProgress(jobId: string, processedRows: number, totalRows: number) {
     const progress = Math.round((processedRows / totalRows) * 100);
     return this.updateJob(jobId, {
       processedRows,
       progress,
+    });
+  }
+
+  /**
+   * Update progress during processing (by database ID)
+   */
+  async updateProgressById(id: string, processedRows: number, totalRows: number) {
+    const progress = Math.round((processedRows / totalRows) * 100);
+    return this.prisma.bulkJob.update({
+      where: { id },
+      data: {
+        processedRows,
+        progress,
+        updatedAt: new Date(),
+      },
     });
   }
 
