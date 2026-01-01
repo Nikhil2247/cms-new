@@ -349,7 +349,8 @@ export class UserService {
       where: { institutionId },
       select: { id: true, name: true },
     });
-    return new Map(batches.map((b) => [b.name.toLowerCase(), b.id]));
+    // Normalize batch names: trim whitespace and lowercase
+    return new Map(batches.map((b) => [b.name.trim().toLowerCase(), b.id]));
   }
 
   /**
@@ -359,7 +360,8 @@ export class UserService {
     const branches = await this.prisma.branch.findMany({
       select: { id: true, name: true },
     });
-    return new Map(branches.map((b) => [b.name.toLowerCase(), b.id]));
+    // Normalize branch names: trim whitespace and lowercase
+    return new Map(branches.map((b) => [b.name.trim().toLowerCase(), b.id]));
   }
 
   /**
