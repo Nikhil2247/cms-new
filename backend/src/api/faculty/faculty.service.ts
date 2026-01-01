@@ -1746,9 +1746,31 @@ export class FacultyService {
     const limit = Number(params.limit) || 10;
     const skip = (page - 1) * limit;
 
+    // Get student IDs assigned to this faculty via MentorAssignment
+    const mentorAssignments = await this.prisma.mentorAssignment.findMany({
+      where: {
+        mentorId: facultyId,
+        isActive: true,
+      },
+      select: { studentId: true },
+    });
+    const assignedStudentIds = mentorAssignments.map((a) => a.studentId);
+
+    // Build OR conditions - only include studentId condition if there are assigned students
+    const orConditions: Prisma.InternshipApplicationWhereInput[] = [
+      { mentorId: facultyId },
+    ];
+
+    if (assignedStudentIds.length > 0) {
+      orConditions.push({ studentId: { in: assignedStudentIds } });
+    }
+
+    // Query applications where:
+    // 1. Faculty is directly set as mentorId on the application, OR
+    // 2. Student is assigned to this faculty via MentorAssignment
     const where: Prisma.InternshipApplicationWhereInput = {
-      mentorId: facultyId,
       joiningLetterUrl: { not: null },
+      OR: orConditions,
     };
 
     if (status) {
@@ -1764,10 +1786,14 @@ export class FacultyService {
           id: true,
           joiningLetterUrl: true,
           joiningLetterUploadedAt: true,
+          companyName: true,
+          isSelfIdentified: true,
           status: true,
           reviewedAt: true,
           reviewedBy: true,
           reviewRemarks: true,
+          studentId: true,
+          mentorId: true,
           student: {
             select: {
               id: true,
@@ -1814,8 +1840,18 @@ export class FacultyService {
       throw new NotFoundException('Application not found');
     }
 
-    // Verify faculty is the mentor
-    if (application.mentorId && application.mentorId !== facultyId) {
+    // Check if faculty is authorized via direct mentorId OR MentorAssignment
+    const isDirectMentor = application.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: application.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
       throw new BadRequestException('You are not authorized to verify this joining letter');
     }
 
@@ -1873,8 +1909,18 @@ export class FacultyService {
       throw new NotFoundException('Application not found');
     }
 
-    // Verify faculty is the mentor
-    if (application.mentorId && application.mentorId !== facultyId) {
+    // Check if faculty is authorized via direct mentorId OR MentorAssignment
+    const isDirectMentor = application.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: application.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
       throw new BadRequestException('You are not authorized to reject this joining letter');
     }
 
@@ -1932,8 +1978,18 @@ export class FacultyService {
       throw new NotFoundException('Application not found');
     }
 
-    // Verify faculty is the mentor
-    if (application.mentorId && application.mentorId !== facultyId) {
+    // Check if faculty is authorized via direct mentorId OR MentorAssignment
+    const isDirectMentor = application.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: application.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
       throw new BadRequestException('You are not authorized to delete this joining letter');
     }
 
@@ -2032,8 +2088,18 @@ export class FacultyService {
       throw new NotFoundException('Application not found');
     }
 
-    // Verify faculty is the mentor
-    if (application.mentorId && application.mentorId !== facultyId) {
+    // Check if faculty is authorized via direct mentorId OR MentorAssignment
+    const isDirectMentor = application.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: application.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
       throw new BadRequestException('You are not authorized to upload a joining letter for this application');
     }
 

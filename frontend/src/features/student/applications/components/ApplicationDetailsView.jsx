@@ -133,7 +133,6 @@ const ApplicationDetailsView = ({
           isSelfIdentified={isSelfIdentified}
           internship={internship}
           industry={industry}
-          onApplicationUpdate={onRefresh}
         />
       ),
     },

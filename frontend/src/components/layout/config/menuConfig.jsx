@@ -45,8 +45,8 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      { key: 'state-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'report-builder', label: 'Report Builder', icon: <BarChartOutlined />, path: '/reports/builder' },
+      { key: 'state-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
+      { key: 'report-builder', label: 'Report Builder', icon: <BarChartOutlined />, path: '/app/reports/builder' },
     ],
   },
   STATE_INSTITUTIONS: {
@@ -54,9 +54,9 @@ export const menuConfig = {
     title: 'Institutions',
     icon: <BankOutlined />,
     items: [
-      { key: 'institutions-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/institutions-overview' },
-      { key: 'institutions-list', label: 'All Institutions', icon: <BankOutlined />, path: '/institutions' },
-      { key: 'principals-list', label: 'Principals', icon: <TeamOutlined />, path: '/principals' },
+      { key: 'institutions-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/app/institutions-overview' },
+      { key: 'institutions-list', label: 'All Institutions', icon: <BankOutlined />, path: '/app/institutions' },
+      { key: 'principals-list', label: 'Principals', icon: <TeamOutlined />, path: '/app/principals' },
     ],
   },
   STATE_COMPANIES: {
@@ -64,8 +64,8 @@ export const menuConfig = {
     title: 'Companies',
     icon: <ShopOutlined />,
     items: [
-      { key: 'companies-overview', label: 'Overview', icon: <ShopOutlined />, path: '/companies-overview' },
-      { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/grievances' },
+      { key: 'companies-overview', label: 'Overview', icon: <ShopOutlined />, path: '/app/companies-overview' },
+      { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/app/grievances' },
     ],
   },
   STATE_BULK: {
@@ -73,10 +73,10 @@ export const menuConfig = {
     title: 'Bulk Operations',
     icon: <CloudUploadOutlined />,
     items: [
-      { key: 'bulk-institute-upload', label: 'Institutions', icon: <BankOutlined />, path: '/institutions/bulk-upload' },
-      { key: 'bulk-staff-upload', label: 'Staff/Students', icon: <TeamOutlined />, path: '/bulk-upload' },
-      { key: 'bulk-internship-upload', label: 'Internships', icon: <LaptopOutlined />, path: '/bulk/self-internships' },
-      { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
+      { key: 'bulk-institute-upload', label: 'Institutions', icon: <BankOutlined />, path: '/app/institutions/bulk-upload' },
+      { key: 'bulk-staff-upload', label: 'Staff/Students', icon: <TeamOutlined />, path: '/app/bulk-upload' },
+      { key: 'bulk-internship-upload', label: 'Internships', icon: <LaptopOutlined />, path: '/app/bulk/self-internships' },
+      { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/app/bulk/job-history' },
     ],
   },
   STATE_SYSTEM: {
@@ -84,11 +84,11 @@ export const menuConfig = {
     title: 'System',
     icon: <SettingOutlined />,
     items: [
-      { key: 'master-data', label: 'Master Data', icon: <DatabaseOutlined />, path: '/master-data' },
-      { key: 'state-staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/state-staff' },
-      { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/users/bulk-create' },
-      { key: 'credentials-reset', label: 'Reset Credentials', icon: <LockOutlined />, path: '/users/reset-credentials' },
-      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/audit-logs' },
+      { key: 'master-data', label: 'Master Data', icon: <DatabaseOutlined />, path: '/app/master-data' },
+      { key: 'state-staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/app/state-staff' },
+      { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/app/users/bulk-create' },
+      { key: 'credentials-reset', label: 'Reset Credentials', icon: <LockOutlined />, path: '/app/users/reset-credentials' },
+      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/app/audit-logs' },
     ],
   },
 
@@ -100,8 +100,8 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      // { key: 'principal-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/overview' },
-      { key: 'principal-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
+      // { key: 'principal-overview', label: 'Overview', icon: <GlobalOutlined />, path: '/app/overview' },
+      { key: 'principal-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
     ],
   },
   PRINCIPAL_PEOPLE: {
@@ -109,9 +109,9 @@ export const menuConfig = {
     title: 'People',
     icon: <TeamOutlined />,
     items: [
-      { key: 'students-list', label: 'Students', icon: <TeamOutlined />, path: '/students' },
-      { key: 'staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/staff' },
-      { key: 'mentor-assignment', label: 'Mentor Assignment', icon: <SolutionOutlined />, path: '/mentors' },
+      { key: 'students-list', label: 'Students', icon: <TeamOutlined />, path: '/app/students' },
+      { key: 'staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/app/staff' },
+      { key: 'mentor-assignment', label: 'Mentor Assignment', icon: <SolutionOutlined />, path: '/app/mentors' },
     ],
   },
   PRINCIPAL_INTERNSHIP: {
@@ -119,9 +119,9 @@ export const menuConfig = {
     title: 'Internships',
     icon: <LaptopOutlined />,
     items: [
-      { key: 'all-internships', label: 'All Internships', icon: <LaptopOutlined />, path: '/internships' },
-      { key: 'faculty-progress', label: 'Faculty Progress', icon: <CarOutlined />, path: '/faculty-progress' },
-      { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/grievances' },
+      { key: 'all-internships', label: 'All Internships', icon: <LaptopOutlined />, path: '/app/internships' },
+      { key: 'faculty-progress', label: 'Faculty Progress', icon: <CarOutlined />, path: '/app/faculty-progress' },
+      { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/app/grievances' },
     ],
   },
   PRINCIPAL_OPERATIONS: {
@@ -129,9 +129,9 @@ export const menuConfig = {
     title: 'Operations',
     icon: <CloudUploadOutlined />,
     items: [
-      { key: 'bulk-staff-upload', label: 'Bulk Upload', icon: <UploadOutlined />, path: '/bulk-upload' },
-      { key: 'bulk-internship-upload', label: 'Bulk Internships', icon: <UploadOutlined />, path: '/bulk/self-internships' },
-      // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/bulk/job-history' },
+      { key: 'bulk-staff-upload', label: 'Bulk Upload', icon: <UploadOutlined />, path: '/app/bulk-upload' },
+      { key: 'bulk-internship-upload', label: 'Bulk Internships', icon: <UploadOutlined />, path: '/app/bulk/self-internships' },
+      // { key: 'bulk-job-history', label: 'Job History', icon: <HistoryOutlined />, path: '/app/bulk/job-history' },
     ],
   },
 
@@ -143,8 +143,8 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      { key: 'supervision-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'assigned-students', label: 'My Students', icon: <TeamOutlined />, path: '/assigned-students' },
+      { key: 'supervision-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
+      { key: 'assigned-students', label: 'My Students', icon: <TeamOutlined />, path: '/app/assigned-students' },
     ],
   },
   FACULTY_SUPERVISION: {
@@ -152,10 +152,10 @@ export const menuConfig = {
     title: 'Supervision',
     icon: <SolutionOutlined />,
     items: [
-      { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/visit-logs' },
-      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/monthly-reports' },
-      { key: 'joining-letters', label: 'Joining Letters', icon: <SafetyCertificateOutlined />, path: '/joining-letters' },
-      // { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/approvals' },
+      { key: 'visit-logs', label: 'Visit Logs', icon: <FileDoneOutlined />, path: '/app/visit-logs' },
+      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/app/monthly-reports' },
+      { key: 'joining-letters', label: 'Joining Letters', icon: <SafetyCertificateOutlined />, path: '/app/joining-letters' },
+      // { key: 'pending-approvals', label: 'Pending Approvals', icon: <AuditOutlined />, path: '/app/approvals' },
     ],
   },
   FACULTY_COMMUNICATION: {
@@ -163,7 +163,7 @@ export const menuConfig = {
     title: 'Communication',
     icon: <SendOutlined />,
     items: [
-      { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/faculty-grievances' },
+      { key: 'faculty-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/app/faculty-grievances' },
     ],
   },
 
@@ -175,8 +175,8 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      { key: 'student-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'profile', label: 'My Profile', icon: <IdcardOutlined />, path: '/profile' },
+      { key: 'student-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
+      { key: 'profile', label: 'My Profile', icon: <IdcardOutlined />, path: '/app/profile' },
     ],
   },
   STUDENT_INTERNSHIP: {
@@ -184,9 +184,9 @@ export const menuConfig = {
     title: 'Internship',
     icon: <LaptopOutlined />,
     items: [
-      { key: 'my-applications', label: 'My Internship', icon: <LaptopOutlined />, path: '/my-applications' },
-      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/reports/submit' },
-      { key: 'submit-grievance', label: 'Submit Grievance', icon: <AlertOutlined />, path: '/submit-grievance' },
+      { key: 'my-applications', label: 'My Internship', icon: <LaptopOutlined />, path: '/app/my-applications' },
+      { key: 'monthly-reports', label: 'Monthly Reports', icon: <FileTextOutlined />, path: '/app/reports/submit' },
+      { key: 'submit-grievance', label: 'Submit Grievance', icon: <AlertOutlined />, path: '/app/submit-grievance' },
     ],
   },
 
@@ -198,10 +198,10 @@ export const menuConfig = {
     title: 'Industry Portal',
     icon: <ShopOutlined />,
     items: [
-      { key: 'industry-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/dashboard' },
-      { key: 'postings', label: 'Internship Postings', icon: <PushpinOutlined />, path: '/postings' },
-      { key: 'applications', label: 'Applications', icon: <FileSyncOutlined />, path: '/applications' },
-      { key: 'industry-profile', label: 'Company Profile', icon: <IdcardOutlined />, path: '/company/profile' },
+      { key: 'industry-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
+      { key: 'postings', label: 'Internship Postings', icon: <PushpinOutlined />, path: '/app/postings' },
+      { key: 'applications', label: 'Applications', icon: <FileSyncOutlined />, path: '/app/applications' },
+      { key: 'industry-profile', label: 'Company Profile', icon: <IdcardOutlined />, path: '/app/company/profile' },
     ],
   },
 
@@ -213,9 +213,9 @@ export const menuConfig = {
     title: 'Home',
     icon: <DashboardOutlined />,
     items: [
-      { key: 'system-admin-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/admin/dashboard' },
-      { key: 'system-health', label: 'System Health', icon: <SafetyCertificateOutlined />, path: '/admin/health' },
-      { key: 'analytics', label: 'Analytics', icon: <LineChartOutlined />, path: '/admin/analytics' },
+      { key: 'system-admin-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/admin/dashboard' },
+      { key: 'system-health', label: 'System Health', icon: <SafetyCertificateOutlined />, path: '/app/admin/health' },
+      { key: 'analytics', label: 'Analytics', icon: <LineChartOutlined />, path: '/app/admin/analytics' },
     ],
   },
   SYSTEM_ADMIN_USERS: {
@@ -223,9 +223,9 @@ export const menuConfig = {
     title: 'Users',
     icon: <TeamOutlined />,
     items: [
-      { key: 'all-users', label: 'All Users', icon: <UsergroupAddOutlined />, path: '/admin/users' },
-      { key: 'active-sessions', label: 'Sessions', icon: <LaptopOutlined />, path: '/admin/sessions' },
-      { key: 'security-insights', label: 'Security', icon: <SafetyOutlined />, path: '/admin/security' },
+      { key: 'all-users', label: 'All Users', icon: <UsergroupAddOutlined />, path: '/app/admin/users' },
+      { key: 'active-sessions', label: 'Sessions', icon: <LaptopOutlined />, path: '/app/admin/sessions' },
+      { key: 'security-insights', label: 'Security', icon: <SafetyOutlined />, path: '/app/admin/security' },
     ],
   },
   SYSTEM_ADMIN_DATA: {
@@ -233,9 +233,9 @@ export const menuConfig = {
     title: 'Data & Backups',
     icon: <DatabaseOutlined />,
     items: [
-      { key: 'backup-management', label: 'Backups', icon: <CloudUploadOutlined />, path: '/admin/backups' },
-      { key: 'backup-schedules', label: 'Schedules', icon: <HistoryOutlined />, path: '/admin/backup-schedules' },
-      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/admin/audit-logs' },
+      { key: 'backup-management', label: 'Backups', icon: <CloudUploadOutlined />, path: '/app/admin/backups' },
+      { key: 'backup-schedules', label: 'Schedules', icon: <HistoryOutlined />, path: '/app/admin/backup-schedules' },
+      { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/app/admin/audit-logs' },
     ],
   },
   SYSTEM_ADMIN_CONFIG: {
@@ -243,8 +243,8 @@ export const menuConfig = {
     title: 'Settings',
     icon: <SettingOutlined />,
     items: [
-      { key: 'system-settings', label: 'System Settings', icon: <SettingOutlined />, path: '/admin/settings' },
-      { key: 'feature-flags', label: 'Feature Flags', icon: <SwapOutlined />, path: '/admin/features' },
+      { key: 'system-settings', label: 'System Settings', icon: <SettingOutlined />, path: '/app/admin/settings' },
+      { key: 'feature-flags', label: 'Feature Flags', icon: <SwapOutlined />, path: '/app/admin/features' },
     ],
   },
   SYSTEM_ADMIN_SUPPORT: {
@@ -252,8 +252,8 @@ export const menuConfig = {
     title: 'Support',
     icon: <CustomerServiceOutlined />,
     items: [
-      { key: 'technical-queries', label: 'Queries', icon: <ExclamationCircleOutlined />, path: '/admin/queries' },
-      { key: 'system-alerts', label: 'Alerts', icon: <AlertOutlined />, path: '/admin/alerts' },
+      { key: 'technical-queries', label: 'Queries', icon: <ExclamationCircleOutlined />, path: '/app/admin/queries' },
+      { key: 'system-alerts', label: 'Alerts', icon: <AlertOutlined />, path: '/app/admin/alerts' },
     ],
   },
 
@@ -266,8 +266,8 @@ export const menuConfig = {
     title: 'Help & Support',
     icon: <CustomerServiceOutlined />,
     items: [
-      { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/help' },
-      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/my-queries' },
+      { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/app/help' },
+      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/app/my-queries' },
     ],
   },
 
@@ -279,9 +279,9 @@ export const menuConfig = {
     title: 'Support Management',
     icon: <CustomerServiceOutlined />,
     items: [
-      { key: 'support-dashboard', label: 'Support Dashboard', icon: <DashboardOutlined />, path: '/support-dashboard' },
-      { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/help' },
-      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/my-queries' },
+      { key: 'support-dashboard', label: 'Support Dashboard', icon: <DashboardOutlined />, path: '/app/support-dashboard' },
+      { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/app/help' },
+      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/app/my-queries' },
     ],
   },
 };

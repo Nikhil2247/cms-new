@@ -1,30 +1,11 @@
-// src/components/ResetPassword.jsx
 import React, { useState, useEffect } from 'react';
-import { 
-  Form, 
-  Input, 
-  Button, 
-  Card, 
-  Typography, 
-  Space,
-  Alert,
-  Spin,
-  Result,
-  Progress
-} from 'antd';
-import { 
-  LockOutlined, 
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  SafetyOutlined,
-  EyeInvisibleOutlined,
-  EyeTwoTone
-} from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Result, Spin } from 'antd';
+import { LockOutlined, CheckCircleOutlined, CloseCircleOutlined, SafetyOutlined } from '@ant-design/icons';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import API from '../../../services/api';
 import { toast } from 'react-hot-toast';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const ResetPassword = () => {
   const [form] = Form.useForm();
@@ -34,10 +15,8 @@ const ResetPassword = () => {
   const [tokenError, setTokenError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState('');
-  const [passwordStrength, setPasswordStrength] = useState(0);
   const navigate = useNavigate();
-  
-  // Get token from URL params or query string
+
   const { token: paramToken } = useParams();
   const [searchParams] = useSearchParams();
   const queryToken = searchParams.get('token');
@@ -56,7 +35,6 @@ const ResetPassword = () => {
     setVerifying(true);
     try {
       const response = await API.get(`/auth/verify-reset-token/${token}`);
-      
       if (response.data.valid) {
         setTokenValid(true);
         setUserEmail(response.data.email);
@@ -65,52 +43,11 @@ const ResetPassword = () => {
         setTokenError('Invalid or expired reset token');
       }
     } catch (error) {
-      console.error('Token verification error:', error);
       setTokenValid(false);
-      setTokenError(
-        error.response?.data?.message || 
-        'Invalid or expired reset token'
-      );
+      setTokenError(error.response?.data?.message || 'Invalid or expired reset token');
     } finally {
       setVerifying(false);
     }
-  };
-
-  const calculatePasswordStrength = (password) => {
-    if (!password) return 0;
-    
-    let strength = 0;
-    
-    // Length check
-    if (password.length >= 6) strength += 20;
-    if (password.length >= 8) strength += 20;
-    if (password.length >= 12) strength += 20;
-    
-    // Character variety checks
-    if (/[a-z]/.test(password)) strength += 10;
-    if (/[A-Z]/.test(password)) strength += 10;
-    if (/[0-9]/.test(password)) strength += 10;
-    if (/[^a-zA-Z0-9]/.test(password)) strength += 10;
-    
-    return Math.min(strength, 100);
-  };
-
-  const getStrengthColor = (strength) => {
-    if (strength < 40) return token.colorError;
-    if (strength < 70) return token.colorWarning;
-    return token.colorSuccess;
-  };
-
-  const getStrengthText = (strength) => {
-    if (strength < 40) return 'Weak';
-    if (strength < 70) return 'Medium';
-    return 'Strong';
-  };
-
-  const handlePasswordChange = (e) => {
-    const password = e.target.value;
-    const strength = calculatePasswordStrength(password);
-    setPasswordStrength(strength);
   };
 
   const handleSubmit = async (values) => {
@@ -124,20 +61,10 @@ const ResetPassword = () => {
       if (response.data.success) {
         setResetSuccess(true);
         toast.success('Password reset successfully!');
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          navigate('/login');
-        }, 3000);
+        setTimeout(() => navigate('/login'), 3000);
       }
     } catch (error) {
-      console.error('Reset password error:', error);
-      toast.error(
-        error.response?.data?.message || 
-        'Failed to reset password. Please try again.'
-      );
-      
-      // If token expired, show error
+      toast.error(error.response?.data?.message || 'Failed to reset password');
       if (error.response?.status === 400) {
         setTokenValid(false);
         setTokenError(error.response?.data?.message || 'Token has expired');
@@ -147,18 +74,20 @@ const ResetPassword = () => {
     }
   };
 
-  // Loading state while verifying token
+  // Loading state
   if (verifying) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10">
-        <Card className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border text-center p-8 bg-surface">
-          <Spin size="large" className="mb-6" />
-          <Title level={4} className="text-text-primary mb-2">
-            Verifying reset link...
-          </Title>
-          <Text className="text-text-secondary">
-            Please wait while we verify your reset token
-          </Text>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+        <Card
+          bordered={false}
+          className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+          styles={{ body: { padding: '24px' } }}
+        >
+          <div className="text-center py-4">
+            <Spin size="large" className="mb-4" />
+            <Title level={5} className="!mb-1 !text-slate-800 dark:!text-white">Verifying...</Title>
+            <Text className="text-slate-500 dark:text-slate-400 text-sm">Please wait</Text>
+          </div>
         </Card>
       </div>
     );
@@ -167,36 +96,18 @@ const ResetPassword = () => {
   // Success state
   if (resetSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10 p-4">
-        <Card 
-          className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border overflow-hidden bg-surface"
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+        <Card
+          bordered={false}
+          className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+          styles={{ body: { padding: '24px' } }}
         >
           <Result
-            status="success"
-            icon={<div className="w-16 h-16 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-4"><CheckCircleOutlined className="text-3xl" /></div>}
-            title={
-              <Title level={3} className="!mt-0 text-text-primary">
-                Password Reset Successfully!
-              </Title>
-            }
-            subTitle={
-              <div className="space-y-4">
-                <Paragraph className="text-text-secondary text-center mb-0">
-                  Your password has been changed successfully. You can now log in with your new password.
-                </Paragraph>
-                <Paragraph className="text-text-tertiary text-xs italic mt-4">
-                  Redirecting to login page in 3 seconds...
-                </Paragraph>
-              </div>
-            }
+            icon={<div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center mx-auto"><CheckCircleOutlined className="text-xl" /></div>}
+            title={<Title level={5} className="!mt-3 !mb-1 !text-slate-800 dark:!text-white">Password Reset!</Title>}
+            subTitle={<Text className="text-slate-500 dark:text-slate-400 text-sm">Redirecting to login...</Text>}
             extra={[
-              <Button
-                key="login"
-                type="primary"
-                size="large"
-                onClick={() => navigate('/login')}
-                className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20"
-              >
+              <Button key="login" type="primary" onClick={() => navigate('/login')} className="h-9 rounded-lg font-medium w-full">
                 Go to Login
               </Button>
             ]}
@@ -209,45 +120,21 @@ const ResetPassword = () => {
   // Invalid token state
   if (!tokenValid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10 p-4">
-        <Card 
-          className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border overflow-hidden bg-surface"
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+        <Card
+          bordered={false}
+          className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+          styles={{ body: { padding: '24px' } }}
         >
           <Result
-            status="error"
-            icon={<div className="w-16 h-16 rounded-full bg-error/10 text-error flex items-center justify-center mx-auto mb-4"><CloseCircleOutlined className="text-3xl" /></div>}
-            title={
-              <Title level={3} className="!mt-0 text-text-primary">
-                Invalid Reset Link
-              </Title>
-            }
-            subTitle={
-              <div className="space-y-4 px-4">
-                <Paragraph className="text-text-secondary text-center mb-0">
-                  {tokenError || 'This password reset link is invalid or has expired.'}
-                </Paragraph>
-                <Paragraph className="text-text-tertiary text-xs italic">
-                  Reset links expire after 1 hour for security reasons.
-                </Paragraph>
-              </div>
-            }
+            icon={<div className="w-12 h-12 rounded-xl bg-red-100 dark:bg-red-900/30 text-red-600 flex items-center justify-center mx-auto"><CloseCircleOutlined className="text-xl" /></div>}
+            title={<Title level={5} className="!mt-3 !mb-1 !text-slate-800 dark:!text-white">Invalid Link</Title>}
+            subTitle={<Text className="text-slate-500 dark:text-slate-400 text-sm">{tokenError || 'This link has expired'}</Text>}
             extra={[
-              <Button
-                key="forgot"
-                type="primary"
-                size="large"
-                onClick={() => navigate('/forgot-password')}
-                className="w-full h-12 rounded-xl font-bold shadow-lg shadow-primary/20"
-              >
+              <Button key="forgot" type="primary" onClick={() => navigate('/forgot-password')} className="h-9 rounded-lg font-medium w-full">
                 Request New Link
               </Button>,
-              <Button
-                key="login"
-                type="text"
-                size="large"
-                onClick={() => navigate('/login')}
-                className="mt-2 text-text-secondary hover:text-primary font-medium"
-              >
+              <Button key="login" type="text" size="small" onClick={() => navigate('/login')} className="mt-2 text-slate-500 text-xs">
                 Back to Login
               </Button>
             ]}
@@ -259,103 +146,46 @@ const ResetPassword = () => {
 
   // Reset password form
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10 p-4">
-      <Card 
-        className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border bg-surface"
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+      <Card
+        bordered={false}
+        className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+        styles={{ body: { padding: '24px' } }}
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-success-50 text-success flex items-center justify-center shadow-md">
-              <SafetyOutlined className="text-3xl" />
-            </div>
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 text-white text-xl mb-3 shadow-lg shadow-green-500/25">
+            <SafetyOutlined />
           </div>
-          <Title level={2} className="!mb-1 text-text-primary">
+          <Title level={4} className="!mb-1 !text-slate-800 dark:!text-white !font-semibold">
             Reset Password
           </Title>
-          <Text className="text-text-secondary text-base">
-            Enter your new password below
+          <Text className="text-slate-500 dark:text-slate-400 text-sm">
+            {userEmail ? `For ${userEmail}` : 'Create a new password'}
           </Text>
-          {userEmail && (
-            <div className="mt-3 py-1 px-3 bg-background-tertiary rounded-lg inline-block border border-border/50">
-              <Text className="text-xs text-text-secondary uppercase tracking-wider">
-                For: <Text strong className="text-text-primary">{userEmail}</Text>
-              </Text>
-            </div>
-          )}
         </div>
 
-        {/* Alert */}
-        <Alert
-          title={<span className="font-semibold">Security Tip</span>}
-          description="Use at least 8 characters with a mix of uppercase, lowercase, numbers, and symbols."
-          type="info"
-          showIcon
-          className="mb-8 rounded-xl border-primary/20 bg-primary-50/50"
-        />
-
         {/* Form */}
-        <Form
-          form={form}
-          name="reset-password"
-          onFinish={handleSubmit}
-          layout="vertical"
-          size="large"
-          className="mt-2"
-        >
+        <Form form={form} onFinish={handleSubmit} layout="vertical" size="middle" requiredMark={false}>
           <Form.Item
             name="newPassword"
-            label={<Text className="text-text-primary font-medium">New Password</Text>}
             rules={[
-              {
-                required: true,
-                message: 'Please enter your new password',
-              },
-              {
-                min: 6,
-                message: 'Password must be at least 6 characters',
-              },
+              { required: true, message: 'Enter new password' },
+              { min: 6, message: 'Min 6 characters' },
             ]}
-            hasFeedback
           >
             <Input.Password
-              prefix={<LockOutlined className="text-text-tertiary mr-2" />}
-              placeholder="Enter new password"
-              className="rounded-lg h-12"
-              onChange={handlePasswordChange}
-              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+              placeholder="New password"
+              prefix={<LockOutlined className="text-slate-400" />}
+              className="rounded-lg h-10"
             />
           </Form.Item>
 
-          {/* Password Strength Indicator */}
-          {passwordStrength > 0 && (
-            <div className="mb-6 px-1">
-              <div className="flex justify-between mb-1.5">
-                <Text className="text-[10px] uppercase font-bold text-text-tertiary">Strength</Text>
-                <Text className="text-[10px] uppercase font-bold" style={{ color: getStrengthColor(passwordStrength) }}>
-                  {getStrengthText(passwordStrength)}
-                </Text>
-              </div>
-              <Progress
-                percent={passwordStrength}
-                strokeColor={getStrengthColor(passwordStrength)}
-                showInfo={false}
-                size={4}
-                className="mb-0"
-              />
-            </div>
-          )}
-
           <Form.Item
             name="confirmPassword"
-            label={<Text className="text-text-primary font-medium">Confirm New Password</Text>}
             dependencies={['newPassword']}
-            hasFeedback
             rules={[
-              {
-                required: true,
-                message: 'Please confirm your new password',
-              },
+              { required: true, message: 'Confirm password' },
               ({ getFieldValue }) => ({
                 validator(_, value) {
                   if (!value || getFieldValue('newPassword') === value) {
@@ -367,50 +197,28 @@ const ResetPassword = () => {
             ]}
           >
             <Input.Password
-              prefix={<LockOutlined className="text-text-tertiary mr-2" />}
               placeholder="Confirm new password"
-              className="rounded-lg h-12"
-              iconRender={(visible) => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
+              prefix={<LockOutlined className="text-slate-400" />}
+              className="rounded-lg h-10"
             />
           </Form.Item>
 
-          <Form.Item className="mb-4">
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              loading={loading}
-              className="h-12 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
-            >
-              {loading ? 'Resetting Password...' : 'Reset Password'}
-            </Button>
-          </Form.Item>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={loading}
+            className="h-10 rounded-lg font-semibold shadow-md shadow-blue-500/20"
+          >
+            {loading ? 'Resetting...' : 'Reset Password'}
+          </Button>
         </Form>
 
-        {/* Security Tips */}
-        <div className="mt-8 p-5 bg-warning-50/50 rounded-2xl border border-warning-border/30">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 rounded-lg bg-warning/10 text-warning flex items-center justify-center">
-              <SafetyOutlined className="text-xs" />
-            </div>
-            <Text strong className="text-xs uppercase tracking-widest text-warning-800">
-              Security Best Practices
-            </Text>
-          </div>
-          <ul className="text-xs text-text-secondary space-y-2 list-none p-0 m-0">
-            <li className="flex items-start gap-2">
-              <span className="text-success mt-0.5">✓</span>
-              <span>Use a unique password you don't use elsewhere</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-success mt-0.5">✓</span>
-              <span>Include uppercase, lowercase, numbers & symbols</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-success mt-0.5">✓</span>
-              <span>Avoid common words or personal information</span>
-            </li>
-          </ul>
+        {/* Footer */}
+        <div className="text-center mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+          <Button type="text" size="small" onClick={() => navigate('/login')} className="text-slate-500 text-xs">
+            Back to Login
+          </Button>
         </div>
       </Card>
     </div>

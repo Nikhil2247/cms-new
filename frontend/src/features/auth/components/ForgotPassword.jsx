@@ -1,25 +1,11 @@
-// src/components/ForgotPassword.jsx
 import React, { useState } from 'react';
-import { 
-  Form, 
-  Input, 
-  Button, 
-  Card, 
-  Typography, 
-  message, 
-  Space,
-  Result 
-} from 'antd';
-import { 
-  MailOutlined, 
-  ArrowLeftOutlined,
-  CheckCircleOutlined 
-} from '@ant-design/icons';
+import { Form, Input, Button, Card, Typography, Result } from 'antd';
+import { MailOutlined, ArrowLeftOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import API from '../../../services/api';
 import { toast } from 'react-hot-toast';
 
-const { Title, Text, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
 const ForgotPassword = () => {
   const [form] = Form.useForm();
@@ -31,81 +17,44 @@ const ForgotPassword = () => {
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      const response = await API.post('/auth/forgot-password', {
-        email: values.email,
-      });
-
+      const response = await API.post('/auth/forgot-password', { email: values.email });
       if (response.data.success) {
         setSubmittedEmail(values.email);
         setEmailSent(true);
-        toast.success('Password reset link sent to your email!');
+        toast.success('Reset link sent!');
       }
     } catch (error) {
-      console.error('Forgot password error:', error);
-      toast.error(
-        error.response?.data?.message || 
-        'Failed to send reset email. Please try again.'
-      );
+      toast.error(error.response?.data?.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleBackToLogin = () => {
-    navigate('/login');
-  };
-
   if (emailSent) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background p-4">
-        <Card 
-          className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border overflow-hidden"
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+        <Card
+          bordered={false}
+          className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+          styles={{ body: { padding: '24px' } }}
         >
           <Result
-            status="success"
-            icon={<div className="w-16 h-16 rounded-full bg-success/10 text-success flex items-center justify-center mx-auto mb-4"><CheckCircleOutlined className="text-3xl" /></div>}
-            title={
-              <Title level={3} className="!mt-0 text-text-primary">
-                Check Your Email
-              </Title>
-            }
+            icon={<div className="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-600 flex items-center justify-center mx-auto"><CheckCircleOutlined className="text-xl" /></div>}
+            title={<Title level={5} className="!mt-3 !mb-1 !text-slate-800 dark:!text-white">Check Your Email</Title>}
             subTitle={
-              <div className="space-y-4">
-                <Paragraph className="text-text-secondary text-center mb-0">
-                  We've sent a password reset link to:
-                </Paragraph>
-                <div className="py-2 px-4 bg-primary-50 rounded-xl inline-block border border-primary-100">
-                  <Text strong className="text-lg text-primary">
-                    {submittedEmail}
-                  </Text>
-                </div>
-                <Paragraph className="text-text-tertiary text-sm mt-4">
-                  Please check your inbox and click the link to reset your password.
-                  The link will expire in 1 hour.
-                </Paragraph>
-                <Paragraph className="text-text-tertiary text-xs italic">
-                  Don't see the email? Check your spam folder.
-                </Paragraph>
+              <div className="space-y-2">
+                <Text className="text-slate-500 dark:text-slate-400 text-sm block">
+                  We sent a reset link to
+                </Text>
+                <Text strong className="text-blue-600 text-sm">{submittedEmail}</Text>
               </div>
             }
             extra={[
-              <Button
-                key="back"
-                type="primary"
-                size="large"
-                onClick={handleBackToLogin}
-                className="w-full h-12 rounded-xl font-semibold shadow-lg shadow-primary/20"
-              >
+              <Button key="back" type="primary" onClick={() => navigate('/login')} className="h-9 rounded-lg font-medium w-full">
                 Back to Login
               </Button>,
-              <Button
-                key="resend"
-                type="text"
-                size="large"
-                onClick={() => setEmailSent(false)}
-                className="mt-2 text-text-secondary hover:text-primary font-medium"
-              >
-                Try Different Email
+              <Button key="retry" type="text" size="small" onClick={() => setEmailSent(false)} className="mt-2 text-slate-500 text-xs">
+                Try different email
               </Button>
             ]}
           />
@@ -115,87 +64,49 @@ const ForgotPassword = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10 p-4">
-      <Card 
-        className="w-full max-w-md shadow-soft-lg rounded-2xl border border-border bg-surface"
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+      <Card
+        bordered={false}
+        className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+        styles={{ body: { padding: '24px' } }}
       >
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary-50 text-primary flex items-center justify-center shadow-md">
-              <MailOutlined className="text-3xl" />
-            </div>
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xl mb-3 shadow-lg shadow-blue-500/25">
+            <MailOutlined />
           </div>
-          <Title level={2} className="!mb-1 text-text-primary">
+          <Title level={4} className="!mb-1 !text-slate-800 dark:!text-white !font-semibold">
             Forgot Password?
           </Title>
-          <Text className="text-text-secondary text-base">
-            No worries, we'll send you reset instructions
+          <Text className="text-slate-500 dark:text-slate-400 text-sm">
+            Enter your email for reset instructions
           </Text>
         </div>
 
         {/* Form */}
-        <Form
-          form={form}
-          name="forgot-password"
-          onFinish={handleSubmit}
-          layout="vertical"
-          size="large"
-          className="mt-2"
-        >
+        <Form form={form} onFinish={handleSubmit} layout="vertical" size="middle" requiredMark={false}>
           <Form.Item
             name="email"
-            label={<Text className="text-text-primary font-medium">Email Address</Text>}
             rules={[
-              {
-                required: true,
-                message: 'Please enter your email address',
-              },
-              {
-                type: 'email',
-                message: 'Please enter a valid email address',
-              },
+              { required: true, message: 'Enter email' },
+              { type: 'email', message: 'Invalid email' },
             ]}
           >
             <Input
-              prefix={<MailOutlined className="text-text-tertiary mr-2" />}
-              placeholder="Enter your email"
-              className="rounded-lg h-12"
+              prefix={<MailOutlined className="text-slate-400" />}
+              placeholder="Email address"
+              className="rounded-lg h-10"
             />
           </Form.Item>
 
-          <Form.Item className="mb-4">
-            <Button
-              type="primary"
-              htmlType="submit"
-              block
-              loading={loading}
-              className="h-12 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
-            >
-              {loading ? 'Sending...' : 'Send Reset Link'}
-            </Button>
-          </Form.Item>
-        </Form>
+          <Button type="primary" htmlType="submit" block loading={loading} className="h-10 rounded-lg font-semibold shadow-md shadow-blue-500/20 mb-3">
+            {loading ? 'Sending...' : 'Send Reset Link'}
+          </Button>
 
-        {/* Back to Login */}
-        <div className="text-center">
-          <Button
-            type="link"
-            icon={<ArrowLeftOutlined />}
-            onClick={handleBackToLogin}
-            className="text-text-secondary hover:text-primary font-medium transition-all"
-          >
+          <Button type="text" icon={<ArrowLeftOutlined />} onClick={() => navigate('/login')} className="w-full text-slate-500 hover:text-blue-600 text-sm">
             Back to Login
           </Button>
-        </div>
-
-        {/* Info Box */}
-        <div className="mt-8 p-4 bg-background-tertiary rounded-xl border border-border/50">
-          <Text className="text-xs text-text-secondary leading-relaxed">
-            <Text strong className="text-text-primary">Note:</Text> If you don't receive an email within 5 minutes, 
-            please check your spam folder or try again.
-          </Text>
-        </div>
+        </Form>
       </Card>
     </div>
   );

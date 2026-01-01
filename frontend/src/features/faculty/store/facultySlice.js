@@ -450,7 +450,7 @@ export const fetchJoiningLetters = createAsyncThunk(
 
       const normalizedParams = {
         page: params?.page ?? 1,
-        limit: params?.limit ?? 10,
+        limit: params?.limit ?? 100,
         status: params?.status ?? '',
       };
       const requestKey = JSON.stringify(normalizedParams);

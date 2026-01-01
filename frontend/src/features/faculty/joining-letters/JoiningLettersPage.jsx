@@ -51,6 +51,7 @@ import {
   rollbackJoiningLetterOperation,
 } from '../store/facultySlice';
 import { generateTxnId, snapshotManager, optimisticToast } from '../../../store/optimisticMiddleware';
+import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -207,9 +208,9 @@ const JoiningLettersPage = () => {
     });
   };
 
-  const handleView = (letter) => {
+  const handleView = async (letter) => {
     if (letter.joiningLetterUrl) {
-      window.open(letter.joiningLetterUrl, '_blank');
+      await openFileWithPresignedUrl(letter.joiningLetterUrl);
     } else {
       message.info('No document available');
     }

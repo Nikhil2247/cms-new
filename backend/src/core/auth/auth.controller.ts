@@ -27,6 +27,7 @@ import {
   ResetPasswordDto,
   ChangePasswordDto,
   StudentLoginDto,
+  UpdateProfileDto,
 } from './dto';
 
 @Controller('auth')
@@ -180,6 +181,27 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async getCurrentUser(@CurrentUser() user: any) {
     return this.authService.getUserProfile(user.userId);
+  }
+
+  /**
+   * Update current user profile
+   */
+  @Post('profile')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async updateProfile(
+    @CurrentUser() user: any,
+    @Body() updateProfileDto: UpdateProfileDto,
+    @Req() req: Request,
+  ) {
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string;
+    const userAgent = req.headers['user-agent'];
+    return this.authService.updateUserProfile(
+      user.userId,
+      updateProfileDto,
+      ipAddress,
+      userAgent,
+    );
   }
 
   /**

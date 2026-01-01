@@ -215,10 +215,10 @@ const StudentReportSubmit = () => {
         });
         fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.url;
       } catch (uploadErr) {
-        // Fallback to generic upload
+        // Fallback to shared documents upload
         const genericFormData = new FormData();
         genericFormData.append('file', file);
-        const genericUpload = await API.post('/uploads', genericFormData, {
+        const genericUpload = await API.post('/shared/documents/upload', genericFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         fileUrl = genericUpload.data?.url || genericUpload.data?.path;

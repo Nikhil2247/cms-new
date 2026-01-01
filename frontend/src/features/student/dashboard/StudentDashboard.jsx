@@ -599,7 +599,7 @@ const StudentDashboard = () => {
                 <div className="md:block hidden space-x-2">
                   <Button
                     icon={<LaptopOutlined />}
-                    onClick={() => navigate('/applications')}
+                    onClick={() => navigate('/my-applications')}
                     className="rounded-lg"
                   >
                     My Applications
@@ -854,14 +854,14 @@ const StudentDashboard = () => {
               Close
             </Button>,
             <Button
-              key="update"
+              key="view"
               type="primary"
               onClick={() => {
                 setPendingFieldsModalVisible(false);
-                navigate('/applications');
+                navigate('/my-applications');
               }}
             >
-              Update Details
+              View Details
             </Button>
           ]}
           width={400}

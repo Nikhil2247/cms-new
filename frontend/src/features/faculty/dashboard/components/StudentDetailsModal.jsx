@@ -44,7 +44,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
-import { getImageUrl } from '../../../../utils/imageUtils';
+import { getImageUrl, openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
 import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
 
@@ -316,9 +316,9 @@ const StudentDetailsModal = ({
   };
 
   // View document
-  const handleViewDocument = (url) => {
+  const handleViewDocument = async (url) => {
     if (url) {
-      window.open(url, '_blank');
+      await openFileWithPresignedUrl(url);
     } else {
       message.info('Document not available');
     }

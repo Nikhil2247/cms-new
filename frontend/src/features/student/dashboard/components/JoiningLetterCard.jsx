@@ -10,7 +10,7 @@ import {
   LoadingOutlined,
   CloudUploadOutlined,
 } from '@ant-design/icons';
-import { getFileUrl } from '../../../../utils/imageUtils';
+import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import studentService from '../../../../services/student.service';
 
 const { Text } = Typography;
@@ -93,10 +93,9 @@ const JoiningLetterCard = ({
   };
 
   // Handle view
-  const handleView = () => {
+  const handleView = async () => {
     if (joiningLetterUrl) {
-      const url = getFileUrl(joiningLetterUrl);
-      window.open(url, '_blank');
+      await openFileWithPresignedUrl(joiningLetterUrl);
     }
   };
 

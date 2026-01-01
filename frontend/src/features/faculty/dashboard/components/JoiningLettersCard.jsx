@@ -14,6 +14,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
+import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 
 const { TextArea } = Input;
 
@@ -101,9 +102,9 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
     });
   };
 
-  const handleView = (letter) => {
+  const handleView = async (letter) => {
     if (letter.joiningLetterUrl) {
-      window.open(letter.joiningLetterUrl, '_blank');
+      await openFileWithPresignedUrl(letter.joiningLetterUrl);
     } else {
       message.info('No document available');
     }

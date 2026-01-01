@@ -2,320 +2,424 @@ import React, { useState, useEffect } from 'react';
 import {
   Modal,
   Avatar,
-  Typography,
-  Descriptions,
+  Form,
+  Input,
   Button,
-  Divider,
   Tag,
-  Space,
-  Tooltip,
   Spin,
+  message,
+  Divider,
 } from 'antd';
 import {
   UserOutlined,
   MailOutlined,
   PhoneOutlined,
   IdcardOutlined,
-  CalendarOutlined,
-  BankOutlined,
   SafetyOutlined,
-  ClockCircleOutlined,
   EditOutlined,
-  BookOutlined,
+  BankOutlined,
+  CalendarOutlined,
+  CheckCircleOutlined,
+  CloseCircleOutlined,
 } from '@ant-design/icons';
 import { useTheme } from '../contexts/ThemeContext';
-
-const { Title, Text } = Typography;
+import API from '../services/api';
 
 const UserProfile = ({ visible, onClose }) => {
-  const [user, setUser] = useState(null);
+  const [form] = Form.useForm();
+  const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [fetchingProfile, setFetchingProfile] = useState(false);
   const { darkMode } = useTheme();
 
+  const fetchUserProfile = async () => {
+    setFetchingProfile(true);
+    try {
+      const response = await API.get('/auth/me');
+      const data = response.data;
+      setUserData(data);
+      form.setFieldsValue({
+        name: data.name,
+        email: data.email,
+        phoneNo: data.phoneNo || '',
+        designation: data.designation || '',
+        branchName: data.branchName || '',
+      });
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      message.error(error.response?.data?.message || 'Failed to load profile');
+    } finally {
+      setFetchingProfile(false);
+    }
+  };
+
   useEffect(() => {
-    if (!visible) return;
-
-    setLoading(true);
-
-    // Use loginResponse data directly - it already has all user info from login
-    const loginData = localStorage.getItem('loginResponse');
-    if (loginData) {
-      try {
-        const parsed = JSON.parse(loginData);
-        if (parsed?.user) {
-          setUser(parsed.user);
-          setLoading(false);
-          return;
-        }
-      } catch (error) {
-      }
+    if (visible) {
+      fetchUserProfile();
+    } else {
+      setEditing(false);
+      setUserData(null);
     }
-
-    // Fallback: try to decode JWT token if loginResponse not available
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        setUser({
-          email: payload.email,
-          role: payload.role || payload.roles?.[0],
-          id: payload.sub || payload.userId,
-        });
-      } catch (error) {
-      }
-    }
-
-    setLoading(false);
   }, [visible]);
 
+  const handleUpdate = async (values) => {
+    setLoading(true);
+    try {
+      const response = await API.post('/auth/profile', values);
+      if (response.data.success) {
+        message.success('Profile updated successfully');
+        setUserData(response.data.data);
+        setEditing(false);
+
+        if (values.name !== userData.name || values.email !== userData.email) {
+          const loginResponse = localStorage.getItem('loginResponse');
+          if (loginResponse) {
+            const parsedResponse = JSON.parse(loginResponse);
+            if (parsedResponse.user) {
+              parsedResponse.user.name = response.data.data.name;
+              parsedResponse.user.email = response.data.data.email;
+              localStorage.setItem('loginResponse', JSON.stringify(parsedResponse));
+            }
+          }
+          window.dispatchEvent(new Event('userProfileUpdated'));
+        }
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      message.error(error.response?.data?.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (editing) {
+      form.setFieldsValue({
+        name: userData.name,
+        email: userData.email,
+        phoneNo: userData.phoneNo || '',
+        designation: userData.designation || '',
+        branchName: userData.branchName || '',
+      });
+      setEditing(false);
+    } else {
+      onClose();
+    }
+  };
+
   const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
 
-  const getRoleColor = (role) => {
-    const colors = {
-      PRINCIPAL: 'purple',
-      STUDENT: 'blue',
-      TEACHER: 'green',
-      FACULTY_SUPERVISOR: 'green',
-      INDUSTRY: 'orange',
-      STATE_DIRECTORATE: 'red',
-      SYSTEM_ADMIN: 'magenta',
-      ACCOUNTANT: 'gold',
-      ADMISSION_OFFICER: 'cyan',
+  const getRoleConfig = (role) => {
+    const config = {
+      PRINCIPAL: { color: '#722ed1', bg: '#f9f0ff', label: 'Principal' },
+      STUDENT: { color: '#1890ff', bg: '#e6f7ff', label: 'Student' },
+      TEACHER: { color: '#52c41a', bg: '#f6ffed', label: 'Teacher' },
+      FACULTY_SUPERVISOR: { color: '#13c2c2', bg: '#e6fffb', label: 'Faculty Supervisor' },
+      INDUSTRY: { color: '#fa8c16', bg: '#fff7e6', label: 'Industry' },
+      STATE_DIRECTORATE: { color: '#f5222d', bg: '#fff1f0', label: 'State Directorate' },
+      SYSTEM_ADMIN: { color: '#eb2f96', bg: '#fff0f6', label: 'System Admin' },
+      ACCOUNTANT: { color: '#faad14', bg: '#fffbe6', label: 'Accountant' },
+      ADMISSION_OFFICER: { color: '#13c2c2', bg: '#e6fffb', label: 'Admission Officer' },
     };
-    return colors[role] || 'default';
+    return config[role] || { color: '#8c8c8c', bg: '#fafafa', label: role?.replace(/_/g, ' ') || 'User' };
   };
+
+  const roleConfig = userData ? getRoleConfig(userData.role) : {};
 
   return (
     <Modal
-      title={
-        <div className="flex items-center gap-3">
-          <Avatar
-            size={40}
-            icon={<UserOutlined />}
-            className="bg-primary/10 text-primary"
-          />
-          <div>
-            <Title level={5} className="!m-0">
-              User Profile
-            </Title>
-            <Text type="secondary" className="text-sm">
-              Your account information
-            </Text>
-          </div>
-        </div>
-      }
       open={visible}
-      onCancel={onClose}
-      footer={
-        <div className="flex justify-between items-center">
-          <Text type="secondary" className="text-xs">
-            <ClockCircleOutlined className="mr-1" />
-            Last login: {user?.previousLoginAt ? formatDate(user.previousLoginAt) : user?.lastLoginAt ? formatDate(user.lastLoginAt) : 'Just now'}
-          </Text>
-          <Button onClick={onClose} className="rounded-lg">Close</Button>
-        </div>
-      }
-      width={520}
+      onCancel={handleCancel}
+      footer={null}
+      width={720}
       centered
-      className="rounded-xl overflow-hidden"
+      destroyOnClose
+      closable={!editing}
+      maskClosable={!editing}
+      className="profile-modal"
+      styles={{
+        content: { padding: 0, overflow: 'hidden', borderRadius: 16 },
+        body: { padding: 0 },
+      }}
     >
-      {loading ? (
-        <div className="py-12 text-center">
-          <Spin size="default" />
-          <Text type="secondary" className="block mt-4">Loading profile...</Text>
+      {fetchingProfile ? (
+        <div className="flex flex-col justify-center items-center py-16">
+          <Spin size="large" />
+          <span className="mt-4 text-gray-500">Loading profile...</span>
         </div>
-      ) : user ? (
-        <div className="py-4">
-          {/* Profile Header */}
+      ) : userData ? (
+        <div>
+          {/* Header Banner */}
           <div
-            className="flex items-center gap-4 p-4 rounded-xl mb-6 bg-background-tertiary/50 border border-border/50"
+            className="relative h-24"
+            style={{
+              background: `linear-gradient(135deg, ${roleConfig.color}20 0%, ${roleConfig.color}40 100%)`,
+            }}
           >
-            <Avatar
-              size={72}
-              icon={<UserOutlined />}
-              src={user.profileImage || user.avatar}
-              className="border-2 border-background shadow-sm"
-            />
-            <div className="flex-1">
-              <Title level={4} className="!m-0">
-                {user.name || user.email?.split('@')[0] || 'User'}
-              </Title>
-              <Text type="secondary">{user.email}</Text>
-              <div className="mt-2">
-                <Tag color={getRoleColor(user.role)} icon={<SafetyOutlined />} className="rounded-full px-3">
-                  {user.role?.replace(/_/g, ' ') || 'Guest'}
-                </Tag>
+            {/* Edit/Close Button */}
+            <div className="absolute top-3 right-3 flex gap-2">
+              {editing ? (
+                <>
+                  <Button
+                    size="small"
+                    onClick={handleCancel}
+                    className="bg-white/80 hover:bg-white border-0 shadow-sm"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="small"
+                    type="primary"
+                    loading={loading}
+                    onClick={() => form.submit()}
+                    icon={<CheckCircleOutlined />}
+                  >
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  size="small"
+                  onClick={() => setEditing(true)}
+                  icon={<EditOutlined />}
+                  className="bg-white/80 hover:bg-white border-0 shadow-sm"
+                >
+                  Edit Profile
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Avatar & Name Section */}
+          <div className="px-6 -mt-12 mb-4">
+            <div className="flex items-end gap-4">
+              <Avatar
+                size={80}
+                icon={<UserOutlined />}
+                src={userData.profileImage || userData.avatar}
+                className="border-4 border-white shadow-lg"
+                style={{ backgroundColor: roleConfig.color }}
+              />
+              <div className="pb-2">
+                <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 m-0 leading-tight">
+                  {userData.name || 'User'}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span
+                    className="px-2.5 py-0.5 rounded-full text-xs font-medium"
+                    style={{ backgroundColor: roleConfig.bg, color: roleConfig.color }}
+                  >
+                    {roleConfig.label}
+                  </span>
+                  <span className={`flex items-center gap-1 text-xs ${userData.active ? 'text-green-600' : 'text-red-500'}`}>
+                    {userData.active ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+                    {userData.active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Profile Details */}
-          <Descriptions
-            column={1}
-            bordered
-            size="small"
-            className="rounded-xl overflow-hidden border-border/50"
-          >
-            <Descriptions.Item
-              label={
-                <Space className="text-text-secondary">
-                  <UserOutlined />
-                  Full Name
-                </Space>
-              }
-            >
-              <Text strong className="text-text-primary">{user.name || 'N/A'}</Text>
-            </Descriptions.Item>
+          <Divider className="my-0" />
 
-            <Descriptions.Item
-              label={
-                <Space className="text-text-secondary">
-                  <MailOutlined />
-                  Email
-                </Space>
-              }
-            >
-              <Text className="text-text-primary">{user.email || 'N/A'}</Text>
-            </Descriptions.Item>
-
-            {(user.phone || user.contact || user.phoneNo) && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <PhoneOutlined />
-                    Phone
-                  </Space>
-                }
+          {/* Content */}
+          <div className="p-6">
+            {editing ? (
+              /* Edit Mode */
+              <Form
+                form={form}
+                layout="vertical"
+                onFinish={handleUpdate}
+                requiredMark={false}
               >
-                <Text className="text-text-primary">{user.phone || user.contact || user.phoneNo}</Text>
-              </Descriptions.Item>
-            )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                  <Form.Item
+                    name="name"
+                    label={<span className="text-gray-600 dark:text-gray-300 font-medium">Full Name</span>}
+                    rules={[{ required: true, message: 'Name is required' }, { min: 2, message: 'Min 2 characters' }]}
+                    className="mb-0"
+                  >
+                    <Input
+                      prefix={<UserOutlined className="text-gray-400" />}
+                      placeholder="Enter your name"
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
 
-            {user.rollNumber && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <IdcardOutlined />
-                    Roll Number
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{user.rollNumber}</Text>
-              </Descriptions.Item>
-            )}
+                  <Form.Item
+                    name="email"
+                    label={<span className="text-gray-600 dark:text-gray-300 font-medium">Email Address</span>}
+                    rules={[{ required: true, message: 'Email is required' }, { type: 'email', message: 'Invalid email' }]}
+                    className="mb-0"
+                  >
+                    <Input
+                      prefix={<MailOutlined className="text-gray-400" />}
+                      placeholder="Enter your email"
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
 
-            {(user.branchName || user.branch?.name || user.department) && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <BookOutlined />
-                    Department
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{user.branchName || user.branch?.name || user.department}</Text>
-              </Descriptions.Item>
-            )}
+                  <Form.Item
+                    name="phoneNo"
+                    label={<span className="text-gray-600 dark:text-gray-300 font-medium">Phone Number</span>}
+                    rules={[{ pattern: /^[0-9]{10}$/, message: 'Enter valid 10-digit number' }]}
+                    className="mb-0"
+                  >
+                    <Input
+                      prefix={<PhoneOutlined className="text-gray-400" />}
+                      placeholder="Enter phone number"
+                      maxLength={10}
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
 
-            {(user.institutionName || user.institution?.name) && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <BankOutlined />
-                    Institution
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{user.institutionName || user.institution?.name}</Text>
-              </Descriptions.Item>
-            )}
+                  <Form.Item
+                    name="designation"
+                    label={<span className="text-gray-600 dark:text-gray-300 font-medium">Designation</span>}
+                    className="mb-0"
+                  >
+                    <Input
+                      prefix={<IdcardOutlined className="text-gray-400" />}
+                      placeholder="Enter designation"
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
 
-            {user.designation && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <IdcardOutlined />
-                    Designation
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{user.designation}</Text>
-              </Descriptions.Item>
-            )}
+                  <Form.Item
+                    name="branchName"
+                    label={<span className="text-gray-600 dark:text-gray-300 font-medium">Branch / Department</span>}
+                    className="mb-0 sm:col-span-2"
+                  >
+                    <Input
+                      prefix={<BankOutlined className="text-gray-400" />}
+                      placeholder="Enter branch or department"
+                      className="rounded-lg"
+                    />
+                  </Form.Item>
+                </div>
+              </Form>
+            ) : (
+              /* View Mode */
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {/* Contact Info */}
+                <InfoCard
+                  icon={<MailOutlined />}
+                  label="Email"
+                  value={userData.email}
+                  color="#1890ff"
+                />
+                <InfoCard
+                  icon={<PhoneOutlined />}
+                  label="Phone"
+                  value={userData.phoneNo}
+                  color="#52c41a"
+                />
+                {userData.rollNumber && (
+                  <InfoCard
+                    icon={<IdcardOutlined />}
+                    label="Roll Number"
+                    value={userData.rollNumber}
+                    color="#722ed1"
+                  />
+                )}
 
-            {user.batch?.name && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <CalendarOutlined />
-                    Batch
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{user.batch.name}</Text>
-              </Descriptions.Item>
-            )}
+                {/* Professional Info */}
+                {userData.designation && (
+                  <InfoCard
+                    icon={<SafetyOutlined />}
+                    label="Designation"
+                    value={userData.designation}
+                    color="#fa8c16"
+                  />
+                )}
+                {userData.branchName && (
+                  <InfoCard
+                    icon={<BankOutlined />}
+                    label="Branch"
+                    value={userData.branchName}
+                    color="#13c2c2"
+                  />
+                )}
+                {userData.Institution?.name && (
+                  <InfoCard
+                    icon={<BankOutlined />}
+                    label="Institution"
+                    value={userData.Institution.name}
+                    color="#eb2f96"
+                  />
+                )}
 
-            <Descriptions.Item
-              label={
-                <Space className="text-text-secondary">
-                  <SafetyOutlined />
-                  Role
-                </Space>
-              }
-            >
-              <Tag color={getRoleColor(user.role)} className="rounded-md">
-                {user.role?.replace(/_/g, ' ') || 'N/A'}
-              </Tag>
-            </Descriptions.Item>
-
-            {user.createdAt && (
-              <Descriptions.Item
-                label={
-                  <Space className="text-text-secondary">
-                    <CalendarOutlined />
-                    Member Since
-                  </Space>
-                }
-              >
-                <Text className="text-text-primary">{formatDate(user.createdAt)}</Text>
-              </Descriptions.Item>
-            )}
-          </Descriptions>
-
-          {/* Account Status & Login Info */}
-          <div className="mt-6 space-y-3">
-            <div className="p-3 rounded-xl border border-success-border bg-success-50 dark:bg-success-900/10">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full animate-pulse ${user.active ? 'bg-success' : 'bg-error'}`} />
-                <Text className={`font-medium ${user.active ? 'text-success-600' : 'text-error-600'}`}>
-                  {user.active ? 'Account Active' : 'Account Inactive'}
-                </Text>
-              </div>
-            </div>
-
-            {user.loginCount && (
-              <div className="flex justify-between items-center p-3 rounded-xl bg-background-tertiary/30 border border-border/30">
-                <Text className="text-text-secondary text-sm">Total Logins</Text>
-                <Tag color="blue" className="m-0">{user.loginCount}</Tag>
+                {/* Account Info */}
+                <InfoCard
+                  icon={<CalendarOutlined />}
+                  label="Member Since"
+                  value={formatDate(userData.createdAt)}
+                  color="#8c8c8c"
+                />
+                {userData.lastLoginAt && (
+                  <InfoCard
+                    icon={<CalendarOutlined />}
+                    label="Last Login"
+                    value={formatDate(userData.lastLoginAt)}
+                    color="#8c8c8c"
+                  />
+                )}
+                {userData.loginCount > 0 && (
+                  <InfoCard
+                    icon={<UserOutlined />}
+                    label="Total Logins"
+                    value={userData.loginCount}
+                    color="#8c8c8c"
+                  />
+                )}
               </div>
             )}
           </div>
+
+          {/* Footer */}
+          {!editing && (
+            <div className="px-6 py-3 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700">
+              <div className="flex justify-end">
+                <Button onClick={onClose} className="rounded-lg">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
-        <div className="py-8 text-center">
-          <Text type="secondary">Unable to load profile</Text>
+        <div className="text-center py-16 text-gray-500">
+          Unable to load profile data
         </div>
       )}
     </Modal>
   );
 };
+
+// Elegant Info Card Component
+const InfoCard = ({ icon, label, value, color }) => (
+  <div className="group flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+    <div
+      className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
+      style={{ backgroundColor: `${color}15`, color: color }}
+    >
+      {icon}
+    </div>
+    <div className="min-w-0 flex-1">
+      <div className="text-xs text-gray-500 dark:text-gray-400 mb-0.5">{label}</div>
+      <div className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+        {value || <span className="text-gray-400 font-normal italic">Not provided</span>}
+      </div>
+    </div>
+  </div>
+);
 
 export default UserProfile;

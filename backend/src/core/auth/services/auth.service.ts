@@ -612,6 +612,12 @@ export class AuthService {
         institutionId: true,
         consent: true,
         consentAt: true,
+        Institution: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       },
     });
 
@@ -620,6 +626,104 @@ export class AuthService {
     }
 
     return user;
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateUserProfile(
+    userId: string,
+    data: {
+      name?: string;
+      email?: string;
+      phoneNo?: string;
+      designation?: string;
+      branchName?: string;
+    },
+    ipAddress?: string,
+    userAgent?: string,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Check email uniqueness if changing email
+    if (data.email && data.email !== user.email) {
+      const emailExists = await this.prisma.user.findUnique({
+        where: { email: data.email },
+      });
+      if (emailExists) {
+        throw new BadRequestException('Email already exists');
+      }
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(data.name && { name: data.name }),
+        ...(data.email && { email: data.email }),
+        ...(data.phoneNo !== undefined && { phoneNo: data.phoneNo }),
+        ...(data.designation !== undefined && { designation: data.designation }),
+        ...(data.branchName !== undefined && { branchName: data.branchName }),
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        phoneNo: true,
+        rollNumber: true,
+        dob: true,
+        branchName: true,
+        designation: true,
+        role: true,
+        active: true,
+        lastLoginAt: true,
+        loginCount: true,
+        hasChangedDefaultPassword: true,
+        createdAt: true,
+        institutionId: true,
+        Institution: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    // Audit log
+    this.auditService.log({
+      action: AuditAction.USER_PROFILE_UPDATE,
+      entityType: 'User',
+      entityId: userId,
+      userId: userId,
+      userName: updatedUser.name,
+      userRole: user.role,
+      description: `User updated their profile: ${updatedUser.email}`,
+      category: AuditCategory.PROFILE_MANAGEMENT,
+      severity: AuditSeverity.LOW,
+      institutionId: user.institutionId || undefined,
+      ipAddress,
+      userAgent,
+      oldValues: {
+        name: user.name,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        designation: user.designation,
+        branchName: user.branchName,
+      },
+      newValues: data,
+    }).catch(() => {}); // Non-blocking
+
+    return {
+      success: true,
+      data: updatedUser,
+      message: 'Profile updated successfully',
+    };
   }
 
   /**

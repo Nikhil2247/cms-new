@@ -49,12 +49,10 @@ import {
   selectJoiningLetterActivity,
   selectJoiningLetterActivityLoading,
 } from '../../store/principalSlice';
+import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
-
-// Allowed domains for letter URLs
-const ALLOWED_URL_DOMAINS = ['s3.amazonaws.com', 'storage.googleapis.com', 'cloudinary.com', 'blob.core.windows.net'];
 
 const JoiningLetterPanel = () => {
   const dispatch = useDispatch();
@@ -123,19 +121,13 @@ const JoiningLetterPanel = () => {
     }));
   };
 
-  // Validate URL before opening
-  const openLetterUrl = useCallback((url) => {
+  // Open file using presigned URL for MinIO access
+  const openLetterUrl = useCallback(async (url) => {
     if (!url) return;
     try {
-      const urlObj = new URL(url);
-      const isAllowed = ALLOWED_URL_DOMAINS.some((domain) => urlObj.hostname.includes(domain));
-      if (isAllowed || urlObj.hostname === window.location.hostname) {
-        window.open(url, '_blank', 'noopener,noreferrer');
-      } else {
-        message.warning('Cannot open URL from untrusted domain');
-      }
+      await openFileWithPresignedUrl(url);
     } catch {
-      message.error('Invalid URL');
+      message.error('Failed to open file');
     }
   }, []);
 

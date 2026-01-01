@@ -1,42 +1,20 @@
-import {
-  Button,
-  Card,
-  Form,
-  Input,
-  Typography,
-  theme,
-  Alert,
-} from "antd";
-import {
-  LockOutlined,
-  SafetyOutlined,
-  CheckCircleOutlined,
-} from "@ant-design/icons";
+import { Button, Card, Form, Input, Typography } from "antd";
+import { LockOutlined, SafetyOutlined } from "@ant-design/icons";
 import API from "../../../services/api";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
-import { useThemeStyles } from "../../../hooks/useThemeStyles";
 
 const { Text, Title } = Typography;
 
 function ChangePassword() {
   const navigate = useNavigate();
-  const location = useLocation();
   const [loading, setLoading] = useState(false);
   const [form] = Form.useForm();
-  const { token } = theme.useToken();
-  const styles = useThemeStyles();
-
-  // Navigate to dashboard after password change - DashboardRouter handles role-based routing
-  const navigateByRole = () => {
-    navigate("/dashboard");
-  };
 
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // Call the change password API
       await API.put("/auth/change-password", {
         currentPassword: values.currentPassword,
         newPassword: values.newPassword,
@@ -44,159 +22,115 @@ function ChangePassword() {
 
       toast.success("Password changed successfully!");
 
-      // Get login response from localStorage to navigate
       const loginResponse = localStorage.getItem("loginResponse");
       if (loginResponse) {
         const parsedResponse = JSON.parse(loginResponse);
-        // Update the needsPasswordChange flag in localStorage
         parsedResponse.needsPasswordChange = false;
         localStorage.setItem("loginResponse", JSON.stringify(parsedResponse));
-        
-        // Navigate to appropriate dashboard
-        navigateByRole(parsedResponse);
-      } else {
-        // Fallback to dashboard
-        navigate("/dashboard");
       }
+      navigate("/dashboard");
     } catch (error) {
-      console.error("Password change error:", error);
-      toast.error(
-        error.response?.data?.message ||
-          "Failed to change password. Please try again."
-      );
+      toast.error(error.response?.data?.message || "Failed to change password");
     } finally {
       setLoading(false);
     }
   };
 
-  const validatePassword = (_, value) => {
-    if (!value) {
-      return Promise.reject(new Error("Please enter your new password"));
-    }
-    if (value.length < 6) {
-      return Promise.reject(
-        new Error("Password must be at least 6 characters")
-      );
-    }
-    if (value === form.getFieldValue("currentPassword")) {
-      return Promise.reject(
-        new Error("New password must be different from current password")
-      );
-    }
-    return Promise.resolve();
-  };
-
-  const validateConfirmPassword = (_, value) => {
-    if (!value) {
-      return Promise.reject(new Error("Please confirm your password"));
-    }
-    if (value !== form.getFieldValue("newPassword")) {
-      return Promise.reject(new Error("Passwords do not match"));
-    }
-    return Promise.resolve();
-  };
-
   return (
-    <div
-      className="flex items-center justify-center min-h-screen bg-background bg-gradient-to-br from-primary-50/30 to-background dark:from-primary-900/10"
-    >
-      <div className="w-full max-w-xl px-4 mt-5">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 p-4">
+      <Card
+        bordered={false}
+        className="w-full max-w-sm rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-black/20 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+        styles={{ body: { padding: '24px' } }}
+      >
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto mb-4 w-16 h-16 flex items-center justify-center rounded-2xl bg-primary-50 text-primary text-3xl shadow-md">
+        <div className="text-center mb-5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white text-xl mb-3 shadow-lg shadow-amber-500/25">
             <SafetyOutlined />
           </div>
-          <Title level={2} className="text-text-primary mb-2">
-            Change Your Password
+          <Title level={4} className="!mb-1 !text-slate-800 dark:!text-white !font-semibold">
+            Change Password
           </Title>
-          <Text className="text-text-secondary text-base">
-            For security reasons, please change your default password
+          <Text className="text-slate-500 dark:text-slate-400 text-sm">
+            Create a new secure password
           </Text>
         </div>
 
-        {/* Form Card */}
-        <Card className="rounded-xl shadow-soft-lg border border-border bg-surface">
-          <Alert
-            title={<span className="font-semibold">Security Notice</span>}
-            description="You are using a default password. Please create a strong, unique password to secure your account."
-            type="warning"
-            showIcon
-            icon={<LockOutlined />}
-            className="mb-6 rounded-xl border-warning/20 bg-warning-50/50"
-          />
+        {/* Alert */}
+        <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <Text className="text-amber-700 dark:text-amber-400 text-xs">
+            You're using a default password. Please create a unique one.
+          </Text>
+        </div>
 
-          <Form
-            form={form}
-            onFinish={onFinish}
-            layout="vertical"
-            size="large"
-            className="mt-2"
+        {/* Form */}
+        <Form form={form} onFinish={onFinish} layout="vertical" size="middle" requiredMark={false}>
+          <Form.Item
+            name="currentPassword"
+            rules={[{ required: true, message: "Enter current password" }]}
           >
-            <Form.Item
-              name="currentPassword"
-              label={
-                <span className="text-text-primary font-medium">
-                  Current Password
-                </span>
-              }
-              rules={[
-                { required: true, message: "Please enter your current password" },
-              ]}
-            >
-              <Input.Password
-                placeholder="Enter your current password"
-                prefix={<LockOutlined className="text-text-tertiary mr-2" />}
-                className="rounded-lg h-12"
-              />
-            </Form.Item>
+            <Input.Password
+              placeholder="Current password"
+              prefix={<LockOutlined className="text-slate-400" />}
+              className="rounded-lg h-10"
+            />
+          </Form.Item>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Form.Item
-                name="newPassword"
-                label={
-                  <span className="text-text-primary font-medium">New Password</span>
-                }
-                rules={[{ validator: validatePassword }]}
-              >
-                <Input.Password
-                  placeholder="Enter new password"
-                  prefix={<LockOutlined className="text-text-tertiary mr-2" />}
-                  className="rounded-lg h-12"
-                />
-              </Form.Item>
+          <Form.Item
+            name="newPassword"
+            rules={[
+              { required: true, message: "Enter new password" },
+              { min: 6, message: "Min 6 characters" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('currentPassword') !== value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Must be different from current'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              placeholder="New password"
+              prefix={<LockOutlined className="text-slate-400" />}
+              className="rounded-lg h-10"
+            />
+          </Form.Item>
 
-              <Form.Item
-                name="confirmPassword"
-                label={
-                  <span className="text-text-primary font-medium">
-                    Confirm Password
-                  </span>
-                }
-                rules={[{ validator: validateConfirmPassword }]}
-              >
-                <Input.Password
-                  placeholder="Confirm password"
-                  prefix={<CheckCircleOutlined className="text-text-tertiary mr-2" />}
-                  className="rounded-lg h-12"
-                />
-              </Form.Item>
-            </div>
+          <Form.Item
+            name="confirmPassword"
+            dependencies={['newPassword']}
+            rules={[
+              { required: true, message: "Confirm password" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue('newPassword') === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error('Passwords do not match'));
+                },
+              }),
+            ]}
+          >
+            <Input.Password
+              placeholder="Confirm new password"
+              prefix={<LockOutlined className="text-slate-400" />}
+              className="rounded-lg h-10"
+            />
+          </Form.Item>
 
-            <Form.Item className="mt-4 mb-0">
-              <Button
-                type="primary"
-                htmlType="submit"
-                block
-                loading={loading}
-                icon={!loading && <SafetyOutlined />}
-                className="h-12 rounded-xl font-bold text-base shadow-lg shadow-primary/20"
-              >
-                {loading ? "Changing Password..." : "Change Password"}
-              </Button>
-            </Form.Item>
-          </Form>
-        </Card>
-      </div>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            loading={loading}
+            className="h-10 rounded-lg font-semibold shadow-md shadow-blue-500/20"
+          >
+            {loading ? "Changing..." : "Change Password"}
+          </Button>
+        </Form>
+      </Card>
     </div>
   );
 }

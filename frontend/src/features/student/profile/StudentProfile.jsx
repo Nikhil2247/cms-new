@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import API from "../../../services/api";
-import { getImageUrl } from "../../../utils/imageUtils";
+import { getImageUrl, openFileWithPresignedUrl } from "../../../utils/imageUtils";
 import {
   Card,
   Col,
@@ -48,6 +48,7 @@ const { Option } = Select;
 export default function StudentProfile() {
   const [id, setId] = useState(null);
   const [student, setStudent] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const rawResults = student?.results || [];
@@ -251,8 +252,20 @@ export default function StudentProfile() {
     }
   };
 
+  const fetchDocuments = async () => {
+    try {
+      const res = await API.get('/student/documents');
+      const docs = res.data?.documents || res.data?.data || res.data || [];
+      setDocuments(Array.isArray(docs) ? docs : []);
+    } catch (err) {
+      console.error("Failed to fetch documents:", err);
+      setDocuments([]);
+    }
+  };
+
   useEffect(() => {
     fetchStudent();
+    fetchDocuments();
   }, []);
 
   const handleEditSubmit = async (values) => {
@@ -328,20 +341,19 @@ export default function StudentProfile() {
   const handleUpload = async (values) => {
     if (!fileList.length) return toast.error("Please select a file.");
     const formData = new FormData();
-    formData.append("studentId", student.id);
     formData.append("type", values.type);
     formData.append("file", fileList[0]);
 
     try {
       setUploading(true);
-      await API.post("/documents/upload", formData, {
+      await API.post("/student/documents", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       toast.success("Document uploaded successfully");
       setUploadModal(false);
-      fetchStudent();
-    } catch {
-      toast.error("Failed to upload document");
+      fetchDocuments();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "Failed to upload document");
     } finally {
       setUploading(false);
     }
@@ -617,30 +629,38 @@ export default function StudentProfile() {
                 ),
                 children: (
                   <div className="p-5">
-                    {student.document?.length > 0 ? (
+                    {documents.length > 0 ? (
                       <Row gutter={[12, 12]}>
-                        {student.document.map((doc, idx) => (
-                          <Col xs={12} sm={8} md={6} key={idx}>
+                        {documents.map((doc, idx) => (
+                          <Col xs={12} sm={8} md={6} key={doc.id || idx}>
                             <Card
                               hoverable
                               bordered={false}
                               className="rounded-xl border overflow-hidden group"
                               style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
                               styles={{ body: { padding: '12px' } }}
-                              onClick={() => window.open(getImageUrl(doc.fileUrl), "_blank")}
+                              onClick={() => openFileWithPresignedUrl(doc.fileUrl)}
                             >
                               <div
                                 className="h-28 rounded-lg flex items-center justify-center mb-2 overflow-hidden"
                                 style={{ backgroundColor: token.colorFillQuaternary }}
                               >
-                                <img
-                                  src={getImageUrl(doc.fileUrl)}
-                                  alt={doc.fileName}
-                                  className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
-                                />
+                                {doc.fileUrl?.toLowerCase().endsWith('.pdf') ? (
+                                  <FileTextOutlined className="text-4xl" style={{ color: token.colorPrimary }} />
+                                ) : (
+                                  <img
+                                    src={getImageUrl(doc.fileUrl)}
+                                    alt={doc.fileName || doc.type}
+                                    className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform"
+                                    onError={(e) => {
+                                      e.target.style.display = 'none';
+                                      e.target.parentNode.innerHTML = '<span style="font-size: 40px;">📄</span>';
+                                    }}
+                                  />
+                                )}
                               </div>
                               <Text className="text-[10px] uppercase font-semibold block truncate" style={{ color: token.colorText }}>
-                                {doc.type.replaceAll("_", " ")}
+                                {(doc.type || 'Document').replaceAll("_", " ")}
                               </Text>
                             </Card>
                           </Col>

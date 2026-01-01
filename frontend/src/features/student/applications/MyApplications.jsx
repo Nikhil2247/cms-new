@@ -37,9 +37,15 @@ const MyApplications = () => {
     const selfIdentifiedCount = selfIdentifiedApplications?.length || 0;
     const hasSelfIdentifiedApplications = selfIdentifiedCount > 0;
 
+    // Check if student has any active (non-withdrawn) application
+    const hasActiveApplication = selfIdentifiedApplications?.some(
+      (app) => (app.status || '').toUpperCase() !== 'WITHDRAWN'
+    ) || false;
+
     return {
       selfIdentifiedCount,
       hasSelfIdentifiedApplications,
+      hasActiveApplication,
     };
   }, [selfIdentifiedApplications]);
 
@@ -159,15 +165,17 @@ const MyApplications = () => {
             onClick={refetch}
             className="rounded-lg"
           />
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => navigate('/self-identified-internship')}
-            size="small"
-            className="rounded-lg"
-          >
-            Add Internship
-          </Button>
+          {!derivedData.hasActiveApplication && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => navigate('/self-identified-internship')}
+              size="small"
+              className="rounded-lg"
+            >
+              Add Internship
+            </Button>
+          )}
         </div>
       </div>
 

@@ -218,10 +218,10 @@ export const useMonthlyReports = () => {
         });
         fileUrl = uploadResponse.data?.reportFileUrl || uploadResponse.data?.path || uploadResponse.data?.url;
       } catch (uploadErr) {
-        // If upload endpoint fails, try generic upload
+        // If upload endpoint fails, try shared documents upload
         const genericFormData = new FormData();
         genericFormData.append('file', file);
-        const genericUpload = await API.post('/uploads', genericFormData, {
+        const genericUpload = await API.post('/shared/documents/upload', genericFormData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
         fileUrl = genericUpload.data?.url || genericUpload.data?.path;

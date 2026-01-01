@@ -110,6 +110,7 @@ import {
   ActiveSessions,
   DatabaseManagement,
 } from '../../features/admin';
+import LandingPage from '../home/LandingPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -131,29 +132,32 @@ const AppRoutes = () => {
 
   return (
     <Routes>
+      {/* Landing Page - Must come first */}
+      <Route path='/' element={<LandingPage />} />
+      
       {/* Public Routes */}
       <Route
         path="/login"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginForm />
+          isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <LoginForm />
         }
       />
       <Route
         path="/student-login"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <StudentLogin />
+          isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <StudentLogin />
         }
       />
       <Route
         path="/signup"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <Signup />
+          isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <Signup />
         }
       />
       <Route
         path="/student-signup"
         element={
-          isAuthenticated ? <Navigate to="/dashboard" replace /> : <StudentSignup />
+          isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <StudentSignup />
         }
       />
       <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -162,14 +166,14 @@ const AppRoutes = () => {
 
       {/* Protected Routes */}
       <Route
-        path="/"
+        path="/app"
         element={
           <ProtectedRoute>
             <Layouts />
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<Navigate to="/app/dashboard" replace />} />
 
         {/* State Routes */}
         <Route
@@ -654,8 +658,8 @@ const AppRoutes = () => {
         }
       />
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Fallback for authenticated users */}
+      <Route path="*" element={isAuthenticated ? <Navigate to="/app/dashboard" replace /> : <Navigate to="/" replace />} />
     </Routes>
   );
 };

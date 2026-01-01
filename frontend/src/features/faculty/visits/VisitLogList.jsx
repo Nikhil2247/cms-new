@@ -5,6 +5,7 @@ import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined
 import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
 import UnifiedVisitLogModal from './UnifiedVisitLogModal';
 import dayjs from 'dayjs';
+import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
 
 const { RangePicker } = DatePicker;
 const { Title, Text, Paragraph } = Typography;
@@ -360,14 +361,14 @@ const VisitLogList = React.memo(() => {
               <DetailSection icon={<FileImageOutlined />} title="Documents & Photos">
                 <div className="space-y-2">
                   {selectedLog.signedDocumentUrl && (
-                    <Button icon={<FileTextOutlined />} onClick={() => window.open(selectedLog.signedDocumentUrl, '_blank')}>
+                    <Button icon={<FileTextOutlined />} onClick={() => openFileWithPresignedUrl(selectedLog.signedDocumentUrl)}>
                       View Signed Document
                     </Button>
                   )}
                   {selectedLog.visitPhotos?.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {selectedLog.visitPhotos.map((url, idx) => (
-                        <img key={idx} src={url} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded cursor-pointer border hover:opacity-80" onClick={() => window.open(url, '_blank')} />
+                        <img key={idx} src={url} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded cursor-pointer border hover:opacity-80" onClick={() => openFileWithPresignedUrl(url)} />
                       ))}
                     </div>
                   )}
