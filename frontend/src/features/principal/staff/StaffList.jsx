@@ -10,6 +10,12 @@ import {
   optimisticallyDeleteStaff,
   rollbackStaffOperation,
 } from '../store/principalSlice';
+import {
+  selectStaffList,
+  selectStaffLoading,
+  selectStaffPagination,
+  selectLastFetched,
+} from '../store/principalSelectors';
 import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
@@ -32,8 +38,12 @@ const { Option } = Select;
 
 const StaffList = () => {
   const dispatch = useDispatch();
-  const { list, loading, pagination } = useSelector((state) => state.principal.staff);
-  const lastFetched = useSelector((state) => state.principal.lastFetched.staff);
+  // Use memoized selectors from principalSelectors for better performance
+  const list = useSelector(selectStaffList);
+  const loading = useSelector(selectStaffLoading);
+  const pagination = useSelector(selectStaffPagination);
+  const lastFetchedData = useSelector(selectLastFetched);
+  const lastFetched = lastFetchedData?.staff;
   const [filters, setFilters] = useState({
     search: '',
     role: '',

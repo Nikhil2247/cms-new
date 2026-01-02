@@ -169,7 +169,8 @@
       "WebFetch(domain:www.meity.gov.in)",
       "WebFetch(domain:strobes.co)",
       "WebFetch(domain:pwonlyias.com)",
-      "Bash(npx prisma migrate dev:*)"
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(node prisma/query-duplicates.js:*)"
     ]
   }
 }

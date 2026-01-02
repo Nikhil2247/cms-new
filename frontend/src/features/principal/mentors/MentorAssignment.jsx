@@ -47,6 +47,13 @@ import {
   bulkUnassignMentors,
   autoAssignMentors,
 } from '../store/principalSlice';
+import {
+  selectStaff,
+  selectStudents,
+  selectMentorAssignments,
+  selectMentorStats,
+  selectMentorStatsLoading,
+} from '../store/principalSelectors';
 import { debounce } from 'lodash';
 import { useBatches } from '../../shared/hooks/useLookup';
 
@@ -72,9 +79,11 @@ const MentorAssignment = () => {
     branchId: '',
   });
 
-  const { staff, students, mentorAssignments, mentorStats } = useSelector(
-    (state) => state.principal
-  );
+  // Use memoized selectors from principalSelectors for better performance
+  const staff = useSelector(selectStaff);
+  const students = useSelector(selectStudents);
+  const mentorAssignments = useSelector(selectMentorAssignments);
+  const mentorStats = { data: useSelector(selectMentorStats), loading: useSelector(selectMentorStatsLoading) };
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
 

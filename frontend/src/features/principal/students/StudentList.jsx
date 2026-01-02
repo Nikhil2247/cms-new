@@ -10,6 +10,12 @@ import {
   optimisticallyDeleteStudent,
   rollbackStudentOperation,
 } from '../store/principalSlice';
+import {
+  selectStudentsList,
+  selectStudentsLoading,
+  selectStudentsPagination,
+  selectLastFetched,
+} from '../store/principalSelectors';
 import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
@@ -34,8 +40,12 @@ const { Option } = Select;
 
 const StudentList = () => {
   const dispatch = useDispatch();
-  const { list, loading, pagination } = useSelector((state) => state.principal.students);
-  const lastFetched = useSelector((state) => state.principal.lastFetched.students);
+  // Use memoized selectors from principalSelectors for better performance
+  const list = useSelector(selectStudentsList);
+  const loading = useSelector(selectStudentsLoading);
+  const pagination = useSelector(selectStudentsPagination);
+  const lastFetchedData = useSelector(selectLastFetched);
+  const lastFetched = lastFetchedData?.students;
 
   // Use global lookup data
   const { activeBranches, activeBatches, loadBranches, loadBatches } = useLookup({

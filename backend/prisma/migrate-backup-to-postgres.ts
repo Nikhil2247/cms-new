@@ -1165,6 +1165,7 @@ async function migrateStudents(data: any[], prisma: PrismaClient, config: Migrat
 
     if (!userId) {
       stats.skipped++;
+      if (config.verbose) logWarning(`Skipped student (MongoDB ID: ${student._id}, userId: ${student.userId}, rollNumber: ${student.rollNumber}) - no user mapping found`);
       continue;
     }
 
@@ -1175,6 +1176,7 @@ async function migrateStudents(data: any[], prisma: PrismaClient, config: Migrat
         idMaps['students'].set(student._id?.toString() || '', uuidv4());
       }
       stats.skipped++;
+      if (config.verbose) logWarning(`Skipped duplicate student (MongoDB ID: ${student._id}, rollNumber: ${student.rollNumber}) - userId already processed`);
       continue;
     }
 
@@ -1439,7 +1441,7 @@ async function migrateInternshipApplications(data: any[], prisma: PrismaClient, 
       stats.migrated++;
     } catch (error: any) {
       stats.errors++;
-      if (config.verbose) logError(`Error migrating application ${app._id}: ${error.message}`);
+      if (config.verbose) logError(`Error migrating application (MongoDB ID: ${app._id}, studentId: ${app.studentId}, internshipId: ${app.internshipId}): ${error.message}`);
     }
   }
   finishCollectionMigration(stats);
@@ -1487,7 +1489,7 @@ async function migrateMentorAssignments(data: any[], prisma: PrismaClient, confi
       stats.migrated++;
     } catch (error: any) {
       stats.errors++;
-      if (config.verbose) logError(`Error migrating mentor assignment: ${error.message}`);
+      if (config.verbose) logError(`Error migrating mentor assignment (MongoDB ID: ${assign._id}, studentId: ${assign.studentId}, mentorId: ${assign.mentorId}): ${error.message}`);
     }
   }
   finishCollectionMigration(stats);
