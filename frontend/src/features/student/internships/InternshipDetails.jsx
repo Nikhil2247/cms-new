@@ -41,11 +41,11 @@ import {
   DeleteOutlined,
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import API from "../../../services/api";
+import { useSelector, useDispatch } from "react-redux";
 import { toast } from "react-hot-toast";
 import { theme } from "antd";
 import { selectApplicationsList } from "../store/studentSelectors";
+import { fetchInternshipDetails, applyForInternship, fetchApplications } from "../store/studentSlice";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -53,6 +53,7 @@ const { useToken } = theme;
 
 const InternshipDetails = () => {
   const { token } = useToken();
+  const dispatch = useDispatch();
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [internship, setInternship] = useState(null);
@@ -104,13 +105,14 @@ const InternshipDetails = () => {
     setLoading(true);
     try {
       // Only fetch internship details - application status comes from Redux store
-      const internshipResponse = await API.get(`/internships/${id}`);
+      const internshipData = await dispatch(fetchInternshipDetails(id)).unwrap();
 
-      if (internshipResponse) {
-        setInternship(internshipResponse.data);
+      if (internshipData) {
+        setInternship(internshipData);
       }
     } catch (error) {
-      toast.error(error.message || "Failed to load internship details");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to load internship details";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -123,61 +125,48 @@ const InternshipDetails = () => {
       const formData = new FormData();
       formData.append('internshipId', id);
       formData.append('coverLetter', values.coverLetter);
-      
+
       if (values.additionalInfo) {
         formData.append('additionalInfo', values.additionalInfo);
       }
-      
+
       // Append resume file if uploaded
       if (resumeFile) {
         formData.append('resume', resumeFile);
       }
 
-      const response = await API.post(
-        `/student/internships/${id}/apply`,
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
+      await dispatch(applyForInternship({ internshipId: id, applicationData: formData })).unwrap();
 
-      if (response) {
-        toast.success("Application submitted successfully!");
-        setApplicationModal(false);
-        form.resetFields();
-        setResumeFile(null);
-        setResumeList([]);
+      toast.success("Application submitted successfully!");
+      setApplicationModal(false);
+      form.resetFields();
+      setResumeFile(null);
+      setResumeList([]);
 
-        // Note: Application status will be automatically updated via Redux
-        // when the applications list is refetched on the Applications page
+      // Refresh applications list in Redux store
+      dispatch(fetchApplications({ forceRefresh: true }));
 
-        // Show confirmation modal
-        Modal.success({
-          title: "Application Submitted!",
-          content: (
-            <div>
-              <p>
-                Your application has been successfully submitted to{" "}
-                <strong>{internship.industry?.companyName}</strong>.
-              </p>
-              <p>
-                You can track the status of your application in the "My
-                Applications" section.
-              </p>
-            </div>
-          ),
-          onOk: () => navigate("/my-applications"),
-          okText: "View My Applications",
-        });
-      }
+      // Show confirmation modal
+      Modal.success({
+        title: "Application Submitted!",
+        content: (
+          <div>
+            <p>
+              Your application has been successfully submitted to{" "}
+              <strong>{internship.industry?.companyName}</strong>.
+            </p>
+            <p>
+              You can track the status of your application in the "My
+              Applications" section.
+            </p>
+          </div>
+        ),
+        onOk: () => navigate("/my-applications"),
+        okText: "View My Applications",
+      });
     } catch (error) {
-      toast.error(
-        error.response?.data?.message ||
-          error.message ||
-          "Error submitting application"
-      );
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Error submitting application";
+      toast.error(errorMessage);
     } finally {
       setApplying(false);
     }

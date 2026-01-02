@@ -626,22 +626,14 @@ const StudentDashboard = () => {
   }, [currentInternship]);
 
   // Company name for display
-  const companyName = useMemo(() => {
-    if (!currentInternship) return "N/A";
-    return (
-      currentInternship.companyName ||
-      currentInternship.internship?.industry?.companyName ||
-      "N/A"
-    );
-  }, [currentInternship]);
+  const companyName = currentInternship?.companyName ||
+    currentInternship?.internship?.industry?.companyName ||
+    "N/A";
 
   // Internship title
-  const internshipTitle = useMemo(() => {
-    if (!currentInternship) return "";
-    return currentInternship.isSelfIdentified
-      ? currentInternship.jobProfile
-      : currentInternship.internship?.title;
-  }, [currentInternship]);
+  const internshipTitle = currentInternship?.isSelfIdentified
+    ? currentInternship.jobProfile
+    : currentInternship?.internship?.title || "";
 
   // Handle joining letter upload
   const handleJoiningLetterUpload = async (file) => {

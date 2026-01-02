@@ -401,6 +401,69 @@ export const uploadReportFile = createAsyncThunk(
   }
 );
 
+export const deleteMonthlyReport = createAsyncThunk(
+  'student/deleteMonthlyReport',
+  async (reportId, { rejectWithValue }) => {
+    try {
+      await studentService.deleteMonthlyReport(reportId);
+      return { id: reportId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete report');
+    }
+  }
+);
+
+// Self-identified internship submission
+export const submitSelfIdentified = createAsyncThunk(
+  'student/submitSelfIdentified',
+  async (data, { rejectWithValue }) => {
+    try {
+      const response = await studentService.submitSelfIdentified(data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to submit self-identified internship');
+    }
+  }
+);
+
+// Joining letter actions
+export const uploadJoiningLetter = createAsyncThunk(
+  'student/uploadJoiningLetter',
+  async ({ applicationId, file }, { rejectWithValue }) => {
+    try {
+      const response = await studentService.uploadJoiningLetter(applicationId, file);
+      return { id: applicationId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to upload joining letter');
+    }
+  }
+);
+
+export const deleteJoiningLetter = createAsyncThunk(
+  'student/deleteJoiningLetter',
+  async (applicationId, { rejectWithValue }) => {
+    try {
+      await studentService.deleteJoiningLetter(applicationId);
+      return { id: applicationId };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete joining letter');
+    }
+  }
+);
+
+// Fetch single internship details
+export const fetchInternshipDetails = createAsyncThunk(
+  'student/fetchInternshipDetails',
+  async (internshipId, { rejectWithValue }) => {
+    try {
+      const response = await studentService.getInternshipDetails(internshipId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch internship details');
+    }
+  }
+);
+
 const studentSlice = createSlice({
   name: 'student',
   initialState,
@@ -611,7 +674,9 @@ const studentSlice = createSlice({
       .addCase(fetchGrievances.fulfilled, (state, action) => {
         state.grievances.loading = false;
         if (!action.payload?.cached) {
-          state.grievances.list = action.payload.data || action.payload;
+          // Ensure we always get an array
+          const data = action.payload?.data || action.payload?.grievances || action.payload;
+          state.grievances.list = Array.isArray(data) ? data : [];
           state.lastFetched.grievances = Date.now();
         }
       })
@@ -709,6 +774,45 @@ const studentSlice = createSlice({
       .addCase(fetchSelfIdentified.rejected, (state, action) => {
         state.selfIdentified.loading = false;
         state.selfIdentified.error = action.payload;
+      })
+
+      // Delete monthly report
+      .addCase(deleteMonthlyReport.fulfilled, (state, action) => {
+        state.reports.list = state.reports.list.filter(r => r.id !== action.payload.id);
+        state.lastFetched.reports = null;
+      })
+
+      // Submit self-identified
+      .addCase(submitSelfIdentified.pending, (state) => {
+        state.applications.loading = true;
+      })
+      .addCase(submitSelfIdentified.fulfilled, (state, action) => {
+        state.applications.loading = false;
+        state.applications.list = [action.payload, ...state.applications.list];
+        state.lastFetched.applications = null;
+        state.lastFetched.selfIdentified = null;
+      })
+      .addCase(submitSelfIdentified.rejected, (state, action) => {
+        state.applications.loading = false;
+        state.applications.error = action.payload;
+      })
+
+      // Upload joining letter
+      .addCase(uploadJoiningLetter.fulfilled, (state, action) => {
+        const index = state.applications.list.findIndex(app => app.id === action.payload.id);
+        if (index !== -1) {
+          state.applications.list[index] = { ...state.applications.list[index], ...action.payload };
+        }
+        state.lastFetched.applications = null;
+      })
+
+      // Delete joining letter
+      .addCase(deleteJoiningLetter.fulfilled, (state, action) => {
+        const index = state.applications.list.findIndex(app => app.id === action.payload.id);
+        if (index !== -1) {
+          state.applications.list[index].joiningLetterUrl = null;
+        }
+        state.lastFetched.applications = null;
       });
   },
 });

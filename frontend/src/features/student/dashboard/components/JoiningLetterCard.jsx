@@ -1,4 +1,5 @@
 import React, { memo, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Typography, Button, Tag, Tooltip, Modal, Upload, message, Space, theme } from 'antd';
 import {
   FileTextOutlined,
@@ -11,7 +12,7 @@ import {
   CloudUploadOutlined,
 } from '@ant-design/icons';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
-import studentService from '../../../../services/student.service';
+import { uploadJoiningLetter, deleteJoiningLetter } from '../../store/studentSlice';
 
 const { Text } = Typography;
 
@@ -22,6 +23,7 @@ const JoiningLetterCard = ({
   compact = true,
 }) => {
   const { token } = theme.useToken();
+  const dispatch = useDispatch();
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [deleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
@@ -59,7 +61,7 @@ const JoiningLetterCard = ({
 
     try {
       setUploading(true);
-      await studentService.uploadJoiningLetter(application.id, selectedFile);
+      await dispatch(uploadJoiningLetter({ applicationId: application.id, file: selectedFile })).unwrap();
       setUploadModalVisible(false);
       setSelectedFile(null);
       message.success('Joining letter uploaded successfully');
@@ -68,7 +70,8 @@ const JoiningLetterCard = ({
         onRefresh();
       }
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to upload joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
+      message.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -78,7 +81,7 @@ const JoiningLetterCard = ({
   const handleDelete = async () => {
     try {
       setUploading(true);
-      await studentService.deleteJoiningLetter(application.id);
+      await dispatch(deleteJoiningLetter(application.id)).unwrap();
       setDeleteConfirmVisible(false);
       message.success('Joining letter deleted successfully');
 
@@ -86,7 +89,8 @@ const JoiningLetterCard = ({
         onRefresh();
       }
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to delete joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
+      message.error(errorMessage);
     } finally {
       setUploading(false);
     }

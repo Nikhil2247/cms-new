@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
   Table,
@@ -14,7 +15,6 @@ import {
   Row,
   Col,
   Badge,
-  Avatar,
   Drawer,
   Timeline,
   Divider,
@@ -29,14 +29,20 @@ import {
   UserOutlined,
   BankOutlined,
   TeamOutlined,
-  RiseOutlined,
   SendOutlined,
-  FileTextOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
-import grievanceService from "../../../services/grievance.service";
-import API from "../../../services/api";
 import dayjs from "dayjs";
+import {
+  fetchGrievances,
+  fetchMentor,
+  createGrievance,
+} from "../store/studentSlice";
+import {
+  selectGrievancesList,
+  selectGrievancesLoading,
+  selectMentorWithFallback,
+} from "../store/studentSelectors";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -66,65 +72,32 @@ const SEVERITIES = [
 ];
 
 export default function StudentGrievance() {
-  const [grievances, setGrievances] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const dispatch = useDispatch();
+
+  // Redux state
+  const grievances = useSelector(selectGrievancesList);
+  const loading = useSelector(selectGrievancesLoading);
+  const mentorData = useSelector(selectMentorWithFallback);
+
+  // Local state
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailDrawerVisible, setDetailDrawerVisible] = useState(false);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
-  const [studentId, setStudentId] = useState(null);
-  const [assignedMentor, setAssignedMentor] = useState(null);
 
+  // Fetch data on mount
   useEffect(() => {
-    const loginData = localStorage.getItem("loginResponse");
-    if (loginData) {
-      try {
-        const parsed = JSON.parse(loginData);
-        setStudentId(parsed.user.studentId);
-      } catch (e) {
-        console.error("Failed to parse loginResponse:", e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (studentId) {
-      fetchGrievances();
-      fetchAssignedMentor();
-    }
-  }, [studentId]);
-
-  const fetchGrievances = async () => {
-    try {
-      setLoading(true);
-      const response = await grievanceService.getByStudentId(studentId);
-      setGrievances(response || []);
-    } catch (error) {
-      console.error("Error fetching grievances:", error);
-      toast.error("Failed to load grievances");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchAssignedMentor = async () => {
-    try {
-      const response = await API.get('/student/my-mentor');
-      const assignment = response.data?.data;
-      setAssignedMentor(assignment?.mentor || null);
-    } catch (error) {
-      console.error("Error fetching assigned mentor:", error);
-      setAssignedMentor(null);
-    }
-  };
+    dispatch(fetchGrievances({}));
+    dispatch(fetchMentor({}));
+  }, [dispatch]);
 
   const handleOpenCreateModal = () => {
-    if (!assignedMentor) {
+    if (!mentorData) {
       toast.error("Mentor not assigned yet. Please contact your institution.");
       return;
     }
-    form.setFieldsValue({ assignedToId: assignedMentor.id });
+    form.setFieldsValue({ assignedToId: mentorData.id });
     setCreateModalVisible(true);
   };
 
@@ -159,18 +132,26 @@ export default function StudentGrievance() {
   };
 
   const handleCreateGrievance = async (values) => {
+    // Validate mentor is assigned before submitting
+    if (!values.assignedToId && !mentorData?.id) {
+      toast.error("Mentor not assigned. Please contact your institution.");
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await grievanceService.submit({
+      await dispatch(createGrievance({
         ...values,
+        assignedToId: values.assignedToId || mentorData?.id,
         submittedDate: new Date().toISOString(),
-      });
+      })).unwrap();
       toast.success("Grievance submitted successfully");
       setCreateModalVisible(false);
       form.resetFields();
-      fetchGrievances();
+      dispatch(fetchGrievances({ forceRefresh: true }));
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to submit grievance");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to submit grievance";
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -183,9 +164,10 @@ export default function StudentGrievance() {
 
   // Stats
   const stats = useMemo(() => {
-    const total = grievances.length;
-    const open = grievances.filter(g => !["RESOLVED", "CLOSED"].includes(g.status)).length;
-    const resolved = grievances.filter(g => g.status === "RESOLVED").length;
+    const list = Array.isArray(grievances) ? grievances : [];
+    const total = list.length;
+    const open = list.filter(g => !["RESOLVED", "CLOSED"].includes(g.status)).length;
+    const resolved = list.filter(g => g.status === "RESOLVED").length;
     return { total, open, resolved };
   }, [grievances]);
 
@@ -257,6 +239,8 @@ export default function StudentGrievance() {
     },
   ];
 
+  const grievanceList = Array.isArray(grievances) ? grievances : [];
+
   return (
     <div className="p-4 md:p-5 min-h-screen">
       {/* Header */}
@@ -294,7 +278,7 @@ export default function StudentGrievance() {
           </div>
         ) : (
           <Table
-            dataSource={grievances}
+            dataSource={grievanceList}
             columns={columns}
             rowKey="id"
             size="small"

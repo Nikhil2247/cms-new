@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import API from '../../../../services/api';
 import { toast } from 'react-hot-toast';
 import { getStoredLoginResponse } from '../../../../utils/authStorage';
-import { useSWR } from '../../../../hooks/useSWR';
 
 // Utility function to get student ID from localStorage
 const getStudentId = () => {
@@ -13,16 +12,16 @@ const getStudentId = () => {
 export const useApplications = () => {
   const [applications, setApplications] = useState([]);
   const [selfIdentifiedApplications, setSelfIdentifiedApplications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const hasFetchedRef = useRef(false);
 
   const fetchAllApplications = useCallback(async () => {
+    setLoading(true);
     try {
       const response = await API.get('/student/applications');
 
-      // Handle different response structures:
-      // - { applications: [...], total, page, ... } (paginated)
-      // - { data: [...] } (wrapped)
-      // - [...] (direct array)
+      // Handle different response structures
       let allApps = [];
       if (response.data) {
         if (Array.isArray(response.data)) {
@@ -49,29 +48,26 @@ export const useApplications = () => {
       setError(errorMsg);
       toast.error(errorMsg);
       throw err;
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // SWR implementation for automatic caching and revalidation
-  const { isLoading, isRevalidating, revalidate } = useSWR(
-    'student-applications',
-    fetchAllApplications,
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-      focusThrottleInterval: 5000,
+  // Initial fetch on mount
+  useEffect(() => {
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchAllApplications();
     }
-  );
+  }, [fetchAllApplications]);
 
   return {
-    loading: isLoading,
-    isRevalidating, // NEW: Shows when fetching fresh data in background
+    loading,
+    isRevalidating: loading, // For backward compatibility
     error,
     applications,
     selfIdentifiedApplications,
     refetch: fetchAllApplications,
-    revalidate, // NEW: Manual revalidation trigger
   };
 };
 

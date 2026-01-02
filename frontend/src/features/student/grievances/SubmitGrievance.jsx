@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Card,
   Form,
@@ -30,10 +31,18 @@ import {
   TeamOutlined,
   GlobalOutlined,
 } from '@ant-design/icons';
-import { studentService } from '../../../services/student.service';
-import API from '../../../services/api';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
+import {
+  fetchGrievances,
+  fetchMentor,
+  createGrievance,
+} from '../store/studentSlice';
+import {
+  selectGrievancesList,
+  selectGrievancesLoading,
+  selectMentorWithFallback,
+} from '../store/studentSelectors';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
@@ -63,49 +72,33 @@ const PRIORITIES = [
 ];
 
 const SubmitGrievance = () => {
+  const dispatch = useDispatch();
   const [form] = Form.useForm();
-  const [loading, setLoading] = useState(false);
+
+  // Redux state
+  const grievances = useSelector(selectGrievancesList);
+  const loading = useSelector(selectGrievancesLoading);
+  const assignedMentor = useSelector(selectMentorWithFallback);
+
+  // Local state
   const [submitting, setSubmitting] = useState(false);
-  const [grievances, setGrievances] = useState([]);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [assignedMentor, setAssignedMentor] = useState(null);
 
+  // Fetch data on mount
   useEffect(() => {
-    fetchMyGrievances();
-    fetchAssignedMentor();
-  }, []);
-
-  const fetchAssignedMentor = async () => {
-    try {
-      const response = await API.get('/student/my-mentor');
-      console.log('[SubmitGrievance] Mentor response:', response.data);
-      const assignment = response.data?.data;
-      console.log('[SubmitGrievance] Mentor assignment:', assignment);
-      console.log('[SubmitGrievance] Mentor object:', assignment?.mentor);
-      setAssignedMentor(assignment?.mentor || null);
-    } catch (error) {
-      console.error('Error fetching mentor:', error);
-      setAssignedMentor(null);
-    }
-  };
-
-  const fetchMyGrievances = async () => {
-    try {
-      setLoading(true);
-      const response = await studentService.getGrievances();
-      const list = response?.data || response?.grievances || response || [];
-      setGrievances(Array.isArray(list) ? list : []);
-    } catch (error) {
-      console.error('Error fetching grievances:', error);
-      toast.error('Failed to load grievances');
-    } finally {
-      setLoading(false);
-    }
-  };
+    dispatch(fetchGrievances({}));
+    dispatch(fetchMentor({}));
+  }, [dispatch]);
 
   const handleSubmit = async (values) => {
+    // Validate mentor is assigned before submitting
+    if (!assignedMentor?.id) {
+      toast.error('No mentor assigned. Please contact your institution.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       const payload = {
@@ -113,18 +106,16 @@ const SubmitGrievance = () => {
         title: values.subject,
         description: values.description,
         severity: values.priority,
-        assignedToId: assignedMentor?.id,
+        assignedToId: assignedMentor.id,
       };
-      console.log('[SubmitGrievance] Submitting grievance with payload:', payload);
-      console.log('[SubmitGrievance] assignedMentor:', assignedMentor);
-      console.log('[SubmitGrievance] assignedToId:', assignedMentor?.id);
-      await studentService.submitGrievance(payload);
+      await dispatch(createGrievance(payload)).unwrap();
       toast.success('Grievance submitted successfully');
       setModalVisible(false);
       form.resetFields();
-      fetchMyGrievances();
+      dispatch(fetchGrievances({ forceRefresh: true }));
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to submit grievance');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to submit grievance';
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -220,6 +211,8 @@ const SubmitGrievance = () => {
     },
   ];
 
+  const grievanceList = Array.isArray(grievances) ? grievances : [];
+
   return (
     <div className="p-4 md:p-5 min-h-screen">
       {/* Header */}
@@ -239,7 +232,7 @@ const SubmitGrievance = () => {
           <div className="flex justify-center py-16"><Spin size="small" /></div>
         ) : (
           <Table
-            dataSource={grievances}
+            dataSource={grievanceList}
             columns={columns}
             rowKey="id"
             size="small"

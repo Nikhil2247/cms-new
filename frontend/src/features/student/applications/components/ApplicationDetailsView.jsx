@@ -1,4 +1,5 @@
 import React, { memo, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Card, Button, Typography, Tabs, Tag, Upload, Modal, message, Progress, Tooltip } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -21,7 +22,7 @@ import {
   ApplicationProgressTab,
 } from './tabs';
 import FacultyVisitsSection from './FacultyVisitsSection';
-import studentService from '../../../../services/student.service';
+import { uploadJoiningLetter, deleteJoiningLetter } from '../../store/studentSlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 
 const { Text } = Typography;
@@ -41,6 +42,7 @@ const ApplicationDetailsView = ({
   facultyVisitsLoading = false,
   onRefresh,
 }) => {
+  const dispatch = useDispatch();
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -84,13 +86,14 @@ const ApplicationDetailsView = ({
     if (!selectedFile) return;
     try {
       setUploading(true);
-      await studentService.uploadJoiningLetter(application.id, selectedFile);
+      await dispatch(uploadJoiningLetter({ applicationId: application.id, file: selectedFile })).unwrap();
       message.success('Joining letter uploaded successfully');
       setUploadModalVisible(false);
       setSelectedFile(null);
       onRefresh?.();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to upload');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload';
+      message.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -99,12 +102,13 @@ const ApplicationDetailsView = ({
   const handleDeleteJoiningLetter = async () => {
     try {
       setUploading(true);
-      await studentService.deleteJoiningLetter(application.id);
+      await dispatch(deleteJoiningLetter(application.id)).unwrap();
       message.success('Joining letter deleted');
       setDeleteConfirmVisible(false);
       onRefresh?.();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to delete');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete';
+      message.error(errorMessage);
     } finally {
       setUploading(false);
     }

@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useState } from 'react';
+import { useEffect, useCallback, useMemo, useRef, useTransition } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchFacultyDashboard,
@@ -23,22 +23,17 @@ import {
   selectJoiningLetters,
   selectMostRecentFetch,
 } from '../store/facultySlice';
-import { useSWR } from '../../../hooks/useSWR';
 
 /**
  * Custom hook for Faculty Dashboard data management
- * Uses Redux for state management and SWR pattern for optimal caching
- *
- * SWR Pattern Benefits:
- * - Shows cached data immediately (no loading spinner on subsequent visits)
- * - Fetches fresh data in background
- * - Shows subtle revalidation indicator while fetching
- * - Auto-revalidates on window focus and network reconnect
+ * Uses Redux for state management with optimized data fetching
  */
 export const useFacultyDashboard = () => {
   const dispatch = useDispatch();
+  const hasFetchedRef = useRef(false);
+  const [isPending, startTransition] = useTransition();
 
-  // Selectors using new state structure
+  // Selectors
   const dashboard = useSelector(selectDashboard);
   const students = useSelector(selectStudents);
   const visitLogs = useSelector(selectVisitLogs);
@@ -48,11 +43,8 @@ export const useFacultyDashboard = () => {
   const joiningLetters = useSelector(selectJoiningLetters);
   const mostRecentFetch = useSelector(selectMostRecentFetch);
 
-  // SWR state for tracking background revalidation
-  const [isRevalidating, setIsRevalidating] = useState(false);
-
   // Derived loading state from Redux
-  const reduxIsLoading = useMemo(() => (
+  const isLoading = useMemo(() => (
     dashboard.loading ||
     students.loading ||
     visitLogs.loading ||
@@ -60,39 +52,46 @@ export const useFacultyDashboard = () => {
     joiningLetters.loading
   ), [dashboard.loading, students.loading, visitLogs.loading, monthlyReports.loading, joiningLetters.loading]);
 
-  // Fetch all dashboard data
+  // Fetch all dashboard data - using startTransition for non-blocking updates
   const fetchDashboardData = useCallback((forceRefresh = false) => {
-    dispatch(fetchFacultyDashboard({ forceRefresh }));
-    dispatch(fetchAssignedStudents({ forceRefresh }));
-    dispatch(fetchVisitLogs({ forceRefresh }));
-    dispatch(fetchProfile());
-    dispatch(fetchApplications({ forceRefresh }));
-    dispatch(fetchMonthlyReports({ forceRefresh }));
-    dispatch(fetchJoiningLetters({ forceRefresh }));
-  }, [dispatch]);
+    startTransition(() => {
+      dispatch(fetchFacultyDashboard({ forceRefresh }));
+      dispatch(fetchAssignedStudents({ forceRefresh }));
+      dispatch(fetchVisitLogs({ forceRefresh }));
+      dispatch(fetchProfile());
+      dispatch(fetchApplications({ forceRefresh }));
+      dispatch(fetchMonthlyReports({ forceRefresh }));
+      dispatch(fetchJoiningLetters({ forceRefresh }));
+    });
+  }, [dispatch, startTransition]);
 
-  // SWR implementation - fetches with stale-while-revalidate pattern
-  const { isLoading: swrIsLoading, isRevalidating: swrIsRevalidating, revalidate } = useSWR(
-    'faculty-dashboard-data',
-    async () => {
-      await fetchDashboardData(false);
-      return true; // Return success indicator
-    },
-    {
-      revalidateOnFocus: true,
-      revalidateOnReconnect: true,
-      dedupingInterval: 2000,
-      focusThrottleInterval: 5000,
-    }
-  );
-
-  // Update local revalidation state
+  // Initial data fetch on mount
   useEffect(() => {
-    setIsRevalidating(swrIsRevalidating);
-  }, [swrIsRevalidating]);
+    if (!hasFetchedRef.current) {
+      hasFetchedRef.current = true;
+      fetchDashboardData(false);
+    }
+  }, [fetchDashboardData]);
 
-  // Combined loading state: only show full loading on initial load with no cache
-  const isLoading = swrIsLoading || reduxIsLoading;
+  // Revalidate on window focus (throttled + deferred)
+  useEffect(() => {
+    let lastFocusTime = 0;
+    const THROTTLE_MS = 120000; // 2 minutes
+
+    const handleFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusTime > THROTTLE_MS) {
+        lastFocusTime = now;
+        // Defer to avoid blocking the focus event
+        requestAnimationFrame(() => {
+          fetchDashboardData(false);
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchDashboardData]);
 
   // Calculate statistics from dashboard data
   const stats = useMemo(() => {
@@ -187,13 +186,8 @@ export const useFacultyDashboard = () => {
   }, []);
 
   const refresh = useCallback(() => {
-    setIsRevalidating(true);
-    fetchDashboardData(true);
-    revalidate().finally(() => {
-      setIsRevalidating(false);
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [revalidate]);
+    return fetchDashboardData(true);
+  }, [fetchDashboardData]);
 
   // Get pending joining letters
   const pendingJoiningLetters = useMemo(() => {
@@ -214,9 +208,9 @@ export const useFacultyDashboard = () => {
 
   return {
     // State
-    isLoading,
-    isRevalidating, // NEW: Shows subtle indicator during background refresh
-    lastFetched: mostRecentFetch, // Timestamp of most recent data fetch
+    isLoading: isLoading || isPending,
+    isRevalidating: isPending, // Shows during background transitions
+    lastFetched: mostRecentFetch,
     dashboard: {
       ...dashboard.stats,
       monthlyReports: monthlyReports.list,
@@ -227,8 +221,8 @@ export const useFacultyDashboard = () => {
     monthlyReports: monthlyReports.list,
     joiningLetters: joiningLetters.list,
     mentor: profile.data,
-    grievances: [], // Deprecated - kept for backward compatibility
-    grievanceStats, // NEW: Grievance counts from API
+    grievances: [],
+    grievanceStats,
     applications: applications.list,
 
     // Computed
@@ -255,7 +249,6 @@ export const useFacultyDashboard = () => {
     handleRejectApplication,
     handleSubmitFeedback,
     handleReviewReport,
-    revalidate, // NEW: Manual revalidation trigger
 
     // Errors
     error: dashboard.error || students.error || visitLogs.error || monthlyReports.error || joiningLetters.error,

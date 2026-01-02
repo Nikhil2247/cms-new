@@ -18,7 +18,6 @@ import {
 } from "antd";
 import { UploadOutlined, PlusOutlined } from "@ant-design/icons";
 import { useDispatch, useSelector } from "react-redux";
-import API from "../../../services/api";
 import {
   fetchInstituteAsync,
   selectInstitute,
@@ -26,6 +25,8 @@ import {
 } from "../../../store/slices/instituteSlice";
 import { toast } from "react-hot-toast";
 import { getStoredLoginResponse } from "../../../utils/authStorage";
+import { selectApplicationsList } from "../store/studentSelectors";
+import { submitSelfIdentified, fetchApplications } from "../store/studentSlice";
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -35,6 +36,7 @@ const SelfIdentifiedInternship = () => {
   const dispatch = useDispatch();
   const institute = useSelector(selectInstitute);
   const instituteLoading = useSelector(selectInstituteLoading);
+  const applications = useSelector(selectApplicationsList);
 
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -42,9 +44,10 @@ const SelfIdentifiedInternship = () => {
   const [facultyMentors, setFacultyMentors] = useState([]);
   const [internshipDuration, setInternshipDuration] = useState("");
 
-  // Fetch institute data on mount
+  // Fetch institute data and applications on mount
   useEffect(() => {
     dispatch(fetchInstituteAsync());
+    dispatch(fetchApplications({}));
   }, [dispatch]);
 
   // Extract faculty mentors from institute data
@@ -122,21 +125,13 @@ const SelfIdentifiedInternship = () => {
       // Prevent creating a new self-identified internship if student already has
       // an active application. Only applications with status === 'WITHDRAWN'
       // are allowed to be replaced.
-      try {
-        const res = await API.get(`/student/applications`);
-        const apps = (res.data && (res.data.data || res.data)) || [];
-        const hasActive = apps.some((a) => (a.status || "").toUpperCase() !== "WITHDRAWN");
-        if (hasActive) {
-          toast.error(
-            "You already have an active internship application. Ask your mentor to deactivate it before adding another."
-          );
-          return;
-        }
-      } catch (err) {
-        // If the lookup fails (endpoint missing or network error), do not block
-        // the student from submitting. Log for debugging and continue.
-        // eslint-disable-next-line no-console
-        console.warn("Could not verify existing applications:", err?.response || err?.message || err);
+      const apps = Array.isArray(applications) ? applications : [];
+      const hasActive = apps.some((a) => (a.status || "").toUpperCase() !== "WITHDRAWN");
+      if (hasActive) {
+        toast.error(
+          "You already have an active internship application. Ask your mentor to deactivate it before adding another."
+        );
+        return;
       }
 
       setLoading(true);
@@ -220,26 +215,8 @@ const SelfIdentifiedInternship = () => {
         }
       }
 
-      // Submit to backend - correct endpoint is /student/self-identified
-      const response = await API.post(
-        "/student/self-identified",
-        formData,
-        {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-          timeout: 60000,
-          maxContentLength: 5 * 1024 * 1024, // 5MB
-          maxBodyLength: 5 * 1024 * 1024, // 5MB
-        }
-      );
-
-      const applicationData = response.data.data || response.data;
-      const applicationId = applicationData?.id || applicationData?._id;
-
-      if (!applicationId) {
-        throw new Error("Failed to get application ID from response");
-      }
+      // Submit to backend using Redux action
+      await dispatch(submitSelfIdentified(formData)).unwrap();
 
       // Backend handles mentor assignment linking if mentorId was provided in the payload.
       toast.success(
@@ -248,37 +225,16 @@ const SelfIdentifiedInternship = () => {
           : "Self-identified internship submitted successfully!"
       );
 
+      // Refresh applications list in Redux store
+      dispatch(fetchApplications({ forceRefresh: true }));
+
       // Reset form
       form.resetFields();
       setJoiningLetterFile(null);
     } catch (error) {
       console.error("Submission error:", error);
-      
-      // Enhanced error handling
-      if (error.code === 'ERR_NETWORK') {
-        toast.error(
-          "Unable to connect to server. Please try again later."
-        );
-      } else if (error.code === 'ECONNABORTED') {
-        toast.error(
-          "Upload timeout: The request is taking too long. Please try with a smaller file or check your internet connection."
-        );
-      } else if (error.response?.status === 413) {
-        const fileSizeMB = joiningLetterFile ? (joiningLetterFile.size / (1024 * 1024)).toFixed(2) : 'unknown';
-        toast.error(
-          `File too large (${fileSizeMB}MB): The server rejected your file. Maximum allowed size is 5MB. Please compress your file or use a smaller one.`
-        );
-      } else if (error.response?.status === 400) {
-        toast.error(
-          error.response.data?.message || "Invalid data or file format. Please check your inputs and try again."
-        );
-      } else {
-        toast.error(
-          error.response?.data?.message ||
-          error.message ||
-          "Failed to submit application. Please try again."
-        );
-      }
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to submit application. Please try again.";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

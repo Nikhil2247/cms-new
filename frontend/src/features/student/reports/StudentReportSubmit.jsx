@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import {
   Card, Table, Button, Modal, Upload, message, Switch, Select, Alert,
   Tag, Typography, Empty, Spin, Tooltip, Popconfirm
@@ -10,9 +11,22 @@ import {
   InboxOutlined
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import API from '../../../services/api';
-import studentService from '../../../services/student.service';
+import {
+  fetchStudentDashboard,
+  fetchApplications,
+  fetchMyReports,
+  createReport,
+  deleteMonthlyReport,
+} from '../store/studentSlice';
+import {
+  selectDashboardStats,
+  selectApplicationsList,
+  selectReportsList,
+  selectReportsLoading,
+  selectActiveInternships,
+} from '../store/studentSelectors';
 import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
+import API from '../../../services/api';
 
 const { Text } = Typography;
 
@@ -22,9 +36,18 @@ const MONTH_NAMES = [
 ];
 
 const StudentReportSubmit = () => {
-  const [reports, setReports] = useState([]);
-  const [applications, setApplications] = useState([]);
+  const dispatch = useDispatch();
+
+  // Redux state
+  const dashboardStats = useSelector(selectDashboardStats);
+  const allApplications = useSelector(selectApplicationsList);
+  const activeInternships = useSelector(selectActiveInternships);
+  const allReports = useSelector(selectReportsList);
+  const reportsLoading = useSelector(selectReportsLoading);
+
+  // Local state
   const [selectedApplication, setSelectedApplication] = useState(null);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingReport, setEditingReport] = useState(null);
@@ -35,6 +58,13 @@ const StudentReportSubmit = () => {
   const [autoMonthSelection, setAutoMonthSelection] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
   const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
+
+  // Get active applications (APPROVED or JOINED status)
+  const applications = useMemo(() => {
+    return activeInternships.length > 0
+      ? activeInternships
+      : allApplications.filter(app => ['APPROVED', 'JOINED', 'ACTIVE', 'SELECTED'].includes(app.status));
+  }, [activeInternships, allApplications]);
 
   // Month options
   const monthOptions = useMemo(() =>
@@ -89,43 +119,31 @@ const StudentReportSubmit = () => {
     }
   }, [autoMonthSelection, allowedMonthOptions, selectedMonth]);
 
-  // Fetch active application on mount
+  // Fetch data on mount using Redux
   useEffect(() => {
-    const fetchActiveApplication = async () => {
-      try {
-        // Get dashboard to find current internship
-        const dashboardRes = await studentService.getDashboard();
-        const currentInternship = dashboardRes?.currentInternship;
+    dispatch(fetchStudentDashboard({}));
+    dispatch(fetchApplications({}));
+  }, [dispatch]);
 
-        if (currentInternship) {
-          setSelectedApplication(currentInternship);
-          setApplications([currentInternship]);
-        } else {
-          // Fallback: get all self-identified applications
-          const appsRes = await studentService.getSelfIdentifiedApplications();
-          const apps = appsRes?.applications || [];
-          const activeApps = apps.filter(app =>
-            ['APPROVED', 'JOINED'].includes(app.status)
-          );
-          setApplications(activeApps);
-          if (activeApps.length > 0) {
-            setSelectedApplication(activeApps[0]);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching application:', error);
-      }
-    };
+  // Set selected application from dashboard or applications
+  useEffect(() => {
+    if (selectedApplication) return;
 
-    fetchActiveApplication();
-  }, []);
+    // Try to get current internship from dashboard
+    if (dashboardStats?.currentInternship) {
+      setSelectedApplication(dashboardStats.currentInternship);
+    } else if (applications.length > 0) {
+      setSelectedApplication(applications[0]);
+    }
+  }, [dashboardStats, applications, selectedApplication]);
 
-  // Fetch reports when application changes
+  // Fetch reports for selected application
   const fetchReports = useCallback(async () => {
     if (!selectedApplication?.id) return;
 
     setLoading(true);
     try {
+      // Use API for application-specific reports (not in global store)
       const response = await API.get(`/student/applications/${selectedApplication.id}/reports`);
       const data = response.data?.reports || [];
       setReports(Array.isArray(data) ? data : []);
@@ -224,39 +242,36 @@ const StudentReportSubmit = () => {
         fileUrl = genericUpload.data?.url || genericUpload.data?.path;
       }
 
-      // Step 2: Submit report
-      const response = await API.post('/student/monthly-reports', {
+      // Step 2: Submit report using Redux action
+      await dispatch(createReport({
         applicationId: selectedApplication.id,
         reportMonth: monthValue,
         reportYear: yearValue,
         reportFileUrl: fileUrl,
-      });
+      })).unwrap();
 
-      if (response.data?.autoApproved) {
-        message.success('Report uploaded and auto-approved!');
-      } else {
-        message.success('Report uploaded successfully!');
-      }
-
+      message.success('Report uploaded successfully!');
       handleCloseModal();
       fetchReports();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Upload failed');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
+      message.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
-  }, [selectedApplication?.id, fileList, autoMonthSelection, selectedMonth, selectedYear, handleCloseModal, fetchReports]);
+  }, [dispatch, selectedApplication?.id, fileList, autoMonthSelection, selectedMonth, selectedYear, handleCloseModal, fetchReports]);
 
-  // Delete report
+  // Delete report using Redux
   const handleDelete = useCallback(async (id) => {
     try {
-      await studentService.deleteMonthlyReport(id);
+      await dispatch(deleteMonthlyReport(id)).unwrap();
       message.success('Report deleted');
       fetchReports();
     } catch (error) {
-      message.error('Failed to delete report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
+      message.error(errorMessage);
     }
-  }, [fetchReports]);
+  }, [dispatch, fetchReports]);
 
   // View report
   const handleView = useCallback((url) => {
@@ -359,8 +374,10 @@ const StudentReportSubmit = () => {
     pending: reports.filter(r => r.status === 'PENDING' || r.status === 'SUBMITTED' || r.status === 'DRAFT').length,
   };
 
+  const isLoading = loading || reportsLoading;
+
   // No application state
-  if (!loading && !selectedApplication && applications.length === 0) {
+  if (!isLoading && !selectedApplication && applications.length === 0) {
     return (
       <div className="p-4 md:p-5 min-h-screen">
         <div className="flex items-center gap-2 mb-4">
@@ -401,7 +418,7 @@ const StudentReportSubmit = () => {
         </div>
         <div className="flex items-center gap-2">
           <Tooltip title="Refresh">
-            <Button type="text" icon={<ReloadOutlined spin={loading} />} onClick={fetchReports} />
+            <Button type="text" icon={<ReloadOutlined spin={isLoading} />} onClick={fetchReports} />
           </Tooltip>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} size="small" className="rounded-lg">
             Upload Report
@@ -443,7 +460,7 @@ const StudentReportSubmit = () => {
 
       {/* Reports Table */}
       <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: 0 } }}>
-        {loading ? (
+        {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Spin />
           </div>

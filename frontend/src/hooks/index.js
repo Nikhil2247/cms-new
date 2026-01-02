@@ -10,7 +10,6 @@ export { useNotifications } from './useNotifications';
 export { useSmartIndustry } from './useSmartIndustry';
 export { useWebSocket } from './useWebSocket';
 export { useThemeStyles } from './useThemeStyles';
-export { useSWR } from './useSWR';
 
 // Lookup hooks (re-exported from shared features for convenience)
 export {
@@ -27,5 +26,4 @@ export { default as useDebounceDefault } from './useDebounce';
 export { default as useSmartFetchDefault } from './useSmartFetch';
 export { default as useNotificationsDefault } from './useNotifications';
 export { default as useWebSocketDefault } from './useWebSocket';
-export { default as useSWRDefault } from './useSWR';
 // Note: useThemeStyles only has named export, no default export
