@@ -3,7 +3,7 @@ import { Form, Input, Select, Button, Row, Col, message, Spin, Modal, Divider } 
 import { useDispatch, useSelector } from 'react-redux';
 import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
 import { SaveOutlined } from '@ant-design/icons';
-import { useDepartments } from '../../shared/hooks/useLookup';
+import { useBranches } from '../../shared/hooks/useLookup';
 
 const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -15,8 +15,8 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const staffMember = staffId ? staff.list?.find(s => s.id === staffId) : null;
   const isEditMode = !!staffId;
 
-  // Use global lookup data for departments
-  const { activeDepartments, loading: departmentsLoading } = useDepartments();
+  // Use global lookup data for branches
+  const { activeBranches, loading: branchesLoading } = useBranches();
 
   useEffect(() => {
     if (open) {
@@ -37,14 +37,14 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
 
   useEffect(() => {
     if (open && staffMember) {
-      // Find matching department ID from the department name
-      let departmentId = null;
-      if (staffMember.department || staffMember.branchName) {
-        const deptName = staffMember.department || staffMember.branchName;
-        const matchingDept = activeDepartments?.find(d =>
-          d.name === deptName || d.shortName === deptName
+      // Find matching branch ID from the branch name
+      let branchId = null;
+      if (staffMember.branchName || staffMember.department) {
+        const branchName = staffMember.branchName || staffMember.department;
+        const matchingBranch = activeBranches?.find(b =>
+          b.name === branchName || b.shortName === branchName
         );
-        departmentId = matchingDept?.id || null;
+        branchId = matchingBranch?.id || null;
       }
 
       form.setFieldsValue({
@@ -53,12 +53,12 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         phoneNo: staffMember.phoneNo,
         role: staffMember.role,
         designation: staffMember.designation,
-        departmentId,
+        branchId,
       });
     } else if (open && !isEditMode) {
       form.resetFields();
     }
-  }, [staffMember, form, open, isEditMode, activeDepartments]);
+  }, [staffMember, form, open, isEditMode, activeBranches]);
 
   const handleClose = () => {
     form.resetFields();
@@ -68,11 +68,11 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
   const onFinish = async (values) => {
     setLoading(true);
     try {
-      // Transform departmentId to department name
-      let departmentName = null;
-      if (values.departmentId) {
-        const selectedDept = activeDepartments?.find(d => d.id === values.departmentId);
-        departmentName = selectedDept?.name || null;
+      // Transform branchId to branch name
+      let branchName = null;
+      if (values.branchId) {
+        const selectedBranch = activeBranches?.find(b => b.id === values.branchId);
+        branchName = selectedBranch?.name || null;
       }
 
       const formattedValues = {
@@ -81,7 +81,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         phoneNo: values.phoneNo,
         role: values.role,
         designation: values.designation,
-        department: departmentName,
+        branchName: branchName,
       };
 
       if (isEditMode) {
@@ -109,7 +109,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       width={600}
       destroyOnHidden
     >
-      {initialLoading || departmentsLoading ? (
+      {initialLoading || branchesLoading ? (
         <div className="flex justify-center items-center py-12">
           <Spin size="large" />
         </div>
@@ -173,13 +173,13 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="departmentId"
-                label="Department"
+                name="branchId"
+                label="Branch"
               >
-                <Select placeholder="Select department" allowClear>
-                  {activeDepartments?.map(dept => (
-                    <Select.Option key={dept.id} value={dept.id}>
-                      {dept.name}
+                <Select placeholder="Select branch" allowClear>
+                  {activeBranches?.map(branch => (
+                    <Select.Option key={branch.id} value={branch.id}>
+                      {branch.name}
                     </Select.Option>
                   ))}
                 </Select>

@@ -126,7 +126,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
           </div>
         }
         extra={
-          <Button type="link" onClick={onViewAll || (() => navigate('/joining-letters'))}>
+          <Button type="link" onClick={onViewAll || (() => navigate('/app/joining-letters'))}>
             View All <RightOutlined />
           </Button>
         }

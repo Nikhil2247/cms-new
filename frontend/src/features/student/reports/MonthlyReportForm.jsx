@@ -7,7 +7,7 @@ const MonthlyReportForm = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    navigate('/student/reports', { replace: true });
+    navigate('/app/reports/submit', { replace: true });
   }, [navigate]);
 
   return null;

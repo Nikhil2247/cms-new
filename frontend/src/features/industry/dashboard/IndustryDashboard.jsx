@@ -81,17 +81,17 @@ const FloatingQuickActions = ({ profile, dashboardData }) => {
       <FloatButton
         icon={<FileAddOutlined />}
         tooltip="Post Internship"
-        onClick={() => navigate("/postings")}
+        onClick={() => navigate("/app/postings")}
       />
       <FloatButton
         icon={<ContactsOutlined />}
         tooltip="View Applications"
-        onClick={() => navigate("/applications")}
+        onClick={() => navigate("/app/applications")}
       />
       <FloatButton
         icon={<SettingOutlined />}
         tooltip="Profile Settings"
-        onClick={() => navigate("/profile")}
+        onClick={() => navigate("/app/company/profile")}
       />
     </FloatButton.Group>
   );
@@ -196,7 +196,7 @@ const IndustryDashboard = () => {
                 <Button
                   type="primary"
                   icon={<PlusOutlined />}
-                  onClick={() => navigate("/postings")}
+                  onClick={() => navigate("/app/postings")}
                   key="post"
                   className="h-11 px-6 rounded-xl font-bold bg-blue-600 hover:bg-blue-500 border-0 shadow-lg shadow-blue-200 dark:shadow-none"
                 >
@@ -254,7 +254,7 @@ const IndustryDashboard = () => {
                   </div>
                 }
                 extra={
-                  <Link to="/applications">
+                  <Link to="/app/applications">
                     <Button
                       type="text"
                       className="text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl font-bold text-xs px-4 h-9"
@@ -343,7 +343,7 @@ const IndustryDashboard = () => {
                   </div>
                 }
                 extra={
-                  <Link to="/postings">
+                  <Link to="/app/postings">
                     <Button
                       type="text"
                       icon={<SettingOutlined />}
@@ -410,7 +410,7 @@ const IndustryDashboard = () => {
                     <Button
                       type="primary"
                       icon={<PlusOutlined />}
-                      onClick={() => navigate("/postings")}
+                      onClick={() => navigate("/app/postings")}
                       className="rounded-xl font-bold bg-blue-600 hover:bg-blue-500 border-0 h-10 px-6 shadow-lg shadow-blue-200"
                     >
                       Post First Internship

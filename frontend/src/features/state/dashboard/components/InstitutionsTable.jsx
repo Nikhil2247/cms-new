@@ -284,7 +284,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
       extra={
         <Button
           type="link"
-          onClick={onViewAll || (() => navigate('/institutions'))}
+          onClick={onViewAll || (() => navigate('/app/institutions'))}
           className="flex items-center gap-1 font-bold text-sm px-0"
         >
           View All <RightOutlined className="text-xs" />

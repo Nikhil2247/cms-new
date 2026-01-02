@@ -1591,12 +1591,8 @@ export class PrincipalService {
       throw new BadRequestException(`User with email ${createStaffDto.email} already exists`);
     }
 
-    const staffRole: Role =
-      createStaffDto.role === 'FACULTY'
-        ? Role.TEACHER
-        : createStaffDto.role === 'MENTOR'
-          ? Role.FACULTY_SUPERVISOR
-          : Role.PRINCIPAL;
+    // Use the role directly from the DTO (already validated)
+    const staffRole: Role = createStaffDto.role as Role;
 
     // Generate and hash secure temporary password using domain service
     const temporaryPassword = this.userService.generateSecurePassword();
@@ -1611,7 +1607,7 @@ export class PrincipalService {
         active: true,
         phoneNo: createStaffDto.phoneNo,
         designation: createStaffDto.designation,
-        branchName: createStaffDto.department, // Save department as branchName
+        branchName: createStaffDto.branchName,
         Institution: { connect: { id: principal.institutionId } },
       },
     });
@@ -1666,12 +1662,8 @@ export class PrincipalService {
       throw new NotFoundException('Staff member not found');
     }
 
-    // Map department to branchName for the database
+    // Prepare update data for Prisma
     const prismaData: Prisma.UserUpdateInput = { ...updateData };
-    if (updateData.department !== undefined) {
-      prismaData.branchName = updateData.department;
-      delete (prismaData as any).department;
-    }
 
     const updated = await this.prisma.user.update({
       where: { id: staffId },
@@ -4654,7 +4646,7 @@ export class PrincipalService {
     if (data.companyContact !== undefined) updateData.companyContact = data.companyContact;
     if (data.companyEmail !== undefined) updateData.companyEmail = data.companyEmail;
     if (data.jobProfile !== undefined) updateData.jobProfile = data.jobProfile;
-    if (data.stipend !== undefined) updateData.stipend = data.stipend;
+    if (data.stipend !== undefined) updateData.stipend = data.stipend !== null ? String(data.stipend) : null;
     if (data.internshipDuration !== undefined) updateData.internshipDuration = data.internshipDuration;
     if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
     if (data.endDate !== undefined) updateData.endDate = new Date(data.endDate);

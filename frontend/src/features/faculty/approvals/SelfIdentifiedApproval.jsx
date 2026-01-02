@@ -462,7 +462,7 @@ const SelfIdentifiedApproval = () => {
           <div className="flex items-center gap-3">
             <Button
               icon={<ArrowLeftOutlined />}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/app/dashboard')}
               className="rounded-lg"
             />
             <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm">

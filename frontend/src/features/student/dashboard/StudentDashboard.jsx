@@ -676,7 +676,7 @@ const StudentDashboard = () => {
   // Navigation handlers
   // const handleNavigateToGrievances = useCallback(() => navigate('/grievances'), [navigate]);
   const handleNavigateToReports = useCallback(
-    () => navigate("/reports/submit"),
+    () => navigate("/app/reports/submit"),
     [navigate]
   );
   const handleViewReports = useCallback(
@@ -757,7 +757,7 @@ const StudentDashboard = () => {
                 <div className="md:block hidden space-x-2">
                   <Button
                     icon={<LaptopOutlined />}
-                    onClick={() => navigate("/my-applications")}
+                    onClick={() => navigate("/app/my-applications")}
                     className="rounded-lg"
                   >
                     My Applications
@@ -950,7 +950,7 @@ const StudentDashboard = () => {
               >
                 <Button
                   type="primary"
-                  onClick={() => navigate("/internships")}
+                  onClick={() => navigate("/app/internships")}
                   className="rounded-lg"
                 >
                   Browse Internships
@@ -1081,7 +1081,7 @@ const StudentDashboard = () => {
               type="primary"
               onClick={() => {
                 setPendingFieldsModalVisible(false);
-                navigate("/my-applications");
+                navigate("/app/my-applications");
               }}
             >
               View Details

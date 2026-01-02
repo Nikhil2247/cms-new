@@ -30,7 +30,7 @@ function ChangePassword() {
         parsedResponse.needsPasswordChange = false;
         localStorage.setItem("loginResponse", JSON.stringify(parsedResponse));
       }
-      navigate("/dashboard");
+      navigate("/app/dashboard");
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to change password");
     } finally {

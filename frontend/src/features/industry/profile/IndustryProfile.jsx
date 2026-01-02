@@ -163,7 +163,7 @@ const IndustryProfile = () => {
           : "Profile created successfully!";
         toast.success(message);
 
-        navigate("/dashboard");
+        navigate("/app/dashboard");
       }
     } catch (error) {
       console.error("Error saving profile:", error);
@@ -362,7 +362,7 @@ const IndustryProfile = () => {
                   <Button
                     size="small"
                     type="primary"
-                    onClick={() => navigate("/postings")}
+                    onClick={() => navigate("/app/postings")}
                     className="bg-success hover:bg-success-600 border-0 rounded-lg font-medium"
                   >
                     Post Internship

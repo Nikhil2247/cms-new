@@ -35,7 +35,7 @@ const RecentApplicationsList = ({ applications = [], loading, onViewAll }) => {
         </div>
       }
       extra={
-        <Button type="link" onClick={onViewAll || (() => navigate('/internships'))}>
+        <Button type="link" onClick={onViewAll || (() => navigate('/app/internships'))}>
           View All <RightOutlined />
         </Button>
       }
@@ -56,7 +56,7 @@ const RecentApplicationsList = ({ applications = [], loading, onViewAll }) => {
                   flex items-start gap-4
                   ${index !== applications.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}
                 `}
-                onClick={() => navigate(`/internships/${app.internshipId}`)}
+                onClick={() => navigate(`/app/internships/${app.internshipId}`)}
               >
                 <Avatar
                   icon={<BankOutlined />}
@@ -91,7 +91,7 @@ const RecentApplicationsList = ({ applications = [], loading, onViewAll }) => {
           image={Empty.PRESENTED_IMAGE_SIMPLE}
           description="No applications yet"
         >
-          <Button type="primary" onClick={() => navigate('/internships')}>
+          <Button type="primary" onClick={() => navigate('/app/internships')}>
             Browse Internships
           </Button>
         </Empty>

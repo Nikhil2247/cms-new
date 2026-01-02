@@ -70,7 +70,7 @@ const GrievancesCard = ({ grievances = [], loading, onCreateNew, onViewAll }) =>
           type="primary"
           icon={<PlusOutlined />}
           size="small"
-          onClick={onCreateNew || (() => navigate('/submit-grievance'))}
+          onClick={onCreateNew || (() => navigate('/app/submit-grievance'))}
         >
           New
         </Button>
@@ -132,7 +132,7 @@ const GrievancesCard = ({ grievances = [], loading, onCreateNew, onViewAll }) =>
             <Button
               type="link"
               block
-              onClick={onViewAll || (() => navigate('/grievances'))}
+              onClick={onViewAll || (() => navigate('/app/grievances'))}
               className="mt-2"
             >
               View All ({grievancesList.length}) <RightOutlined />
@@ -147,7 +147,7 @@ const GrievancesCard = ({ grievances = [], loading, onCreateNew, onViewAll }) =>
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={onCreateNew || (() => navigate('/submit-grievance'))}
+            onClick={onCreateNew || (() => navigate('/app/submit-grievance'))}
           >
             Report Issue
           </Button>

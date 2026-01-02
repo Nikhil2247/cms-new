@@ -411,7 +411,7 @@ const PrincipalOverview = () => {
                     type="default"
                     block
                     className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/app/dashboard')}
                   >
                     <DashboardOutlined className="text-lg" />
                     <span>Full Dashboard</span>
@@ -422,7 +422,7 @@ const PrincipalOverview = () => {
                     type="default"
                     block
                     className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
-                    onClick={() => navigate('/mentors')}
+                    onClick={() => navigate('/app/mentors')}
                   >
                     <SolutionOutlined className="text-lg" />
                     <span>Mentor Assignment</span>
@@ -433,7 +433,7 @@ const PrincipalOverview = () => {
                     type="default"
                     block
                     className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
-                    onClick={() => navigate('/internships')}
+                    onClick={() => navigate('/app/internships')}
                   >
                     <LaptopOutlined className="text-lg" />
                     <span>All Internships</span>
@@ -444,7 +444,7 @@ const PrincipalOverview = () => {
                     type="default"
                     block
                     className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
-                    onClick={() => navigate('/faculty-progress')}
+                    onClick={() => navigate('/app/faculty-progress')}
                   >
                     <CarOutlined className="text-lg" />
                     <span>Faculty Progress</span>

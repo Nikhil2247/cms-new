@@ -116,7 +116,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
           </div>
         }
         extra={
-          <Button type="link" onClick={onViewAll || (() => navigate('/monthly-reports'))}>
+          <Button type="link" onClick={onViewAll || (() => navigate('/app/monthly-reports'))}>
             View All <RightOutlined />
           </Button>
         }

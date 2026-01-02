@@ -178,7 +178,7 @@ const FacultyDashboard = () => {
                 loading={isLoading}
                 onViewStudent={handleViewStudent}
                 onScheduleVisit={refresh}
-                onViewAll={() => navigate('/assigned-students')}
+                onViewAll={() => navigate('/app/assigned-students')}
               />
 
               {/* Secondary Content Grid */}
@@ -189,7 +189,7 @@ const FacultyDashboard = () => {
                     visitLogs={visitLogs}
                     loading={isLoading}
                     onCreateNew={() => handleNewVisit()}
-                    onViewAll={() => navigate('/visit-logs')}
+                    onViewAll={() => navigate('/app/visit-logs')}
                   />
                 </Col>
 
@@ -199,7 +199,7 @@ const FacultyDashboard = () => {
                     reports={dashboard?.monthlyReports || []}
                     loading={isLoading}
                     onRefresh={refresh}
-                    onViewAll={() => navigate('/monthly-reports')}
+                    onViewAll={() => navigate('/app/monthly-reports')}
                   />
                 </Col>
               </Row>
@@ -211,7 +211,7 @@ const FacultyDashboard = () => {
                     letters={dashboard?.joiningLetters || []}
                     loading={isLoading}
                     onRefresh={refresh}
-                    onViewAll={() => navigate('/joining-letters')}
+                    onViewAll={() => navigate('/app/joining-letters')}
                   />
                 </Col>
               </Row>

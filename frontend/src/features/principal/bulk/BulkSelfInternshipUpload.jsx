@@ -362,7 +362,7 @@ const BulkSelfInternshipUpload = () => {
         extra={
           <Button
             icon={<HistoryOutlined />}
-            onClick={() => navigate('/bulk/job-history')}
+            onClick={() => navigate('/app/bulk/job-history')}
           >
             View Job History
           </Button>
@@ -549,7 +549,7 @@ const BulkSelfInternshipUpload = () => {
                   <Button type="primary" onClick={resetUpload}>
                     Upload Another File
                   </Button>
-                  <Button onClick={() => navigate('/bulk/job-history')}>View Job History</Button>
+                  <Button onClick={() => navigate('/app/bulk/job-history')}>View Job History</Button>
                 </Space>
               </div>
             ) : uploadResult ? (
@@ -646,8 +646,8 @@ const BulkSelfInternshipUpload = () => {
                     <Button type="primary" onClick={resetUpload}>
                       Upload Another File
                     </Button>
-                    <Button onClick={() => navigate('/bulk/job-history')}>View Job History</Button>
-                    <Button onClick={() => navigate('/internships/self-identified')}>
+                    <Button onClick={() => navigate('/app/bulk/job-history')}>View Job History</Button>
+                    <Button onClick={() => navigate('/app/internships')}>
                       View Self-Identified Internships
                     </Button>
                   </Space>

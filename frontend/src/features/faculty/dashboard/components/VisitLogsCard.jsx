@@ -49,14 +49,14 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
             type="primary"
             icon={<PlusOutlined />}
             size="small"
-            onClick={onCreateNew || (() => navigate('/visit-logs'))}
+            onClick={onCreateNew || (() => navigate('/app/visit-logs'))}
           >
             New Visit
           </Button>
           <Button
             type="link"
             size="small"
-            onClick={onViewAll || (() => navigate('/visit-logs'))}
+            onClick={onViewAll || (() => navigate('/app/visit-logs'))}
           >
             <RightOutlined />
           </Button>
@@ -115,7 +115,7 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={onCreateNew || (() => navigate('/visit-logs'))}
+            onClick={onCreateNew || (() => navigate('/app/visit-logs'))}
           >
             Schedule Visit
           </Button>

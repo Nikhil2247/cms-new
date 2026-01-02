@@ -161,7 +161,7 @@ const InternshipDetails = () => {
             </p>
           </div>
         ),
-        onOk: () => navigate("/my-applications"),
+        onOk: () => navigate("/app/my-applications"),
         okText: "View My Applications",
       });
     } catch (error) {
@@ -286,7 +286,7 @@ const InternshipDetails = () => {
         </Title>
         <Button
           type="primary"
-          onClick={() => navigate("/internships")}
+          onClick={() => navigate("/app/internships")}
         >
           Browse Internships
         </Button>
@@ -303,7 +303,7 @@ const InternshipDetails = () => {
           {/* Back Button */}
           <Button
             icon={<ArrowLeftOutlined />}
-            onClick={() => navigate("/internships")}
+            onClick={() => navigate("/app/internships")}
             className="mb-6 rounded-lg hover:scale-105 transition-all duration-200"
           >
             Back to Browse
@@ -353,7 +353,7 @@ const InternshipDetails = () => {
                   action={
                     <Button
                       size="small"
-                      onClick={() => navigate("/my-applications")}
+                      onClick={() => navigate("/app/my-applications")}
                     >
                       View All Applications
                     </Button>
@@ -793,7 +793,7 @@ const InternshipDetails = () => {
                       size="large"
                       block
                       icon={<EyeOutlined />}
-                      onClick={() => navigate("/my-applications")}
+                      onClick={() => navigate("/app/my-applications")}
                       className="h-12 rounded-xl bg-success hover:bg-success-600 border-0 font-semibold text-base shadow-lg shadow-success/20 transition-all duration-200"
                     >
                       View Application Status
