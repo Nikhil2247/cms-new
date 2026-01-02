@@ -49,6 +49,9 @@ import {
 } from '../store/principalSlice';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
 import { BasicStatisticsGrid, SubmissionStatusGrid } from './components/DashboardStatCards';
+import MonthlyReportsModal from './components/MonthlyReportsModal';
+import FacultyVisitsModal from './components/FacultyVisitsModal';
+import JoiningLettersModal from './components/JoiningLettersModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -89,6 +92,9 @@ const PrincipalDashboard = () => {
   const [studentsModal, setStudentsModal] = useState({ visible: false });
   const [mentorsModal, setMentorsModal] = useState({ visible: false });
   const [companiesModal, setCompaniesModal] = useState({ visible: false });
+  const [reportsModal, setReportsModal] = useState({ visible: false });
+  const [visitsModal, setVisitsModal] = useState({ visible: false });
+  const [joiningLettersModal, setJoiningLettersModal] = useState({ visible: false });
 
   // Redux selectors for dashboard data
   const dashboardStats = useSelector(selectDashboardStats);
@@ -446,24 +452,9 @@ const PrincipalDashboard = () => {
           <SubmissionStatusGrid
             {...submissionStatusData}
             loading={complianceMetricsLoading || joiningLetterStatsLoading || alertsEnhancedLoading}
-            onViewReports={() => setAlertDetailModal({
-              visible: true,
-              type: 'reports',
-              title: 'Monthly Reports Overview',
-              data: alertsEnhanced?.alerts?.overdueReports || []
-            })}
-            onViewJoiningLetters={() => setAlertDetailModal({
-              visible: true,
-              type: 'joiningLetters',
-              title: 'Joining Letters Overview',
-              data: alertsEnhanced?.alerts?.pendingJoiningLetters || []
-            })}
-            onViewVisits={() => setAlertDetailModal({
-              visible: true,
-              type: 'visits',
-              title: 'Faculty Visits Overview',
-              data: alertsEnhanced?.alerts?.missingVisits || []
-            })}
+            onViewReports={() => setReportsModal({ visible: true })}
+            onViewJoiningLetters={() => setJoiningLettersModal({ visible: true })}
+            onViewVisits={() => setVisitsModal({ visible: true })}
             onViewGrievances={() => setAlertDetailModal({
               visible: true,
               type: 'grievances',
@@ -839,6 +830,30 @@ const PrincipalDashboard = () => {
             </div>
           )}
         </Modal>
+
+        {/* Monthly Reports Modal */}
+        <MonthlyReportsModal
+          visible={reportsModal.visible}
+          onClose={() => setReportsModal({ visible: false })}
+          alertsData={alertsEnhanced?.alerts?.overdueReports || []}
+          complianceData={complianceMetrics}
+        />
+
+        {/* Faculty Visits Modal */}
+        <FacultyVisitsModal
+          visible={visitsModal.visible}
+          onClose={() => setVisitsModal({ visible: false })}
+          alertsData={alertsEnhanced?.alerts?.missingVisits || []}
+          complianceData={complianceMetrics}
+        />
+
+        {/* Joining Letters Modal */}
+        <JoiningLettersModal
+          visible={joiningLettersModal.visible}
+          onClose={() => setJoiningLettersModal({ visible: false })}
+          alertsData={alertsEnhanced?.alerts?.pendingJoiningLetters || []}
+          complianceData={complianceMetrics}
+        />
       </div>
     </div>
   );

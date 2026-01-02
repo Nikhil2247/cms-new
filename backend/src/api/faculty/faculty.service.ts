@@ -204,6 +204,9 @@ export class FacultyService {
           pendingReports,
           pendingVisits,
           totalVisits,
+          // Grievance counts
+          pendingGrievances,
+          totalGrievances,
         ] = await Promise.all([
           // Count assigned students
           Promise.resolve(studentIds.length),
@@ -251,6 +254,19 @@ export class FacultyService {
               application: {
                 startDate: { lte: new Date() }, // Only count visits for started internships
               },
+            },
+          }),
+          // Count pending grievances assigned to this faculty
+          this.prisma.grievance.count({
+            where: {
+              assignedToId: facultyId,
+              status: { in: ['PENDING', 'IN_PROGRESS', 'UNDER_REVIEW', 'SUBMITTED'] },
+            },
+          }),
+          // Count total grievances assigned to this faculty
+          this.prisma.grievance.count({
+            where: {
+              assignedToId: facultyId,
             },
           }),
         ]);
@@ -312,6 +328,9 @@ export class FacultyService {
           totalVisits,
           recentActivities: recentVisits,
           upcomingVisits,
+          // Grievance stats
+          pendingGrievances,
+          totalGrievances,
         };
       },
       { ttl: 300, tags: ['faculty', `faculty:${facultyId}`] },

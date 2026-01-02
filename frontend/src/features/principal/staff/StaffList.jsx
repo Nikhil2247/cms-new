@@ -24,7 +24,7 @@ import {
   KeyOutlined,
   ReloadOutlined,
 } from '@ant-design/icons';
-import { getImageUrl } from '../../../utils/imageUtils';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import StaffModal from './StaffModal';
 
 const { Search } = Input;
@@ -235,7 +235,7 @@ const StaffList = () => {
       key: 'name',
       render: (name, record) => (
         <div className="flex items-center gap-2">
-          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <ProfileAvatar profileImage={record.profileImage} />
           <span>{name || 'N/A'}</span>
         </div>
       ),

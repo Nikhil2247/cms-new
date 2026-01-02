@@ -15,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
+import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { TextArea } = Input;
 
@@ -144,7 +145,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
                   key={letter.id || index}
                   className={`px-4 py-3 hover:bg-surface-hover flex items-start gap-4 ${index !== letters.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}
                 >
-                  <Avatar icon={<UserOutlined />} className="bg-primary shrink-0" />
+                  <ProfileAvatar profileImage={student?.profileImage} className="bg-primary shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium truncate mr-2">{student?.name || 'Unknown Student'}</span>

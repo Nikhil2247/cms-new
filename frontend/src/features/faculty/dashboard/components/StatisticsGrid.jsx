@@ -4,8 +4,10 @@ import {
   TeamOutlined,
   FileTextOutlined,
   VideoCameraOutlined,
+  ExclamationCircleOutlined,
   EyeOutlined,
 } from '@ant-design/icons';
+import dayjs from 'dayjs';
 import MonthlyReportsOverviewModal from './MonthlyReportsOverviewModal';
 import VisitLogsOverviewModal from './VisitLogsOverviewModal';
 
@@ -86,22 +88,93 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
   const [monthlyReportsModalVisible, setMonthlyReportsModalVisible] = useState(false);
   const [visitLogsModalVisible, setVisitLogsModalVisible] = useState(false);
 
-  // Calculate pending monthly reports
-  const pendingReportsCount = useMemo(() => {
-    return monthlyReports.filter(r => r.status === 'DRAFT' || r.status === 'PENDING').length;
-  }, [monthlyReports]);
+  // Get current month start and formatted name
+  const currentMonthStart = useMemo(() => dayjs().startOf('month'), []);
+  const currentMonthEnd = useMemo(() => dayjs().endOf('month'), []);
+  const currentMonthName = useMemo(() => dayjs().format('MMMM YYYY'), []);
 
-  // Calculate submitted/approved reports
-  const submittedReports = useMemo(() => {
-    return monthlyReports.filter(r => r.status === 'APPROVED' || r.status === 'SUBMITTED').length;
-  }, [monthlyReports]);
+  // Helper function to check if a student's internship is active in the current month
+  const isInternshipActiveInCurrentMonth = useMemo(() => (student) => {
+    // Get internship from various possible locations in the data structure
+    const internship = student.activeInternship ||
+                       student.internship ||
+                       student.application?.internship ||
+                       student.applications?.[0]?.internship ||
+                       student.applications?.[0];
+
+    // If no internship data, check if student has active status
+    if (!internship) {
+      // Fall back to checking student's hasActiveInternship flag or similar
+      return student.hasActiveInternship || student.isActive || false;
+    }
+
+    // Get dates from internship or application level
+    const startDateStr = internship.startDate || student.application?.startDate || student.applications?.[0]?.startDate;
+    const endDateStr = internship.endDate || student.application?.endDate || student.applications?.[0]?.endDate;
+
+    // If no dates, assume active if internship exists
+    if (!startDateStr || !endDateStr) {
+      return true;
+    }
+
+    const startDate = dayjs(startDateStr);
+    const endDate = dayjs(endDateStr);
+
+    if (!startDate.isValid() || !endDate.isValid()) {
+      return true; // Assume active if dates are invalid
+    }
+
+    // Check if internship overlaps with current month
+    const startsBeforeOrDuringMonth = startDate.isBefore(currentMonthEnd) || startDate.isSame(currentMonthEnd, 'day');
+
+    // Apply the 5-day rule for end date
+    let effectiveEndDate = endDate;
+    if (endDate.date() <= 5) {
+      effectiveEndDate = endDate.subtract(1, 'month').endOf('month');
+    }
+
+    const endsAfterOrDuringMonth = effectiveEndDate.isAfter(currentMonthStart) || effectiveEndDate.isSame(currentMonthStart, 'month');
+
+    return startsBeforeOrDuringMonth && endsAfterOrDuringMonth;
+  }, [currentMonthStart, currentMonthEnd]);
+
+  // Get students with active internships in current month
+  const studentsActiveThisMonth = useMemo(() => {
+    const activeStudents = students.filter(student => isInternshipActiveInCurrentMonth(student));
+    // If no students pass the filter, use all students as fallback
+    return activeStudents.length > 0 ? activeStudents : students;
+  }, [students, isInternshipActiveInCurrentMonth]);
+
+  // Filter reports for current month
+  const currentMonthReports = useMemo(() => {
+    return monthlyReports.filter(r => {
+      const reportDate = dayjs(r.reportMonth || r.createdAt);
+      return reportDate.isSame(currentMonthStart, 'month');
+    });
+  }, [monthlyReports, currentMonthStart]);
+
+  // Calculate approved reports for current month
+  const approvedReportsCount = useMemo(() => {
+    return currentMonthReports.filter(r => r.status === 'APPROVED').length;
+  }, [currentMonthReports]);
+
+  // Filter visit logs for current month
+  const currentMonthVisitLogs = useMemo(() => {
+    return visitLogs.filter(v => {
+      const visitDate = dayjs(v.visitDate || v.createdAt);
+      return visitDate.isSame(currentMonthStart, 'month');
+    });
+  }, [visitLogs, currentMonthStart]);
 
   // Total students
   const totalStudents = stats.totalStudents || students.length || 0;
-  const activeInternships = stats.activeInternships || stats.activeStudents || 0;
 
-  // Expected total (for denominator)
-  const expectedTotal = totalStudents * 6;
+  // Expected total for current month - students with active internships
+  const expectedTotal = studentsActiveThisMonth.length || totalStudents;
+
+  // Get grievance stats from API
+  const pendingGrievances = stats.pendingGrievances || 0;
+  const totalGrievances = stats.totalGrievances || 0;
 
   const cardConfigs = [
     {
@@ -111,42 +184,41 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
       iconBgColor: '#dbeafe',
       iconColor: '#3b82f6',
       valueColor: '#3b82f6',
-      subtitle: `${activeInternships} active internships`,
+      subtitle: `${expectedTotal} active this month`,
     },
     {
       title: 'Monthly Reports',
-      value: submittedReports,
+      value: approvedReportsCount,
       secondaryValue: expectedTotal,
       icon: <FileTextOutlined />,
       iconBgColor: '#f3e8ff',
       iconColor: '#9333ea',
       valueColor: '#9333ea',
-      subtitle: pendingReportsCount > 0 ? `${pendingReportsCount} pending` : 'All submitted',
+      subtitle: `Approved - ${currentMonthName}`,
       hasViewMore: true,
       onViewMore: () => setMonthlyReportsModalVisible(true),
     },
     {
       title: 'Visit Logs',
-      value: visitLogs.length,
+      value: currentMonthVisitLogs.length,
       secondaryValue: expectedTotal,
       icon: <VideoCameraOutlined />,
       iconBgColor: '#d1fae5',
       iconColor: '#10b981',
       valueColor: '#10b981',
-      subtitle: `${totalStudents} students to visit`,
+      subtitle: `Completed - ${currentMonthName}`,
       hasViewMore: true,
       onViewMore: () => setVisitLogsModalVisible(true),
     },
     {
-      title: 'Pending Reports',
-      value: stats.pendingMonthlyReports || pendingReportsCount,
-      icon: <FileTextOutlined />,
-      iconBgColor: '#fef3c7',
-      iconColor: '#f59e0b',
-      valueColor: '#f59e0b',
-      subtitle: pendingReportsCount === 0 ? 'All clear' : 'Awaiting submission',
-      hasViewMore: true,
-      onViewMore: () => setMonthlyReportsModalVisible(true),
+      title: 'Grievances',
+      value: pendingGrievances,
+      secondaryValue: totalGrievances,
+      icon: <ExclamationCircleOutlined />,
+      iconBgColor: '#fee2e2',
+      iconColor: '#ef4444',
+      valueColor: '#ef4444',
+      subtitle: pendingGrievances === 0 ? 'No pending issues' : 'Pending resolution',
     },
   ];
 

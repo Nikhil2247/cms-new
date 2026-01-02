@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from "react";
 import API from "../../../services/api";
 import { getImageUrl, openFileWithPresignedUrl } from "../../../utils/imageUtils";
+import ProfileAvatar from "../../../components/common/ProfileAvatar";
 import {
   Card,
   Col,
@@ -441,10 +442,9 @@ export default function StudentProfile() {
           <div className="flex flex-col sm:flex-row items-center gap-5">
             {/* Avatar */}
             <div className="relative">
-              <Avatar
+              <ProfileAvatar
                 size={80}
-                src={getImageUrl(student.profileImage)}
-                icon={<UserOutlined />}
+                profileImage={student.profileImage}
                 className="rounded-2xl border-2 shadow-md"
                 style={{ borderColor: token.colorBgContainer }}
               />
@@ -829,10 +829,9 @@ export default function StudentProfile() {
             <Col span={24}>
               <Form.Item label={<span className="text-xs font-medium" style={{ color: token.colorTextSecondary }}>Profile Image</span>}>
                 <div className="flex items-center gap-4 p-3 rounded-xl" style={{ backgroundColor: token.colorFillQuaternary }}>
-                  <Avatar
+                  <ProfileAvatar
                     size={56}
-                    src={getImageUrl(student?.profileImage)}
-                    icon={<UserOutlined />}
+                    profileImage={student?.profileImage}
                     className="border-2"
                     style={{ borderColor: token.colorBgContainer }}
                   />

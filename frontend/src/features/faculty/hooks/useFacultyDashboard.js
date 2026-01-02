@@ -131,6 +131,8 @@ export const useFacultyDashboard = () => {
       pendingApprovals: dashboardStats.pendingApprovals || applications.total || 0,
       totalApplications: applications.total || 0,
       approvedApplications: applications.list.filter(a => a.status === 'APPROVED').length,
+      pendingGrievances: dashboardStats.pendingGrievances || 0,
+      totalGrievances: dashboardStats.totalGrievances || 0,
     };
   }, [dashboard.stats, students.total, visitLogs.list, visitLogs.total, applications.list, applications.total]);
 
@@ -204,6 +206,12 @@ export const useFacultyDashboard = () => {
     return monthlyReports.list.filter(r => r.status === 'DRAFT');
   }, [monthlyReports.list]);
 
+  // Grievance stats from dashboard API
+  const grievanceStats = useMemo(() => ({
+    pending: dashboard.stats?.pendingGrievances || 0,
+    total: dashboard.stats?.totalGrievances || 0,
+  }), [dashboard.stats]);
+
   return {
     // State
     isLoading,
@@ -219,7 +227,8 @@ export const useFacultyDashboard = () => {
     monthlyReports: monthlyReports.list,
     joiningLetters: joiningLetters.list,
     mentor: profile.data,
-    grievances: [], // Deprecated - use feedbackHistory instead
+    grievances: [], // Deprecated - kept for backward compatibility
+    grievanceStats, // NEW: Grievance counts from API
     applications: applications.list,
 
     // Computed
@@ -227,6 +236,8 @@ export const useFacultyDashboard = () => {
       ...stats,
       pendingJoiningLetters: pendingJoiningLetters.length,
       pendingMonthlyReports: pendingMonthlyReports.length,
+      pendingGrievances: grievanceStats.pending,
+      totalGrievances: grievanceStats.total,
     },
     pendingApprovals,
     pendingJoiningLetters,

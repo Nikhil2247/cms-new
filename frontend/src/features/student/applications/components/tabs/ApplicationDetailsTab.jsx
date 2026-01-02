@@ -9,7 +9,7 @@ import {
   StarOutlined,
 } from '@ant-design/icons';
 import { formatDisplayDate, formatCurrency } from '../../utils/applicationUtils';
-import { getImageUrl } from '../../../../../utils/imageUtils';
+import ProfileAvatar from '../../../../../components/common/ProfileAvatar';
 
 const { Text } = Typography;
 
@@ -99,9 +99,8 @@ const ApplicationDetailsTab = ({ application, isSelfIdentified, internship, indu
     {application.mentor && (
       <Card className="rounded-xl" title="Assigned Mentor">
         <div className="flex items-center gap-4">
-          <Avatar
-            src={application.mentor.profileImage ? getImageUrl(application.mentor.profileImage) : null}
-            icon={<UserOutlined />}
+          <ProfileAvatar
+            profileImage={application.mentor.profileImage}
             size={48}
             className="bg-purple-100 text-purple-600"
           />

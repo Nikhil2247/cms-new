@@ -24,6 +24,7 @@ import {
   selectFacultyWorkload,
   selectFacultyWorkloadLoading,
 } from '../../store/principalSlice';
+import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { Text, Title } = Typography;
 
@@ -67,7 +68,7 @@ const FacultyWorkloadCard = () => {
       key: 'name',
       render: (text, record) => (
         <div className="flex items-center gap-2">
-          <Avatar size="small" icon={<UserOutlined />} className="bg-blue-500" />
+          <ProfileAvatar size="small" profileImage={record.profileImage} className="bg-blue-500" />
           <div>
             <div className="font-medium text-sm">{text}</div>
             <div className="text-xs text-gray-500">{record.email}</div>

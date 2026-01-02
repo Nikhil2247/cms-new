@@ -50,6 +50,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import grievanceService from '../../../services/grievance.service';
 import API from '../../../services/api';
 import { useAuth } from '../../../hooks/useAuth';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 dayjs.extend(relativeTime);
 
@@ -440,7 +441,7 @@ const Grievances = () => {
       width: 160,
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <Avatar size="small" icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+          <ProfileAvatar size="small" profileImage={record.student?.profileImage || record.student?.user?.profileImage} className="bg-primary/10 text-primary" />
           <div>
             <Text className="block text-sm font-medium text-text-primary">
               {record.student?.user?.name || 'Unknown'}
@@ -505,7 +506,7 @@ const Grievances = () => {
       width: 140,
       render: (_, record) => record.assignedTo ? (
         <div className="flex items-center gap-1">
-          <Avatar size="small" icon={<UserOutlined />} />
+          <ProfileAvatar size="small" profileImage={record.assignedTo.profileImage} />
           <Text className="text-xs">{record.assignedTo.name}</Text>
         </div>
       ) : (
@@ -850,7 +851,7 @@ const Grievances = () => {
               </Descriptions.Item>
               <Descriptions.Item label="Student" span={2}>
                 <Space>
-                  <Avatar size="small" icon={<UserOutlined />} />
+                  <ProfileAvatar size="small" profileImage={selectedGrievance.student?.profileImage || selectedGrievance.student?.user?.profileImage} />
                   <span>{selectedGrievance.student?.user?.name || 'Unknown'}</span>
                   {selectedGrievance.student?.user?.email && (
                     <Text type="secondary">({selectedGrievance.student.user.email})</Text>
@@ -860,7 +861,7 @@ const Grievances = () => {
               {selectedGrievance.assignedTo && (
                 <Descriptions.Item label="Assigned To" span={2}>
                   <Space>
-                    <Avatar size="small" icon={<UserOutlined />} />
+                    <ProfileAvatar size="small" profileImage={selectedGrievance.assignedTo.profileImage} />
                     <span>{selectedGrievance.assignedTo.name}</span>
                     <Tag>{selectedGrievance.assignedTo.role?.replace(/_/g, ' ')}</Tag>
                   </Space>

@@ -67,6 +67,7 @@ import {
   selectInternshipStats,
 } from '../store/principalSlice';
 import { getTotalExpectedCount } from '../../../utils/monthlyCycle';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 dayjs.extend(relativeTime);
 
@@ -520,7 +521,7 @@ const SelfIdentifiedInternships = () => {
       fixed: 'left',
       render: (_, record) => (
         <div className="flex items-center gap-3">
-          <Avatar icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+          <ProfileAvatar profileImage={record.studentProfileImage} className="bg-primary/10 text-primary" />
           <div className="min-w-0">
             <Text className="block font-medium text-text-primary truncate">{record.studentName}</Text>
             <div className="flex items-center gap-2 text-xs text-text-tertiary">
@@ -1162,7 +1163,7 @@ const SelfIdentifiedInternships = () => {
             <div className="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Avatar size={48} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                  <ProfileAvatar size={48} profileImage={selectedInternship.studentProfileImage} className="bg-primary/10 text-primary" />
                   <div>
                     <Text className="font-bold text-lg text-text-primary block">{selectedInternship.studentName}</Text>
                     <Text className="text-text-secondary text-sm">{selectedInternship.studentRollNumber}</Text>
@@ -1336,7 +1337,7 @@ const SelfIdentifiedInternships = () => {
           {selectedInternship && (
             <div className="p-3 rounded-lg bg-primary/5 mb-4">
               <div className="flex items-center gap-3">
-                <Avatar size={40} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+                <ProfileAvatar size={40} profileImage={selectedInternship.studentProfileImage} className="bg-primary/10 text-primary" />
                 <div>
                   <Text className="font-bold text-text-primary block">{selectedInternship.studentName}</Text>
                   <Text className="text-text-secondary text-sm">{selectedInternship.studentRollNumber}</Text>

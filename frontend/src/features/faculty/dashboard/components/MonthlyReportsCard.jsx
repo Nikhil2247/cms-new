@@ -13,6 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import facultyService from '../../../../services/faculty.service';
+import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { TextArea } = Input;
 
@@ -155,8 +156,8 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                   onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = token.colorFillQuaternary)}
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <Avatar 
-                    icon={<UserOutlined />} 
+                  <ProfileAvatar
+                    profileImage={report.application?.student?.profileImage || report.student?.profileImage}
                     className="shrink-0"
                     style={{ backgroundColor: token.colorPrimary, color: '#fff' }}
                   />

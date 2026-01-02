@@ -37,6 +37,7 @@ import {
   selectMonthlyReports,
 } from '../store/facultySlice';
 import facultyService from '../../../services/faculty.service';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -137,7 +138,7 @@ const MonthlyReportsPage = () => {
         const student = record.application?.student;
         return (
           <div className="flex items-center gap-3">
-            <Avatar icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary }} />
+            <ProfileAvatar profileImage={student?.profileImage} style={{ backgroundColor: token.colorPrimary }} />
             <div>
               <div className="font-semibold" style={{ color: token.colorText }}>{student?.name || 'Unknown'}</div>
               <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.rollNumber}</div>

@@ -25,7 +25,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { getStatusColor } from '../../../utils/format';
-import { getImageUrl } from '../../../utils/imageUtils';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import StudentModal from './StudentModal';
 import { useLookup } from '../../shared/hooks/useLookup';
 
@@ -281,7 +281,7 @@ const StudentList = () => {
       key: 'name',
       render: (name, record) => (
         <div className="flex items-center gap-2">
-          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <ProfileAvatar profileImage={record.profileImage} />
           <div>
             <div className="font-medium">{name}</div>
             <div className="text-xs text-text-tertiary">{record.rollNumber}</div>

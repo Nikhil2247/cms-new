@@ -59,6 +59,7 @@ import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
 import dayjs from 'dayjs';
 import principalService from '../../../services/principal.service';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 const { Text, Title } = Typography;
 
@@ -272,7 +273,7 @@ const FacultyProgress = () => {
       key: 'student',
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <Avatar size={32} icon={<UserOutlined />} className="bg-primary/10 text-primary" />
+          <ProfileAvatar size={32} profileImage={record.profileImage} className="bg-primary/10 text-primary" />
           <div>
             <Text className="block font-medium text-text-primary">{record.name}</Text>
             <Text className="text-xs text-text-tertiary">{record.rollNumber}</Text>
@@ -412,7 +413,7 @@ const FacultyProgress = () => {
       key: 'student',
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <Avatar size={28} icon={<UserOutlined />} className="bg-background-tertiary" />
+          <ProfileAvatar size={28} profileImage={record.studentProfileImage} className="bg-background-tertiary" />
           <div>
             <Text className="block text-sm text-text-primary">{record.studentName}</Text>
             <Text className="text-xs text-text-tertiary">{record.studentRollNumber}</Text>
@@ -529,9 +530,9 @@ const FacultyProgress = () => {
                     : 'border-l-[3px] border-l-transparent'
                 }`}
               >
-                <Avatar
+                <ProfileAvatar
                   size={40}
-                  icon={<UserOutlined />}
+                  profileImage={faculty.profileImage}
                   className={`shrink-0 ${
                     selectedFaculty?.id === faculty.id
                       ? 'bg-primary/20 text-primary'
@@ -570,9 +571,9 @@ const FacultyProgress = () => {
     return (
       <Card className="rounded-xl border-border shadow-sm mb-4" styles={{ body: { padding: '14px 16px' } }}>
         <div className="flex items-center gap-3">
-          <Avatar
+          <ProfileAvatar
             size={44}
-            icon={<UserOutlined />}
+            profileImage={selectedFaculty.profileImage}
             className="bg-primary/10 text-primary shrink-0"
           />
           <div className="flex-1 min-w-0">
@@ -985,9 +986,9 @@ const FacultyProgress = () => {
           {editStudent && (
             <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 mb-5">
               <div className="flex items-center gap-3">
-                <Avatar
+                <ProfileAvatar
                   size={48}
-                  icon={<UserOutlined />}
+                  profileImage={editStudent.profileImage}
                   className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary border-2 border-primary/10"
                 />
                 <div>

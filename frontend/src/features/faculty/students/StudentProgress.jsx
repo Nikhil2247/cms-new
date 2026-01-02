@@ -65,7 +65,8 @@ import {
   fetchAssignedStudents,
   selectStudents,
 } from "../store/facultySlice";
-import { getDocumentUrl, getImageUrl } from "../../../utils/imageUtils";
+import { getDocumentUrl } from "../../../utils/imageUtils";
+import ProfileAvatar from "../../../components/common/ProfileAvatar";
 
 const { Title, Text, Paragraph } = Typography;
 const { TabPane } = Tabs;
@@ -673,10 +674,9 @@ const StudentProgressPage = () => {
                         `}
                       >
                         <div className="flex items-center gap-3">
-                          <Avatar
+                          <ProfileAvatar
                             size={44}
-                            src={getImageUrl(st.student?.profileImage)}
-                            icon={<UserOutlined />}
+                            profileImage={st.student?.profileImage}
                             className={`
                               rounded-xl border transition-all duration-200
                               ${selected?.id === st.id ? 'border-primary shadow-sm' : 'border-border group-hover:border-primary/30'}
@@ -730,10 +730,9 @@ const StudentProgressPage = () => {
                 >
                   <div className="flex flex-col md:flex-row items-center gap-6">
                     <div className="relative">
-                      <Avatar
+                      <ProfileAvatar
                         size={100}
-                        src={getImageUrl(selected.student?.profileImage)}
-                        icon={<UserOutlined />}
+                        profileImage={selected.student?.profileImage}
                         className="rounded-2xl border-4 border-background shadow-soft ring-1 ring-border"
                       />
                       <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-success flex items-center justify-center border-2 border-surface shadow-sm">

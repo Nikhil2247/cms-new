@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { Text } = Typography;
 
@@ -76,12 +77,12 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
                 style={{ borderBottom: index !== visitLogs.slice(0, 5).length - 1 ? `1px solid ${token.colorSplit}` : 'none' }}
               >
                 <div className="flex items-center gap-3">
-                  <Avatar
+                  <ProfileAvatar
                     size="small"
-                    icon={isPast ? <CheckCircleOutlined /> : <ClockCircleOutlined />}
-                    style={{ 
+                    profileImage={visit.application?.student?.profileImage || visit.student?.profileImage}
+                    style={{
                       backgroundColor: isPast ? token.colorSuccessBg : token.colorPrimaryBg,
-                      color: isPast ? token.colorSuccess : token.colorPrimary 
+                      color: isPast ? token.colorSuccess : token.colorPrimary
                     }}
                   />
                   <div>

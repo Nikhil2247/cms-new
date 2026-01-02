@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, Input, Select, Modal, Descriptions, Avatar, Divider, Progress, Row, Col } from 'antd';
 import { SearchOutlined, UserOutlined, EyeOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import { fetchAssignedStudents } from '../store/facultySlice';
-import { getImageUrl } from '../../../utils/imageUtils';
+import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 // Constant styles outside component
 const SELECT_STYLE = { width: 200 };
@@ -48,7 +48,8 @@ const AssignedStudentsList = React.memo(() => {
         student.rollNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
         student.email?.toLowerCase().includes(searchText.toLowerCase());
 
-      const matchesDepartment = departmentFilter === 'all' || student.department?.id === departmentFilter;
+      const branchName = student.branchName || student.department?.name;
+      const matchesDepartment = departmentFilter === 'all' || branchName === departmentFilter;
       const matchesBatch = batchFilter === 'all' || student.batch?.id === batchFilter;
 
       return matchesSearch && matchesDepartment && matchesBatch;
@@ -56,7 +57,10 @@ const AssignedStudentsList = React.memo(() => {
   }, [students, searchText, departmentFilter, batchFilter]);
 
   const departments = useMemo(() => {
-    return [...new Map(students.map(s => [s.department?.id, s.department])).values()].filter(Boolean);
+    return [...new Map(students.map(s => {
+      const branchName = s.branchName || s.department?.name;
+      return [branchName, { name: branchName }];
+    })).values()].filter(d => d.name);
   }, [students]);
 
   const batches = useMemo(() => {
@@ -79,7 +83,7 @@ const AssignedStudentsList = React.memo(() => {
       key: 'student',
       render: (_, record) => (
         <Space>
-          <Avatar icon={<UserOutlined />} src={getImageUrl(record.profileImage)} />
+          <ProfileAvatar profileImage={record.profileImage} />
           <div>
             <div className="font-medium">{record.name}</div>
             <div className="text-text-secondary text-xs">{record.rollNumber}</div>
@@ -98,14 +102,14 @@ const AssignedStudentsList = React.memo(() => {
       key: 'phone',
     },
     {
-      title: 'Department',
-      dataIndex: ['department', 'name'],
-      key: 'department',
+      title: 'Branch',
+      key: 'branch',
+      render: (_, record) => record.branchName || record.department?.name || 'N/A',
     },
     {
       title: 'Batch',
-      dataIndex: ['batch', 'name'],
       key: 'batch',
+      render: (_, record) => record.batch?.name || 'N/A',
     },
     {
       title: 'CGPA',
@@ -153,11 +157,11 @@ const AssignedStudentsList = React.memo(() => {
             value={departmentFilter}
             onChange={setDepartmentFilter}
             style={SELECT_STYLE}
-            placeholder="Filter by Department"
+            placeholder="Filter by Branch"
           >
-            <Select.Option value="all">All Departments</Select.Option>
+            <Select.Option value="all">All Branches</Select.Option>
             {departments.map(dept => (
-              <Select.Option key={dept.id} value={dept.id}>{dept.name}</Select.Option>
+              <Select.Option key={dept.name} value={dept.name}>{dept.name}</Select.Option>
             ))}
           </Select>
           <Select
@@ -205,7 +209,7 @@ const AssignedStudentsList = React.memo(() => {
         {selectedStudent && (
           <div className="py-4">
             <div className="flex items-center gap-6 mb-6">
-              <Avatar size={100} icon={<UserOutlined />} src={getImageUrl(selectedStudent.profileImage)} />
+              <ProfileAvatar size={100} profileImage={selectedStudent.profileImage} />
               <div>
                 <h2 className="text-2xl font-bold">{selectedStudent.name}</h2>
                 <p className="text-text-secondary text-lg">{selectedStudent.rollNumber}</p>
@@ -251,11 +255,11 @@ const AssignedStudentsList = React.memo(() => {
               <Col xs={24} md={12}>
                 <Card title="Academic Information" size="small" bordered={false} className="bg-gray-50 h-full">
                   <Descriptions column={1} size="small">
-                    <Descriptions.Item label="Department">
-                      {selectedStudent.department?.name}
+                    <Descriptions.Item label="Branch">
+                      {selectedStudent.branchName || selectedStudent.department?.name || 'N/A'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Batch">
-                      {selectedStudent.batch?.name}
+                      {selectedStudent.batch?.name || 'N/A'}
                     </Descriptions.Item>
                     <Descriptions.Item label="Current Semester">
                       {selectedStudent.currentSemester || 'N/A'}

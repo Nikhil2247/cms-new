@@ -306,6 +306,104 @@ export class UpdateInternshipDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Company address' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  companyAddress?: string;
+
+  @ApiPropertyOptional({ description: 'Company contact number' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  companyContact?: string;
+
+  @ApiPropertyOptional({ description: 'Company email' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  companyEmail?: string;
+
+  @ApiPropertyOptional({ description: 'HR name' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  hrName?: string;
+
+  @ApiPropertyOptional({ description: 'HR designation' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  hrDesignation?: string;
+
+  @ApiPropertyOptional({ description: 'HR contact number' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  hrContact?: string;
+
+  @ApiPropertyOptional({ description: 'HR email' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  hrEmail?: string;
+
+  @ApiPropertyOptional({ description: 'Stipend amount' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  stipend?: number;
+
+  @ApiPropertyOptional({ description: 'Job profile/description' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  jobProfile?: string;
+
+  @ApiPropertyOptional({ description: 'Additional notes' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string;
+
+  @ApiPropertyOptional({ description: 'Location of internship' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  location?: string;
+
+  @ApiPropertyOptional({ description: 'Application status' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Has student joined' })
+  @IsOptional()
+  @IsBoolean()
+  hasJoined?: boolean;
+
+  @ApiPropertyOptional({ description: 'Is student selected' })
+  @IsOptional()
+  @IsBoolean()
+  isSelected?: boolean;
+
+  @ApiPropertyOptional({ description: 'Review remarks' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  remarks?: string;
+
+  @ApiPropertyOptional({ description: 'Joining date' })
+  @IsOptional()
+  @IsDateString()
+  joiningDate?: string;
+
+  @ApiPropertyOptional({ description: 'Internship duration in months' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  internshipDuration?: number;
 }
 
 // ==================== Joining Letter DTOs ====================
