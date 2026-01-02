@@ -15,10 +15,10 @@
 #   ./run-throttle-comparison.sh [URL] [MAX_VUS]
 #
 # Example:
-#   ./run-throttle-comparison.sh http://localhost:5000 500
+#   ./run-throttle-comparison.sh http://localhost:8000 500
 # ============================================
 
-URL="${1:-http://localhost:5000}"
+URL="${1:-http://localhost:8000}"
 MAX_VUS="${2:-500}"
 
 # Get script directory and paths

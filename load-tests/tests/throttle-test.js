@@ -14,12 +14,12 @@
  *
  * Usage:
  *   k6 run throttle-test.js
- *   k6 run --env BASE_URL=http://localhost:5000 throttle-test.js
+ *   k6 run --env BASE_URL=http://localhost:8000 throttle-test.js
  *   k6 run --env THROTTLE_MODE=enabled throttle-test.js
  *   k6 run --env THROTTLE_MODE=disabled throttle-test.js
  *
  * Environment Variables:
- *   BASE_URL        - Server URL (default: http://localhost:5000)
+ *   BASE_URL        - Server URL (default: http://localhost:8000)
  *   THROTTLE_MODE   - 'enabled', 'disabled', or 'compare' (default: compare)
  *   TEST_EMAIL      - Test user email
  *   TEST_PASSWORD   - Test user password
@@ -33,7 +33,7 @@ import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
 // ============================================
 // CONFIGURATION
 // ============================================
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 const THROTTLE_MODE = __ENV.THROTTLE_MODE || 'compare';
 const MAX_VUS = parseInt(__ENV.MAX_VUS) || 500;
 

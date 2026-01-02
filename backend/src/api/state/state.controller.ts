@@ -223,18 +223,20 @@ export class StateController {
   }
 
   @Get('principals')
-  @ApiOperation({ summary: 'Get all principals across institutions' })
+  @ApiOperation({ summary: 'Get all principals across institutions (use active=false to view inactive)' })
   async getPrincipals(
     @Query('institutionId') institutionId?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
+    @Query('active') active?: string,
   ) {
     return this.stateService.getPrincipals({
       institutionId,
       page: page ? Number(page) : undefined,
       limit: limit ? Number(limit) : undefined,
       search,
+      active: active === 'true' ? true : active === 'false' ? false : undefined,
     });
   }
 

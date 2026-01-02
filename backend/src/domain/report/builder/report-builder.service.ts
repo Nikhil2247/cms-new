@@ -303,6 +303,7 @@ export class ReportBuilderService {
     userId: string,
     type: string,
     config: ReportGenerationConfig,
+    userRole?: string,
   ): Promise<{ jobId: string; reportId: string }> {
     const reportDefinition = this.getReportConfig(type);
     if (!reportDefinition) {
@@ -338,6 +339,7 @@ export class ReportBuilderService {
       'generate-report',
       {
         userId,
+        userRole,
         reportType: type,
         config,
         reportId: report.id,
@@ -735,7 +737,7 @@ export class ReportBuilderService {
   /**
    * Retry a failed report
    */
-  async retryReport(reportId: string, userId: string): Promise<{ success: boolean; jobId: string }> {
+  async retryReport(reportId: string, userId: string, userRole?: string): Promise<{ success: boolean; jobId: string }> {
     const report = await this.prisma.generatedReport.findUnique({
       where: { id: reportId },
     });
@@ -769,6 +771,7 @@ export class ReportBuilderService {
       'generate-report',
       {
         userId,
+        userRole,
         reportType: report.reportType,
         config: {
           type: report.reportType,
@@ -780,7 +783,7 @@ export class ReportBuilderService {
           format: report.format,
         },
         reportId: report.id,
-      },
+      } as ReportJobData,
       this.QUEUE_OPTIONS,
     );
 

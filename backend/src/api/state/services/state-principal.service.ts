@@ -18,20 +18,27 @@ export class StatePrincipalService {
 
   /**
    * Get list of principals with filters
+   * STATE can view both active and inactive principals using the active parameter
    */
   async getPrincipals(params: {
     institutionId?: string;
     page?: number;
     limit?: number;
     search?: string;
+    active?: boolean;
   }) {
-    const { institutionId, page = 1, limit = 10, search } = params;
+    const { institutionId, page = 1, limit = 10, search, active } = params;
     const skip = (page - 1) * limit;
 
     const where: Prisma.UserWhereInput = { role: 'PRINCIPAL' };
 
     if (institutionId) {
       where.institutionId = institutionId;
+    }
+
+    // Filter by active status if specified (STATE can view inactive principals)
+    if (active !== undefined) {
+      where.active = active;
     }
 
     if (search) {
@@ -242,7 +249,7 @@ export class StatePrincipalService {
   }
 
   /**
-   * Delete principal by ID
+   * Deactivate principal by ID (soft delete)
    */
   async deletePrincipal(id: string, deletedBy?: string) {
     const existingPrincipal = await this.prisma.user.findUnique({
@@ -253,20 +260,25 @@ export class StatePrincipalService {
       throw new NotFoundException(`Principal with ID ${id} not found`);
     }
 
-    // Delete notifications first (required relation without cascade)
-    await this.prisma.notification.deleteMany({ where: { userId: id } });
-    await this.prisma.user.delete({
+    // Check if already deactivated
+    if (existingPrincipal.active === false) {
+      throw new BadRequestException('Principal is already deactivated');
+    }
+
+    // Soft delete - deactivate the principal
+    await this.prisma.user.update({
       where: { id },
+      data: { active: false },
     });
 
-    // Audit principal deletion
+    // Audit principal deactivation
     this.auditService.log({
       action: AuditAction.USER_DEACTIVATION,
       entityType: 'User',
       entityId: id,
       userId: deletedBy || 'SYSTEM',
       userRole: Role.STATE_DIRECTORATE,
-      description: `Principal account deleted: ${existingPrincipal.name}`,
+      description: `Principal account deactivated: ${existingPrincipal.name}`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: existingPrincipal.institutionId || undefined,
@@ -275,11 +287,15 @@ export class StatePrincipalService {
         name: existingPrincipal.name,
         email: existingPrincipal.email,
         role: Role.PRINCIPAL,
+        wasActive: true,
+      },
+      newValues: {
+        active: false,
       },
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['state', 'principals']);
-    return { success: true, message: 'Principal deleted successfully' };
+    return { success: true, message: 'Principal deactivated successfully' };
   }
 
   /**

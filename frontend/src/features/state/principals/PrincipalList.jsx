@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, StopOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined } from '@ant-design/icons';
 import { fetchPrincipals, deletePrincipal, resetPrincipalPassword } from '../store/stateSlice';
 import PrincipalModal from './PrincipalModal';
 import { getImageUrl } from '../../../utils/imageUtils';
@@ -46,17 +46,17 @@ const PrincipalList = () => {
 
   const handleDelete = (id, name) => {
     modal.confirm({
-      title: 'Delete Principal',
-      content: `Are you sure you want to delete ${name}? This action cannot be undone.`,
-      okText: 'Delete',
+      title: 'Deactivate Principal',
+      content: `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`,
+      okText: 'Deactivate',
       okType: 'danger',
       onOk: async () => {
         try {
           await dispatch(deletePrincipal(id)).unwrap();
-          message.success('Principal deleted successfully');
+          message.success('Principal deactivated successfully');
           loadPrincipals({ forceRefresh: true });
         } catch (error) {
-          message.error(error?.message || 'Failed to delete principal');
+          message.error(error?.message || 'Failed to deactivate principal');
           throw error; // Re-throw to prevent modal from closing
         }
       },
@@ -207,8 +207,8 @@ const PrincipalList = () => {
           },
           {
             key: 'delete',
-            icon: <DeleteOutlined />,
-            label: 'Delete',
+            icon: <StopOutlined />,
+            label: 'Deactivate',
             danger: true,
           },
         ];

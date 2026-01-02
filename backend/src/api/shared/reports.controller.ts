@@ -37,7 +37,7 @@ export class ReportsController {
 
   @Post('generate')
   async generateReport(@Request() req, @Body() reportData: any) {
-    return this.reportsService.generateReport(req.user.userId, reportData);
+    return this.reportsService.generateReport(req.user.userId, req.user.role, reportData);
   }
 
   @Get('history')

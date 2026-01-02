@@ -51,6 +51,8 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'assignedDate', label: 'Assigned Date', type: 'date', default: true },
       { id: 'lastVisitDate', label: 'Last Visit', type: 'date', default: true },
       { id: 'reportsReviewed', label: 'Reports Reviewed', type: 'number', default: false },
+      { id: 'studentActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
+      { id: 'mentorActive', label: 'Mentor Active', type: 'boolean', default: true, description: 'Mentor active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },

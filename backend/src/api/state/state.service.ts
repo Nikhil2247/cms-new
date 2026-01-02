@@ -148,6 +148,7 @@ export class StateService {
     limit?: number;
     institutionId?: string;
     search?: string;
+    active?: boolean;
   }) {
     return this.principalService.getPrincipals(params);
   }

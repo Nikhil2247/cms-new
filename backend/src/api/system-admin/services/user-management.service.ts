@@ -218,6 +218,7 @@ export class UserManagementService {
   ) {
     const existingUser = await this.prisma.user.findUnique({
       where: { id: userId },
+      include: { Student: true },
     });
 
     if (!existingUser) {
@@ -234,28 +235,47 @@ export class UserManagementService {
       }
     }
 
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(dto.name && { name: dto.name }),
-        ...(dto.email && { email: dto.email }),
-        ...(dto.role && { role: dto.role }),
-        ...(dto.phoneNo !== undefined && { phoneNo: dto.phoneNo }),
-        ...(dto.institutionId !== undefined && { institutionId: dto.institutionId }),
-        ...(dto.active !== undefined && { active: dto.active }),
-        ...(dto.branchName !== undefined && { branchName: dto.branchName }),
-        ...(dto.designation !== undefined && { designation: dto.designation }),
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        active: true,
-        institutionId: true,
-        createdAt: true,
-      },
-    });
+    // Build student update data for synced fields (if user is a student)
+    const studentUpdateData: any = {};
+    if (existingUser.Student) {
+      if (dto.name) studentUpdateData.name = dto.name;
+      if (dto.email) studentUpdateData.email = dto.email;
+      if (dto.phoneNo !== undefined) studentUpdateData.contact = dto.phoneNo; // User.phoneNo -> Student.contact
+      if (dto.active !== undefined) studentUpdateData.isActive = dto.active; // User.active -> Student.isActive
+    }
+
+    // Use transaction to sync User and Student records
+    const [updatedUser] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(dto.name && { name: dto.name }),
+          ...(dto.email && { email: dto.email }),
+          ...(dto.role && { role: dto.role }),
+          ...(dto.phoneNo !== undefined && { phoneNo: dto.phoneNo }),
+          ...(dto.institutionId !== undefined && { institutionId: dto.institutionId }),
+          ...(dto.active !== undefined && { active: dto.active }),
+          ...(dto.branchName !== undefined && { branchName: dto.branchName }),
+          ...(dto.designation !== undefined && { designation: dto.designation }),
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          active: true,
+          institutionId: true,
+          createdAt: true,
+        },
+      }),
+      // Sync to Student record if user is a student and there are fields to sync
+      ...(existingUser.Student && Object.keys(studentUpdateData).length > 0
+        ? [this.prisma.student.update({
+            where: { userId },
+            data: studentUpdateData,
+          })]
+        : []),
+    ]);
 
     // If user was deactivated, invalidate all tokens
     if (dto.active === false && existingUser.active === true) {

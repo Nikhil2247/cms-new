@@ -23,6 +23,7 @@ export enum ExportFormat {
 
 export interface ReportJobData {
   userId: string;
+  userRole?: string;
   reportType: ReportType | string;
   filters?: any;
   config?: {

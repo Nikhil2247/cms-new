@@ -9,7 +9,7 @@
  *
  * Usage:
  *   k6 run tests/load-test.js
- *   k6 run --env BASE_URL=http://localhost:5000 tests/load-test.js
+ *   k6 run --env BASE_URL=http://localhost:8000 tests/load-test.js
  *   k6 run --env TEST_EMAIL=user@email.com --env TEST_PASSWORD=pass tests/load-test.js
  */
 
@@ -22,7 +22,7 @@ import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.1/index.js';
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 
 // Role-based credentials (from seed.ts)
 const CREDENTIALS = {

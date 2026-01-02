@@ -9,11 +9,11 @@
  *
  * Usage:
  *   k6 run crash-test.js
- *   k6 run --env BASE_URL=http://localhost:5000 crash-test.js
+ *   k6 run --env BASE_URL=http://localhost:8000 crash-test.js
  *   k6 run --env MAX_VUS=1000 crash-test.js
  *
  * Environment Variables:
- *   BASE_URL    - Server URL (default: http://localhost:5000)
+ *   BASE_URL    - Server URL (default: http://localhost:8000)
  *   MAX_VUS     - Maximum virtual users (default: 1000)
  *   RAMP_TIME   - Time per ramp stage in seconds (default: 15)
  */
@@ -25,7 +25,7 @@ import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
 // ============================================
 // CONFIGURATION
 // ============================================
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 const MAX_VUS = parseInt(__ENV.MAX_VUS) || 1000;
 const RAMP_TIME = parseInt(__ENV.RAMP_TIME) || 15;
 

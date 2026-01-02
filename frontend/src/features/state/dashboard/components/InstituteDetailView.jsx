@@ -764,17 +764,17 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   // Delete student handler
   const handleDeleteStudent = useCallback((student) => {
     Modal.confirm({
-      title: 'Delete Student',
-      icon: <ExclamationCircleOutlined className="text-error" />,
+      title: 'Deactivate Student',
+      icon: <ExclamationCircleOutlined className="text-warning" />,
       content: (
         <div>
-          <p>Are you sure you want to delete <strong>{student.name}</strong>?</p>
+          <p>Are you sure you want to deactivate <strong>{student.name}</strong>?</p>
           <p className="text-text-tertiary text-sm mt-2">
-            This will permanently remove the student and all associated data including reports, internship applications, and mentor assignments.
+            The student will no longer be able to access the system. All associated data including reports, internship applications, and mentor assignments will be preserved.
           </p>
         </div>
       ),
-      okText: 'Delete',
+      okText: 'Deactivate',
       okType: 'danger',
       onOk: async () => {
         try {
@@ -782,28 +782,28 @@ const InstituteDetailView = ({ defaultTab = null }) => {
             studentId: student.id,
             institutionId: selectedInstitute?.id
           })).unwrap();
-          message.success('Student deleted successfully');
+          message.success('Student deactivated successfully');
         } catch (error) {
-          message.error(typeof error === 'string' ? error : 'Failed to delete student');
+          message.error(typeof error === 'string' ? error : 'Failed to deactivate student');
         }
       },
     });
   }, [dispatch, selectedInstitute?.id]);
 
-  // Delete faculty handler
+  // Deactivate faculty handler
   const handleDeleteFaculty = useCallback((faculty) => {
     Modal.confirm({
-      title: 'Delete Faculty',
-      icon: <ExclamationCircleOutlined className="text-error" />,
+      title: 'Deactivate Faculty',
+      icon: <ExclamationCircleOutlined className="text-warning" />,
       content: (
         <div>
-          <p>Are you sure you want to delete <strong>{faculty.name}</strong>?</p>
+          <p>Are you sure you want to deactivate <strong>{faculty.name}</strong>?</p>
           <p className="text-text-tertiary text-sm mt-2">
-            This will permanently remove the faculty member and all associated data including student assignments and visit logs.
+            The faculty member will no longer be able to access the system. All associated data including student assignments and visit logs will be preserved.
           </p>
         </div>
       ),
-      okText: 'Delete',
+      okText: 'Deactivate',
       okType: 'danger',
       onOk: async () => {
         try {
@@ -811,9 +811,9 @@ const InstituteDetailView = ({ defaultTab = null }) => {
             facultyId: faculty.id,
             institutionId: selectedInstitute?.id
           })).unwrap();
-          message.success('Faculty deleted successfully');
+          message.success('Faculty deactivated successfully');
         } catch (error) {
-          message.error(typeof error === 'string' ? error : 'Failed to delete faculty');
+          message.error(typeof error === 'string' ? error : 'Failed to deactivate faculty');
         }
       },
     });

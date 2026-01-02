@@ -164,21 +164,21 @@ const StaffList = () => {
     const previousList = [...list];
 
     Modal.confirm({
-      title: 'Delete Staff Member',
-      content: `Are you sure you want to delete ${record.name}? This action cannot be undone.`,
-      okText: 'Delete',
+      title: 'Deactivate Staff Member',
+      content: `Are you sure you want to deactivate ${record.name}? They will no longer be able to access the system but their data will be preserved.`,
+      okText: 'Deactivate',
       okType: 'danger',
       onOk: async () => {
-        // Optimistic delete - remove from UI immediately
+        // Optimistic update - remove from active list
         dispatch(optimisticallyDeleteStaff(record.id));
-        message.success('Staff member deleted successfully');
+        message.success('Staff member deactivated successfully');
 
         try {
           await dispatch(deleteStaff(record.id)).unwrap();
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStaffOperation({ list: previousList }));
-          message.error(error || 'Failed to delete staff member');
+          message.error(error || 'Failed to deactivate staff member');
         }
       },
     });
@@ -220,8 +220,8 @@ const StaffList = () => {
       },
       {
         key: 'delete',
-        label: 'Delete',
-        icon: <DeleteOutlined />,
+        label: 'Deactivate',
+        icon: <StopOutlined />,
         onClick: () => handleDelete(record),
         danger: true,
       },

@@ -6,12 +6,19 @@ import API from '../services/api';
 
 // Determine the base URL for uploads based on environment
 const getUploadsBaseUrl = () => {
-  if (import.meta.env.DEV) {
-    // Local development - use MinIO directly
-    return 'http://127.0.0.1:9000/cms-uploads';
+  // Use environment variable if available
+  if (import.meta.env.VITE_UPLOADS_URL) {
+    return import.meta.env.VITE_UPLOADS_URL;
   }
-  // Production - use API proxy
-  return 'https://api.placeintern.com/uploads';
+  // Fallback for local development
+  if (import.meta.env.DEV) {
+    const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000';
+    const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'cms-uploads';
+    return `${minioEndpoint}/${minioBucket}`;
+  }
+  // Production fallback - derive from API URL
+  const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
+  return apiUrl.replace('/api', '/uploads');
 };
 
 const UPLOADS_BASE_URL = getUploadsBaseUrl();

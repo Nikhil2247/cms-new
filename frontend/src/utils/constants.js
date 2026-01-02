@@ -1,7 +1,5 @@
 // API Configuration
-export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:3000')
-  .replace('http://localhost', 'http://127.0.0.1')
-  .replace('https://localhost', 'https://127.0.0.1');
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 
 // User Roles (match backend values)
 export const USER_ROLES = {

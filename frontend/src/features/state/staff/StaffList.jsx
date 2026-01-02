@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined } from '@ant-design/icons';
 import { fetchStaff, deleteStaff, resetStaffPassword } from '../store/stateSlice';
 import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
@@ -62,17 +62,17 @@ const StaffList = () => {
 
   const handleDelete = (id, name) => {
     modal.confirm({
-      title: 'Delete Staff Member',
-      content: `Are you sure you want to delete ${name}? This action cannot be undone.`,
-      okText: 'Delete',
+      title: 'Deactivate Staff Member',
+      content: `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`,
+      okText: 'Deactivate',
       okType: 'danger',
       onOk: async () => {
         try {
           await dispatch(deleteStaff(id)).unwrap();
-          message.success('Staff member deleted successfully');
+          message.success('Staff member deactivated successfully');
           loadStaff({ forceRefresh: true });
         } catch (error) {
-          message.error(error?.message || 'Failed to delete staff member');
+          message.error(error?.message || 'Failed to deactivate staff member');
           throw error;
         }
       },
@@ -279,8 +279,8 @@ const StaffList = () => {
           },
           {
             key: 'delete',
-            icon: <DeleteOutlined />,
-            label: 'Delete',
+            icon: <StopOutlined />,
+            label: 'Deactivate',
             danger: true,
           },
         ];

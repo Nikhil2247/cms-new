@@ -19,6 +19,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'compliancePercent', label: 'Compliance %', type: 'number', default: true, sortable: true },
       { id: 'lastVisitDate', label: 'Last Visit Date', type: 'date', default: true },
       { id: 'nextScheduledVisit', label: 'Next Scheduled', type: 'date', default: false },
+      { id: 'isActive', label: 'Mentor Active', type: 'boolean', default: true, description: 'Mentor active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
@@ -67,6 +68,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'reportsPending', label: 'Pending', type: 'number', default: true, sortable: true },
       { id: 'compliancePercent', label: 'Compliance %', type: 'number', default: true, sortable: true },
       { id: 'lastSubmissionDate', label: 'Last Submission', type: 'date', default: true },
+      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
@@ -111,6 +113,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'joiningLetterApprovedAt', label: 'Approved At', type: 'date', default: false },
       { id: 'daysSinceStart', label: 'Days Since Start', type: 'number', default: true, sortable: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
+      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },

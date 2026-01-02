@@ -11,8 +11,10 @@ import {
   registerDecorator,
   ValidationOptions,
   ValidationArguments,
+  validate,
 } from 'class-validator';
-import { Transform, Type } from 'class-transformer';
+import { Transform, Type, plainToInstance } from 'class-transformer';
+import { getFilterDtoClass, BaseReportFilterDto } from './report-filters.dto';
 
 /**
  * Helper function to validate individual filter values
@@ -89,11 +91,44 @@ function IsSafeFilters(validationOptions?: ValidationOptions) {
   };
 }
 
+/**
+ * Valid report types for validation
+ */
+const VALID_REPORT_TYPES = [
+  // Student Reports
+  'student-directory',
+  'student-internship-status',
+  'student-compliance',
+  'student-by-branch',
+  'student-progress',
+  // Internship Reports
+  'internship',
+  'internship-status',
+  'self-identified-internship',
+  // Faculty/Mentor Reports
+  'faculty-visit',
+  'mentor-list',
+  // Monthly Reports
+  'monthly-report',
+  'monthly-report-status',
+  // Placement Reports
+  'placement',
+  // Institution Reports
+  'institution-performance',
+  // User Activity Reports
+  'user-login-activity',
+  'user-session-history',
+  'never-logged-in-users',
+  'default-password-users',
+  'inactive-users',
+  'user-audit-log',
+] as const;
+
 export class GenerateReportDto {
   @IsString()
-  @IsNotEmpty()
+  @IsNotEmpty({ message: 'Report type is required' })
   @MaxLength(100, { message: 'Report type must be at most 100 characters' })
-  @Transform(({ value }) => value?.trim())
+  @Transform(({ value }) => value?.trim()?.toLowerCase())
   type: string;
 
   @IsArray()
@@ -125,4 +160,42 @@ export class GenerateReportDto {
   @IsIn(['excel', 'csv', 'pdf', 'json'])
   @IsOptional()
   format?: string;
+}
+
+/**
+ * Validate filters based on report type
+ * Returns validated and transformed filter object
+ */
+export async function validateReportFilters(
+  reportType: string,
+  filters: Record<string, unknown> | undefined,
+): Promise<{ isValid: boolean; errors: string[]; validatedFilters: BaseReportFilterDto | null }> {
+  if (!filters || Object.keys(filters).length === 0) {
+    return { isValid: true, errors: [], validatedFilters: null };
+  }
+
+  const FilterDtoClass = getFilterDtoClass(reportType);
+  const filterInstance = plainToInstance(FilterDtoClass, filters);
+
+  const validationErrors = await validate(filterInstance, {
+    whitelist: true,
+    forbidNonWhitelisted: false, // Allow extra fields but don't validate them
+    skipMissingProperties: true,
+  });
+
+  if (validationErrors.length > 0) {
+    const errors = validationErrors.flatMap((error) =>
+      Object.values(error.constraints || {}).map((msg) => msg),
+    );
+    return { isValid: false, errors, validatedFilters: null };
+  }
+
+  return { isValid: true, errors: [], validatedFilters: filterInstance };
+}
+
+/**
+ * Get list of valid report types
+ */
+export function getValidReportTypes(): readonly string[] {
+  return VALID_REPORT_TYPES;
 }

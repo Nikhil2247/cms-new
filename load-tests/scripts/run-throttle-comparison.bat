@@ -16,13 +16,13 @@ REM Usage:
 REM   run-throttle-comparison.bat [URL] [MAX_VUS]
 REM
 REM Example:
-REM   run-throttle-comparison.bat http://localhost:5000 500
+REM   run-throttle-comparison.bat http://localhost:8000 500
 REM ============================================
 
 set URL=%1
 set MAX_VUS=%2
 
-if "%URL%"=="" set URL=http://localhost:5000
+if "%URL%"=="" set URL=http://localhost:8000
 if "%MAX_VUS%"=="" set MAX_VUS=500
 
 REM Get script directory

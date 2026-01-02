@@ -288,7 +288,8 @@ export class StateMentorService {
   }
 
   /**
-   * Delete student and all associated data (State Directorate)
+   * Deactivate student (soft delete) - State Directorate only
+   * Preserves all historical data for audit trail
    */
   async deleteStudent(studentId: string, deletedBy: string) {
     const student = await this.prisma.student.findUnique({
@@ -298,7 +299,8 @@ export class StateMentorService {
         institutionId: true,
         name: true,
         email: true,
-        user: { select: { id: true } },
+        isActive: true,
+        user: { select: { id: true, active: true } },
       },
     });
 
@@ -306,54 +308,41 @@ export class StateMentorService {
       throw new NotFoundException('Student not found');
     }
 
-    // Use transaction to delete all related data
+    // Check if already deactivated
+    if (student.isActive === false) {
+      throw new BadRequestException('Student is already deactivated');
+    }
+
+    // Soft delete - deactivate student and user, remove mentor assignments
     await this.prisma.$transaction(async (tx) => {
-      // Delete mentor assignments
+      // Delete/deactivate mentor assignments (these can be reassigned)
       await tx.mentorAssignment.deleteMany({
         where: { studentId },
       });
 
-      // Delete internship applications (FacultyVisitLog will cascade delete)
-      await tx.internshipApplication.deleteMany({
-        where: { studentId },
-      });
-
-      // Delete monthly reports
-      await tx.monthlyReport.deleteMany({
-        where: { studentId },
-      });
-
-      // Delete documents related to the student
-      await tx.document.deleteMany({
-        where: { studentId },
-      });
-
-      // Delete the student record
-      await tx.student.delete({
+      // Deactivate the student record (soft delete)
+      await tx.student.update({
         where: { id: studentId },
+        data: { isActive: false },
       });
 
-      // Delete the associated user account if exists
+      // Deactivate the associated user account if exists
       if (student.user?.id) {
-        // Delete notifications first (required relation without cascade)
-        await tx.notification.deleteMany({
-          where: { userId: student.user.id },
-        });
-
-        await tx.user.delete({
+        await tx.user.update({
           where: { id: student.user.id },
+          data: { active: false },
         });
       }
     });
 
-    // Audit student deletion
+    // Audit student deactivation
     this.auditService.log({
       action: AuditAction.USER_DEACTIVATION,
       entityType: 'Student',
       entityId: studentId,
       userId: deletedBy,
       userRole: Role.STATE_DIRECTORATE,
-      description: `Student ${student.name} (${student.email}) deleted by State Directorate`,
+      description: `Student ${student.name} (${student.email}) deactivated by State Directorate`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: student.institutionId || undefined,
@@ -362,6 +351,10 @@ export class StateMentorService {
         studentName: student.name,
         studentEmail: student.email,
         institutionId: student.institutionId,
+        wasActive: true,
+      },
+      newValues: {
+        isActive: false,
       },
     }).catch(() => {});
 
@@ -374,7 +367,7 @@ export class StateMentorService {
 
     return {
       success: true,
-      message: `Student ${student.name} has been deleted successfully`,
+      message: `Student ${student.name} has been deactivated successfully`,
     };
   }
 

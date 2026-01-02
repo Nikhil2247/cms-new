@@ -1258,8 +1258,15 @@ export class PrincipalService {
     delete updateData.semesterId; // Not used, semester is managed through batch
     delete updateData.gender; // Gender is not directly on student model
 
-    // If isActive is being updated, also sync the user's active field
-    if (typeof updateData.isActive === 'boolean' && student.userId) {
+    // Build user update data for synced fields
+    const userUpdateData: any = {};
+    if (updateData.name) userUpdateData.name = updateData.name;
+    if (updateData.email) userUpdateData.email = updateData.email;
+    if (updateData.contact) userUpdateData.phoneNo = updateData.contact; // Student.contact -> User.phoneNo
+    if (typeof updateData.isActive === 'boolean') userUpdateData.active = updateData.isActive;
+
+    // Always use transaction to keep Student and User in sync
+    if (student.userId && Object.keys(userUpdateData).length > 0) {
       const [updatedStudent] = await this.prisma.$transaction([
         this.prisma.student.update({
           where: { id: studentId },
@@ -1272,11 +1279,11 @@ export class PrincipalService {
         }),
         this.prisma.user.update({
           where: { id: student.userId },
-          data: { active: updateData.isActive },
+          data: userUpdateData,
         }),
       ]);
 
-      await this.cache.invalidateByTags(['students', `student:${studentId}`]);
+      await this.cache.invalidateByTags(['students', `student:${studentId}`, `user:${student.userId}`]);
 
       return updatedStudent;
     }
@@ -1318,36 +1325,36 @@ export class PrincipalService {
       throw new NotFoundException('Student not found in your institution');
     }
 
-    // Store info for audit before deletion
+    // Store info for audit before soft deletion
     const studentInfo = {
       studentId,
       userId: student.userId,
       email: student.user?.email,
       name: student.user?.name,
       rollNumber: student.rollNumber,
+      wasActive: student.isActive,
     };
 
-    // Hard delete - delete all related records first, then student and user
+    // Soft delete - deactivate student and user, deactivate related assignments
     await this.prisma.$transaction([
-      // Delete related records that reference the student
-      this.prisma.mentorAssignment.deleteMany({ where: { studentId } }),
-      this.prisma.monthlyReport.deleteMany({ where: { studentId } }),
-      this.prisma.monthlyFeedback.deleteMany({ where: { studentId } }),
-      this.prisma.complianceRecord.deleteMany({ where: { studentId } }),
-      this.prisma.grievance.deleteMany({ where: { studentId } }),
-      this.prisma.internshipApplication.deleteMany({ where: { studentId } }),
-      this.prisma.placement.deleteMany({ where: { studentId } }),
-      this.prisma.document.deleteMany({ where: { studentId } }),
-      this.prisma.fee.deleteMany({ where: { studentId } }),
-      this.prisma.examResult.deleteMany({ where: { studentId } }),
-      this.prisma.internshipPreference.deleteMany({ where: { studentId } }),
-      // Delete student record
-      this.prisma.student.delete({ where: { id: studentId } }),
-      // Delete the user account
-      this.prisma.user.delete({ where: { id: student.userId } }),
+      // Deactivate mentor assignments (preserve historical data)
+      this.prisma.mentorAssignment.updateMany({
+        where: { studentId, isActive: true },
+        data: { isActive: false, deactivatedAt: new Date() },
+      }),
+      // Deactivate the student record
+      this.prisma.student.update({
+        where: { id: studentId },
+        data: { isActive: false },
+      }),
+      // Deactivate the user account
+      this.prisma.user.update({
+        where: { id: student.userId },
+        data: { active: false },
+      }),
     ]);
 
-    // Log student deletion
+    // Log student soft deletion
     this.auditService.log({
       action: AuditAction.USER_DELETION,
       entityType: 'Student',
@@ -1355,16 +1362,17 @@ export class PrincipalService {
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Student permanently deleted: ${studentInfo.name} (${studentInfo.email})`,
+      description: `Student deactivated (soft delete): ${studentInfo.name} (${studentInfo.email})`,
       category: AuditCategory.ADMINISTRATIVE,
-      severity: AuditSeverity.CRITICAL,
+      severity: AuditSeverity.HIGH,
       institutionId: principal.institutionId,
       oldValues: studentInfo,
+      newValues: { isActive: false, active: false },
     }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`]);
 
-    return { success: true, message: 'Student deleted successfully' };
+    return { success: true, message: 'Student deactivated successfully' };
   }
 
   /**
@@ -1676,7 +1684,7 @@ export class PrincipalService {
   }
 
   /**
-   * Delete staff member (hard delete)
+   * Deactivate staff member (soft delete)
    */
   async deleteStaff(principalId: string, staffId: string) {
     const principal = await this.prisma.user.findUnique({
@@ -1698,47 +1706,53 @@ export class PrincipalService {
       throw new NotFoundException('Staff member not found');
     }
 
-    // Store info for audit before deletion
+    // Check if already deactivated
+    if (staff.active === false) {
+      throw new BadRequestException('Staff member is already deactivated');
+    }
+
+    // Store info for audit
     const staffInfo = {
       staffId,
       email: staff.email,
       name: staff.name,
       role: staff.role,
+      previousStatus: staff.active,
     };
 
-    // Hard delete - delete all related records first, then the user
+    // Soft delete - deactivate user and related mentor assignments
     await this.prisma.$transaction([
-      // Delete related records that reference the user
-      this.prisma.mentorAssignment.deleteMany({ where: { mentorId: staffId } }),
-      this.prisma.mentorAssignment.deleteMany({ where: { assignedBy: staffId } }),
-      this.prisma.facultyVisitLog.deleteMany({ where: { facultyId: staffId } }),
-      this.prisma.classAssignment.deleteMany({ where: { teacherId: staffId } }),
-      this.prisma.grievanceStatusHistory.deleteMany({ where: { changedById: staffId } }),
-      this.prisma.notification.deleteMany({ where: { userId: staffId } }),
-      this.prisma.notificationSettings.deleteMany({ where: { userId: staffId } }),
-      this.prisma.technicalQuery.deleteMany({ where: { userId: staffId } }),
-      // Delete the user
-      this.prisma.user.delete({ where: { id: staffId } }),
+      // Deactivate mentor assignments where this staff is the mentor
+      this.prisma.mentorAssignment.updateMany({
+        where: { mentorId: staffId, isActive: true },
+        data: { isActive: false, deactivatedAt: new Date() },
+      }),
+      // Deactivate the user (soft delete)
+      this.prisma.user.update({
+        where: { id: staffId },
+        data: { active: false },
+      }),
     ]);
 
-    // Log staff deletion
+    // Log staff deactivation
     this.auditService.log({
-      action: AuditAction.USER_DELETION,
+      action: AuditAction.USER_DEACTIVATION,
       entityType: 'Staff',
       entityId: staffId,
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Staff member permanently deleted: ${staffInfo.name} (${staffInfo.email})`,
+      description: `Staff member deactivated: ${staffInfo.name} (${staffInfo.email})`,
       category: AuditCategory.ADMINISTRATIVE,
-      severity: AuditSeverity.CRITICAL,
+      severity: AuditSeverity.HIGH,
       institutionId: principal.institutionId,
       oldValues: staffInfo,
+      newValues: { active: false },
     }).catch(() => {}); // Non-blocking
 
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
 
-    return { success: true, message: 'Staff member deleted successfully' };
+    return { success: true, message: 'Staff member deactivated successfully' };
   }
 
   /**
@@ -2571,17 +2585,17 @@ export class PrincipalService {
       statusCounts,
       monthlyReportCounts,
     ] = await Promise.all([
-      // Total students count
+      // Total active students count
       this.prisma.student.count({
-        where: { institutionId },
+        where: { institutionId, isActive: true },
       }),
 
-      // Batches with student counts
+      // Batches with active student counts
       this.prisma.batch.findMany({
         where: { institutionId },
         select: {
           name: true,
-          _count: { select: { students: true } },
+          _count: { select: { students: { where: { isActive: true } } } },
         },
       }),
 
@@ -2833,14 +2847,14 @@ export class PrincipalService {
 
     const institutionId = principal.institutionId;
 
-    // Run queries in parallel (self-identified internships only)
+    // Run queries in parallel (self-identified internships only, active students)
     const [totalStudents, completedApplications] = await Promise.all([
       this.prisma.student.count({
-        where: { institutionId },
+        where: { institutionId, isActive: true },
       }),
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId },
+          student: { institutionId, isActive: true },
           isSelfIdentified: true,
           status: 'COMPLETED',
         },
@@ -3603,23 +3617,24 @@ export class PrincipalService {
       mentors,
       allAssignments,
     ] = await Promise.all([
-      // Total students
+      // Total active students
       this.prisma.student.count({
-        where: { institutionId },
+        where: { institutionId, isActive: true },
       }),
-      // Total students with ongoing internships
+      // Total active students with ongoing internships
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId },
+          student: { institutionId, isActive: true },
           isSelfIdentified: true,
           internshipStatus: 'ONGOING',
         },
       }),
-      // Unique students with active mentor assignments (all students)
+      // Unique active students with active mentor assignments
       this.prisma.mentorAssignment.findMany({
         where: {
           student: {
             institutionId,
+            isActive: true,
           },
           isActive: true,
         },

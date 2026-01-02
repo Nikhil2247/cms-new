@@ -10,13 +10,14 @@ import {
   Req,
   Res,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../../core/config/throttle.config';
 import { JwtAuthGuard } from '../../../core/auth/guards/jwt-auth.guard';
 import { ReportBuilderService } from './report-builder.service';
-import { GenerateReportDto } from './dto/generate-report.dto';
+import { GenerateReportDto, validateReportFilters } from './dto/generate-report.dto';
 import { ReportHistoryDto } from './dto/report-history.dto';
 import { FileStorageService } from '../../../infrastructure/file-storage/file-storage.service';
 
@@ -221,6 +222,7 @@ export class ReportBuilderController {
   @Throttle({ default: THROTTLE_PRESETS.mutation })
   async generateReport(@Req() req: any, @Body() dto: GenerateReportDto) {
     const userId = req.user.userId;
+    const userRole = req.user.role;
     const institutionId = req.user.institutionId;
 
     // Validate format
@@ -232,13 +234,30 @@ export class ReportBuilderController {
     // Transform filters (handle dateRange arrays, etc.)
     const transformedFilters = this.transformFilters(dto.filters || {});
 
-    // Build config from DTO
+    // Validate filters based on report type using class-validator DTOs
+    const filterValidation = await validateReportFilters(dto.type, transformedFilters);
+    if (!filterValidation.isValid) {
+      this.logger.warn(`Filter validation failed for report ${dto.type}: ${filterValidation.errors.join(', ')}`);
+      throw new BadRequestException({
+        message: 'Invalid filter values',
+        errors: filterValidation.errors,
+      });
+    }
+
+    // Determine if user is admin (can view all institutions)
+    const normalizedRole = userRole?.toUpperCase();
+    const isAdmin = normalizedRole === 'STATE_DIRECTORATE' || normalizedRole === 'SYSTEM_ADMIN';
+    this.logger.log(`User role: ${userRole}, isAdmin: ${isAdmin}, institutionId from token: ${institutionId}`);
+
+    // Build config from DTO with validated filters
+    // For admin users, don't auto-fill institutionId if they want to see all institutions
     const config = {
       type: dto.type,
       columns: dto.columns || [],
       filters: {
         ...transformedFilters,
-        institutionId: transformedFilters.institutionId || institutionId,
+        // Only auto-fill institutionId for non-admin users
+        institutionId: transformedFilters.institutionId || (isAdmin ? undefined : institutionId),
       } as Record<string, unknown>,
       groupBy: dto.groupBy,
       sortBy: dto.sortBy,
@@ -246,10 +265,13 @@ export class ReportBuilderController {
       format,
     };
 
+    this.logger.log(`Final institutionId in config: ${config.filters.institutionId}`);
+
     const result = await this.reportBuilderService.queueReportGeneration(
       userId,
       dto.type,
       config,
+      userRole,
     );
 
     return {
@@ -267,6 +289,7 @@ export class ReportBuilderController {
   @Throttle({ default: THROTTLE_PRESETS.export })
   async generateReportSync(@Req() req: any, @Body() dto: GenerateReportDto) {
     const userId = req.user.userId;
+    const userRole = req.user.role;
     const institutionId = req.user.institutionId;
 
     // Validate format
@@ -278,18 +301,36 @@ export class ReportBuilderController {
     // Transform filters (handle dateRange arrays, etc.)
     const transformedFilters = this.transformFilters(dto.filters || {});
 
+    // Validate filters based on report type using class-validator DTOs
+    const filterValidation = await validateReportFilters(dto.type, transformedFilters);
+    if (!filterValidation.isValid) {
+      this.logger.warn(`Filter validation failed for report ${dto.type}: ${filterValidation.errors.join(', ')}`);
+      throw new BadRequestException({
+        message: 'Invalid filter values',
+        errors: filterValidation.errors,
+      });
+    }
+
+    // Determine if user is admin (can view all institutions)
+    const normalizedRole = userRole?.toUpperCase();
+    const isAdmin = normalizedRole === 'STATE_DIRECTORATE' || normalizedRole === 'SYSTEM_ADMIN';
+    this.logger.log(`[Sync] User role: ${userRole}, isAdmin: ${isAdmin}, institutionId from token: ${institutionId}`);
+
     const config = {
       type: dto.type,
       columns: dto.columns || [],
       filters: {
         ...transformedFilters,
-        institutionId: transformedFilters.institutionId || institutionId,
+        // Only auto-fill institutionId for non-admin users
+        institutionId: transformedFilters.institutionId || (isAdmin ? undefined : institutionId),
       } as Record<string, unknown>,
       groupBy: dto.groupBy,
       sortBy: dto.sortBy,
       sortOrder: dto.sortOrder,
       format,
     };
+
+    this.logger.log(`[Sync] Final institutionId in config: ${config.filters.institutionId}`);
 
     const result = await this.reportBuilderService.generateReportSync(
       userId,
@@ -380,7 +421,8 @@ export class ReportBuilderController {
   @Post('retry/:id')
   async retryReport(@Req() req: any, @Param('id') id: string) {
     const userId = req.user.userId;
-    const result = await this.reportBuilderService.retryReport(id, userId);
+    const userRole = req.user.role;
+    const result = await this.reportBuilderService.retryReport(id, userId, userRole);
     return {
       success: true,
       ...result,

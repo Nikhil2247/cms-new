@@ -49,7 +49,9 @@ npm run build
 Copy `.env.example` to `.env` and update the values:
 
 ```
-VITE_API_BASE_URL=http://localhost:5000/api
+VITE_API_BASE_URL=http://localhost:8000/api
+VITE_MINIO_ENDPOINT=http://localhost:9000
+VITE_MINIO_BUCKET=cms-uploads
 ```
 
 ## Project Structure

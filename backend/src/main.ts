@@ -12,7 +12,7 @@ import { SanitizePipe } from './core/common/pipes/sanitize.pipe';
 import { validateProductionEnvironment } from './config/env.validation';
 
 // Prefer BACKEND_PORT so generic PORT (often set by other tools) doesn't hijack backend.
-const port = process.env.BACKEND_PORT || process.env.PORT || 8080;
+const port = process.env.BACKEND_PORT || process.env.PORT || 8000;
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -20,29 +20,10 @@ async function bootstrap() {
   // Validate environment configuration (throws in production if invalid)
   validateProductionEnvironment();
 
-  // Define allowed origins
+  // Define allowed origins from environment variable
   const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map((origin) => origin.trim())
-    : [
-        // Common frontend dev ports
-        'http://localhost:5173',
-        'http://localhost:3000',
-        'http://localhost:3001',
-        'http://localhost:8000',
-        'http://localhost:8080',
-        'http://127.0.0.1:5173',
-        'http://127.0.0.1:3000',
-        'http://127.0.0.1:3001',
-        'http://127.0.0.1:8000',
-        'http://127.0.0.1:8080',
-        // Production domains
-        'https://placeintern.com',
-        'https://www.placeintern.com',
-        'https://api.placeintern.com',
-        'https://sukeerat.com',
-        'https://www.sukeerat.com',
-        'https://api.sukeerat.com',
-      ];
+    : ['http://localhost:5173', 'http://localhost:3000'];
 
   logger.log(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 

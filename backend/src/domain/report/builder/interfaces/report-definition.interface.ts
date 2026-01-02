@@ -11,6 +11,7 @@ export interface ReportColumn {
   sortable?: boolean;
   width?: number;
   format?: string;
+  description?: string;
 }
 
 export interface ReportFilterOption {

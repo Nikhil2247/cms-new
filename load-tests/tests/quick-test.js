@@ -12,7 +12,7 @@
  *
  * Usage:
  *   k6 run tests/quick-test.js
- *   k6 run --env BASE_URL=http://localhost:5000 tests/quick-test.js
+ *   k6 run --env BASE_URL=http://localhost:8000 tests/quick-test.js
  */
 
 import http from 'k6/http';
@@ -22,7 +22,7 @@ import { Rate, Trend, Counter } from 'k6/metrics';
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:8000';
 
 // Role-based credentials (from seed.ts)
 const CREDENTIALS = {

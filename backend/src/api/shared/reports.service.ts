@@ -64,7 +64,7 @@ export class ReportsService {
   /**
    * Generate a report
    */
-  async generateReport(userId: string, reportDto: GenerateReportDto) {
+  async generateReport(userId: string, userRole: string, reportDto: GenerateReportDto) {
     try {
       const { type, columns = [], filters = {}, groupBy, sortBy, sortOrder, format = 'excel' } = reportDto;
 
@@ -84,14 +84,15 @@ export class ReportsService {
         format: validFormat,
       };
 
-      // Queue the report generation
+      // Queue the report generation with user role for admin checks
       const result = await this.reportBuilderService.queueReportGeneration(
         userId,
         type,
         config,
+        userRole,
       );
 
-      this.logger.log(`Report generation queued: ${result.reportId} for user ${userId}`);
+      this.logger.log(`Report generation queued: ${result.reportId} for user ${userId} (role: ${userRole})`);
 
       return {
         success: true,

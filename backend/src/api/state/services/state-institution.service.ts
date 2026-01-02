@@ -85,8 +85,8 @@ export class StateInstitutionService {
     const [institutions, total, totalStudents] = await Promise.all([
       this.prisma.institution.findMany(query),
       this.prisma.institution.count({ where }),
-      // Get total students count separately to match dashboard
-      this.prisma.student.count(),
+      // Get total active students count separately to match dashboard
+      this.prisma.student.count({ where: { isActive: true } }),
     ]);
 
     const nextCursor = institutions.length === limitNum
@@ -1725,12 +1725,12 @@ export class StateInstitutionService {
 
       // Get principal stats in one query
       Promise.all([
-        this.prisma.student.count({ where: { institutionId: id } }),
+        this.prisma.student.count({ where: { institutionId: id, isActive: true } }),
         this.prisma.user.count({
           where: { institutionId: id, role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] }, active: true },
         }),
         this.prisma.internshipApplication.count({
-          where: { student: { institutionId: id }, status: ApplicationStatus.APPLIED },
+          where: { student: { institutionId: id, isActive: true }, status: ApplicationStatus.APPLIED },
         }),
       ]),
     ]);

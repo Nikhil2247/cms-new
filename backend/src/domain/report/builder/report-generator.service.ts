@@ -18,11 +18,11 @@ const DEFAULT_MAX_RECORDS = 10000;
 const WARNING_THRESHOLD = 5000;
 
 /**
- * Reports that require institution isolation
- * These reports MUST have institutionId to prevent cross-tenant data leakage
+ * Reports that require institution isolation for non-admin users
+ * Admin users (STATE_DIRECTORATE, SYSTEM_ADMIN) can view all institutions
+ * Non-admin users MUST have institutionId to prevent cross-tenant data leakage
  */
 const INSTITUTION_REQUIRED_REPORTS = [
-  'student',
   'internship',
   'faculty',
   'mentor',
@@ -30,6 +30,14 @@ const INSTITUTION_REQUIRED_REPORTS = [
   'placement',
   'compliance',
   'pending',
+];
+
+/**
+ * Reports that allow viewing all institutions for admin users
+ * When institutionId is not provided, returns data from all institutions
+ */
+const INSTITUTION_OPTIONAL_REPORTS = [
+  'student',
 ];
 
 /**
@@ -68,6 +76,7 @@ export class ReportGeneratorService {
   /**
    * Validate institution isolation for reports
    * Throws ForbiddenException if institutionId is required but not provided
+   * Admin users can bypass institution requirement for optional reports
    */
   private validateInstitutionIsolation(
     reportType: string,
@@ -76,14 +85,30 @@ export class ReportGeneratorService {
   ): void {
     const typeStr = reportType.toLowerCase();
 
-    // Check if this report type requires institution isolation
+    // Check if this report type strictly requires institution isolation
     const requiresInstitution = INSTITUTION_REQUIRED_REPORTS.some(
       (r) => typeStr.includes(r),
     );
 
-    if (requiresInstitution && !filters?.institutionId && !isAdmin) {
+    // Check if this report type allows optional institution for admins
+    const isOptionalReport = INSTITUTION_OPTIONAL_REPORTS.some(
+      (r) => typeStr.includes(r),
+    );
+
+    // For optional reports, admins can view all institutions
+    if (isOptionalReport && isAdmin) {
+      if (!filters?.institutionId) {
+        this.logger.log(
+          `Admin generating ${reportType} for all institutions`,
+        );
+      }
+      return; // Allow admin to proceed without institutionId
+    }
+
+    // For required reports or non-admin users on optional reports
+    if ((requiresInstitution || isOptionalReport) && !filters?.institutionId && !isAdmin) {
       this.logger.warn(
-        `Report generation blocked: ${reportType} requires institutionId`,
+        `Report generation blocked: ${reportType} requires institutionId for non-admin users`,
       );
       throw new ForbiddenException(
         'Institution ID is required for this report type',
@@ -92,8 +117,9 @@ export class ReportGeneratorService {
   }
 
   /**
-   * Generate Student Progress Report
-   * @param filters - Filter criteria for the report
+   * Generate Student Progress Report (Student Directory)
+   * Returns complete student information including institution, mentor, and internship status
+   * @param filters - Filter criteria for the report (validated by StudentDirectoryFilterDto)
    * @param pagination - Optional pagination options (take, skip)
    */
   async generateStudentProgressReport(
@@ -103,21 +129,23 @@ export class ReportGeneratorService {
     const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
 
+    // Institution filter - REQUIRED for non-admin users (enforced by validateInstitutionIsolation)
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
     }
 
-    // The schema uses Branch (not Department) for academic grouping.
+    // Branch filter - uses Branch model (not Department)
     if (filters?.branchId) {
       where.branchId = filters.branchId;
     } else if (filters?.departmentId) {
+      // Backward compatibility: departmentId maps to branchId
       where.branchId = filters.departmentId;
     }
 
-    // Handle year filter - support both 'year' and 'currentYear' filter names
-    if (filters?.year) {
+    // Year filter - support multiple filter names for flexibility
+    if (filters?.year !== undefined && filters?.year !== null) {
       where.currentYear = Number(filters.year);
-    } else if (filters?.currentYear) {
+    } else if (filters?.currentYear !== undefined && filters?.currentYear !== null) {
       where.currentYear = Number(filters.currentYear);
     } else if (filters?.academicYear) {
       // For academicYear like "2024-2025", extract first year
@@ -128,22 +156,77 @@ export class ReportGeneratorService {
       }
     }
 
-    if (filters?.semester || filters?.currentSemester) {
-      where.currentSemester = Number(filters.semester || filters.currentSemester);
+    // Semester filter
+    if (filters?.semester !== undefined && filters?.semester !== null) {
+      where.currentSemester = Number(filters.semester);
+    } else if (filters?.currentSemester !== undefined && filters?.currentSemester !== null) {
+      where.currentSemester = Number(filters.currentSemester);
     }
 
-    // Handle isActive filter - boolean filter
-    if (filters?.isActive !== undefined && filters?.isActive !== null) {
-      where.isActive = filters.isActive === true || filters.isActive === 'true';
+    // IMPORTANT: isActive filter - properly handle boolean values
+    // This ensures the filter works correctly regardless of input type
+    if (filters?.isActive !== undefined && filters?.isActive !== null && filters?.isActive !== '') {
+      // Convert various input types to boolean
+      const isActiveValue =
+        filters.isActive === true ||
+        filters.isActive === 'true' ||
+        filters.isActive === 1 ||
+        filters.isActive === '1';
+      where.isActive = isActiveValue;
+
+      this.logger.debug(`Student directory filter: isActive=${isActiveValue} (raw: ${filters.isActive})`);
+    }
+
+    // Mentor filter - filter students assigned to specific mentor
+    let mentorFilter: string | undefined;
+    if (filters?.mentorId) {
+      mentorFilter = filters.mentorId;
     }
 
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { name: true, email: true, phoneNo: true } },
-        branch: { select: { name: true } },
-        internshipApplications: { select: { id: true } },
-        placements: { select: { id: true } },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            active: true,
+          }
+        },
+        branch: { select: { id: true, name: true } },
+        Institution: { select: { id: true, name: true, shortName: true } },
+        // Get internship applications with mentor and status info
+        internshipApplications: {
+          select: {
+            id: true,
+            status: true,
+            mentor: { select: { id: true, name: true } },
+            internship: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+              }
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1, // Get most recent application
+        },
+        // Get mentor assignments
+        mentorAssignments: {
+          where: { isActive: true },
+          select: {
+            mentor: { select: { id: true, name: true } },
+          },
+          orderBy: { assignmentDate: 'desc' },
+          take: 1, // Get current mentor
+        },
+        placements: {
+          select: { id: true, status: true },
+          take: 1,
+        },
       },
       take,
       skip,
@@ -152,19 +235,86 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(students.length, 'StudentProgressReport');
 
-    return students.map((student) => ({
-      rollNumber: student.rollNumber,
-      name: student.name,
-      email: student.email ?? student.user.email,
-      phoneNumber: student.contact ?? student.user.phoneNo,
-      branch: student.branch?.name ?? student.branchName,
-      currentYear: student.currentYear,
-      currentSemester: student.currentSemester,
-      internshipsCount: student.internshipApplications.length,
-      placementsCount: student.placements.length,
-      status: student.clearanceStatus,
-      isActive: student.isActive,
-    }));
+    // Apply mentor filter if specified (post-query filter for complex relation)
+    let filteredStudents = students;
+    if (mentorFilter) {
+      filteredStudents = students.filter((student) => {
+        const applicationMentor = student.internshipApplications[0]?.mentor?.id;
+        const assignedMentor = student.mentorAssignments[0]?.mentor?.id;
+        return applicationMentor === mentorFilter || assignedMentor === mentorFilter;
+      });
+    }
+
+    return filteredStudents.map((student) => {
+      // Determine mentor name from assignment or application
+      const mentorName =
+        student.mentorAssignments[0]?.mentor?.name ??
+        student.internshipApplications[0]?.mentor?.name ??
+        'Not Assigned';
+
+      // Determine internship status
+      const latestApplication = student.internshipApplications[0];
+      let internshipStatus = 'Not Started';
+      if (latestApplication) {
+        switch (latestApplication.status) {
+          case 'COMPLETED':
+            internshipStatus = 'Completed';
+            break;
+          case 'JOINED':
+          case 'APPROVED':
+          case 'SELECTED':
+            internshipStatus = 'In Progress';
+            break;
+          case 'APPLIED':
+          case 'UNDER_REVIEW':
+          case 'SHORTLISTED':
+            internshipStatus = 'Applied';
+            break;
+          case 'REJECTED':
+          case 'WITHDRAWN':
+            internshipStatus = 'Not Active';
+            break;
+          default:
+            internshipStatus = latestApplication.status ?? 'Unknown';
+        }
+      }
+
+      return {
+        // Core student info
+        rollNumber: student.rollNumber,
+        name: student.name,
+        email: student.email ?? student.user?.email ?? '',
+        phoneNumber: student.contact ?? student.user?.phoneNo ?? '',
+
+        // Academic info
+        branchName: student.branch?.name ?? student.branchName ?? '',
+        currentYear: student.currentYear,
+        currentSemester: student.currentSemester,
+
+        // Institution info
+        institutionName: student.Institution?.name ?? '',
+        institutionShortName: student.Institution?.shortName ?? '',
+
+        // Mentor info
+        mentorName,
+
+        // Internship info
+        internshipStatus,
+        internshipsCount: student.internshipApplications.length,
+
+        // Placement info
+        placementsCount: student.placements.length,
+        isPlaced: student.placements.length > 0,
+
+        // Status info
+        clearanceStatus: student.clearanceStatus,
+        studentActive: student.isActive,
+        userActive: student.user?.active ?? true,
+
+        // Timestamps
+        createdAt: student.createdAt,
+      };
+    });
   }
 
   /**
@@ -235,6 +385,7 @@ export class ReportGeneratorService {
             rollNumber: true,
             branchName: true,
             institutionId: true,
+            isActive: true,
           },
         },
         internship: {
@@ -275,6 +426,7 @@ export class ReportGeneratorService {
       reportsSubmitted: application._count.monthlyReports,
       location: application.internship?.workLocation ?? application.companyAddress,
       isSelfIdentified: application.isSelfIdentified,
+      isActive: application.student.isActive,
     }));
   }
 
@@ -325,10 +477,10 @@ export class ReportGeneratorService {
     const visits = await this.prisma.facultyVisitLog.findMany({
       where,
       include: {
-        faculty: { select: { id: true, name: true, designation: true } },
+        faculty: { select: { id: true, name: true, designation: true, active: true } },
         application: {
           include: {
-            student: { select: { id: true, name: true, rollNumber: true } },
+            student: { select: { id: true, name: true, rollNumber: true, isActive: true } },
             internship: {
               include: {
                 industry: { select: { id: true, companyName: true } },
@@ -347,8 +499,10 @@ export class ReportGeneratorService {
     return visits.map((visit) => ({
       facultyName: visit.faculty.name,
       facultyDesignation: visit.faculty.designation,
+      facultyActive: visit.faculty.active,
       studentName: visit.application.student.name,
       rollNumber: visit.application.student.rollNumber,
+      studentActive: visit.application.student.isActive,
       companyName: visit.application.internship?.industry.companyName,
       visitDate: visit.visitDate,
       visitType: visit.visitType,
@@ -387,7 +541,7 @@ export class ReportGeneratorService {
     const reports = await this.prisma.monthlyReport.findMany({
       where,
       include: {
-        student: { select: { id: true, name: true, rollNumber: true } },
+        student: { select: { id: true, name: true, rollNumber: true, isActive: true } },
         application: {
           include: {
             internship: {
@@ -414,6 +568,7 @@ export class ReportGeneratorService {
       status: report.status,
       submittedAt: report.submittedAt,
       reportFileUrl: report.reportFileUrl,
+      isActive: report.student.isActive,
     }));
   }
 
@@ -449,7 +604,7 @@ export class ReportGeneratorService {
     const placements = await this.prisma.placement.findMany({
       where,
       include: {
-        student: { select: { id: true, name: true, rollNumber: true, email: true } },
+        student: { select: { id: true, name: true, rollNumber: true, email: true, isActive: true } },
       },
       take,
       skip,
@@ -467,6 +622,7 @@ export class ReportGeneratorService {
       salary: placement.salary,
       offerDate: placement.offerDate,
       status: placement.status,
+      isActive: placement.student.isActive,
     }));
   }
 
@@ -648,6 +804,7 @@ export class ReportGeneratorService {
         lastReportDate: lastReport?.submittedAt ?? null,
         complianceScore,
         complianceLevel,
+        isActive: student.isActive,
       };
     });
 

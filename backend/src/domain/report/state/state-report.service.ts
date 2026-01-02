@@ -28,7 +28,7 @@ export class StateReportService {
             totalFaculty,
           ] = await Promise.all([
             this.prisma.institution.count(),
-            this.prisma.student.count(),
+            this.prisma.student.count({ where: { isActive: true } }),
             this.prisma.industry.count({ where: { isApproved: true } }),
             // Only count self-identified internships
             this.prisma.internshipApplication.count({

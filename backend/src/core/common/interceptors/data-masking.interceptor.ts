@@ -1,14 +1,14 @@
-import {
-  Injectable,
-  NestInterceptor,
-  ExecutionContext,
-  CallHandler,
-} from '@nestjs/common';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+/**
+ * @deprecated This interceptor has been merged into SecurityInterceptor for performance optimization.
+ * The SecurityInterceptor now handles both sensitive field removal AND PII masking in a single traversal.
+ *
+ * Use SecurityInterceptor instead (already registered globally in app.module.ts).
+ *
+ * This file is kept for backward compatibility and exports utility functions for manual masking.
+ */
 
 /**
- * Sensitive field patterns and their masking rules
+ * PII Masking rules for sensitive fields
  */
 const MASKING_RULES: Record<string, (value: string) => string> = {
   // Aadhaar: Show last 4 digits (XXXX-XXXX-1234)
@@ -57,138 +57,49 @@ const MASKING_RULES: Record<string, (value: string) => string> = {
 };
 
 /**
- * Fields that should always be masked in responses
- */
-const ALWAYS_MASK_FIELDS = [
-  'aadhaarNumber',
-  'panNumber',
-  'bankAccountNumber',
-  'accountNumber',
-  'ifscCode',
-];
-
-/**
- * Fields to mask based on user role
- * Lower roles see masked data, higher roles see full data
- */
-const ROLE_BASED_MASK_FIELDS: Record<string, string[]> = {
-  STUDENT: ['phoneNo', 'email', 'dob'],
-  TEACHER: ['phoneNo'],
-};
-
-/**
- * Data Masking Interceptor
- * Masks sensitive PII fields in API responses
+ * Utility function for manual masking of sensitive fields
  *
- * Usage:
- * - Apply globally or on specific controllers
- * - Configurable per-field masking rules
- * - Role-based masking (some roles see full data)
- */
-@Injectable()
-export class DataMaskingInterceptor implements NestInterceptor {
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const request = context.switchToHttp().getRequest();
-    const userRole = request.user?.role;
-
-    // Skip masking for system admins
-    if (userRole === 'SYSTEM_ADMIN' || userRole === 'STATE_DIRECTORATE') {
-      return next.handle();
-    }
-
-    return next.handle().pipe(
-      map((data) => {
-        if (!data) return data;
-        return this.maskData(data, userRole);
-      }),
-    );
-  }
-
-  /**
-   * Recursively mask sensitive fields in data
-   */
-  private maskData(data: any, userRole?: string): any {
-    if (data === null || data === undefined) {
-      return data;
-    }
-
-    // Handle arrays
-    if (Array.isArray(data)) {
-      return data.map((item) => this.maskData(item, userRole));
-    }
-
-    // Handle objects
-    if (typeof data === 'object') {
-      // Skip Date, Buffer, etc.
-      if (data instanceof Date || Buffer.isBuffer(data)) {
-        return data;
-      }
-
-      const masked: any = {};
-
-      for (const [key, value] of Object.entries(data)) {
-        if (value === null || value === undefined) {
-          masked[key] = value;
-          continue;
-        }
-
-        // Check if field should be masked
-        if (this.shouldMaskField(key, userRole)) {
-          if (typeof value === 'string' && MASKING_RULES[key]) {
-            masked[key] = MASKING_RULES[key](value);
-          } else if (typeof value === 'string') {
-            // Default masking for unknown sensitive fields
-            masked[key] = this.defaultMask(value);
-          } else {
-            masked[key] = value;
-          }
-        } else if (typeof value === 'object') {
-          // Recurse into nested objects
-          masked[key] = this.maskData(value, userRole);
-        } else {
-          masked[key] = value;
-        }
-      }
-
-      return masked;
-    }
-
-    return data;
-  }
-
-  /**
-   * Determine if a field should be masked
-   */
-  private shouldMaskField(fieldName: string, userRole?: string): boolean {
-    // Always mask these fields
-    if (ALWAYS_MASK_FIELDS.includes(fieldName)) {
-      return true;
-    }
-
-    // Role-based masking
-    if (userRole && ROLE_BASED_MASK_FIELDS[userRole]) {
-      return ROLE_BASED_MASK_FIELDS[userRole].includes(fieldName);
-    }
-
-    return false;
-  }
-
-  /**
-   * Default masking for fields without specific rules
-   */
-  private defaultMask(value: string): string {
-    if (!value || value.length <= 4) {
-      return '****';
-    }
-    return `${value.slice(0, 2)}${'*'.repeat(value.length - 4)}${value.slice(-2)}`;
-  }
-}
-
-/**
- * Utility function for manual masking
+ * @example
+ * ```typescript
+ * import { maskSensitiveField } from './data-masking.interceptor';
+ *
+ * const maskedPhone = maskSensitiveField('phoneNo', '9876543210');
+ * // Returns: "******3210"
+ *
+ * const maskedAadhaar = maskSensitiveField('aadhaarNumber', '123456789012');
+ * // Returns: "XXXX-XXXX-9012"
+ * ```
  */
 export function maskSensitiveField(fieldName: string, value: string): string {
   if (!value) return value;
   const maskFn = MASKING_RULES[fieldName];
   return maskFn ? maskFn(value) : value;
+}
+
+/**
+ * Mask multiple fields in an object
+ *
+ * @example
+ * ```typescript
+ * const masked = maskFields({ phoneNo: '9876543210', email: 'test@example.com' }, ['phoneNo', 'email']);
+ * ```
+ */
+export function maskFields<T extends Record<string, any>>(
+  data: T,
+  fieldNames: string[],
+): T {
+  const result = { ...data };
+  for (const field of fieldNames) {
+    if (result[field] && typeof result[field] === 'string') {
+      (result as any)[field] = maskSensitiveField(field, result[field]);
+    }
+  }
+  return result;
+}
+
+/**
+ * Get list of available masking field names
+ */
+export function getAvailableMaskingFields(): string[] {
+  return Object.keys(MASKING_RULES);
 }

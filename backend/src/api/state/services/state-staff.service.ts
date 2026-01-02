@@ -304,16 +304,24 @@ export class StateStaffService {
       throw new NotFoundException(`Staff member with ID ${id} not found`);
     }
 
-    // Delete notifications first (required relation without cascade)
-    await this.prisma.notification.deleteMany({ where: { userId: id } });
-    await this.prisma.user.delete({ where: { id } });
+    if (!existingStaff.active) {
+      throw new BadRequestException('Staff member is already deactivated');
+    }
+
+    // Soft delete - deactivate user account (preserves audit trail and historical data)
+    await this.prisma.user.update({
+      where: { id },
+      data: { active: false },
+    });
+
     await this.cache.invalidateByTags(['state', 'staff']);
 
-    return { success: true, message: 'Staff member deleted successfully' };
+    return { success: true, message: 'Staff member deactivated successfully' };
   }
 
   /**
    * Delete faculty member by ID (FACULTY_SUPERVISOR or TEACHER only)
+   * Uses soft delete to preserve mentor assignment history and audit trail
    */
   async deleteFaculty(id: string) {
     const facultyRoles: Role[] = [Role.TEACHER, Role.FACULTY_SUPERVISOR];
@@ -326,14 +334,27 @@ export class StateStaffService {
       throw new NotFoundException(`Faculty member with ID ${id} not found`);
     }
 
-    // Delete mentor assignments first
-    await this.prisma.mentorAssignment.deleteMany({ where: { mentorId: id } });
-    // Delete notifications (required relation without cascade)
-    await this.prisma.notification.deleteMany({ where: { userId: id } });
-    await this.prisma.user.delete({ where: { id } });
+    if (!existingFaculty.active) {
+      throw new BadRequestException('Faculty member is already deactivated');
+    }
+
+    // Soft delete - deactivate mentor assignments and user account
+    await this.prisma.$transaction([
+      // Deactivate active mentor assignments (preserve historical data)
+      this.prisma.mentorAssignment.updateMany({
+        where: { mentorId: id, isActive: true },
+        data: { isActive: false, deactivatedAt: new Date() },
+      }),
+      // Deactivate the user account
+      this.prisma.user.update({
+        where: { id },
+        data: { active: false },
+      }),
+    ]);
+
     await this.cache.invalidateByTags(['state', 'staff', 'faculty']);
 
-    return { success: true, message: 'Faculty member deleted successfully' };
+    return { success: true, message: 'Faculty member deactivated successfully' };
   }
 
   /**

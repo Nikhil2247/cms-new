@@ -22,6 +22,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'stipend', label: 'Stipend', type: 'number', default: false },
       { id: 'isSelfIdentified', label: 'Self Identified', type: 'boolean', default: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
+      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
@@ -117,6 +118,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'endDate', label: 'End Date', type: 'date', default: true },
       { id: 'verificationStatus', label: 'Verification', type: 'string', default: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
+      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },

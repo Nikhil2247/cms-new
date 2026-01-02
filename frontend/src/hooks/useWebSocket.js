@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 
 // Get socket URL - strip /api suffix if present
 const getSocketUrl = () => {
-  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
+  const apiUrl = import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
   return apiUrl.replace(/\/api\/?$/, '');
 };
 const SOCKET_URL = getSocketUrl();

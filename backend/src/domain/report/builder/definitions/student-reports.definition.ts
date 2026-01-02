@@ -19,11 +19,12 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
       { id: 'internshipStatus', label: 'Internship Status', type: 'string', default: true },
-      { id: 'isActive', label: 'Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student record active status' },
+      { id: 'userActive', label: 'User Active', type: 'boolean', default: true, description: 'User account active status' },
       { id: 'createdAt', label: 'Registered On', type: 'date', default: false },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'currentYear', label: 'Year', type: 'select', required: false, options: [
         { label: '1st Year', value: 1 },
@@ -59,9 +60,10 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'endDate', label: 'End Date', type: 'date', default: true },
       { id: 'reportsSubmitted', label: 'Reports Submitted', type: 'number', default: true },
       { id: 'visitsCompleted', label: 'Visits Completed', type: 'number', default: false },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'internshipStatus', label: 'Internship Status', type: 'select', required: false, options: [
         { label: 'Not Started', value: 'NOT_STARTED' },
@@ -92,9 +94,10 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'monthlyReportsPending', label: 'Pending Reports', type: 'number', default: true },
       { id: 'lastReportDate', label: 'Last Report Date', type: 'date', default: true },
       { id: 'complianceScore', label: 'Compliance %', type: 'number', default: true },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Student active status' },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
       { id: 'complianceLevel', label: 'Compliance Level', type: 'select', required: false, options: [
         { label: 'Compliant (80%+)', value: 'high' },
@@ -124,7 +127,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'avgComplianceScore', label: 'Avg Compliance %', type: 'number', default: true },
     ],
     filters: [
-      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
+      { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
       { id: 'academicYear', label: 'Academic Year', type: 'select', dynamic: true, required: false },
     ],
     groupBy: ['institutionName'],

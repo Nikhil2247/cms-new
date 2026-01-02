@@ -20,7 +20,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
     private mailService: MailService,
     private configService: ConfigService,
   ) {
-    this.appUrl = this.configService.get('APP_URL', 'http://localhost:3000');
+    this.appUrl = this.configService.get('FRONTEND_URL') || this.configService.get('APP_URL', 'http://localhost:5173');
   }
 
   /**

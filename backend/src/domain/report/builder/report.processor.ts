@@ -34,12 +34,17 @@ export class ReportProcessor extends WorkerHost {
   }
 
   async process(job: Job<ReportJobData>): Promise<any> {
-    const { userId, reportType, config: jobConfig, reportId } = job.data;
+    const { userId, userRole, reportType, config: jobConfig, reportId } = job.data;
 
     // Extract format from config or use default
     const formatStr = jobConfig?.format || job.data.format || 'excel';
     const filters = jobConfig?.filters || job.data.filters || {};
     const selectedColumns = jobConfig?.columns || [];
+
+    // Determine if user is admin (can view all institutions)
+    const normalizedRole = userRole?.toUpperCase();
+    const isAdmin = normalizedRole === 'STATE_DIRECTORATE' || normalizedRole === 'SYSTEM_ADMIN';
+    this.logger.log(`User role: ${userRole}, normalized: ${normalizedRole}, isAdmin: ${isAdmin}`);
 
     // Convert string format to ExportFormat enum
     const formatMap: Record<string, ExportFormat> = {
@@ -60,10 +65,11 @@ export class ReportProcessor extends WorkerHost {
       await this.updateReportStatus(reportId, ReportStatus.PROCESSING, null, null, userId, reportType);
 
       // Fetch data based on report type
-      this.logger.log(`Fetching data for report type: ${reportType}`);
+      this.logger.log(`Fetching data for report type: ${reportType}, isAdmin: ${isAdmin}`);
       const data = await this.reportGenerator.generateReport(
         reportType as ReportType,
         filters,
+        isAdmin,
       );
 
       if (!data || data.length === 0) {
@@ -296,19 +302,24 @@ export class ReportProcessor extends WorkerHost {
         { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
         { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
-        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+        { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
       ],
       'student_directory': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
         { field: 'name', header: 'Student Name', type: 'string' as const, width: 20 },
         { field: 'email', header: 'Email', type: 'string' as const, width: 25 },
         { field: 'phoneNumber', header: 'Phone', type: 'string' as const, width: 15 },
-        { field: 'branch', header: 'Branch', type: 'string' as const, width: 15 },
+        { field: 'branchName', header: 'Branch', type: 'string' as const, width: 15 },
         { field: 'currentYear', header: 'Year', type: 'number' as const, width: 8 },
         { field: 'currentSemester', header: 'Semester', type: 'number' as const, width: 10 },
+        { field: 'institutionName', header: 'Institution', type: 'string' as const, width: 25 },
+        { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
+        { field: 'internshipStatus', header: 'Internship Status', type: 'string' as const, width: 15 },
         { field: 'internshipsCount', header: 'Internships', type: 'number' as const, width: 12 },
         { field: 'placementsCount', header: 'Placements', type: 'number' as const, width: 12 },
-        { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
+        { field: 'userActive', header: 'User Active', type: 'boolean' as const, width: 12 },
       ],
       // Internship reports - matches generateInternshipReport output
       'internship': [
@@ -324,6 +335,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
         { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
         { field: 'location', header: 'Location', type: 'string' as const, width: 15 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
       ],
       'internship_status': [
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
@@ -332,13 +344,16 @@ export class ReportProcessor extends WorkerHost {
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
         { field: 'mentorName', header: 'Mentor', type: 'string' as const, width: 18 },
         { field: 'reportsSubmitted', header: 'Reports', type: 'number' as const, width: 10 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
       ],
       // Faculty/Mentor reports - matches generateFacultyVisitReport output
       'faculty_visit': [
         { field: 'facultyName', header: 'Faculty Name', type: 'string' as const, width: 20 },
         { field: 'facultyDesignation', header: 'Designation', type: 'string' as const, width: 15 },
+        { field: 'facultyActive', header: 'Faculty Active', type: 'boolean' as const, width: 12 },
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
+        { field: 'studentActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
         { field: 'companyName', header: 'Company', type: 'string' as const, width: 25 },
         { field: 'visitDate', header: 'Visit Date', type: 'date' as const, width: 12 },
         { field: 'visitType', header: 'Visit Type', type: 'string' as const, width: 12 },
@@ -362,6 +377,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
         { field: 'submittedAt', header: 'Submitted At', type: 'date' as const, width: 15 },
         { field: 'reportFileUrl', header: 'Report URL', type: 'string' as const, width: 30 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
       ],
       'monthly_report_status': [
         { field: 'studentName', header: 'Student Name', type: 'string' as const, width: 20 },
@@ -369,6 +385,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'month', header: 'Month', type: 'number' as const, width: 8 },
         { field: 'year', header: 'Year', type: 'number' as const, width: 8 },
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
       ],
       // Placement reports - matches generatePlacementReport output
       'placement': [
@@ -380,6 +397,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'salary', header: 'Salary (LPA)', type: 'number' as const, width: 12 },
         { field: 'offerDate', header: 'Offer Date', type: 'date' as const, width: 12 },
         { field: 'status', header: 'Status', type: 'string' as const, width: 12 },
+        { field: 'isActive', header: 'Student Active', type: 'boolean' as const, width: 12 },
       ],
       // Institution performance - matches generateInstitutionPerformanceReport output
       'institution_performance': [
@@ -399,6 +417,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
         { field: 'complianceScore', header: 'Compliance Score', type: 'number' as const, width: 15 },
         { field: 'complianceLevel', header: 'Compliance Level', type: 'string' as const, width: 15 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
       ],
       'compliance': [
         { field: 'rollNumber', header: 'Roll Number', type: 'string' as const, width: 15 },
@@ -411,6 +430,7 @@ export class ReportProcessor extends WorkerHost {
         { field: 'lastReportDate', header: 'Last Report Date', type: 'date' as const, width: 15 },
         { field: 'complianceScore', header: 'Compliance Score', type: 'number' as const, width: 15 },
         { field: 'complianceLevel', header: 'Compliance Level', type: 'string' as const, width: 15 },
+        { field: 'isActive', header: 'Active', type: 'boolean' as const, width: 8 },
       ],
     };
 

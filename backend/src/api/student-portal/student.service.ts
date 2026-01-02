@@ -481,6 +481,7 @@ export class StudentService {
 
   /**
    * Update student profile
+   * Syncs common fields (name, email, contact) to User record
    */
   async updateProfile(userId: string, updateProfileDto: Prisma.StudentUpdateInput) {
     const student = await this.prisma.student.findUnique({
@@ -492,15 +493,32 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const updated = await this.prisma.student.update({
-      where: { userId },
-      data: updateProfileDto,
-      include: {
-        user: true,
-        batch: true,
-        branch: true,
-      },
-    });
+    // Build user update data for synced fields
+    const userUpdateData: any = {};
+    const dto = updateProfileDto as any;
+    if (dto.name) userUpdateData.name = dto.name;
+    if (dto.email) userUpdateData.email = dto.email;
+    if (dto.contact) userUpdateData.phoneNo = dto.contact; // Student.contact -> User.phoneNo
+
+    // Use transaction to sync Student and User records
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.student.update({
+        where: { userId },
+        data: updateProfileDto,
+        include: {
+          user: true,
+          batch: true,
+          branch: true,
+        },
+      }),
+      // Only update user if there are fields to sync
+      ...(Object.keys(userUpdateData).length > 0
+        ? [this.prisma.user.update({
+            where: { id: userId },
+            data: userUpdateData,
+          })]
+        : []),
+    ]);
 
     // Audit profile update
     this.auditService.log({
@@ -517,7 +535,7 @@ export class StudentService {
       newValues: updateProfileDto as any,
     }).catch(() => {});
 
-    await this.cache.invalidateByTags(['student', `student:${updated.id}`]);
+    await this.cache.invalidateByTags(['student', `student:${updated.id}`, `user:${userId}`]);
 
     return updated;
   }
