@@ -168,7 +168,8 @@
       "WebFetch(domain:www.cert-in.org.in)",
       "WebFetch(domain:www.meity.gov.in)",
       "WebFetch(domain:strobes.co)",
-      "WebFetch(domain:pwonlyias.com)"
+      "WebFetch(domain:pwonlyias.com)",
+      "Bash(npx prisma migrate dev:*)"
     ]
   }
 }

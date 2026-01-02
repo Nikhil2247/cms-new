@@ -300,7 +300,7 @@ const SubmitGrievance = () => {
         title={<span className="text-sm font-semibold">Grievance Details</span>}
         open={drawerVisible}
         onClose={() => { setDrawerVisible(false); setSelectedGrievance(null); }}
-        width={400}
+        styles={{ wrapper: { width: 400 } }}
         className="[&_.ant-drawer-body]:p-4"
       >
         {selectedGrievance && (

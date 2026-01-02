@@ -1,5 +1,5 @@
 import React from 'react';
-import { Typography, Button, Tooltip } from 'antd';
+import { Typography, Button, Tooltip, theme } from 'antd';
 import {
   UserOutlined,
   ReloadOutlined,
@@ -8,6 +8,8 @@ import {
 const { Title, Paragraph } = Typography;
 
 const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }) => {
+  const { token } = theme.useToken();
+  
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
@@ -20,17 +22,17 @@ const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }
       <div className="flex items-center">
         <div>
           <div className="flex items-center gap-3">
-            <Title level={4} className="mb-0 text-text-primary text-xl">
+            <Title level={4} className="!mb-0 !text-xl" style={{ color: token.colorText }}>
               Faculty Dashboard
             </Title>
             {lastFetched && (
-              <span className="text-[10px] text-text-tertiary">
+              <span className="text-[10px]" style={{ color: token.colorTextDescription }}>
                 Updated {new Date(lastFetched).toLocaleTimeString()}
               </span>
             )}
           </div>
-          <Paragraph className="text-text-secondary text-xs mb-0">
-            Welcome back, <span className="font-semibold text-primary">{facultyName || 'Faculty'}</span> • {currentDate}
+          <Paragraph className="!mb-0 !text-xs" style={{ color: token.colorTextSecondary }}>
+            Welcome back, <span className="font-semibold" style={{ color: token.colorPrimary }}>{facultyName || 'Faculty'}</span> • {currentDate}
           </Paragraph>
         </div>
       </div>
@@ -40,7 +42,12 @@ const DashboardHeader = ({ facultyName, stats, onRefresh, loading, lastFetched }
           <Button
             icon={<ReloadOutlined spin={loading} />}
             onClick={onRefresh}
-            className="w-8 h-8 flex items-center justify-center !rounded-lg bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+            className="w-8 h-8 flex items-center justify-center !rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200"
+            style={{ 
+              backgroundColor: token.colorBgContainer, 
+              borderColor: token.colorBorder,
+              color: token.colorTextSecondary
+            }}
           />
         </Tooltip>
       </div>

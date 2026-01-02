@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
 import {
   FileTextOutlined,
@@ -12,7 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import facultyService from '../../../../services/faculty.service';
+import { approveMonthlyReport, rejectMonthlyReport, downloadMonthlyReport } from '../../store/facultySlice';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { TextArea } = Input;
@@ -27,6 +28,7 @@ const getStatusConfig = (status) => {
 
 const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { token } = theme.useToken();
   const [reviewModal, setReviewModal] = useState({ visible: false, report: null, action: null });
   const [remarks, setRemarks] = useState('');
@@ -36,13 +38,14 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
     if (!reviewModal.report) return;
     setActionLoading(true);
     try {
-      await facultyService.approveMonthlyReport(reviewModal.report.id, remarks);
+      await dispatch(approveMonthlyReport({ reportId: reviewModal.report.id, remarks })).unwrap();
       message.success('Report approved successfully');
       setReviewModal({ visible: false, report: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to approve report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to approve report';
+      message.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -55,13 +58,14 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
     }
     setActionLoading(true);
     try {
-      await facultyService.rejectMonthlyReport(reviewModal.report.id, remarks);
+      await dispatch(rejectMonthlyReport({ reportId: reviewModal.report.id, reason: remarks })).unwrap();
       message.success('Report rejected');
       setReviewModal({ visible: false, report: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to reject report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reject report';
+      message.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -69,7 +73,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
 
   const handleDownload = async (report) => {
     try {
-      const blob = await facultyService.downloadMonthlyReport(report.id);
+      const blob = await dispatch(downloadMonthlyReport(report.id)).unwrap();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -79,7 +83,8 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      message.error('Failed to download report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
+      message.error(errorMessage);
     }
   };
 

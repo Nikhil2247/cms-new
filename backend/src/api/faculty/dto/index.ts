@@ -55,11 +55,11 @@ export class CreateVisitLogDto {
   @IsEnum(VisitType)
   visitType: VisitType;
 
-  @ApiProperty({ description: 'Location of the visit' })
+  @ApiPropertyOptional({ description: 'Location of the visit' })
+  @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(255)
-  visitLocation: string;
+  visitLocation?: string;
 
   @ApiPropertyOptional({ description: 'Date of the visit (defaults to now)' })
   @IsOptional()
@@ -71,33 +71,255 @@ export class CreateVisitLogDto {
   @IsEnum(VisitStatus)
   status?: VisitStatus;
 
-  @ApiPropertyOptional({ description: 'Notes about the visit' })
+  // GPS Coordinates
+  @ApiPropertyOptional({ description: 'Latitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'GPS accuracy in meters' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  gpsAccuracy?: number;
+
+  // Signed Document
+  @ApiPropertyOptional({ description: 'URL to signed document' })
+  @IsOptional()
+  @IsString()
+  signedDocumentUrl?: string;
+
+  // Visit Details
+  @ApiPropertyOptional({ description: 'Visit duration (e.g., "2 hours")' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  visitDuration?: string;
+
+  // Observations
+  @ApiPropertyOptional({ description: 'Student performance observations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  notes?: string;
+  studentPerformance?: string;
 
-  @ApiPropertyOptional({ description: 'Observations made during visit' })
+  @ApiPropertyOptional({ description: 'Work environment observations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  observations?: string;
+  workEnvironment?: string;
 
-  @ApiPropertyOptional({ description: 'Recommendations for the student' })
+  @ApiPropertyOptional({ description: 'Industry support observations' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  industrySupport?: string;
+
+  @ApiPropertyOptional({ description: 'Skills development observations' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  skillsDevelopment?: string;
+
+  @ApiPropertyOptional({ description: 'Attendance status' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  attendanceStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Work quality assessment' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  workQuality?: string;
+
+  @ApiPropertyOptional({ description: 'Organisation feedback' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  organisationFeedback?: string;
+
+  @ApiPropertyOptional({ description: 'Project topics' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  projectTopics?: string;
+
+  // New fields from the form
+  @ApiPropertyOptional({ description: 'Title of Project/Work' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  titleOfProjectWork?: string;
+
+  @ApiPropertyOptional({ description: 'Assistance Required from the Institute' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  assistanceRequiredFromInstitute?: string;
+
+  @ApiPropertyOptional({ description: 'Response from the Organisation' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  responseFromOrganisation?: string;
+
+  @ApiPropertyOptional({ description: 'Remarks of Organisation Supervisor' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  remarksOfOrganisationSupervisor?: string;
+
+  @ApiPropertyOptional({ description: 'Any significant change with respect to the plan of project/work' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  significantChangeInPlan?: string;
+
+  @ApiPropertyOptional({ description: 'Observations about the Student' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  observationsAboutStudent?: string;
+
+  @ApiPropertyOptional({ description: 'Feedback shared with the Student' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  feedbackSharedWithStudent?: string;
+
+  // Ratings (1-5 scale)
+  @ApiPropertyOptional({ description: 'Student progress rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  studentProgressRating?: number;
+
+  @ApiPropertyOptional({ description: 'Industry cooperation rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  industryCooperationRating?: number;
+
+  @ApiPropertyOptional({ description: 'Work environment rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  workEnvironmentRating?: number;
+
+  @ApiPropertyOptional({ description: 'Mentoring support rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  mentoringSupportRating?: number;
+
+  @ApiPropertyOptional({ description: 'Overall satisfaction rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  overallSatisfactionRating?: number;
+
+  // Issues and Recommendations
+  @ApiPropertyOptional({ description: 'Issues identified' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  issuesIdentified?: string;
+
+  @ApiPropertyOptional({ description: 'Recommendations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   recommendations?: string;
 
-  @ApiPropertyOptional({ description: 'URL to photo documentation' })
+  @ApiPropertyOptional({ description: 'Action required' })
   @IsOptional()
   @IsString()
-  photoUrl?: string;
+  @MaxLength(2000)
+  actionRequired?: string;
 
-  @ApiPropertyOptional({ description: 'URL to signed document' })
+  @ApiPropertyOptional({ description: 'Files URL' })
   @IsOptional()
   @IsString()
-  signedDocumentUrl?: string;
+  filesUrl?: string;
+
+  // Documentation
+  @ApiPropertyOptional({ description: 'Visit photos URLs' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  visitPhotos?: string[];
+
+  @ApiPropertyOptional({ description: 'Meeting minutes' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  meetingMinutes?: string;
+
+  @ApiPropertyOptional({ description: 'Attendees list' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attendeesList?: string[];
+
+  // Administrative
+  @ApiPropertyOptional({ description: 'Report submitted to' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  reportSubmittedTo?: string;
+
+  @ApiPropertyOptional({ description: 'Follow up required' })
+  @IsOptional()
+  @IsBoolean()
+  followUpRequired?: boolean;
+
+  @ApiPropertyOptional({ description: 'Next visit date' })
+  @IsOptional()
+  @IsDateString()
+  nextVisitDate?: string;
+
+  // Monthly Visit Tracking
+  @ApiPropertyOptional({ description: 'Visit month (1-12)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(12)
+  @Type(() => Number)
+  visitMonth?: number;
+
+  @ApiPropertyOptional({ description: 'Visit year' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  visitYear?: number;
+
+  @ApiPropertyOptional({ description: 'Required by date' })
+  @IsOptional()
+  @IsDateString()
+  requiredByDate?: string;
+
+  @ApiPropertyOptional({ description: 'Is monthly visit' })
+  @IsOptional()
+  @IsBoolean()
+  isMonthlyVisit?: boolean;
 }
 
 export class UpdateVisitLogDto {
@@ -109,7 +331,6 @@ export class UpdateVisitLogDto {
   @ApiPropertyOptional({ description: 'Location of the visit' })
   @IsOptional()
   @IsString()
-  @MinLength(2)
   @MaxLength(255)
   visitLocation?: string;
 
@@ -123,33 +344,255 @@ export class UpdateVisitLogDto {
   @IsEnum(VisitStatus)
   status?: VisitStatus;
 
-  @ApiPropertyOptional({ description: 'Notes about the visit' })
+  // GPS Coordinates
+  @ApiPropertyOptional({ description: 'Latitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  latitude?: number;
+
+  @ApiPropertyOptional({ description: 'Longitude coordinate' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  longitude?: number;
+
+  @ApiPropertyOptional({ description: 'GPS accuracy in meters' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  gpsAccuracy?: number;
+
+  // Signed Document
+  @ApiPropertyOptional({ description: 'URL to signed document' })
+  @IsOptional()
+  @IsString()
+  signedDocumentUrl?: string;
+
+  // Visit Details
+  @ApiPropertyOptional({ description: 'Visit duration (e.g., "2 hours")' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  visitDuration?: string;
+
+  // Observations
+  @ApiPropertyOptional({ description: 'Student performance observations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  notes?: string;
+  studentPerformance?: string;
 
-  @ApiPropertyOptional({ description: 'Observations made during visit' })
+  @ApiPropertyOptional({ description: 'Work environment observations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
-  observations?: string;
+  workEnvironment?: string;
 
-  @ApiPropertyOptional({ description: 'Recommendations for the student' })
+  @ApiPropertyOptional({ description: 'Industry support observations' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  industrySupport?: string;
+
+  @ApiPropertyOptional({ description: 'Skills development observations' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  skillsDevelopment?: string;
+
+  @ApiPropertyOptional({ description: 'Attendance status' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  attendanceStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Work quality assessment' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  workQuality?: string;
+
+  @ApiPropertyOptional({ description: 'Organisation feedback' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  organisationFeedback?: string;
+
+  @ApiPropertyOptional({ description: 'Project topics' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  projectTopics?: string;
+
+  // New fields from the form
+  @ApiPropertyOptional({ description: 'Title of Project/Work' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  titleOfProjectWork?: string;
+
+  @ApiPropertyOptional({ description: 'Assistance Required from the Institute' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  assistanceRequiredFromInstitute?: string;
+
+  @ApiPropertyOptional({ description: 'Response from the Organisation' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  responseFromOrganisation?: string;
+
+  @ApiPropertyOptional({ description: 'Remarks of Organisation Supervisor' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  remarksOfOrganisationSupervisor?: string;
+
+  @ApiPropertyOptional({ description: 'Any significant change with respect to the plan of project/work' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  significantChangeInPlan?: string;
+
+  @ApiPropertyOptional({ description: 'Observations about the Student' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  observationsAboutStudent?: string;
+
+  @ApiPropertyOptional({ description: 'Feedback shared with the Student' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  feedbackSharedWithStudent?: string;
+
+  // Ratings (1-5 scale)
+  @ApiPropertyOptional({ description: 'Student progress rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  studentProgressRating?: number;
+
+  @ApiPropertyOptional({ description: 'Industry cooperation rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  industryCooperationRating?: number;
+
+  @ApiPropertyOptional({ description: 'Work environment rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  workEnvironmentRating?: number;
+
+  @ApiPropertyOptional({ description: 'Mentoring support rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  mentoringSupportRating?: number;
+
+  @ApiPropertyOptional({ description: 'Overall satisfaction rating (1-5)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(5)
+  @Type(() => Number)
+  overallSatisfactionRating?: number;
+
+  // Issues and Recommendations
+  @ApiPropertyOptional({ description: 'Issues identified' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  issuesIdentified?: string;
+
+  @ApiPropertyOptional({ description: 'Recommendations' })
   @IsOptional()
   @IsString()
   @MaxLength(2000)
   recommendations?: string;
 
-  @ApiPropertyOptional({ description: 'URL to photo documentation' })
+  @ApiPropertyOptional({ description: 'Action required' })
   @IsOptional()
   @IsString()
-  photoUrl?: string;
+  @MaxLength(2000)
+  actionRequired?: string;
 
-  @ApiPropertyOptional({ description: 'URL to signed document' })
+  @ApiPropertyOptional({ description: 'Files URL' })
   @IsOptional()
   @IsString()
-  signedDocumentUrl?: string;
+  filesUrl?: string;
+
+  // Documentation
+  @ApiPropertyOptional({ description: 'Visit photos URLs' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  visitPhotos?: string[];
+
+  @ApiPropertyOptional({ description: 'Meeting minutes' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  meetingMinutes?: string;
+
+  @ApiPropertyOptional({ description: 'Attendees list' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  attendeesList?: string[];
+
+  // Administrative
+  @ApiPropertyOptional({ description: 'Report submitted to' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  reportSubmittedTo?: string;
+
+  @ApiPropertyOptional({ description: 'Follow up required' })
+  @IsOptional()
+  @IsBoolean()
+  followUpRequired?: boolean;
+
+  @ApiPropertyOptional({ description: 'Next visit date' })
+  @IsOptional()
+  @IsDateString()
+  nextVisitDate?: string;
+
+  // Monthly Visit Tracking
+  @ApiPropertyOptional({ description: 'Visit month (1-12)' })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  @Max(12)
+  @Type(() => Number)
+  visitMonth?: number;
+
+  @ApiPropertyOptional({ description: 'Visit year' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  visitYear?: number;
+
+  @ApiPropertyOptional({ description: 'Required by date' })
+  @IsOptional()
+  @IsDateString()
+  requiredByDate?: string;
+
+  @ApiPropertyOptional({ description: 'Is monthly visit' })
+  @IsOptional()
+  @IsBoolean()
+  isMonthlyVisit?: boolean;
 }
 
 // ==================== Monthly Report DTOs ====================

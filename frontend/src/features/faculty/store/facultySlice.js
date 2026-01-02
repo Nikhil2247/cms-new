@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import facultyService from '../../../services/faculty.service';
+import grievanceService from '../../../services/grievance.service';
 import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
 
 const initialState = {
@@ -62,6 +63,12 @@ const initialState = {
     loading: false,
     error: null,
   },
+  grievances: {
+    list: [],
+    escalationChain: null,
+    loading: false,
+    error: null,
+  },
   lastFetched: {
     dashboard: null,
     students: null,
@@ -79,6 +86,7 @@ const initialState = {
     applicationsKey: null,
     feedbackHistory: null,
     feedbackHistoryKey: null,
+    grievances: null,
   },
 };
 
@@ -274,6 +282,18 @@ export const deleteVisitLog = createAsyncThunk(
       return { id, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete visit log');
+    }
+  }
+);
+
+export const uploadVisitDocument = createAsyncThunk(
+  'faculty/uploadVisitDocument',
+  async ({ file, type }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.uploadVisitDocument(file, type);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to upload visit document');
     }
   }
 );
@@ -548,17 +568,184 @@ export const uploadJoiningLetter = createAsyncThunk(
 //   }
 // );
 
-// export const deleteMonthlyReport = createAsyncThunk(
-//   'faculty/deleteMonthlyReport',
-//   async (reportId, { rejectWithValue }) => {
-//     try {
-//       const response = await facultyService.deleteMonthlyReport(reportId);
-//       return { id: reportId, ...response };
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data?.message || 'Failed to delete report');
-//     }
-//   }
-// );
+// Monthly Report Actions (enabled)
+export const approveMonthlyReport = createAsyncThunk(
+  'faculty/approveMonthlyReport',
+  async ({ reportId, remarks }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.approveMonthlyReport(reportId, remarks);
+      return { id: reportId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to approve report');
+    }
+  }
+);
+
+export const rejectMonthlyReport = createAsyncThunk(
+  'faculty/rejectMonthlyReport',
+  async ({ reportId, reason }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.rejectMonthlyReport(reportId, reason);
+      return { id: reportId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reject report');
+    }
+  }
+);
+
+export const deleteMonthlyReport = createAsyncThunk(
+  'faculty/deleteMonthlyReport',
+  async (reportId, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.deleteMonthlyReport(reportId);
+      return { id: reportId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete report');
+    }
+  }
+);
+
+export const uploadMonthlyReport = createAsyncThunk(
+  'faculty/uploadMonthlyReport',
+  async (formData, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.uploadMonthlyReport(formData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to upload report');
+    }
+  }
+);
+
+export const downloadMonthlyReport = createAsyncThunk(
+  'faculty/downloadMonthlyReport',
+  async (reportId, { rejectWithValue }) => {
+    try {
+      const blob = await facultyService.downloadMonthlyReport(reportId);
+      return blob;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to download report');
+    }
+  }
+);
+
+// Internship Actions
+export const updateInternship = createAsyncThunk(
+  'faculty/updateInternship',
+  async ({ internshipId, data }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.updateInternship(internshipId, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update internship');
+    }
+  }
+);
+
+export const deleteInternship = createAsyncThunk(
+  'faculty/deleteInternship',
+  async (internshipId, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.deleteInternship(internshipId);
+      return { id: internshipId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to delete internship');
+    }
+  }
+);
+
+// Assignment Actions
+export const createAssignment = createAsyncThunk(
+  'faculty/createAssignment',
+  async (assignmentData, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.createAssignment(assignmentData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to create assignment');
+    }
+  }
+);
+
+// Faculty Grievances
+export const fetchFacultyGrievances = createAsyncThunk(
+  'faculty/fetchFacultyGrievances',
+  async (facultyId, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.faculty.lastFetched.grievances;
+
+      if (isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
+        return { cached: true };
+      }
+
+      const response = await grievanceService.getByFaculty(facultyId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch grievances');
+    }
+  }
+);
+
+export const fetchGrievanceEscalationChain = createAsyncThunk(
+  'faculty/fetchGrievanceEscalationChain',
+  async (grievanceId, { rejectWithValue }) => {
+    try {
+      const response = await grievanceService.getEscalationChain(grievanceId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch escalation chain');
+    }
+  }
+);
+
+export const respondToGrievance = createAsyncThunk(
+  'faculty/respondToGrievance',
+  async ({ grievanceId, response, status }, { rejectWithValue }) => {
+    try {
+      const result = await grievanceService.respond(grievanceId, response, status);
+      return result;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to respond to grievance');
+    }
+  }
+);
+
+export const escalateGrievance = createAsyncThunk(
+  'faculty/escalateGrievance',
+  async ({ grievanceId, reason }, { rejectWithValue }) => {
+    try {
+      const response = await grievanceService.escalate(grievanceId, reason);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to escalate grievance');
+    }
+  }
+);
+
+export const rejectGrievance = createAsyncThunk(
+  'faculty/rejectGrievance',
+  async ({ grievanceId, reason }, { rejectWithValue }) => {
+    try {
+      const response = await grievanceService.reject(grievanceId, reason);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reject grievance');
+    }
+  }
+);
+
+export const updateGrievanceStatus = createAsyncThunk(
+  'faculty/updateGrievanceStatus',
+  async ({ grievanceId, status }, { rejectWithValue }) => {
+    try {
+      const response = await grievanceService.updateStatus(grievanceId, status);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update grievance status');
+    }
+  }
+);
 
 // Backward compatibility aliases
 export const fetchGrievances = fetchFeedbackHistory;
@@ -665,8 +852,13 @@ const facultySlice = createSlice({
             pendingReports: action.payload.pendingReports || 0,
             pendingApprovals: action.payload.pendingApprovals || 0,
             totalVisits: action.payload.totalVisits || 0,
+            // Joining letters stats
+            pendingJoiningLetters: action.payload.pendingJoiningLetters || 0,
+            totalJoiningLetters: action.payload.totalJoiningLetters || 0,
+            // Grievance stats
+            pendingGrievances: action.payload.pendingGrievances || 0,
+            totalGrievances: action.payload.totalGrievances || 0,
           };
-          state.dashboard.recentActivities = action.payload.recentActivities || [];
           state.dashboard.upcomingVisits = action.payload.upcomingVisits || [];
           state.lastFetched.dashboard = Date.now();
         }
@@ -1072,6 +1264,43 @@ const facultySlice = createSlice({
       //   state.monthlyReports.loading = false;
       //   state.monthlyReports.error = action.payload;
       // })
+
+      // ==================== Faculty Grievances ====================
+      .addCase(fetchFacultyGrievances.pending, (state) => {
+        state.grievances.loading = true;
+        state.grievances.error = null;
+      })
+      .addCase(fetchFacultyGrievances.fulfilled, (state, action) => {
+        state.grievances.loading = false;
+        if (!action.payload?.cached) {
+          state.grievances.list = Array.isArray(action.payload) ? action.payload : [];
+          state.lastFetched.grievances = Date.now();
+        }
+      })
+      .addCase(fetchFacultyGrievances.rejected, (state, action) => {
+        state.grievances.loading = false;
+        state.grievances.error = action.payload;
+      })
+
+      .addCase(fetchGrievanceEscalationChain.fulfilled, (state, action) => {
+        state.grievances.escalationChain = action.payload;
+      })
+
+      .addCase(respondToGrievance.fulfilled, (state) => {
+        state.lastFetched.grievances = null; // Invalidate cache
+      })
+
+      .addCase(escalateGrievance.fulfilled, (state) => {
+        state.lastFetched.grievances = null; // Invalidate cache
+      })
+
+      .addCase(rejectGrievance.fulfilled, (state) => {
+        state.lastFetched.grievances = null; // Invalidate cache
+      })
+
+      .addCase(updateGrievanceStatus.fulfilled, (state) => {
+        state.lastFetched.grievances = null; // Invalidate cache
+      })
       ;
   },
 });
@@ -1097,6 +1326,7 @@ export const selectJoiningLetters = (state) => state.faculty.joiningLetters;
 export const selectProfile = (state) => state.faculty.profile;
 export const selectApplications = (state) => state.faculty.applications;
 export const selectFeedbackHistory = (state) => state.faculty.feedbackHistory;
+export const selectFacultyGrievances = (state) => state.faculty.grievances;
 
 // Backward compatibility selectors
 export const selectMentor = (state) => state.faculty.profile;

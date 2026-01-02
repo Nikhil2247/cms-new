@@ -27,6 +27,7 @@ import {
   Popconfirm,
   Space,
   Badge,
+  theme,
 } from "antd";
 import {
   UserOutlined,
@@ -59,11 +60,16 @@ import {
 import dayjs from "dayjs";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import facultyService from "../../../services/faculty.service";
 import { toast } from "react-hot-toast";
 import {
   fetchAssignedStudents,
   selectStudents,
+  submitMonthlyFeedback,
+  createAssignment,
+  uploadMonthlyReport,
+  deleteMonthlyReport,
+  updateInternship,
+  deleteInternship,
 } from "../store/facultySlice";
 import { getDocumentUrl } from "../../../utils/imageUtils";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
@@ -77,7 +83,7 @@ const formatDate = (dateString) => {
   if (!dateString) return "N/A";
   return dayjs(dateString).format("DD MMM YYYY");
 };
-// const fmt = (d) => (d ? dayjs(d).format("DD MMM YYYY") : "N/A");
+
 // --- Data Computation (Moved from component body for clarity) ---
 function computeMetrics(assignment) {
   if (!assignment || !assignment.student) return {};
@@ -143,6 +149,7 @@ function computeMetrics(assignment) {
 }
 
 const StudentProgressPage = () => {
+  const { token } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -212,27 +219,6 @@ const StudentProgressPage = () => {
       }
     }
   }, [location.search, students, navigate, location.pathname]);
-
-  // useEffect(() => {
-  //   fetchStudents();
-  // }, []);
-
-  // const fetchStudents = async () => {
-  //   setLoading(true);
-  //   try {
-  //     const res = await API.get("/mentor/my-students");
-  //     const assignments = res.data?.data || [];
-  //     setStudents(assignments);
-  //     // if (assignments.length && !selected) {
-  //     //   setSelected(assignments[0]);
-  //     // }
-  //     // console.log(assignments)
-  //   } catch {
-  //     toast.error("Failed to load students");
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
 
   const filtered = useMemo(() => {
     try {
@@ -342,11 +328,9 @@ const StudentProgressPage = () => {
         dueDate: vals.dueDate?.toISOString(),
       };
       if (modalType === "feedback") {
-        // Use faculty service for feedback submission
-        await facultyService.submitMonthlyFeedback(body);
+        await dispatch(submitMonthlyFeedback(body)).unwrap();
       } else {
-        // Use faculty service for assignment creation
-        await facultyService.createAssignment(body);
+        await dispatch(createAssignment(body)).unwrap();
       }
       setModalOpen(false);
       // Optimistically update or refetch
@@ -356,8 +340,9 @@ const StudentProgressPage = () => {
           modalType.charAt(0).toUpperCase() + modalType.slice(1)
         } saved successfully!`
       );
-    } catch {
-      toast.error(`Failed to save ${modalType}.`);
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || `Failed to save ${modalType}.`;
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -417,8 +402,7 @@ const StudentProgressPage = () => {
       formData.append("month", selectedReportMonth.toString());
       formData.append("year", selectedReportYear.toString());
 
-      // Use faculty service for uploading monthly reports
-      await facultyService.uploadMonthlyReport(formData);
+      await dispatch(uploadMonthlyReport(formData)).unwrap();
 
       toast.success("Monthly report uploaded successfully!");
       setIsReportUploadModalVisible(false);
@@ -426,9 +410,8 @@ const StudentProgressPage = () => {
       forceRefresh(); // Refresh student data
     } catch (error) {
       console.error("Error uploading monthly report:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to upload monthly report"
-      );
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to upload monthly report";
+      toast.error(errorMessage);
     } finally {
       setUploadingReport(false);
     }
@@ -441,16 +424,14 @@ const StudentProgressPage = () => {
     }
 
     try {
-      // Use faculty service for deleting monthly reports
-      await facultyService.deleteMonthlyReport(reportId);
+      await dispatch(deleteMonthlyReport(reportId)).unwrap();
 
       toast.success("Monthly report deleted successfully!");
       forceRefresh(); // Refresh student data
     } catch (error) {
       console.error("Error deleting monthly report:", error);
-      toast.error(
-        error.response?.data?.message || "Failed to delete monthly report"
-      );
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to delete monthly report";
+      toast.error(errorMessage);
     }
   };
 
@@ -475,11 +456,13 @@ const StudentProgressPage = () => {
 
     setSavingInternship(true);
     try {
-      // Use faculty service for updating internships
-      await facultyService.updateInternship(editInternshipModal.internship.id, {
-        ...values,
-        joiningDate: values.joiningDate?.toISOString(),
-      });
+      await dispatch(updateInternship({
+        internshipId: editInternshipModal.internship.id,
+        data: {
+          ...values,
+          joiningDate: values.joiningDate?.toISOString(),
+        }
+      })).unwrap();
 
       toast.success("Internship updated successfully!");
       setEditInternshipModal({ visible: false, internship: null });
@@ -487,7 +470,8 @@ const StudentProgressPage = () => {
       forceRefresh();
     } catch (error) {
       console.error("Error updating internship:", error);
-      toast.error(error.response?.data?.message || "Failed to update internship");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to update internship";
+      toast.error(errorMessage);
     } finally {
       setSavingInternship(false);
     }
@@ -501,13 +485,13 @@ const StudentProgressPage = () => {
       okType: 'danger',
       onOk: async () => {
         try {
-          // Use faculty service for deleting internships
-          await facultyService.deleteInternship(appId);
+          await dispatch(deleteInternship(appId)).unwrap();
           toast.success("Internship application deleted successfully!");
           forceRefresh();
         } catch (error) {
           console.error("Error deleting internship:", error);
-          toast.error(error.response?.data?.message || "Failed to delete internship");
+          const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to delete internship";
+          toast.error(errorMessage);
         }
       },
     });
@@ -546,9 +530,9 @@ const StudentProgressPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
         <Spin size="small" />
-        <Text className="ml-3 text-lg">Loading Students...</Text>
+        <Text className="ml-3 text-lg" style={{ color: token.colorTextSecondary }}>Loading Students...</Text>
       </div>
     );
   }
@@ -556,7 +540,7 @@ const StudentProgressPage = () => {
   // Error state
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4" style={{ backgroundColor: token.colorBgLayout }}>
         <Alert
           title="Error Loading Students"
           description={error}
@@ -577,19 +561,22 @@ const StudentProgressPage = () => {
 
   return (
     <>
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen overflow-hidden flex flex-col">
+    <div className="p-4 md:p-6 min-h-screen overflow-hidden flex flex-col" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-[1600px] mx-auto w-full space-y-6 flex flex-col flex-1">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 shrink-0">
           <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+            <div 
+              className="w-10 h-10 flex items-center justify-center rounded-xl shadow-sm mr-3"
+              style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}`, color: token.colorPrimary }}
+            >
               <BarChartOutlined className="text-lg" />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
+              <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
                 Internship Progress
               </Title>
-              <Paragraph className="text-text-secondary text-sm mb-0">
+              <Paragraph className="text-sm mb-0" style={{ color: token.colorTextSecondary }}>
                 Monitor and manage your assigned students' internship activities
               </Paragraph>
             </div>
@@ -599,7 +586,8 @@ const StudentProgressPage = () => {
             <Button
               icon={<ReloadOutlined spin={loading} />}
               onClick={forceRefresh}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+              className="w-10 h-10 flex items-center justify-center rounded-xl shadow-sm hover:scale-105 active:scale-95 transition-all duration-200"
+              style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder, color: token.colorTextSecondary }}
             />
           </div>
         </div>
@@ -614,22 +602,23 @@ const StudentProgressPage = () => {
             className="h-full flex flex-col min-h-[400px]"
           >
             <Card
-              className="rounded-2xl border-border shadow-sm flex flex-col h-full overflow-hidden"
+              className="rounded-2xl shadow-sm flex flex-col h-full overflow-hidden"
+              style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}
               styles={{ 
                 body: { padding: '16px', flex: 1, overflowY: 'auto' },
-                header: { padding: '16px', borderBottom: '1px solid var(--color-border)' }
+                header: { padding: '16px', borderBottom: `1px solid ${token.colorBorder}` }
               }}
               title={
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <TeamOutlined className="text-primary text-sm" />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg }}>
+                    <TeamOutlined style={{ color: token.colorPrimary, fontSize: '14px' }} />
                   </div>
-                  <span className="text-text-primary font-bold text-base">My Students</span>
+                  <span className="font-bold text-base" style={{ color: token.colorText }}>My Students</span>
                   <Badge 
                     count={filtered.length} 
                     className="ml-auto" 
                     overflowCount={999}
-                    style={{ backgroundColor: 'rgb(var(--color-primary))' }}
+                    style={{ backgroundColor: token.colorPrimary }}
                   />
                 </div>
               }
@@ -637,10 +626,11 @@ const StudentProgressPage = () => {
               <div className="space-y-3">
                 <Input
                   placeholder="Search by name or roll no..."
-                  className="rounded-xl h-11 bg-background border-border"
+                  className="rounded-xl h-11"
+                  style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  prefix={<SearchOutlined className="text-text-tertiary" />}
+                  prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
                   allowClear
                 />
 
@@ -650,7 +640,7 @@ const StudentProgressPage = () => {
                   value={selectedBranch}
                   onChange={setSelectedBranch}
                   allowClear
-                  suffixIcon={<BankOutlined className="text-text-tertiary" />}
+                  suffixIcon={<BankOutlined style={{ color: token.colorTextTertiary }} />}
                 >
                   {availableBranches.map((branch) => (
                     <Option key={branch} value={branch}>
@@ -665,36 +655,32 @@ const StudentProgressPage = () => {
                       <div
                         key={st.id}
                         onClick={() => setSelected(st)}
-                        className={`
-                          group cursor-pointer p-3 rounded-xl transition-all duration-200 border
-                          ${selected?.id === st.id
-                            ? 'bg-primary/5 border-primary/20 shadow-sm'
-                            : 'bg-surface border-transparent hover:bg-background-tertiary hover:border-border'
-                          }
-                        `}
+                        className={`group cursor-pointer p-3 rounded-xl transition-all duration-200 border`}
+                        style={{
+                          backgroundColor: selected?.id === st.id ? token.colorPrimaryBg : token.colorBgContainer,
+                          borderColor: selected?.id === st.id ? token.colorPrimary : 'transparent',
+                          boxShadow: selected?.id === st.id ? '0 1px 2px 0 rgba(0, 0, 0, 0.05)' : 'none'
+                        }}
                       >
                         <div className="flex items-center gap-3">
                           <ProfileAvatar
                             size={44}
                             profileImage={st.student?.profileImage}
-                            className={`
-                              rounded-xl border transition-all duration-200
-                              ${selected?.id === st.id ? 'border-primary shadow-sm' : 'border-border group-hover:border-primary/30'}
-                            `}
+                            className={`rounded-xl border transition-all duration-200`}
+                            style={{
+                              borderColor: selected?.id === st.id ? token.colorPrimary : token.colorBorder
+                            }}
                           />
                           <div className="min-w-0 flex-1">
-                            <Text className={`
-                              font-bold block truncate leading-tight
-                              ${selected?.id === st.id ? 'text-primary' : 'text-text-primary'}
-                            `}>
+                            <Text className={`font-bold block truncate leading-tight`} style={{ color: selected?.id === st.id ? token.colorPrimary : token.colorText }}>
                               {st.student?.name}
                             </Text>
                             <div className="flex items-center gap-2 mt-1">
-                              <Text className="text-[10px] text-text-tertiary font-bold uppercase tracking-wider truncate">
+                              <Text className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: token.colorTextTertiary }}>
                                 {st.student?.rollNumber}
                               </Text>
-                              <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-30" />
-                              <Text className="text-[10px] text-text-tertiary font-bold uppercase tracking-wider truncate">
+                              <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
+                              <Text className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: token.colorTextTertiary }}>
                                 {st.student?.branchName}
                               </Text>
                             </div>
@@ -705,7 +691,7 @@ const StudentProgressPage = () => {
                   ) : (
                     <div className="py-12 flex flex-col items-center justify-center opacity-50">
                       <Empty description={false} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                      <Text className="text-text-tertiary mt-2">No students found</Text>
+                      <Text className="mt-2" style={{ color: token.colorTextTertiary }}>No students found</Text>
                     </div>
                   )}
                 </div>
@@ -725,7 +711,8 @@ const StudentProgressPage = () => {
               <div className="h-full flex flex-col space-y-6 overflow-y-auto hide-scrollbar pb-6">
                 {/* Profile Header Card */}
                 <Card 
-                  className="rounded-2xl border-border shadow-sm bg-surface overflow-hidden shrink-0"
+                  className="rounded-2xl shadow-sm overflow-hidden shrink-0"
+                  style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}
                   styles={{ body: { padding: '24px' } }}
                 >
                   <div className="flex flex-col md:flex-row items-center gap-6">
@@ -733,61 +720,62 @@ const StudentProgressPage = () => {
                       <ProfileAvatar
                         size={100}
                         profileImage={selected.student?.profileImage}
-                        className="rounded-2xl border-4 border-background shadow-soft ring-1 ring-border"
+                        className="rounded-2xl border-4 shadow-soft ring-1"
+                        style={{ borderColor: token.colorBgLayout, ringColor: token.colorBorder }}
                       />
-                      <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg bg-success flex items-center justify-center border-2 border-surface shadow-sm">
+                      <div className="absolute -bottom-2 -right-2 w-8 h-8 rounded-lg flex items-center justify-center border-2 shadow-sm" style={{ backgroundColor: token.colorSuccess, borderColor: token.colorBgContainer }}>
                         <CheckCircleOutlined className="text-white text-xs" />
                       </div>
                     </div>
                     
                     <div className="flex-grow text-center md:text-left">
                       <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
-                        <Title level={3} className="!mb-0 !text-text-primary text-2xl font-black">
+                        <Title level={3} className="!mb-0 text-2xl font-black" style={{ color: token.colorText }}>
                           {selected.student?.name}
                         </Title>
-                        <Tag className="rounded-full px-3 py-0.5 bg-primary/10 text-primary border-primary/20 font-bold uppercase tracking-wider text-[10px]">
+                        <Tag className="rounded-full px-3 py-0.5 font-bold uppercase tracking-wider text-[10px]" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, borderColor: token.colorPrimaryBorder }}>
                           {selected.student?.branchName}
                         </Tag>
                       </div>
                       
-                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-text-secondary text-sm">
+                      <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm" style={{ color: token.colorTextSecondary }}>
                         <span className="flex items-center gap-1.5 font-medium">
-                          <IdcardOutlined className="text-text-tertiary" /> {selected.student?.rollNumber}
+                          <IdcardOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.rollNumber}
                         </span>
-                        <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-30" />
+                        <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
                         <span className="flex items-center gap-1.5 font-medium">
-                          <MailOutlined className="text-text-tertiary" /> {selected.student?.email}
+                          <MailOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.email}
                         </span>
-                        <span className="w-1 h-1 rounded-full bg-text-tertiary opacity-30" />
+                        <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
                         <span className="flex items-center gap-1.5 font-medium">
-                          <PhoneOutlined className="text-text-tertiary" /> {selected.student?.contact}
+                          <PhoneOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.contact}
                         </span>
                       </div>
 
                       <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-5">
-                        <div className="px-3 py-1.5 rounded-xl bg-background-tertiary border border-border flex items-center gap-2">
-                          <ShopOutlined className="text-primary text-sm" />
-                          <Text className="text-[10px] uppercase font-bold text-text-secondary">Apps: {profileKPIs.applications}</Text>
+                        <div className="px-3 py-1.5 rounded-xl border flex items-center gap-2" style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}>
+                          <ShopOutlined className="text-sm" style={{ color: token.colorPrimary }} />
+                          <Text className="text-[10px] uppercase font-bold" style={{ color: token.colorTextSecondary }}>Apps: {profileKPIs.applications}</Text>
                         </div>
-                        <div className="px-3 py-1.5 rounded-xl bg-background-tertiary border border-border flex items-center gap-2">
-                          <EyeOutlined className="text-success text-sm" />
-                          <Text className="text-[10px] uppercase font-bold text-text-secondary">Visits: {profileKPIs.visits}</Text>
+                        <div className="px-3 py-1.5 rounded-xl border flex items-center gap-2" style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}>
+                          <EyeOutlined className="text-sm" style={{ color: token.colorSuccess }} />
+                          <Text className="text-[10px] uppercase font-bold" style={{ color: token.colorTextSecondary }}>Visits: {profileKPIs.visits}</Text>
                         </div>
-                        <div className="px-3 py-1.5 rounded-xl bg-background-tertiary border border-border flex items-center gap-2">
-                          <FileTextOutlined className="text-warning text-sm" />
-                          <Text className="text-[10px] uppercase font-bold text-text-secondary">Reports: {profileKPIs.monthlyReports}</Text>
+                        <div className="px-3 py-1.5 rounded-xl border flex items-center gap-2" style={{ backgroundColor: token.colorBgLayout, borderColor: token.colorBorder }}>
+                          <FileTextOutlined className="text-sm" style={{ color: token.colorWarning }} />
+                          <Text className="text-[10px] uppercase font-bold" style={{ color: token.colorTextSecondary }}>Reports: {profileKPIs.monthlyReports}</Text>
                         </div>
                       </div>
                     </div>
 
-                    <div className="hidden xl:flex items-center gap-6 pl-6 border-l border-border/60">
+                    <div className="hidden xl:flex items-center gap-6 pl-6" style={{ borderLeft: `1px solid ${token.colorBorder}99` }}>
                       <div className="text-center">
-                        <div className="text-2xl font-black text-text-primary">{profileKPIs.applications}</div>
-                        <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Applied</div>
+                        <div className="text-2xl font-black" style={{ color: token.colorText }}>{profileKPIs.applications}</div>
+                        <div className="text-[10px] uppercase font-bold tracking-widest" style={{ color: token.colorTextTertiary }}>Applied</div>
                       </div>
                       <div className="text-center">
-                        <div className="text-2xl font-black text-success">{profileKPIs.visits}</div>
-                        <div className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Visits</div>
+                        <div className="text-2xl font-black" style={{ color: token.colorSuccess }}>{profileKPIs.visits}</div>
+                        <div className="text-[10px] uppercase font-bold tracking-widest" style={{ color: token.colorTextTertiary }}>Visits</div>
                       </div>
                     </div>
                   </div>
@@ -795,7 +783,8 @@ const StudentProgressPage = () => {
 
                 {/* Tabs Container */}
                 <Card 
-                  className="rounded-2xl border-border shadow-sm flex-1 overflow-hidden" 
+                  className="rounded-2xl shadow-sm flex-1 overflow-hidden" 
+                  style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}
                   styles={{ body: { padding: 0 } }}
                 >
                   <Tabs
@@ -816,7 +805,7 @@ const StudentProgressPage = () => {
                               <Col xs={24} lg={14}>
                                 <div className="space-y-4">
                                   <div className="flex items-center justify-between">
-                                    <Title level={5} className="!mb-0 flex items-center gap-2 text-text-primary">
+                                    <Title level={5} className="!mb-0 flex items-center gap-2" style={{ color: token.colorText }}>
                                       <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                                         <ShopOutlined className="text-blue-500" />
                                       </div>
@@ -832,7 +821,8 @@ const StudentProgressPage = () => {
                                         return (
                                           <div 
                                             key={app.id}
-                                            className="p-4 rounded-2xl border border-border hover:border-primary/30 bg-surface transition-all duration-200"
+                                            className="p-4 rounded-2xl border hover:border-primary/30 transition-all duration-200"
+                                            style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}
                                           >
                                             <div className="flex justify-between items-start gap-4">
                                               <div className="flex-1 min-w-0">
@@ -842,14 +832,14 @@ const StudentProgressPage = () => {
                                                       Self Identified
                                                     </Tag>
                                                   )}
-                                                  <Text className="text-xs text-text-tertiary font-bold uppercase tracking-widest">
+                                                  <Text className="text-xs font-bold uppercase tracking-widest" style={{ color: token.colorTextTertiary }}>
                                                     Applied {formatDate(app.applicationDate)}
                                                   </Text>
                                                 </div>
-                                                <Title level={5} className="!mb-1 text-text-primary truncate">
+                                                <Title level={5} className="!mb-1 truncate" style={{ color: token.colorText }}>
                                                   {isSelfIdentified ? app.companyName : app.internship?.title}
                                                 </Title>
-                                                <Text className="text-text-secondary text-sm block truncate">
+                                                <Text className="text-sm block truncate" style={{ color: token.colorTextSecondary }}>
                                                   {!isSelfIdentified ? app.internship?.industry?.companyName : 'External Organization'}
                                                 </Text>
                                               </div>
@@ -865,9 +855,10 @@ const StudentProgressPage = () => {
                                                     <Button 
                                                       type="text" 
                                                       size="small" 
-                                                      icon={<EditOutlined className="text-text-tertiary" />} 
+                                                      icon={<EditOutlined style={{ color: token.colorTextTertiary }} />} 
                                                       onClick={() => handleEditInternship(app)}
-                                                      className="hover:bg-primary/10 hover:text-primary rounded-lg"
+                                                      className="rounded-lg"
+                                                      style={{ ':hover': { backgroundColor: token.colorPrimaryBg, color: token.colorPrimary } }}
                                                     />
                                                   </Tooltip>
                                                 </div>
@@ -877,9 +868,9 @@ const StudentProgressPage = () => {
                                         );
                                       })
                                     ) : (
-                                      <div className="py-10 text-center bg-background-tertiary/30 rounded-2xl border border-dashed border-border">
+                                      <div className="py-10 text-center rounded-2xl border border-dashed" style={{ backgroundColor: `${token.colorBgLayout}4D`, borderColor: token.colorBorder }}>
                                         <Empty description={false} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                                        <Text className="text-text-tertiary block mt-2">No applications found</Text>
+                                        <Text className="block mt-2" style={{ color: token.colorTextTertiary }}>No applications found</Text>
                                       </div>
                                     )}
                                   </div>
@@ -888,24 +879,24 @@ const StudentProgressPage = () => {
 
                               <Col xs={24} lg={10}>
                                 <div className="space-y-4">
-                                  <Title level={5} className="!mb-0 flex items-center gap-2 text-text-primary">
+                                  <Title level={5} className="!mb-0 flex items-center gap-2" style={{ color: token.colorText }}>
                                     <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
                                       <ClockCircleOutlined className="text-green-500" />
                                     </div>
                                     Recent Activity
                                   </Title>
                                   
-                                  <div className="bg-background-tertiary/30 p-6 rounded-2xl border border-border">
+                                  <div className="p-6 rounded-2xl border" style={{ backgroundColor: `${token.colorBgLayout}4D`, borderColor: token.colorBorder }}>
                                     {metrics.visits?.length ? (
                                       <Timeline
                                         items={metrics.visits.slice(0, 4).map((v) => ({
                                           color: "blue",
                                           children: (
                                             <div className="pb-2">
-                                              <Text className="font-bold text-text-primary block">
+                                              <Text className="font-bold block" style={{ color: token.colorText }}>
                                                 {formatDate(v.visitDate)}
                                               </Text>
-                                              <Text className="text-xs text-text-secondary line-clamp-2 mt-0.5">
+                                              <Text className="text-xs line-clamp-2 mt-0.5" style={{ color: token.colorTextSecondary }}>
                                                 Visit logged for {v.application?.internship?.title || v.internship?.title || "Internship"}
                                               </Text>
                                             </div>
@@ -941,12 +932,12 @@ const StudentProgressPage = () => {
                 </Card>
               </div>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center bg-surface rounded-2xl border border-dashed border-border p-12">
-                <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mb-6">
-                  <UserOutlined className="text-4xl text-primary opacity-20" />
+              <div className="h-full flex flex-col items-center justify-center rounded-2xl border border-dashed p-12" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                <div className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6" style={{ backgroundColor: token.colorPrimaryBg }}>
+                  <UserOutlined className="text-4xl opacity-20" style={{ color: token.colorPrimary }} />
                 </div>
-                <Title level={3} className="text-text-secondary !mb-2">Select a Student</Title>
-                <Text className="text-text-tertiary text-center max-w-sm">
+                <Title level={3} className="!mb-2" style={{ color: token.colorTextSecondary }}>Select a Student</Title>
+                <Text className="text-center max-w-sm" style={{ color: token.colorTextTertiary }}>
                   Choose a student from the list on the left to view their detailed internship progress, visits, and reports.
                 </Text>
               </div>
@@ -1179,7 +1170,7 @@ const StudentProgressPage = () => {
                       "Internship"}
                   </strong>
                   <br />
-                  <span className="text-sm text-text-secondary">
+                  <span className="text-sm" style={{ color: token.colorTextSecondary }}>
                     {editInternshipModal.internship.internship?.industry?.companyName ||
                       "Self-Identified"}
                   </span>

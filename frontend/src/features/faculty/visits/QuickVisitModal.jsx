@@ -23,8 +23,7 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import PropTypes from 'prop-types';
-import { createVisitLog } from '../store/facultySlice';
-import facultyService from '../../../services/faculty.service';
+import { createVisitLog, uploadVisitDocument } from '../store/facultySlice';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -43,6 +42,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const [fileList, setFileList] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [selectedApplicationId, setSelectedApplicationId] = useState(null);
+  const [internshipDateError, setInternshipDateError] = useState(null);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -52,11 +52,15 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
       setLocation(null);
       setFileList([]);
       setSelectedApplicationId(null);
+      setInternshipDateError(null);
     }
   }, [visible, form]);
 
   // Handle student selection - extract applicationId from nested structure
   const handleStudentSelect = useCallback((studentId) => {
+    // Reset error state
+    setInternshipDateError(null);
+
     // Find student in the list (handle both flat and nested structures)
     const found = students.find(s =>
       s.student?.id === studentId || s.id === studentId
@@ -69,7 +73,33 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
                            [];
 
       if (applications.length > 0) {
-        setSelectedApplicationId(applications[0].id);
+        const application = applications[0];
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to start of day for comparison
+
+        // Check if internship has started
+        if (application.startDate) {
+          const startDate = new Date(application.startDate);
+          startDate.setHours(0, 0, 0, 0);
+          if (today < startDate) {
+            setInternshipDateError(`Internship has not started yet. Start date: ${startDate.toLocaleDateString()}`);
+            setSelectedApplicationId(null);
+            return;
+          }
+        }
+
+        // Check if internship has ended
+        if (application.endDate) {
+          const endDate = new Date(application.endDate);
+          endDate.setHours(23, 59, 59, 999); // End of day for end date
+          if (today > endDate) {
+            setInternshipDateError(`Internship has already ended. End date: ${new Date(application.endDate).toLocaleDateString()}`);
+            setSelectedApplicationId(null);
+            return;
+          }
+        }
+
+        setSelectedApplicationId(application.id);
       } else {
         setSelectedApplicationId(null);
         message.warning('No active internship found for this student');
@@ -179,7 +209,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         for (const file of fileList) {
           if (file.originFileObj) {
             try {
-              const result = await facultyService.uploadVisitDocument(file.originFileObj, 'visit-photo');
+              const result = await dispatch(uploadVisitDocument({ file: file.originFileObj, type: 'visit-photo' })).unwrap();
               photoUrls.push(result.url);
             } catch (error) {
               console.error('Photo upload error:', error);
@@ -213,7 +243,6 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         // Observations & Feedback fields
         observationsAboutStudent: values.observationsAboutStudent || null,
         feedbackSharedWithStudent: values.feedbackSharedWithStudent || null,
-        notes: values.notes || null,
         // Photos
         ...(photoUrls.length > 0 && { visitPhotos: photoUrls }),
       };
@@ -261,6 +290,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           type="primary"
           onClick={handleSubmit}
           loading={submitting}
+          disabled={!!internshipDateError}
           icon={<CameraOutlined />}
         >
           Log Visit
@@ -297,6 +327,15 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
                 })}
               </Select>
             </Form.Item>
+            {internshipDateError && (
+              <Alert
+                message="Cannot Log Visit"
+                description={internshipDateError}
+                type="error"
+                showIcon
+                className="mb-4"
+              />
+            )}
           </Col>
           <Col xs={24} md={12}>
             <Form.Item
@@ -439,28 +478,14 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           />
         </Form.Item>
 
-        <Row gutter={16}>
-          <Col xs={24} md={12}>
-            <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
-              <TextArea
-                rows={2}
-                placeholder="Enter feedback shared with student..."
-                maxLength={500}
-                showCount
-              />
-            </Form.Item>
-          </Col>
-          <Col xs={24} md={12}>
-            <Form.Item name="notes" label="Additional Notes">
-              <TextArea
-                rows={2}
-                placeholder="Any additional notes or comments..."
-                maxLength={1000}
-                showCount
-              />
-            </Form.Item>
-          </Col>
-        </Row>
+        <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+          <TextArea
+            rows={2}
+            placeholder="Enter feedback shared with student..."
+            maxLength={500}
+            showCount
+          />
+        </Form.Item>
 
         {/* Photo Upload Section */}
         <Divider orientation="left" className="!text-sm !my-2">

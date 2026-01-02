@@ -352,7 +352,7 @@ export default function StudentGrievance() {
         title={<span className="text-sm font-semibold">Grievance Details</span>}
         open={detailDrawerVisible}
         onClose={() => { setDetailDrawerVisible(false); setSelectedGrievance(null); }}
-        width={420}
+        styles={{ wrapper: { width: 420 } }}
         className="[&_.ant-drawer-body]:p-4"
       >
         {selectedGrievance && (

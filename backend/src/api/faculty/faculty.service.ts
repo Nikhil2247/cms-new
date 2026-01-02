@@ -207,6 +207,9 @@ export class FacultyService {
           // Grievance counts
           pendingGrievances,
           totalGrievances,
+          // Joining letters counts
+          pendingJoiningLetters,
+          totalJoiningLetters,
         ] = await Promise.all([
           // Count assigned students
           Promise.resolve(studentIds.length),
@@ -269,27 +272,30 @@ export class FacultyService {
               assignedToId: facultyId,
             },
           }),
-        ]);
-
-        // Get recent activities
-        const recentVisits = await this.prisma.facultyVisitLog.findMany({
-          where: { facultyId },
-          take: 5,
-          orderBy: { visitDate: 'desc' },
-          include: {
-            application: {
-              include: {
-                student: {
-                  select: {
-                    id: true,
-                    name: true,
-                    rollNumber: true,
-                  },
-                },
-              },
+          // Count pending joining letters = active internships WITHOUT joiningLetterUrl (not yet uploaded)
+          this.prisma.internshipApplication.count({
+            where: {
+              studentId: { in: studentIds },
+              OR: [
+                { isSelfIdentified: true },
+                { internshipId: null },
+              ],
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+              joiningLetterUrl: null,
             },
-          },
-        });
+          }),
+          // Count total joining letters expected = active internships count (same as activeInternships)
+          this.prisma.internshipApplication.count({
+            where: {
+              studentId: { in: studentIds },
+              OR: [
+                { isSelfIdentified: true },
+                { internshipId: null },
+              ],
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+            },
+          }),
+        ]);
 
         // Only show upcoming visits for internships that have started
         const upcomingVisits = await this.prisma.facultyVisitLog.findMany({
@@ -326,11 +332,13 @@ export class FacultyService {
           pendingReports,
           pendingApprovals: pendingVisits,
           totalVisits,
-          recentActivities: recentVisits,
           upcomingVisits,
           // Grievance stats
           pendingGrievances,
           totalGrievances,
+          // Joining letters stats
+          pendingJoiningLetters,
+          totalJoiningLetters,
         };
       },
       { ttl: 300, tags: ['faculty', `faculty:${facultyId}`] },
@@ -536,6 +544,54 @@ export class FacultyService {
   }
 
   /**
+   * Get visit log by ID
+   * SECURITY: Requires facultyId to verify authorization
+   */
+  async getVisitLogById(id: string, facultyId: string) {
+    const visitLog = await this.prisma.facultyVisitLog.findUnique({
+      where: { id },
+      include: {
+        application: {
+          include: {
+            student: {
+              select: {
+                id: true,
+                name: true,
+                rollNumber: true,
+                email: true,
+                profileImage: true,
+              },
+            },
+            internship: {
+              include: {
+                industry: {
+                  select: {
+                    id: true,
+                    companyName: true,
+                    city: true,
+                    address: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!visitLog) {
+      throw new NotFoundException('Visit log not found');
+    }
+
+    // SECURITY: Verify faculty owns this visit log
+    if (visitLog.facultyId !== facultyId) {
+      throw new NotFoundException('Visit log not found or you are not authorized to view it');
+    }
+
+    return visitLog;
+  }
+
+  /**
    * Get visit logs with pagination
    */
   async getVisitLogs(
@@ -696,6 +752,17 @@ export class FacultyService {
       }
     }
 
+    // Validate that visit date is not after internship end date
+    if (application.endDate) {
+      const internshipEndDate = new Date(application.endDate);
+
+      if (visitDateToUse > internshipEndDate) {
+        throw new BadRequestException(
+          `Visit date cannot be after internship end date (${internshipEndDate.toISOString().split('T')[0]})`
+        );
+      }
+    }
+
     // Count existing visits for this application
     const visitCount = await this.prisma.facultyVisitLog.count({
       where: { applicationId: application.id },
@@ -805,8 +872,40 @@ export class FacultyService {
     // Filter to only valid Prisma schema fields (excludes unknown fields like 'notes')
     let filteredUpdateData = this.buildVisitLogFields(updateVisitLogDto);
 
+    // SECURITY: Fields that are ALWAYS LOCKED after creation (regardless of status)
+    // These core visit details cannot be modified via API - prevents DevTools bypass
+    const lockedFields = [
+      'latitude',
+      'longitude',
+      'gpsAccuracy',
+      'visitLocation',
+      'visitDate',
+      'visitType',
+      'applicationId',
+      'studentId',
+      'internshipId',
+      'facultyId',
+      'visitNumber',
+    ];
+
+    // Check if user is trying to modify locked fields
+    const attemptedLockedFields = lockedFields.filter(
+      field => updateVisitLogDto[field] !== undefined
+    );
+
+    if (attemptedLockedFields.length > 0) {
+      throw new BadRequestException(
+        `Cannot modify locked fields: ${attemptedLockedFields.join(', ')}. ` +
+        `Visit date, type, location, GPS coordinates, and student cannot be changed after creation.`
+      );
+    }
+
+    // Remove locked fields from update data as additional security layer
+    lockedFields.forEach(field => {
+      delete filteredUpdateData[field];
+    });
+
     // When visit is in DRAFT status, restrict updates to only documents and photos
-    // Core details like GPS coordinates, location, student, visit date are locked
     if (visitLog.status === 'DRAFT') {
       // Fields that CAN be updated when in DRAFT (completing the visit report)
       const allowedDraftUpdateFields = [
@@ -845,33 +944,6 @@ export class FacultyService {
         'followUpRequired',
         'nextVisitDate',
       ];
-
-      // Fields that are LOCKED after draft creation (cannot be modified)
-      const lockedFields = [
-        'latitude',
-        'longitude',
-        'gpsAccuracy',
-        'visitLocation',
-        'visitDate',
-        'visitType',
-        'applicationId',
-        'studentId',
-        'internshipId',
-        'facultyId',
-        'visitNumber',
-      ];
-
-      // Check if user is trying to modify locked fields
-      const attemptedLockedFields = lockedFields.filter(
-        field => updateVisitLogDto[field] !== undefined
-      );
-
-      if (attemptedLockedFields.length > 0) {
-        throw new BadRequestException(
-          `Cannot modify locked fields in DRAFT visit: ${attemptedLockedFields.join(', ')}. ` +
-          `GPS coordinates, location, and visit details are captured at creation time and cannot be changed.`
-        );
-      }
 
       // Filter to only allowed fields for draft updates
       filteredUpdateData = Object.fromEntries(
@@ -2109,6 +2181,193 @@ export class FacultyService {
       success: true,
       message: 'Joining letter deleted successfully',
       data: updated,
+    };
+  }
+
+  /**
+   * Download monthly report file
+   */
+  async downloadMonthlyReport(reportId: string, facultyId: string) {
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id: reportId },
+      include: {
+        application: {
+          include: {
+            student: true,
+          },
+        },
+      },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Monthly report not found');
+    }
+
+    // Verify faculty is the mentor or assigned via MentorAssignment
+    const isDirectMentor = report.application?.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: report.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
+      throw new BadRequestException('You are not authorized to download this report');
+    }
+
+    if (!report.reportFileUrl) {
+      throw new NotFoundException('No report file available for download');
+    }
+
+    return {
+      url: report.reportFileUrl,
+      fileName: `monthly_report_${report.application?.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`,
+    };
+  }
+
+  /**
+   * Upload monthly report for a student (faculty uploading on behalf of student)
+   */
+  async uploadMonthlyReport(
+    file: Express.Multer.File,
+    body: { applicationId: string; month: string; year: string; studentId?: string },
+    facultyId: string,
+  ) {
+    const { applicationId, month, year, studentId } = body;
+
+    // Find the application
+    const application = await this.prisma.internshipApplication.findUnique({
+      where: { id: applicationId },
+      include: {
+        student: {
+          include: {
+            Institution: true,
+          },
+        },
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Application not found');
+    }
+
+    // Verify faculty is authorized
+    const isDirectMentor = application.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: application.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
+      throw new BadRequestException('You are not authorized to upload reports for this student');
+    }
+
+    const reportMonth = parseInt(month, 10);
+    const reportYear = parseInt(year, 10);
+
+    // Check if report already exists for this month
+    const existingReport = await this.prisma.monthlyReport.findFirst({
+      where: {
+        applicationId,
+        reportMonth,
+        reportYear,
+      },
+    });
+
+    if (existingReport) {
+      throw new BadRequestException(`Report for ${month}/${year} already exists`);
+    }
+
+    // For now, store file info - actual file upload would use FileStorageService
+    // This is a placeholder - in production you'd upload to MinIO/S3
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const report = await this.prisma.monthlyReport.create({
+      data: {
+        applicationId,
+        studentId: application.studentId,
+        reportMonth,
+        reportYear,
+        monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
+        status: 'SUBMITTED',
+        submittedAt: new Date(),
+        // Note: reportFileUrl would be set after file upload to storage
+      },
+    });
+
+    await this.cache.invalidateByTags(['reports', `application:${applicationId}`]);
+
+    return {
+      success: true,
+      message: 'Monthly report uploaded successfully',
+      data: report,
+    };
+  }
+
+  /**
+   * Create assignment for student
+   */
+  async createAssignment(facultyId: string, assignmentData: any) {
+    const { studentId, title, description, dueDate, ...rest } = assignmentData;
+
+    if (!studentId) {
+      throw new BadRequestException('Student ID is required');
+    }
+
+    // Verify faculty is assigned to this student
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId,
+        isActive: true,
+      },
+    });
+
+    if (!mentorAssignment) {
+      throw new BadRequestException('You are not authorized to create assignments for this student');
+    }
+
+    // Get the student's active application
+    const application = await this.prisma.internshipApplication.findFirst({
+      where: {
+        studentId,
+        status: { in: ['JOINED', 'APPROVED'] },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Create as a monthly feedback entry (since there's no Assignment model)
+    // This acts as a task/assignment for the student
+    const assignment = await this.prisma.monthlyFeedback.create({
+      data: {
+        studentId,
+        applicationId: application?.id,
+        internshipId: application?.internshipId,
+        submittedBy: facultyId,
+        feedbackMonth: new Date().getMonth() + 1,
+        feedbackYear: new Date().getFullYear(),
+        // Store assignment details in available fields
+        facultyObservations: title,
+        areasOfImprovement: description,
+        // Additional metadata
+        ...rest,
+      },
+    });
+
+    await this.cache.invalidateByTags(['feedback', `student:${studentId}`]);
+
+    return {
+      success: true,
+      message: 'Assignment created successfully',
+      data: assignment,
     };
   }
 

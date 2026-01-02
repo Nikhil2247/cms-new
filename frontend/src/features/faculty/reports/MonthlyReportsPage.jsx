@@ -35,8 +35,8 @@ import dayjs from 'dayjs';
 import {
   fetchMonthlyReports,
   selectMonthlyReports,
+  downloadMonthlyReport,
 } from '../store/facultySlice';
-import facultyService from '../../../services/faculty.service';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 const { Title, Text, Paragraph } = Typography;
@@ -84,7 +84,7 @@ const MonthlyReportsPage = () => {
 
   const handleDownload = async (report) => {
     try {
-      const blob = await facultyService.downloadMonthlyReport(report.id);
+      const blob = await dispatch(downloadMonthlyReport(report.id)).unwrap();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -94,7 +94,8 @@ const MonthlyReportsPage = () => {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      message.error('Failed to download report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
+      message.error(errorMessage);
     }
   };
 

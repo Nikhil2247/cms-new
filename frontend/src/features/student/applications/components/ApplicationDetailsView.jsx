@@ -1,6 +1,6 @@
 import React, { memo, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Button, Typography, Tabs, Tag, Upload, Modal, message, Progress, Tooltip } from 'antd';
+import { Card, Button, Typography, Tabs, Tag, Upload, Modal, message, Progress, Tooltip, theme, Row, Col } from 'antd';
 import {
   ArrowLeftOutlined,
   FileTextOutlined,
@@ -43,6 +43,7 @@ const ApplicationDetailsView = ({
   onRefresh,
 }) => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   const [uploadModalVisible, setUploadModalVisible] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -151,7 +152,7 @@ const ApplicationDetailsView = ({
         <span className="flex items-center gap-1.5 text-sm">
           <CalendarOutlined />Reports
           {monthlyReportsProgress?.pending > 0 && (
-            <Tag color="warning" className="!ml-1 !px-1.5 !py-0 text-[10px] rounded-full">{monthlyReportsProgress.pending}</Tag>
+            <Tag color="warning" className="!ml-1 !px-1.5 !py-0 text-[10px] rounded-full border-0">{monthlyReportsProgress.pending}</Tag>
           )}
         </span>
       ),
@@ -185,35 +186,43 @@ const ApplicationDetailsView = ({
   ];
 
   return (
-    <div className="!space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
           type="text"
-          className="text-text-secondary hover:text-text-primary"
+          style={{ color: token.colorTextSecondary }}
+          className="hover:text-text-primary"
         >
           Back
         </Button>
-        <Tag color={getStatusColor(application.status)} className="rounded-full px-3">
+        <Tag color={getStatusColor(application.status)} className="rounded-full px-3 border-0">
           {application.status?.replace(/_/g, ' ')}
         </Tag>
       </div>
 
       {/* Company Info Card */}
-      <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '16px' } }}>
+      <Card 
+        className="rounded-xl shadow-sm border" 
+        style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+        styles={{ body: { padding: '16px' } }}
+      >
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <BankOutlined className="text-lg text-primary" />
+            <div 
+              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: token.colorPrimaryBg }}
+            >
+              <BankOutlined className="text-lg" style={{ color: token.colorPrimary }} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <Text strong className="text-base">{company.companyName || 'Company'}</Text>
-                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full">Self-Identified</Tag>}
+                <Text strong className="text-base" style={{ color: token.colorText }}>{company.companyName || 'Company'}</Text>
+                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full border-0">Self-Identified</Tag>}
               </div>
-              <Text className="text-xs text-text-tertiary">{application.jobProfile || internship?.title || 'Internship'}</Text>
+              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>{application.jobProfile || internship?.title || 'Internship'}</Text>
             </div>
           </div>
 
@@ -221,14 +230,14 @@ const ApplicationDetailsView = ({
           <div className="hidden sm:flex items-center gap-4">
             <Tooltip title="Reports Submitted">
               <div className="text-center">
-                <Text className="text-lg font-bold text-primary block">{monthlyReportsProgress?.approved || 0}/{monthlyReportsProgress?.total || 0}</Text>
-                <Text className="text-[10px] text-text-tertiary">Reports</Text>
+                <Text className="text-lg font-bold block" style={{ color: token.colorPrimary }}>{monthlyReportsProgress?.approved || 0}/{monthlyReportsProgress?.total || 0}</Text>
+                <Text className="text-[10px]" style={{ color: token.colorTextTertiary }}>Reports</Text>
               </div>
             </Tooltip>
             <Tooltip title="Faculty Visits">
               <div className="text-center">
-                <Text className="text-lg font-bold text-purple-500 block">{facultyVisitsProgress?.completed || 0}/{facultyVisitsProgress?.total || 0}</Text>
-                <Text className="text-[10px] text-text-tertiary">Visits</Text>
+                <Text className="text-lg font-bold block" style={{ color: token.colorSuccess }}>{facultyVisitsProgress?.completed || 0}/{facultyVisitsProgress?.total || 0}</Text>
+                <Text className="text-[10px]" style={{ color: token.colorTextTertiary }}>Visits</Text>
               </div>
             </Tooltip>
           </div>
@@ -236,18 +245,18 @@ const ApplicationDetailsView = ({
 
         {/* Progress Bar */}
         {internshipStarted && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
+          <div className="mt-4 pt-4 border-t" style={{ borderColor: token.colorBorderSecondary }}>
             <div className="flex justify-between items-center mb-1.5">
-              <Text className="text-xs text-text-tertiary">Progress</Text>
-              <Text className="text-xs font-semibold text-primary">{progressPercent}%</Text>
+              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Progress</Text>
+              <Text className="text-xs font-semibold" style={{ color: token.colorPrimary }}>{progressPercent}%</Text>
             </div>
             <Progress
               percent={progressPercent}
               showInfo={false}
-              strokeColor={{ '0%': '#3b82f6', '100%': '#10b981' }}
+              strokeColor={{ '0%': token.colorPrimary, '100%': token.colorSuccess }}
               size="small"
             />
-            <div className="flex justify-between text-[10px] text-text-tertiary mt-1">
+            <div className="flex justify-between text-[10px] mt-1" style={{ color: token.colorTextTertiary }}>
               <span>{startDate ? dayjs(startDate).format('MMM D, YYYY') : 'N/A'}</span>
               <span>{daysCompleted} days</span>
               <span>{endDate ? dayjs(endDate).format('MMM D, YYYY') : 'N/A'}</span>
@@ -258,15 +267,22 @@ const ApplicationDetailsView = ({
 
       {/* Joining Letter - Compact */}
       {isSelfIdentified && (
-        <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '12px 16px' } }}>
+        <Card 
+          className="rounded-xl shadow-sm border" 
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '12px 16px' } }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${hasJoiningLetter ? 'bg-green-100' : 'bg-orange-100'}`}>
-                <FileTextOutlined className={`text-base ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`} />
+              <div 
+                className="w-9 h-9 rounded-lg flex items-center justify-center"
+                style={{ backgroundColor: hasJoiningLetter ? token.colorSuccessBg : token.colorWarningBg }}
+              >
+                <FileTextOutlined className="text-base" style={{ color: hasJoiningLetter ? token.colorSuccess : token.colorWarning }} />
               </div>
               <div>
-                <Text strong className="text-sm block">Joining Letter</Text>
-                <Text className={`text-[10px] ${hasJoiningLetter ? 'text-green-600' : 'text-orange-600'}`}>
+                <Text strong className="text-sm block" style={{ color: token.colorText }}>Joining Letter</Text>
+                <Text className="text-[10px]" style={{ color: hasJoiningLetter ? token.colorSuccess : token.colorWarning }}>
                   {hasJoiningLetter ? 'Uploaded' : 'Required'}
                 </Text>
               </div>
@@ -290,11 +306,15 @@ const ApplicationDetailsView = ({
       )}
 
       {/* Tabs */}
-      <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: '0' } }}>
+      <Card 
+        className="rounded-xl shadow-sm border" 
+        style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+        styles={{ body: { padding: '0' } }}
+      >
         <Tabs
           defaultActiveKey="details"
           items={tabItems}
-          className="!px-4"
+          className="px-4"
           size="small"
         />
       </Card>
@@ -318,16 +338,17 @@ const ApplicationDetailsView = ({
           beforeUpload={handleFileSelect}
           onRemove={() => setSelectedFile(null)}
           fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
+          style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
         >
-          <p className="ant-upload-drag-icon"><UploadOutlined className="text-3xl text-primary" /></p>
-          <p className="ant-upload-text text-sm">Click or drag PDF file</p>
-          <p className="ant-upload-hint text-xs text-text-tertiary">Max 5MB</p>
+          <p className="ant-upload-drag-icon"><UploadOutlined className="text-3xl" style={{ color: token.colorPrimary }} /></p>
+          <p className="ant-upload-text text-sm" style={{ color: token.colorText }}>Click or drag PDF file</p>
+          <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>Max 5MB</p>
         </Upload.Dragger>
       </Modal>
 
       {/* Delete Modal */}
       <Modal
-        title={<span className="text-red-500">Delete Joining Letter</span>}
+        title={<span style={{ color: token.colorError }}>Delete Joining Letter</span>}
         open={deleteConfirmVisible}
         onCancel={() => setDeleteConfirmVisible(false)}
         footer={[
@@ -336,8 +357,8 @@ const ApplicationDetailsView = ({
         ]}
         width={360}
       >
-        <p className="text-sm">Are you sure you want to delete the joining letter?</p>
-        <p className="text-xs text-red-500">This action cannot be undone.</p>
+        <p className="text-sm" style={{ color: token.colorText }}>Are you sure you want to delete the joining letter?</p>
+        <p className="text-xs" style={{ color: token.colorError }}>This action cannot be undone.</p>
       </Modal>
     </div>
   );

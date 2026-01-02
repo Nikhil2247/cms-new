@@ -20,6 +20,7 @@ import {
   Space,
   List,
   Descriptions,
+  theme,
 } from "antd";
 import {
   SyncOutlined,
@@ -56,15 +57,6 @@ dayjs.extend(isSameOrBefore);
 
 const { Title, Text, Paragraph } = Typography;
 
-const REPORT_STATUS_COLORS = {
-  DRAFT: "default",
-  SUBMITTED: "blue",
-  UNDER_REVIEW: "gold",
-  APPROVED: "green",
-  REJECTED: "red",
-  REVISION_REQUIRED: "orange",
-};
-
 // Status Card Component
 const StatusCard = memo(
   ({
@@ -83,253 +75,294 @@ const StatusCard = memo(
     showAddAction,
     onClick,
     pendingItems = [],
-  }) => (
-    <Card
-      className={`h-full border border-gray-200 rounded-xl hover:shadow-md transition-shadow ${
-        onClick ? "cursor-pointer" : ""
-      }`}
-      styles={{ body: { padding: "16px" } }}
-      onClick={onClick}
-    >
-      {/* Action buttons row - fixed at top */}
-      <div className="flex justify-between items-center mb-2 h-6">
-        {showViewAction ? (
-          <Tooltip title="View">
-            <Button
-              type="text"
-              size="small"
-              icon={<EyeOutlined className="text-xs" />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewAction?.();
-              }}
-              className="w-6 h-6 min-w-0 p-0 text-text-tertiary hover:text-primary"
-            />
-          </Tooltip>
-        ) : (
-          <div className="w-6" />
-        )}
+  }) => {
+    const { token } = theme.useToken();
+    
+    return (
+      <Card
+        className={`h-full border transition-all duration-300 hover:shadow-md ${
+          onClick ? "cursor-pointer" : ""
+        }`}
+        style={{ 
+          borderColor: token.colorBorderSecondary,
+          backgroundColor: token.colorBgContainer,
+        }}
+        styles={{ body: { padding: "16px" } }}
+        onClick={onClick}
+      >
+        {/* Action buttons row - fixed at top */}
+        <div className="flex justify-between items-center mb-2 h-6">
+          {showViewAction ? (
+            <Tooltip title="View">
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined style={{ fontSize: '12px' }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onViewAction?.();
+                }}
+                className="w-6 h-6 min-w-0 p-0 flex items-center justify-center"
+                style={{ color: token.colorTextTertiary }}
+              />
+            </Tooltip>
+          ) : (
+            <div className="w-6" />
+          )}
 
-        {showAddAction ? (
-          <Tooltip title="Upload">
-            <Button
-              type="text"
-              size="small"
-              icon={<PlusOutlined className="text-xs" />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onAddAction?.();
-              }}
-              className="w-6 h-6 min-w-0 p-0 text-text-tertiary hover:text-primary"
-            />
-          </Tooltip>
-        ) : (
-          <div className="w-6" />
-        )}
-      </div>
-
-      <div className="text-center">
-        <div
-          className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-3"
-          style={{ backgroundColor: iconBgColor }}
-        >
-          {React.cloneElement(icon, {
-            style: { fontSize: "20px", color: iconColor },
-          })}
+          {showAddAction ? (
+            <Tooltip title="Upload">
+              <Button
+                type="text"
+                size="small"
+                icon={<PlusOutlined style={{ fontSize: '12px' }} />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAddAction?.();
+                }}
+                className="w-6 h-6 min-w-0 p-0 flex items-center justify-center"
+                style={{ color: token.colorTextTertiary }}
+              />
+            </Tooltip>
+          ) : (
+            <div className="w-6" />
+          )}
         </div>
 
-        <Text strong className="block text-sm text-gray-600 mb-2">
-          {title}
-        </Text>
-
-        {value !== undefined && (
-          <div className="text-2xl font-bold text-gray-800 mb-1">
-            {value}
-            {secondaryValue !== undefined && (
-              <>
-                <span className="text-gray-400">/</span>
-                <span className="text-gray-500">{secondaryValue}</span>
-              </>
-            )}
+        <div className="text-center">
+          <div
+            className="mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-3"
+            style={{ backgroundColor: iconBgColor }}
+          >
+            {React.cloneElement(icon, {
+              style: { fontSize: "20px", color: iconColor },
+            })}
           </div>
-        )}
 
-        {statusTag && (
-          <Tag color={statusColor} className="!px-3 !py-0.5 text-xs">
-            {statusTag}
-          </Tag>
-        )}
-
-        {pendingItems.length > 0 && (
-          <div className="mt-2 space-y-1">
-            <div className="flex flex-wrap gap-1 justify-center">
-              {pendingItems.slice(0, 3).map((item, index) => (
-                <Tag
-                  key={index}
-                  color="warning"
-                  className="!px-2 !py-0.5 !m-0 text-[10px]"
-                >
-                  {item}
-                </Tag>
-              ))}
-            </div>
-            {pendingItems.length > 3 && (
-              <Text type="secondary" className="text-[10px]">
-                +{pendingItems.length - 3} more
-              </Text>
-            )}
-          </div>
-        )}
-
-        {subtitle && (
-          <Text className="text-[10px] text-text-tertiary mt-1 block">
-            {subtitle}
+          <Text strong className="block text-sm mb-2" style={{ color: token.colorTextSecondary }}>
+            {title}
           </Text>
-        )}
-      </div>
-    </Card>
-  )
+
+          {value !== undefined && (
+            <div className="text-2xl font-bold mb-1" style={{ color: token.colorText }}>
+              {value}
+              {secondaryValue !== undefined && (
+                <>
+                  <span style={{ color: token.colorTextQuaternary }}>/</span>
+                  <span style={{ color: token.colorTextTertiary }}>{secondaryValue}</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {statusTag && (
+            <Tag color={statusColor} className="!px-3 !py-0.5 text-xs border-0">
+              {statusTag}
+            </Tag>
+          )}
+
+          {pendingItems.length > 0 && (
+            <div className="mt-2 space-y-1">
+              <div className="flex flex-wrap gap-1 justify-center">
+                {pendingItems.slice(0, 3).map((item, index) => (
+                  <Tag
+                    key={index}
+                    color="warning"
+                    className="!px-2 !py-0.5 !m-0 text-[10px] border-0"
+                  >
+                    {item}
+                  </Tag>
+                ))}
+              </div>
+              {pendingItems.length > 3 && (
+                <Text type="secondary" className="text-[10px]">
+                  +{pendingItems.length - 3} more
+                </Text>
+              )}
+            </div>
+          )}
+
+          {subtitle && (
+            <Text className="text-[10px] mt-1 block" style={{ color: token.colorTextTertiary }}>
+              {subtitle}
+            </Text>
+          )}
+        </div>
+      </Card>
+    );
+  }
 );
 
 StatusCard.displayName = "StatusCard";
 
 // Faculty Mentor Card Component
-const FacultyMentorCard = memo(({ mentor, visitCount = 0, onAddMentor }) => (
-  <Card
-    className="border border-gray-200 rounded-xl h-full"
-    styles={{ body: { padding: 0, position: "relative" } }}
-  >
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-      <div className="w-1 h-5 rounded-full bg-purple-500" />
-      <Text className="text-sm font-semibold text-text-primary">
-        Faculty Mentor
-      </Text>
-    </div>
+const FacultyMentorCard = memo(({ mentor, visitCount = 0, onAddMentor }) => {
+  const { token } = theme.useToken();
+  
+  return (
+    <Card
+      className="border h-full transition-all hover:shadow-sm"
+      style={{ 
+        borderColor: token.colorBorderSecondary,
+        backgroundColor: token.colorBgContainer 
+      }}
+      styles={{ body: { padding: 0, position: "relative" } }}
+    >
+      <div 
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: token.colorBorderSecondary }}
+      >
+        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#a855f7' }} />
+        <Text className="text-sm font-semibold" style={{ color: token.colorText }}>
+          Faculty Mentor
+        </Text>
+      </div>
 
-    <div className="p-4">
-      <Space direction="vertical" className="w-full" size="middle">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <Text type="secondary" className="text-xs block mb-1">
-              Mentor Name
-            </Text>
-            <Text strong className="text-sm block">
-              {mentor?.name || "Not Assigned"}
-            </Text>
-            {mentor?.designation && mentor.designation !== "N/A" && (
-              <Text type="secondary" className="text-xs block mt-0.5">
-                {mentor.designation}
+      <div className="p-4">
+        <Space orientation="vertical" className="w-full" size="middle">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <Text type="secondary" className="text-xs block mb-1">
+                Mentor Name
               </Text>
-            )}
+              <Text strong className="text-sm block" style={{ color: token.colorText }}>
+                {mentor?.name || "Not Assigned"}
+              </Text>
+              {mentor?.designation && mentor.designation !== "N/A" && (
+                <Text type="secondary" className="text-xs block mt-0.5">
+                  {mentor.designation}
+                </Text>
+              )}
+            </div>
+            <Avatar
+              size={44}
+              icon={<UserOutlined />}
+              className="shrink-0"
+              style={{ 
+                backgroundColor: '#f3e8ff', 
+                color: '#9333ea' 
+              }}
+            />
           </div>
-          <Avatar
-            size={44}
-            icon={<UserOutlined />}
-            className="!bg-purple-100 !text-purple-600 shrink-0"
-          />
-        </div>
 
-        {mentor?.email && (
+          {mentor?.email && (
+            <div>
+              <Text type="secondary" className="text-xs block mb-1">
+                Email
+              </Text>
+              <Text className="text-xs break-all" style={{ color: token.colorText }}>{mentor.email}</Text>
+            </div>
+          )}
+
+          {mentor?.contact && (
+            <div>
+              <Text type="secondary" className="text-xs block mb-1">
+                Contact
+              </Text>
+              <Text className="text-xs" style={{ color: token.colorText }}>{mentor.contact}</Text>
+            </div>
+          )}
+
           <div>
             <Text type="secondary" className="text-xs block mb-1">
-              Email
+              Faculty Visits
             </Text>
-            <Text className="text-xs break-all">{mentor.email}</Text>
-          </div>
-        )}
-
-        {mentor?.contact && (
-          <div>
-            <Text type="secondary" className="text-xs block mb-1">
-              Contact
+            <Text strong className="text-base" style={{ color: token.colorText }}>
+              {visitCount}
             </Text>
-            <Text className="text-xs">{mentor.contact}</Text>
           </div>
-        )}
-
-        <div>
-          <Text type="secondary" className="text-xs block mb-1">
-            Faculty Visits
-          </Text>
-          <Text strong className="text-base">
-            {visitCount}
-          </Text>
-        </div>
-      </Space>
-    </div>
-  </Card>
-));
+        </Space>
+      </div>
+    </Card>
+  );
+});
 
 FacultyMentorCard.displayName = "FacultyMentorCard";
 
 // Industry Supervisor Card Component
-const IndustrySupervisorCard = memo(({ supervisor, onAddSupervisor }) => (
-  <Card
-    className="border border-gray-200 rounded-xl h-full"
-    styles={{ body: { padding: 0, position: "relative" } }}
-  >
-    <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
-      <div className="w-1 h-5 rounded-full bg-orange-500" />
-      <Text className="text-sm font-semibold text-text-primary">
-        Industry Supervisor
-      </Text>
-    </div>
+const IndustrySupervisorCard = memo(({ supervisor, onAddSupervisor }) => {
+  const { token } = theme.useToken();
+  
+  return (
+    <Card
+      className="border h-full transition-all hover:shadow-sm"
+      style={{ 
+        borderColor: token.colorBorderSecondary,
+        backgroundColor: token.colorBgContainer 
+      }}
+      styles={{ body: { padding: 0, position: "relative" } }}
+    >
+      <div 
+        className="flex items-center gap-2 px-4 py-3 border-b"
+        style={{ borderColor: token.colorBorderSecondary }}
+      >
+        <div className="w-1 h-5 rounded-full" style={{ backgroundColor: '#f97316' }} />
+        <Text className="text-sm font-semibold" style={{ color: token.colorText }}>
+          Industry Supervisor
+        </Text>
+      </div>
 
-    <div className="p-4">
-      <Space direction="vertical" className="w-full" size="middle">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <Text type="secondary" className="text-xs block mb-1">
-              Supervisor Name
-            </Text>
-            <Text strong className="text-sm block">
-              {supervisor?.name || "Not Provided"}
-            </Text>
-            {supervisor?.designation && supervisor.designation !== "N/A" && (
-              <Text type="secondary" className="text-xs block mt-0.5">
-                {supervisor.designation}
+      <div className="p-4">
+        <Space orientation="vertical" className="w-full" size="middle">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <Text type="secondary" className="text-xs block mb-1">
+                Supervisor Name
               </Text>
-            )}
+              <Text strong className="text-sm block" style={{ color: token.colorText }}>
+                {supervisor?.name || "Not Provided"}
+              </Text>
+              {supervisor?.designation && supervisor.designation !== "N/A" && (
+                <Text type="secondary" className="text-xs block mt-0.5">
+                  {supervisor.designation}
+                </Text>
+              )}
+            </div>
+            <Avatar
+              size={44}
+              icon={<BankOutlined />}
+              className="shrink-0"
+              style={{ 
+                backgroundColor: '#ffedd5', 
+                color: '#ea580c' 
+              }}
+            />
           </div>
-          <Avatar
-            size={44}
-            icon={<BankOutlined />}
-            className="!bg-orange-100 !text-orange-600 shrink-0"
-          />
-        </div>
 
-        <Row gutter={16}>
-          <Col span={12}>
-            <Text type="secondary" className="text-xs block mb-1">
-              Contact
-            </Text>
-            <Text className="text-xs">{supervisor?.contact || "N/A"}</Text>
-          </Col>
-          <Col span={12}>
-            <Text type="secondary" className="text-xs block mb-1">
-              Email
-            </Text>
-            <Text
-              className="text-xs truncate block"
-              title={supervisor?.email || "N/A"}
-            >
-              {supervisor?.email || "N/A"}
-            </Text>
-          </Col>
-        </Row>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Text type="secondary" className="text-xs block mb-1">
+                Contact
+              </Text>
+              <Text className="text-xs" style={{ color: token.colorText }}>{supervisor?.contact || "N/A"}</Text>
+            </Col>
+            <Col span={12}>
+              <Text type="secondary" className="text-xs block mb-1">
+                Email
+              </Text>
+              <Text
+                className="text-xs truncate block"
+                title={supervisor?.email || "N/A"}
+                style={{ color: token.colorText }}
+              >
+                {supervisor?.email || "N/A"}
+              </Text>
+            </Col>
+          </Row>
 
-        {supervisor?.company && supervisor.company !== "N/A" && (
-          <div>
-            <Text type="secondary" className="text-xs block mb-1">
-              Company
-            </Text>
-            <Text className="text-xs">{supervisor.company}</Text>
-          </div>
-        )}
-      </Space>
-    </div>
-  </Card>
-));
+          {supervisor?.company && supervisor.company !== "N/A" && (
+            <div>
+              <Text type="secondary" className="text-xs block mb-1">
+                Company
+              </Text>
+              <Text className="text-xs" style={{ color: token.colorText }}>{supervisor.company}</Text>
+            </div>
+          )}
+        </Space>
+      </div>
+    </Card>
+  );
+});
 
 IndustrySupervisorCard.displayName = "IndustrySupervisorCard";
 
@@ -337,6 +370,7 @@ IndustrySupervisorCard.displayName = "IndustrySupervisorCard";
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const institute = useSelector(selectInstitute);
+  const { token } = theme.useToken();
 
   const {
     isLoading,
@@ -509,9 +543,6 @@ const StudentDashboard = () => {
 
   // Joining letter status check
   const isJoiningLetterUploaded = currentInternship?.joiningLetterUrl;
-  const joiningLetterUrl = currentInternship?.joiningLetterUrl
-    ? getImageUrl(currentInternship.joiningLetterUrl)
-    : null;
 
   // Faculty mentor info
   const facultyMentorInfo = useMemo(() => {
@@ -690,8 +721,17 @@ const StudentDashboard = () => {
   }, [currentInternship?.joiningLetterUrl]);
 
   // Report status color
-  const getReportStatusColor = (status) =>
-    REPORT_STATUS_COLORS[status] || "blue";
+  const getReportStatusColor = (status) => {
+    const statusMap = {
+      DRAFT: "default",
+      SUBMITTED: "blue",
+      UNDER_REVIEW: "gold",
+      APPROVED: "success",
+      REJECTED: "error",
+      REVISION_REQUIRED: "warning",
+    };
+    return statusMap[status] || "default";
+  };
 
   // Report period label
   const getReportPeriodLabel = (report) => {
@@ -733,16 +773,30 @@ const StudentDashboard = () => {
 
   return (
     <Spin spinning={isLoading} tip="Loading...">
-      <div className="p-4 md:p-5 min-h-screen">
+      <div 
+        className="p-4 md:p-5 min-h-screen"
+        style={{ backgroundColor: token.colorBgLayout }}
+      >
         {isRevalidating && !isLoading && (
-          <div className="fixed top-0 left-0 right-0 z-50 px-3 py-1.5 flex items-center justify-center gap-2 text-xs bg-info/10 border-b border-info/20 text-info">
+          <div 
+            className="fixed top-0 left-0 right-0 z-50 px-3 py-1.5 flex items-center justify-center gap-2 text-xs border-b backdrop-blur-sm"
+            style={{ 
+              backgroundColor: token.colorInfoBg, 
+              borderColor: token.colorInfoBorder,
+              color: token.colorInfo 
+            }}
+          >
             <SyncOutlined spin />
             <span>Updating...</span>
           </div>
         )}
 
         {/* Header Section */}
-        <Card className="p-4 md:p-6 !mb-4 rounded-xl">
+        <Card 
+          className="!mb-4 rounded-xl shadow-sm border"
+          style={{ borderColor: token.colorBorderSecondary }}
+          styles={{ body: { padding: '24px' } }}
+        >
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
             <Col>
               <Title level={3} className="!mb-1">
@@ -775,7 +829,10 @@ const StudentDashboard = () => {
         </Card>
 
         {/* Current Internship Status Section */}
-        <Card className="!mb-4 rounded-xl border-0 shadow-sm">
+        <Card 
+          className="!mb-4 rounded-xl shadow-sm border"
+          style={{ borderColor: token.colorBorderSecondary }}
+        >
           <div className="mb-4">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-2">
               <div className="flex items-center">
@@ -845,17 +902,17 @@ const StudentDashboard = () => {
                   icon={<CheckCircleOutlined />}
                   iconBgColor={
                     internshipDataStatus.status === "complete"
-                      ? "#dcfce7"
+                      ? token.colorSuccessBg
                       : internshipDataStatus.status === "pending"
-                      ? "#fef9c3"
-                      : "#fee2e2"
+                      ? token.colorWarningBg
+                      : token.colorErrorBg
                   }
                   iconColor={
                     internshipDataStatus.status === "complete"
-                      ? "#22c55e"
+                      ? token.colorSuccess
                       : internshipDataStatus.status === "pending"
-                      ? "#eab308"
-                      : "#ef4444"
+                      ? token.colorWarning
+                      : token.colorError
                   }
                   title="Internship Data"
                   statusTag={internshipDataStatus.status.toUpperCase()}
@@ -875,8 +932,8 @@ const StudentDashboard = () => {
               <Col xs={24} sm={12} md={12} lg={6}>
                 <StatusCard
                   icon={<FileTextOutlined />}
-                  iconBgColor={isJoiningLetterUploaded ? "#dcfce7" : "#fef9c3"}
-                  iconColor={isJoiningLetterUploaded ? "#22c55e" : "#eab308"}
+                  iconBgColor={isJoiningLetterUploaded ? token.colorSuccessBg : token.colorWarningBg}
+                  iconColor={isJoiningLetterUploaded ? token.colorSuccess : token.colorWarning}
                   title="Joining Letter"
                   statusTag={isJoiningLetterUploaded ? "UPLOADED" : "PENDING"}
                   statusColor={isJoiningLetterUploaded ? "success" : "warning"}
@@ -891,8 +948,8 @@ const StudentDashboard = () => {
               <Col xs={24} sm={12} md={12} lg={6}>
                 <StatusCard
                   icon={<FireOutlined />}
-                  iconBgColor="#fee2e2"
-                  iconColor="#ef4444"
+                  iconBgColor={token.colorErrorBg}
+                  iconColor={token.colorError}
                   title="Grievances"
                   value={grievancesList.length}
                   statusTag={
@@ -907,8 +964,8 @@ const StudentDashboard = () => {
               <Col xs={24} sm={12} md={12} lg={6}>
                 <StatusCard
                   icon={<BookOutlined />}
-                  iconBgColor="#dbeafe"
-                  iconColor="#3b82f6"
+                  iconBgColor={token.colorInfoBg}
+                  iconColor={token.colorInfo}
                   title="Monthly Reports"
                   value={monthlyReportStatus.submitted}
                   secondaryValue={monthlyReportStatus.total}
@@ -932,17 +989,18 @@ const StudentDashboard = () => {
             </Row>
           ) : (
             <Card
-              className="rounded-xl border border-gray-100"
+              className="rounded-xl border shadow-sm"
+              style={{ borderColor: token.colorBorderSecondary }}
               styles={{ body: { padding: "32px" } }}
             >
               <Empty
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
                 description={
                   <div className="text-center">
-                    <Text className="text-text-secondary text-sm block mb-1">
+                    <Text className="text-sm block mb-1" style={{ color: token.colorTextSecondary }}>
                       No active internship
                     </Text>
-                    <Text className="text-xs text-text-tertiary">
+                    <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
                       Apply for internships to get started
                     </Text>
                   </div>
@@ -989,21 +1047,25 @@ const StudentDashboard = () => {
               beforeUpload={handleJoiningLetterUpload}
               showUploadList={false}
               disabled={uploading}
+              style={{
+                background: token.colorBgContainer,
+                borderColor: token.colorBorder
+              }}
             >
               <p className="ant-upload-drag-icon">
-                <UploadOutlined className="text-3xl text-primary" />
+                <UploadOutlined className="text-3xl" style={{ color: token.colorPrimary }} />
               </p>
-              <p className="ant-upload-text text-sm font-medium">
+              <p className="ant-upload-text text-sm font-medium" style={{ color: token.colorText }}>
                 Click or drag file to upload
               </p>
-              <p className="ant-upload-hint text-xs text-text-tertiary">
+              <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
                 PDF files only (Max 5MB)
               </p>
             </Upload.Dragger>
             {uploading && (
               <div className="mt-3 text-center">
                 <Spin size="small" />
-                <Text className="ml-2 text-xs text-text-secondary">
+                <Text className="ml-2 text-xs" style={{ color: token.colorTextSecondary }}>
                   Uploading...
                 </Text>
               </div>
@@ -1038,8 +1100,11 @@ const StudentDashboard = () => {
                   >
                     <List.Item.Meta
                       avatar={
-                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                          <FileTextOutlined className="text-blue-500" />
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center"
+                          style={{ backgroundColor: token.colorInfoBg }}
+                        >
+                          <FileTextOutlined style={{ color: token.colorInfo }} />
                         </div>
                       }
                       title={<Text strong>{getReportPeriodLabel(report)}</Text>}

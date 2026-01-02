@@ -1,170 +1,214 @@
 // src/pages/faculty/AssignedStudents.jsx
-import React, { useEffect, useMemo, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button } from "antd";
-import { PhoneOutlined, MailOutlined, ReloadOutlined, TeamOutlined } from "@ant-design/icons";
+import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic } from "antd";
+import { 
+  PhoneOutlined, 
+  MailOutlined, 
+  ReloadOutlined, 
+  TeamOutlined, 
+  SearchOutlined, 
+  EyeOutlined, 
+  FilterOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined
+} from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   fetchAssignedStudents,
   selectStudents,
 } from "../store/facultySlice";
+import StudentDetailsModal from "../dashboard/components/StudentDetailsModal";
+import ProfileAvatar from "../../../components/common/ProfileAvatar";
 
 const { Title, Text, Paragraph } = Typography;
+const { Option } = Select;
 
 const AssignedStudents = React.memo(() => {
+  const { token } = theme.useToken();
   const dispatch = useDispatch();
   const studentsState = useSelector(selectStudents);
 
-  // Extract data from state
-  const students = studentsState?.list || [];
+  const rawStudents = studentsState?.list || [];
   const loading = studentsState?.loading || false;
   const error = studentsState?.error || null;
 
-  // Fetch students on mount
+  // Local state for filters and modal
+  const [searchText, setSearchText] = useState("");
+  const [branchFilter, setBranchFilter] = useState("all");
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+
   useEffect(() => {
     dispatch(fetchAssignedStudents());
   }, [dispatch]);
 
-  // Force refresh function
   const forceRefresh = useCallback(() => {
     dispatch(fetchAssignedStudents({ forceRefresh: true }));
   }, [dispatch]);
 
-  // Safely process students data
-  const safeStudents = useMemo(() => {
-    if (!Array.isArray(students)) {
-      return [];
-    }
-    return students;
+  // Flatten and process student data
+  const students = useMemo(() => {
+    if (!Array.isArray(rawStudents)) return [];
+    return rawStudents.map(item => {
+        // item might be the student object itself or an assignment object containing 'student'
+        const student = item.student || item;
+        return {
+            ...student,
+            // Keep reference to original wrapper if needed, or just student properties
+            assignmentId: item.id !== student.id ? item.id : null,
+            // Ensure these fields exist for filtering/sorting
+            branchName: student.branchName || student.branch?.name || "N/A",
+            // Helper for active internship
+            activeInternship: student.internshipApplications?.find(app => app.hasJoined && !app.completionDate),
+            // Helper for pending applications
+            hasPendingApps: student.internshipApplications?.some(app => app.status === 'APPLIED' || app.status === 'UNDER_REVIEW')
+        };
+    });
+  }, [rawStudents]);
+
+  // Derived lists for filters
+  const branches = useMemo(() => {
+    const s = new Set(students.map(st => st.branchName).filter(b => b !== "N/A"));
+    return Array.from(s).sort();
   }, [students]);
 
-  /* ------------------------------------------------------------------ */
-  /*  Column helpers                                                    */
-  /* ------------------------------------------------------------------ */
-  const statusColor = (app) => {
-    if (app.hasJoined || app.status === "COMPLETED") return "green";
-    if (app.status === "REJECTED") return "red";
-    if (app.status === "UNDER_REVIEW") return "orange";
-    return "blue";
-  };
+  // Filtering
+  const filteredStudents = useMemo(() => {
+    return students.filter(st => {
+      const matchSearch = !searchText || 
+        st.name?.toLowerCase().includes(searchText.toLowerCase()) || 
+        st.rollNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
+        st.email?.toLowerCase().includes(searchText.toLowerCase());
+      
+      const matchBranch = branchFilter === "all" || st.branchName === branchFilter;
 
-  /* ------------------------------------------------------------------ */
-  /*  Table columns                                                     */
-  /* ------------------------------------------------------------------ */
+      return matchSearch && matchBranch;
+    });
+  }, [students, searchText, branchFilter]);
+
+  // Stats
+  const stats = useMemo(() => {
+    return {
+        total: students.length,
+        active: students.filter(s => s.activeInternship).length,
+        pending: students.filter(s => !s.activeInternship && s.hasPendingApps).length
+    };
+  }, [students]);
+
+  // Columns
   const columns = [
     {
       title: "Student",
       key: "student",
-      width: "28%",
+      width: 280,
       render: (_, r) => (
-        <div>
-          <Text strong className="text-primary">
-            {r.student?.name || "N/A"}
-          </Text>
-          <Text className="text-text-secondary block text-sm">
-            Roll No: {r.student?.rollNumber || "N/A"}
-          </Text>
-          <Text className="text-text-secondary block text-sm">
-            {r.student?.branchName || "N/A"}
-          </Text>
-          <div className="flex items-center gap-2 mt-1">
-            <Tag color="blue">AY: {r.academicYear}</Tag>
-            {r.semester && <Tag color="green">Sem: {r.semester}</Tag>}
+        <Space>
+          <ProfileAvatar profileImage={r.profileImage} size={40} />
+          <div>
+            <Text strong style={{ color: token.colorText, display: 'block' }}>{r.name}</Text>
+            <Text style={{ color: token.colorTextSecondary, fontSize: '12px' }}>{r.rollNumber}</Text>
           </div>
-        </div>
+        </Space>
       ),
     },
     {
-      title: "Contact",
+      title: "Contact Info",
       key: "contact",
-      width: "22%",
+      width: 220,
       render: (_, r) => (
-        <div>
-          <div className="flex items-center mb-1">
-            <PhoneOutlined className="mr-1 text-text-tertiary" />
-            <Text className="text-sm">{r.student?.contact || "N/A"}</Text>
-          </div>
-          <div className="flex items-center">
-            <MailOutlined className="mr-1 text-text-tertiary" />
-            <Text className="text-sm text-primary">
-              {r.student?.email || "N/A"}
-            </Text>
-          </div>
+        <div className="flex flex-col gap-1">
+          {r.email && (
+             <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
+                <MailOutlined style={{ color: token.colorTextTertiary }} /> 
+                <span className="truncate max-w-[180px]" title={r.email}>{r.email}</span>
+             </div>
+          )}
+          {r.contact && (
+             <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
+                <PhoneOutlined style={{ color: token.colorTextTertiary }} /> {r.contact}
+             </div>
+          )}
         </div>
       ),
     },
     {
-      title: "Internship Applications",
-      key: "apps",
+        title: "Academic",
+        key: "academic",
+        width: 180,
+        render: (_, r) => (
+            <div className="flex flex-col gap-1">
+                <Tag className="w-fit m-0">{r.branchName}</Tag>
+                {r.semester && <span className="text-xs" style={{ color: token.colorTextTertiary }}>Sem: {r.semester}</span>}
+            </div>
+        )
+    },
+    {
+      title: "Internship Status",
+      key: "status",
+      width: 180,
       render: (_, r) => {
-        const apps = r.student?.internshipApplications || [];
-        if (!apps.length)
-          return <Text className="text-text-tertiary text-sm">No applications</Text>;
-
-        return (
-          <div className="space-y-2">
-            {apps.slice(0, 2).map((app) => (
-              <Card
-                key={app.id}
-                size="small"
-                className="border border-border"
-              >
-                <Text strong className="block text-sm">
-                  {app.internship?.title || "N/A"}
-                </Text>
-                <div className="flex items-center justify-between mt-1">
-                  <Tag color={statusColor(app)} size="small">
-                    {app.hasJoined ? "ACTIVE" : app.status}
-                  </Tag>
-                  {app.isSelected && !app.hasJoined && (
-                    <Tag color="gold" size="small">
-                      Selected
-                    </Tag>
-                  )}
-                </div>
-                <Text className="text-xs text-text-tertiary">
-                  Applied {dayjs(app.applicationDate).format("MMM DD")}
-                </Text>
-              </Card>
-            ))}
-            {apps.length > 2 && (
-              <Text className="text-xs text-primary">
-                +{apps.length - 2} more
-              </Text>
-            )}
-          </div>
-        );
-      },
+        if (r.activeInternship) {
+            return (
+                <Tag icon={<CheckCircleOutlined />} color="success">
+                    Active
+                </Tag>
+            );
+        }
+        if (r.hasPendingApps) {
+            return (
+                <Tag icon={<ClockCircleOutlined />} color="warning">
+                    Pending Approval
+                </Tag>
+            );
+        }
+        const appCount = r.internshipApplications?.length || 0;
+        if (appCount > 0) {
+            return <Tag color="blue">{appCount} Applications</Tag>;
+        }
+        return <Tag color="default" style={{ color: token.colorTextTertiary }}>Not Applied</Tag>;
+      }
+    },
+    {
+      title: "Actions",
+      key: "actions",
+      fixed: 'right',
+      width: 100,
+      render: (_, r) => (
+        <Button 
+            type="text" 
+            icon={<EyeOutlined />} 
+            onClick={() => {
+                setSelectedStudent(r);
+                setDetailModalVisible(true);
+            }}
+            style={{ color: token.colorPrimary }}
+        >
+            Details
+        </Button>
+      ),
     },
   ];
 
-  /* ------------------------------------------------------------------ */
-  /*  Render                                                            */
-  /* ------------------------------------------------------------------ */
-  if (loading) {
+  if (loading && students.length === 0) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <Spin size="small" />
-        <Text className="ml-4">Loading students…</Text>
+      <div className="flex justify-center items-center min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
+        <Spin size="large" tip="Loading students..." />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <div className="flex flex-col items-center justify-center min-h-screen p-4" style={{ backgroundColor: token.colorBgLayout }}>
         <Alert
-          title="Error Loading Assigned Students"
+          message="Error Loading Data"
           description={error}
           type="error"
           showIcon
           className="mb-4"
         />
-        <Button
-          type="primary"
-          onClick={forceRefresh}
-          icon={<ReloadOutlined />}
-        >
+        <Button type="primary" onClick={forceRefresh} icon={<ReloadOutlined />}>
           Retry
         </Button>
       </div>
@@ -172,66 +216,108 @@ const AssignedStudents = React.memo(() => {
   }
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
-          <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
-              <TeamOutlined className="text-lg" />
+    <div className="p-6 min-h-screen flex flex-col gap-6" style={{ backgroundColor: token.colorBgLayout }}>
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center border shadow-sm" 
+                 style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <TeamOutlined style={{ fontSize: '24px', color: token.colorPrimary }} />
             </div>
             <div>
-              <Title level={2} className="mb-0 text-text-primary text-2xl">
-                Assigned Students
-              </Title>
-              <Paragraph className="text-text-secondary text-sm mb-0">
-                You have <span className="font-semibold text-primary">{safeStudents.length}</span> students assigned for mentorship
-              </Paragraph>
+              <Title level={3} style={{ margin: 0 }}>Assigned Students</Title>
+              <Text type="secondary">Manage your mentorship students and track their progress</Text>
             </div>
-          </div>
+        </div>
+        <Button 
+            icon={<ReloadOutlined spin={loading} />} 
+            onClick={forceRefresh}
+            className="shadow-sm"
+        >
+            Refresh
+        </Button>
+      </div>
 
-          <div className="flex items-center gap-3">
-            <Button
-              icon={<ReloadOutlined spin={loading} />}
-              onClick={forceRefresh}
-              className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-text-secondary shadow-sm hover:bg-surface-hover hover:scale-105 active:scale-95 transition-all duration-200"
+      {/* Stats Row */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} sm={8}>
+            <Card size="small" bordered={false} className="shadow-sm">
+                <Statistic title="Total Students" value={stats.total} prefix={<TeamOutlined />} valueStyle={{ color: token.colorText }} />
+            </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+            <Card size="small" bordered={false} className="shadow-sm">
+                <Statistic title="Active Internships" value={stats.active} prefix={<CheckCircleOutlined />} valueStyle={{ color: token.colorSuccess }} />
+            </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+            <Card size="small" bordered={false} className="shadow-sm">
+                <Statistic title="Pending Review" value={stats.pending} prefix={<ClockCircleOutlined />} valueStyle={{ color: token.colorWarning }} />
+            </Card>
+        </Col>
+      </Row>
+
+      {/* Main Content Card */}
+      <Card 
+        bordered={false} 
+        className="shadow-sm flex-1 flex flex-col overflow-hidden" 
+        bodyStyle={{ padding: 0, flex: 1, display: 'flex', flexDirection: 'column' }}
+      >
+        {/* Toolbar */}
+        <div className="p-4 border-b flex flex-col md:flex-row gap-4 justify-between bg-white" style={{ borderColor: token.colorBorder }}>
+            <Input 
+                placeholder="Search students..." 
+                prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />} 
+                className="max-w-md"
+                value={searchText}
+                onChange={e => setSearchText(e.target.value)}
+                allowClear
             />
-          </div>
+            <div className="flex gap-2">
+                <Select 
+                    defaultValue="all" 
+                    style={{ width: 200 }} 
+                    onChange={setBranchFilter}
+                    value={branchFilter}
+                    suffixIcon={<FilterOutlined style={{ color: token.colorTextTertiary }} />}
+                >
+                    <Option value="all">All Branches</Option>
+                    {branches.map(b => <Option key={b} value={b}>{b}</Option>)}
+                </Select>
+            </div>
         </div>
 
-        {/* Table Container */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          {safeStudents.length > 0 ? (
-            <Table
-              columns={columns}
-              dataSource={safeStudents}
-              rowKey={(record) => record?.id || Math.random()}
-              pagination={{
+        {/* Table */}
+        <Table
+            columns={columns}
+            dataSource={filteredStudents}
+            rowKey="id"
+            loading={loading}
+            pagination={{
                 pageSize: 10,
                 showSizeChanger: true,
-                showQuickJumper: true,
-                className: "px-6 py-4",
-                showTotal: (total, range) =>
-                  `${range[0]}-${range[1]} of ${total} students`,
-              }}
-              size="middle"
-              scroll={{ x: "max-content" }}
-              className="custom-table"
-            />
-          ) : (
-            <div className="py-20 flex flex-col items-center justify-center">
-              <Empty
-                description={false}
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
-              <Title level={4} className="text-text-secondary mt-4 mb-1">No students assigned yet</Title>
-              <Text className="text-text-tertiary">
-                Students will appear here once they are assigned to you by the admin.
-              </Text>
-            </div>
-          )}
-        </Card>
-      </div>
+                showTotal: (total) => `Total ${total} students`
+            }}
+            scroll={{ x: 1000 }}
+            className="flex-1"
+        />
+      </Card>
+
+      {/* Student Detail Modal */}
+      <StudentDetailsModal
+        visible={detailModalVisible}
+        student={selectedStudent}
+        onClose={() => {
+            setDetailModalVisible(false);
+            setSelectedStudent(null);
+        }}
+        onScheduleVisit={() => {
+            // Optional: refresh after scheduling
+            forceRefresh();
+        }}
+        onRefresh={forceRefresh}
+        loading={loading}
+      />
     </div>
   );
 });

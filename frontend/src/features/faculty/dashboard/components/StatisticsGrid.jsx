@@ -6,10 +6,12 @@ import {
   VideoCameraOutlined,
   ExclamationCircleOutlined,
   EyeOutlined,
+  FileProtectOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import MonthlyReportsOverviewModal from './MonthlyReportsOverviewModal';
 import VisitLogsOverviewModal from './VisitLogsOverviewModal';
+import JoiningLettersOverviewModal from './JoiningLettersOverviewModal';
 
 // Compact Stat Card Component
 const StatCard = ({
@@ -84,9 +86,10 @@ const StatCard = ({
   );
 };
 
-const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitLogs = [] }) => {
+const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitLogs = [], joiningLetters = [], onRefresh }) => {
   const [monthlyReportsModalVisible, setMonthlyReportsModalVisible] = useState(false);
   const [visitLogsModalVisible, setVisitLogsModalVisible] = useState(false);
+  const [joiningLettersModalVisible, setJoiningLettersModalVisible] = useState(false);
 
   // Get current month start and formatted name
   const currentMonthStart = useMemo(() => dayjs().startOf('month'), []);
@@ -176,6 +179,11 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
   const pendingGrievances = stats.pendingGrievances || 0;
   const totalGrievances = stats.totalGrievances || 0;
 
+  // Joining letters: uploaded vs expected (active internships)
+  const pendingJoiningLetters = stats.pendingJoiningLetters ?? 0;
+  const expectedJoiningLetters = stats.totalJoiningLetters ?? 0;
+  const uploadedJoiningLetters = expectedJoiningLetters - pendingJoiningLetters;
+
   const cardConfigs = [
     {
       title: 'Assigned Students',
@@ -211,6 +219,18 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
       onViewMore: () => setVisitLogsModalVisible(true),
     },
     {
+      title: 'Joining Letters',
+      value: uploadedJoiningLetters,
+      secondaryValue: expectedJoiningLetters,
+      icon: <FileProtectOutlined />,
+      iconBgColor: '#fef3c7',
+      iconColor: '#f59e0b',
+      valueColor: '#f59e0b',
+      subtitle: pendingJoiningLetters === 0 ? 'All uploaded' : `${pendingJoiningLetters} pending`,
+      hasViewMore: true,
+      onViewMore: () => setJoiningLettersModalVisible(true),
+    },
+    {
       title: 'Grievances',
       value: pendingGrievances,
       secondaryValue: totalGrievances,
@@ -224,7 +244,7 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 !gap-3 !mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 !gap-3 !mb-6">
         {cardConfigs.map((card, idx) => (
           <StatCard key={idx} {...card} />
         ))}
@@ -244,6 +264,14 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
         onClose={() => setVisitLogsModalVisible(false)}
         students={students}
         visitLogs={visitLogs}
+      />
+
+      {/* Joining Letters Overview Modal */}
+      <JoiningLettersOverviewModal
+        visible={joiningLettersModalVisible}
+        onClose={() => setJoiningLettersModalVisible(false)}
+        letters={joiningLetters}
+        onRefresh={onRefresh}
       />
     </>
   );
