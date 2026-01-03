@@ -8,9 +8,6 @@ import {
   Spin,
   Empty,
   Tooltip,
-  Row,
-  Col,
-  Avatar,
 } from 'antd';
 import {
   UserOutlined,
@@ -68,10 +65,10 @@ const FacultyWorkloadCard = () => {
       key: 'name',
       render: (text, record) => (
         <div className="flex items-center gap-2">
-          <ProfileAvatar size="small" profileImage={record.profileImage} className="bg-blue-500" />
+          <ProfileAvatar size="small" profileImage={record.profileImage} className="bg-info-light" />
           <div>
             <div className="font-medium text-sm">{text}</div>
-            <div className="text-xs text-gray-500">{record.email}</div>
+            <div className="text-xs text-text-tertiary">{record.email}</div>
           </div>
         </div>
       ),
@@ -85,7 +82,7 @@ const FacultyWorkloadCard = () => {
       render: (count) => (
         <Tooltip title={`${count} students assigned`}>
           <div className="flex items-center justify-center gap-1">
-            <TeamOutlined className="text-blue-500" />
+            <TeamOutlined className="text-info" />
             <span className="font-semibold">{count || 0}</span>
           </div>
         </Tooltip>
@@ -101,7 +98,7 @@ const FacultyWorkloadCard = () => {
       render: (count) => (
         <Tooltip title={`${count} total visits`}>
           <div className="flex items-center justify-center gap-1">
-            <EyeOutlined className="text-green-500" />
+            <EyeOutlined className="text-success" />
             <span className="font-semibold">{count || 0}</span>
           </div>
         </Tooltip>
@@ -142,40 +139,32 @@ const FacultyWorkloadCard = () => {
           <span>Faculty Workload</span>
         </div>
       }
-      className="border-border shadow-sm rounded-xl"
+      className="border-border shadow-soft hover:shadow-soft-lg transition-all duration-300 rounded-xl bg-surface"
       styles={{ body: { padding: '16px' } }}
     >
       {/* Summary Stats */}
-      <Row gutter={[16, 16]} className="mb-4">
-        <Col span={6}>
-          <div className="text-center p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-            <div className="text-xl font-bold text-indigo-600">{totalFaculty}</div>
-            <div className="text-xs text-gray-500 uppercase font-semibold">Faculty</div>
-          </div>
-        </Col>
-        <Col span={6}>
-          <div className="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-            <div className="text-xl font-bold text-blue-600">{totalAssigned}</div>
-            <div className="text-xs text-gray-500 uppercase font-semibold">Assigned</div>
-          </div>
-        </Col>
-        <Col span={6}>
-          <div className="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
-            <div className="text-xl font-bold text-green-600">{totalVisits}</div>
-            <div className="text-xs text-gray-500 uppercase font-semibold">Visits</div>
-          </div>
-        </Col>
-        <Col span={6}>
-          <div className="text-center p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-            <div className="text-xl font-bold text-red-600">{overloadedCount}</div>
-            <div className="text-xs text-gray-500 uppercase font-semibold">Overloaded</div>
-          </div>
-        </Col>
-      </Row>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <div className="text-center p-2 bg-warning-light rounded-lg">
+          <div className="text-xl font-bold text-warning">{totalFaculty}</div>
+          <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Faculty</div>
+        </div>
+        <div className="text-center p-2 bg-info-light rounded-lg">
+          <div className="text-xl font-bold text-info">{totalAssigned}</div>
+          <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Assigned</div>
+        </div>
+        <div className="text-center p-2 bg-success-light rounded-lg">
+          <div className="text-xl font-bold text-success">{totalVisits}</div>
+          <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Visits</div>
+        </div>
+        <div className="text-center p-2 bg-error-light rounded-lg">
+          <div className="text-xl font-bold text-error">{overloadedCount}</div>
+          <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Overloaded</div>
+        </div>
+      </div>
 
       {/* Faculty Table */}
       {faculty.length > 0 ? (
-        <Table
+        <Table className="custom-table"
           dataSource={faculty}
           columns={columns}
           rowKey="id"
@@ -194,3 +183,4 @@ const FacultyWorkloadCard = () => {
 };
 
 export default FacultyWorkloadCard;
+

@@ -61,6 +61,16 @@ export const statusColors = {
     bg: 'var(--ant-info-color-bg)',
     border: 'var(--ant-info-color-border)',
   },
+  purple: {
+    light: 'var(--color-purple)',
+    bg: 'var(--color-purple-bg)',
+    border: 'var(--color-purple-border)',
+  },
+  cyan: {
+    light: 'var(--color-cyan)',
+    bg: 'var(--color-cyan-bg)',
+    border: 'var(--color-cyan-border)',
+  },
 };
 
 // Gradient configurations

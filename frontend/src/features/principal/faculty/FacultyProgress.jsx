@@ -478,7 +478,7 @@ const FacultyProgress = () => {
   // Render faculty sidebar
   const renderFacultySidebar = () => (
     <Card
-      className="rounded-xl border-border shadow-sm overflow-hidden"
+      className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
       styles={{ body: { padding: 0, height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' } }}
     >
       {/* Sidebar Header */}
@@ -615,7 +615,7 @@ const FacultyProgress = () => {
   // Render students tab
   const renderStudentsTab = () => (
     <Card
-      className="rounded-xl border-border shadow-sm overflow-hidden"
+      className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
       styles={{ body: { padding: 0 } }}
     >
       <div className="px-4 py-3 border-b border-border flex justify-between items-center">
@@ -682,7 +682,7 @@ const FacultyProgress = () => {
   const renderVisitsTab = () => (
     <div className="!space-y-4">
       {/* Filters Card */}
-      <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '12px 16px' } }}>
+      <Card className="rounded-xl border-border shadow-soft bg-surface" styles={{ body: { padding: '12px 16px' } }}>
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap gap-2 items-center">
             <Select
@@ -733,7 +733,7 @@ const FacultyProgress = () => {
 
       {/* Visit Summary */}
       {facultyDetails?.visitSummary && facultyDetails.visitSummary.length > 0 && (
-        <Card className="rounded-xl border-border shadow-sm" styles={{ body: { padding: '12px' } }}>
+        <Card className="rounded-xl border-border shadow-soft bg-surface" styles={{ body: { padding: '12px' } }}>
           <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3 block">
             <CalendarOutlined className="mr-1.5" />Monthly Summary
           </Text>
@@ -763,7 +763,7 @@ const FacultyProgress = () => {
       {/* Detailed Visits - Table or Calendar View */}
       {visitViewMode === 'table' ? (
         <Card
-          className="rounded-xl border-border shadow-sm overflow-hidden"
+          className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
           styles={{ body: { padding: 0 } }}
         >
           <div className="px-4 py-3 border-b border-border flex justify-between items-center">
@@ -846,7 +846,7 @@ const FacultyProgress = () => {
           />
         </Card>
       ) : (
-        <Card className="rounded-xl border-border shadow-sm">
+        <Card className="rounded-xl border-border shadow-soft bg-surface">
           <Calendar
             cellRender={(current, info) => {
               if (info.type === 'date') {
@@ -891,11 +891,11 @@ const FacultyProgress = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen bg-background-secondary">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
         <div>
-          <h1 className="text-lg font-semibold text-text-primary">Faculty Progress Tracking</h1>
+          <h1 className="text-lg font-bold text-text-primary tracking-tight">Faculty Progress Tracking</h1>
           <Text className="text-text-tertiary text-sm">Monitor faculty visits and student assignments</Text>
         </div>
         <Button
@@ -926,7 +926,7 @@ const FacultyProgress = () => {
         <Col xs={24} lg={18}>
           {selectedFaculty ? (
             detailsLoading && !facultyDetails ? (
-              <Card className="rounded-2xl border-border shadow-sm">
+              <Card className="rounded-2xl border-border shadow-soft bg-surface">
                 <Skeleton active paragraph={{ rows: 8 }} />
               </Card>
             ) : (
@@ -942,7 +942,7 @@ const FacultyProgress = () => {
               </div>
             )
           ) : (
-            <Card className="rounded-2xl border-border shadow-sm">
+            <Card className="rounded-2xl border-border shadow-soft bg-surface">
               <Empty
                 description="Select a faculty member to view details"
                 image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -1201,3 +1201,4 @@ const FacultyProgress = () => {
 };
 
 export default FacultyProgress;
+

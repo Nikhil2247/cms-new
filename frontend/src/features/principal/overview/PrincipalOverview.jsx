@@ -220,7 +220,7 @@ const PrincipalOverview = () => {
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div className="flex items-center">
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm mr-3">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border shadow-sm text-primary shadow-sm mr-3">
               <BankOutlined className="text-lg" />
             </div>
             <div>
@@ -255,7 +255,7 @@ const PrincipalOverview = () => {
           <div className="lg:col-span-3 space-y-6">
             {/* Action Items */}
             <Card
-              className="border-border shadow-sm rounded-xl"
+              className="border-border shadow-soft rounded-xl bg-surface"
               styles={{ body: { padding: '20px' } }}
               loading={alertsEnhancedLoading}
             >
@@ -281,12 +281,12 @@ const PrincipalOverview = () => {
                       className={`text-center p-4 rounded-xl transition-all ${
                         pendingItems.reports > 0
                           ? 'bg-warning/10 cursor-pointer hover:bg-warning/20 hover:shadow-sm'
-                          : 'bg-gray-50'
+                          : 'bg-background-tertiary'
                       }`}
                       onClick={() => handleActionItemClick('reports', 'Overdue Reports', alertsEnhanced?.alerts?.overdueReports)}
                     >
-                      <FileTextOutlined className={`text-2xl mb-2 ${pendingItems.reports > 0 ? 'text-warning' : 'text-gray-400'}`} />
-                      <div className={`text-2xl font-bold ${pendingItems.reports > 0 ? 'text-warning' : 'text-gray-400'}`}>
+                      <FileTextOutlined className={`text-2xl mb-2 ${pendingItems.reports > 0 ? 'text-warning' : 'text-text-tertiary'}`} />
+                      <div className={`text-2xl font-bold ${pendingItems.reports > 0 ? 'text-warning' : 'text-text-tertiary'}`}>
                         {pendingItems.reports}
                       </div>
                       <div className="text-xs text-text-secondary font-medium">Overdue Reports</div>
@@ -298,12 +298,12 @@ const PrincipalOverview = () => {
                       className={`text-center p-4 rounded-xl transition-all ${
                         pendingItems.visits > 0
                           ? 'bg-info/10 cursor-pointer hover:bg-info/20 hover:shadow-sm'
-                          : 'bg-gray-50'
+                          : 'bg-background-tertiary'
                       }`}
                       onClick={() => handleActionItemClick('visits', 'Missing Faculty Visits', alertsEnhanced?.alerts?.missingVisits)}
                     >
-                      <EyeOutlined className={`text-2xl mb-2 ${pendingItems.visits > 0 ? 'text-info' : 'text-gray-400'}`} />
-                      <div className={`text-2xl font-bold ${pendingItems.visits > 0 ? 'text-info' : 'text-gray-400'}`}>
+                      <EyeOutlined className={`text-2xl mb-2 ${pendingItems.visits > 0 ? 'text-info' : 'text-text-tertiary'}`} />
+                      <div className={`text-2xl font-bold ${pendingItems.visits > 0 ? 'text-info' : 'text-text-tertiary'}`}>
                         {pendingItems.visits}
                       </div>
                       <div className="text-xs text-text-secondary font-medium">Visits Due</div>
@@ -315,12 +315,12 @@ const PrincipalOverview = () => {
                       className={`text-center p-4 rounded-xl transition-all ${
                         pendingItems.grievances > 0
                           ? 'bg-error/10 cursor-pointer hover:bg-error/20 hover:shadow-sm'
-                          : 'bg-gray-50'
+                          : 'bg-background-tertiary'
                       }`}
                       onClick={() => handleActionItemClick('grievances', 'Urgent Grievances', alertsEnhanced?.alerts?.urgentGrievances)}
                     >
-                      <ExclamationCircleOutlined className={`text-2xl mb-2 ${pendingItems.grievances > 0 ? 'text-error' : 'text-gray-400'}`} />
-                      <div className={`text-2xl font-bold ${pendingItems.grievances > 0 ? 'text-error' : 'text-gray-400'}`}>
+                      <ExclamationCircleOutlined className={`text-2xl mb-2 ${pendingItems.grievances > 0 ? 'text-error' : 'text-text-tertiary'}`} />
+                      <div className={`text-2xl font-bold ${pendingItems.grievances > 0 ? 'text-error' : 'text-text-tertiary'}`}>
                         {pendingItems.grievances}
                       </div>
                       <div className="text-xs text-text-secondary font-medium">Grievances</div>
@@ -332,12 +332,12 @@ const PrincipalOverview = () => {
                       className={`text-center p-4 rounded-xl transition-all ${
                         pendingItems.joiningLetters > 0
                           ? 'bg-purple-500/10 cursor-pointer hover:bg-purple-500/20 hover:shadow-sm'
-                          : 'bg-gray-50'
+                          : 'bg-background-tertiary'
                       }`}
                       onClick={() => handleActionItemClick('joiningLetters', 'Pending Joining Letters', alertsEnhanced?.alerts?.pendingJoiningLetters)}
                     >
-                      <FileTextOutlined className={`text-2xl mb-2 ${pendingItems.joiningLetters > 0 ? 'text-purple-600' : 'text-gray-400'}`} />
-                      <div className={`text-2xl font-bold ${pendingItems.joiningLetters > 0 ? 'text-purple-600' : 'text-gray-400'}`}>
+                      <FileTextOutlined className={`text-2xl mb-2 ${pendingItems.joiningLetters > 0 ? 'text-purple-600' : 'text-text-tertiary'}`} />
+                      <div className={`text-2xl font-bold ${pendingItems.joiningLetters > 0 ? 'text-purple-600' : 'text-text-tertiary'}`}>
                         {pendingItems.joiningLetters}
                       </div>
                       <div className="text-xs text-text-secondary font-medium">Joining Letters</div>
@@ -349,7 +349,7 @@ const PrincipalOverview = () => {
 
             {/* Institution Health */}
             <Card
-              className="border-border shadow-sm rounded-xl"
+              className="border-border shadow-soft rounded-xl bg-surface"
               styles={{ body: { padding: '20px' } }}
               loading={dashboardLoading || mentorCoverageLoading}
             >
@@ -410,7 +410,7 @@ const PrincipalOverview = () => {
                   <Button
                     type="default"
                     block
-                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
+                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4 bg-surface hover:bg-surface-hover"
                     onClick={() => navigate('/app/dashboard')}
                   >
                     <DashboardOutlined className="text-lg" />
@@ -421,7 +421,7 @@ const PrincipalOverview = () => {
                   <Button
                     type="default"
                     block
-                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
+                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4 bg-surface hover:bg-surface-hover"
                     onClick={() => navigate('/app/mentors')}
                   >
                     <SolutionOutlined className="text-lg" />
@@ -432,7 +432,7 @@ const PrincipalOverview = () => {
                   <Button
                     type="default"
                     block
-                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
+                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4 bg-surface hover:bg-surface-hover"
                     onClick={() => navigate('/app/internships')}
                   >
                     <LaptopOutlined className="text-lg" />
@@ -443,7 +443,7 @@ const PrincipalOverview = () => {
                   <Button
                     type="default"
                     block
-                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4"
+                    className="h-12 rounded-lg border-border hover:border-primary hover:text-primary flex items-center justify-start gap-3 px-4 bg-surface hover:bg-surface-hover"
                     onClick={() => navigate('/app/faculty-progress')}
                   >
                     <CarOutlined className="text-lg" />
@@ -464,7 +464,7 @@ const PrincipalOverview = () => {
         footer={null}
         width={700}
       >
-        <Table
+        <Table className="custom-table"
           dataSource={alertDetailModal.data}
           rowKey={(record) => record.studentId || record.grievanceId || record.id || Math.random()}
           pagination={{ pageSize: 10 }}
@@ -477,3 +477,4 @@ const PrincipalOverview = () => {
 };
 
 export default React.memo(PrincipalOverview);
+

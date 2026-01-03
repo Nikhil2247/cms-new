@@ -5,6 +5,7 @@ import { createStudent, updateStudent, fetchStudents } from '../store/principalS
 import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
+import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -39,29 +40,54 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   }, [dispatch, studentId, student, open]);
 
   useEffect(() => {
-    if (open && student) {
-      let profileImageValue = undefined;
-      if (student.profileImage) {
-        if (typeof student.profileImage === 'string') {
-          profileImageValue = [{
-            uid: '-1',
-            name: 'Profile Image',
-            status: 'done',
-            url: student.profileImage,
-          }];
-        } else if (Array.isArray(student.profileImage)) {
-          profileImageValue = student.profileImage;
-        }
-      }
+    const setFormValues = async () => {
+      if (open && student) {
+        let profileImageValue = undefined;
+        if (student.profileImage) {
+          if (typeof student.profileImage === 'string') {
+            let urlToDisplay = student.profileImage;
+            
+            try {
+              // Logic to resolve presigned URL, similar to ProfileAvatar
+              if (urlToDisplay.startsWith('http')) {
+                if (urlToDisplay.includes('minio') || urlToDisplay.includes('127.0.0.1:9000') || urlToDisplay.includes('cms-uploads')) {
+                  urlToDisplay = await getPresignedUrl(urlToDisplay);
+                }
+              } else {
+                // Relative path
+                const fullUrl = getImageUrl(urlToDisplay);
+                urlToDisplay = await getPresignedUrl(fullUrl);
+              }
+            } catch (err) {
+              console.error('Failed to resolve profile image URL:', err);
+              // Fallback to basic URL generation if presigning fails
+              if (!urlToDisplay.startsWith('http')) {
+                urlToDisplay = getImageUrl(urlToDisplay);
+              }
+            }
 
-      form.setFieldsValue({
-        ...student,
-        dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
-        profileImage: profileImageValue,
-      });
-    } else if (open && !isEditMode) {
-      form.resetFields();
-    }
+            profileImageValue = [{
+              uid: '-1',
+              name: 'Profile Image',
+              status: 'done',
+              url: urlToDisplay,
+            }];
+          } else if (Array.isArray(student.profileImage)) {
+            profileImageValue = student.profileImage;
+          }
+        }
+
+        form.setFieldsValue({
+          ...student,
+          dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
+          profileImage: profileImageValue,
+        });
+      } else if (open && !isEditMode) {
+        form.resetFields();
+      }
+    };
+
+    setFormValues();
   }, [student, form, open, isEditMode]);
 
   const handleClose = () => {
@@ -277,17 +303,17 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 getValueFromEvent={normFile}
               >
                 <Upload beforeUpload={() => false} maxCount={1} accept="image/*">
-                  <Button icon={<UploadOutlined />}>Click to Upload</Button>
+                  <Button icon={<UploadOutlined />} className="rounded-lg">Click to Upload</Button>
                 </Upload>
               </Form.Item>
             </Col>
           </Row>
 
           <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button onClick={handleClose}>
+            <Button onClick={handleClose} className="rounded-lg">
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />} className="rounded-lg shadow-md shadow-primary/20">
               {isEditMode ? 'Update Student' : 'Create Student'}
             </Button>
           </div>
@@ -298,3 +324,4 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
 };
 
 export default StudentModal;
+

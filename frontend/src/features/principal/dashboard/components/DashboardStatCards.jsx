@@ -21,35 +21,34 @@ const DashboardStatCard = ({
   secondaryValue,
   subtitle,
   icon,
-  iconBgColor,
-  iconColor,
-  valueColor,
+  iconBgClass,
+  iconColorClass,
+  valueColorClass,
   hasViewMore = false,
   onViewMore,
   isWarning = false,
 }) => {
   return (
     <Card
-      className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
+      className="h-full border border-border shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
       styles={{ body: { padding: '20px 16px' } }}
     >
       <div className="flex flex-col items-center text-center">
         {/* Top row: Icon centered, Eye on right */}
         <div className="w-full flex justify-center relative mb-3">
           <div
-            className="w-14 h-14 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: iconBgColor }}
+            className={`w-14 h-14 rounded-full flex items-center justify-center ${iconBgClass}`}
+            
           >
             {React.cloneElement(icon, {
-              style: { fontSize: '24px', color: iconColor },
+              className: `text-2xl ${iconColorClass}`,
             })}
           </div>
           {hasViewMore && (
             <Tooltip title="View Details">
               <button
                 onClick={onViewMore}
-                className="absolute right-0 top-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors cursor-pointer border-0 bg-transparent"
-                style={{ color: isWarning ? '#ef4444' : '#9ca3af' }}
+                className={`absolute right-0 top-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors cursor-pointer border-0 bg-transparent ${isWarning ? "text-error" : "text-text-tertiary"}`}
               >
                 <EyeOutlined style={{ fontSize: '14px' }} />
               </button>
@@ -58,15 +57,15 @@ const DashboardStatCard = ({
         </div>
 
         {/* Title */}
-        <Text className="text-sm font-medium text-gray-700 mb-2">{title}</Text>
+        <Text className="text-sm font-medium text-text-secondary mb-2">{title}</Text>
 
         {/* Value */}
         <div className="flex items-baseline justify-center gap-1 mb-1">
           <span
+            className={`${valueColorClass}`}
             style={{
               fontSize: '32px',
               fontWeight: 700,
-              color: valueColor,
               lineHeight: 1,
             }}
           >
@@ -74,8 +73,8 @@ const DashboardStatCard = ({
           </span>
           {secondaryValue !== undefined && (
             <>
-              <span style={{ fontSize: '20px', color: '#d1d5db', fontWeight: 500 }}>/</span>
-              <span style={{ fontSize: '20px', fontWeight: 600, color: '#6b7280' }}>
+              <span className="text-text-tertiary opacity-40 font-medium" style={{ fontSize: '20px' }}>/</span>
+              <span className="text-text-tertiary font-semibold" style={{ fontSize: '20px' }}>
                 {secondaryValue}
               </span>
             </>
@@ -84,7 +83,7 @@ const DashboardStatCard = ({
 
         {/* Subtitle */}
         {subtitle && (
-          <Text className="text-xs text-gray-500">{subtitle}</Text>
+          <Text className="text-xs text-text-tertiary">{subtitle}</Text>
         )}
       </div>
     </Card>
@@ -109,9 +108,9 @@ export const BasicStatisticsGrid = ({
       value: totalStudents,
       subtitle: 'Overall enrolled strength',
       icon: <TeamOutlined />,
-      iconBgColor: '#dbeafe',
-      iconColor: '#3b82f6',
-      valueColor: '#3b82f6',
+      iconBgClass: 'bg-info-light',
+      iconColorClass: '',
+      valueColorClass: 'text-info',
       hasViewMore: true,
       onViewMore: onViewStudents,
     },
@@ -120,9 +119,9 @@ export const BasicStatisticsGrid = ({
       value: totalMentors,
       subtitle: 'Active mentor profiles',
       icon: <UserOutlined />,
-      iconBgColor: '#dcfce7',
-      iconColor: '#22c55e',
-      valueColor: '#22c55e',
+      iconBgClass: 'bg-success-light',
+      iconColorClass: '',
+      valueColorClass: 'text-success',
       hasViewMore: true,
       onViewMore: onViewMentors,
     },
@@ -131,9 +130,9 @@ export const BasicStatisticsGrid = ({
       value: unassignedStudents,
       subtitle: 'Awaiting mentor assignment',
       icon: <WarningOutlined />,
-      iconBgColor: '#fee2e2',
-      iconColor: '#ef4444',
-      valueColor: '#ef4444',
+      iconBgClass: 'bg-error-light',
+      iconColorClass: '',
+      valueColorClass: 'text-error',
       hasViewMore: true,
       onViewMore: onViewUnassigned,
       isWarning: true,
@@ -143,9 +142,9 @@ export const BasicStatisticsGrid = ({
       value: partnerCompanies,
       subtitle: 'Active industry engagements',
       icon: <BankOutlined />,
-      iconBgColor: '#f3e8ff',
-      iconColor: '#9333ea',
-      valueColor: '#9333ea',
+      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+      iconColorClass: '',
+      valueColorClass: 'text-purple-600 dark:text-purple-400',
       hasViewMore: true,
       onViewMore: onViewCompanies,
     },
@@ -155,7 +154,7 @@ export const BasicStatisticsGrid = ({
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
-          <Card key={idx} className="h-32 border-gray-100 shadow-sm rounded-xl" loading />
+          <Card key={idx} className="h-32 border-border shadow-sm rounded-xl bg-surface" loading />
         ))}
       </div>
     );
@@ -197,15 +196,15 @@ export const SubmissionStatusGrid = ({
       subtitle: (
         <div className="flex flex-col items-center gap-0.5">
           {monthlyReports.pending > 0 && (
-            <span className="text-red-500 font-medium">{monthlyReports.pending} pending</span>
+            <span className="text-error font-medium">{monthlyReports.pending} pending</span>
           )}
           <span>{completionPercent(monthlyReports.submitted, monthlyReports.total)}% completion</span>
         </div>
       ),
       icon: <BarChartOutlined />,
-      iconBgColor: '#f3e8ff',
-      iconColor: '#9333ea',
-      valueColor: '#9333ea',
+      iconBgClass: 'bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400',
+      iconColorClass: '',
+      valueColorClass: 'text-purple-600 dark:text-purple-400',
       hasViewMore: true,
       onViewMore: onViewReports,
     },
@@ -215,9 +214,9 @@ export const SubmissionStatusGrid = ({
       secondaryValue: joiningLetters.total,
       subtitle: `${joiningLetters.pendingPercent}% pending`,
       icon: <FileTextOutlined />,
-      iconBgColor: '#dbeafe',
-      iconColor: '#3b82f6',
-      valueColor: '#3b82f6',
+      iconBgClass: 'bg-info-light',
+      iconColorClass: '',
+      valueColorClass: 'text-info',
       hasViewMore: true,
       onViewMore: onViewJoiningLetters,
     },
@@ -228,15 +227,15 @@ export const SubmissionStatusGrid = ({
       subtitle: (
         <div className="flex flex-col items-center gap-0.5">
           {facultyVisits.pending > 0 && (
-            <span className="text-red-500 font-medium">{facultyVisits.pending} pending</span>
+            <span className="text-error font-medium">{facultyVisits.pending} pending</span>
           )}
           <span>{completionPercent(facultyVisits.completed, facultyVisits.total)}% completion</span>
         </div>
       ),
       icon: <CheckCircleOutlined />,
-      iconBgColor: '#fef9c3',
-      iconColor: '#eab308',
-      valueColor: '#eab308',
+      iconBgClass: 'bg-warning-light',
+      iconColorClass: '',
+      valueColorClass: 'text-warning',
       hasViewMore: true,
       onViewMore: onViewVisits,
     },
@@ -245,14 +244,14 @@ export const SubmissionStatusGrid = ({
       value: (
         <span>
           {grievances.total}
-          <span className="text-lg text-gray-400 ml-1">({grievances.unaddressed})</span>
+          <span className="text-lg text-text-tertiary ml-1">({grievances.unaddressed})</span>
         </span>
       ),
       subtitle: 'Total (Unaddressed)',
       icon: <ExclamationCircleOutlined />,
-      iconBgColor: '#fee2e2',
-      iconColor: '#ef4444',
-      valueColor: '#ef4444',
+      iconBgClass: 'bg-error-light',
+      iconColorClass: '',
+      valueColorClass: 'text-error',
       hasViewMore: true,
       onViewMore: onViewGrievances,
       isWarning: grievances.unaddressed > 0,
@@ -263,7 +262,7 @@ export const SubmissionStatusGrid = ({
     return (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
-          <Card key={idx} className="h-40 border-gray-100 shadow-sm rounded-xl" loading />
+          <Card key={idx} className="h-40 border-border shadow-sm rounded-xl bg-surface" loading />
         ))}
       </div>
     );
@@ -279,3 +278,5 @@ export const SubmissionStatusGrid = ({
 };
 
 export default DashboardStatCard;
+
+

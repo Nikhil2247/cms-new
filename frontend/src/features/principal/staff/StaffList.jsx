@@ -312,10 +312,10 @@ const StaffList = () => {
   }, []);
 
   return (
-    <div className="p-6 !space-y-4">
+    <div className="p-4 md:p-6 !space-y-4 md:space-y-6 bg-background-secondary min-h-screen">
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-text-primary">Staff Members</h1>
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Staff Members</h1>
           {lastFetched && (
             <span className="text-xs text-text-tertiary">
               Updated {new Date(lastFetched).toLocaleTimeString()}
@@ -335,14 +335,14 @@ const StaffList = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
-            className="rounded-lg shadow-md shadow-primary/20"
+            className="rounded-lg shadow-md shadow-primary/20 hover:shadow-lg transition-all"
           >
             Add Staff
           </Button>
         </div>
       </div>
 
-      <Card className="rounded-xl border-border shadow-sm">
+      <Card className="rounded-xl border-border shadow-soft bg-surface p-4">
         <div className="flex gap-4 flex-wrap">
           <Search
             placeholder="Search by name or employee ID"
@@ -374,7 +374,7 @@ const StaffList = () => {
         </div>
       </Card>
 
-      <div className="bg-background rounded-xl  border-border shadow-sm overflow-hidden">
+      <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
         <DataTable
           columns={columns}
           dataSource={list}

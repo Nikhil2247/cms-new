@@ -196,10 +196,10 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
           </Row>
 
           <div className="flex justify-end gap-3 pt-4 border-t mt-4">
-            <Button onClick={handleClose}>
+            <Button onClick={handleClose} className="rounded-lg">
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />} className="rounded-lg shadow-md shadow-primary/20">
               {isEditMode ? 'Update Staff' : 'Create Staff'}
             </Button>
           </div>
@@ -210,3 +210,4 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
 };
 
 export default StaffModal;
+

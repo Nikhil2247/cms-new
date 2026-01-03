@@ -187,12 +187,10 @@ const JoiningLettersModal = ({
       align: 'center',
       render: (count) => (
         <Tag
+          className={count > 0 ? 'bg-error-light' : 'bg-success-light'}
           style={{
             minWidth: '40px',
             textAlign: 'center',
-            backgroundColor: count > 0 ? '#fee2e2' : '#dcfce7',
-            color: count > 0 ? '#dc2626' : '#16a34a',
-            borderColor: count > 0 ? '#fecaca' : '#bbf7d0',
           }}
         >
           {count}
@@ -211,7 +209,7 @@ const JoiningLettersModal = ({
         <button
           key="close"
           onClick={onClose}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+          className="px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded transition-colors"
         >
           Close
         </button>
@@ -221,8 +219,7 @@ const JoiningLettersModal = ({
     >
       {/* Summary Bar */}
       <div
-        className="flex items-center justify-between p-4 mb-6 rounded-lg"
-        style={{ backgroundColor: '#eff6ff' }}
+        className="flex items-center justify-between p-4 mb-6 rounded-lg bg-info-light border border-blue-100 dark:border-blue-800/20"
       >
         <div className="flex items-center gap-2">
           <Text strong>Total Students:</Text>
@@ -252,7 +249,7 @@ const JoiningLettersModal = ({
           <Spin size="large" />
         </div>
       ) : facultyLetterData.length > 0 ? (
-        <Table
+        <Table className="custom-table"
           dataSource={facultyLetterData}
           columns={columns}
           rowKey="id"
@@ -275,3 +272,4 @@ const JoiningLettersModal = ({
 };
 
 export default JoiningLettersModal;
+

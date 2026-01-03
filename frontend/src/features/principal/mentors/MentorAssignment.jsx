@@ -604,41 +604,36 @@ const MentorAssignment = () => {
   const StatCard = ({ title, value, secondaryValue, subtitle, icon, iconBgColor, iconColor, valueColor, tooltip }) => {
     const cardContent = (
       <Card
-        className="h-full border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 rounded-xl"
+        className="h-full border-border shadow-soft hover:shadow-soft-lg transition-all duration-300 rounded-xl bg-surface"
         styles={{ body: { padding: '16px 12px' } }}
       >
         <div className="flex flex-col items-center text-center">
           <div
-            className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
-            style={{ backgroundColor: iconBgColor }}
+            // className="w-12 h-12 rounded-full flex items-center justify-center mb-2"
+            className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${iconBgColor}`}
           >
             {React.cloneElement(icon, {
-              style: { fontSize: '20px', color: iconColor },
+              className: `text-xl ${iconColor}`,
             })}
           </div>
-          <Text className="text-xs font-medium text-gray-600 mb-1">{title}</Text>
+          <Text className="text-xs font-medium text-text-secondary mb-1">{title}</Text>
           <div className="flex items-baseline justify-center gap-1">
             <span
-              style={{
-                fontSize: '28px',
-                fontWeight: 700,
-                color: valueColor,
-                lineHeight: 1,
-              }}
+              className={`text-3xl font-bold leading-none ${valueColor}`}
             >
               {value}
             </span>
             {secondaryValue !== undefined && (
               <>
-                <span style={{ fontSize: '16px', color: '#d1d5db', fontWeight: 500 }}>/</span>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#6b7280' }}>
+                <span className="text-text-tertiary opacity-40 font-medium" style={{ fontSize: '16px' }}>/</span>
+                <span className="text-text-tertiary font-semibold" style={{ fontSize: '16px' }}>
                   {secondaryValue}
                 </span>
               </>
             )}
           </div>
           {subtitle && (
-            <Text className="text-[10px] text-gray-400 mt-1">{subtitle}</Text>
+            <Text className="text-[10px] text-text-tertiary mt-1">{subtitle}</Text>
           )}
         </div>
       </Card>
@@ -653,9 +648,9 @@ const MentorAssignment = () => {
       value: stats?.mentors?.total || 0,
       subtitle: 'All mentor profiles',
       icon: <TeamOutlined />,
-      iconBgColor: '#dbeafe',
-      iconColor: '#3b82f6',
-      valueColor: '#3b82f6',
+      iconBgColor: 'bg-info-light',
+      iconColor: '',
+      valueColor: 'text-info',
     },
     {
       title: 'Active Mentors',
@@ -663,18 +658,18 @@ const MentorAssignment = () => {
       secondaryValue: stats?.mentors?.total || 0,
       subtitle: 'Currently assigned',
       icon: <CheckCircleOutlined />,
-      iconBgColor: '#dcfce7',
-      iconColor: '#22c55e',
-      valueColor: '#22c55e',
+      iconBgColor: 'bg-success-light',
+      iconColor: '',
+      valueColor: 'text-success',
     },
     {
       title: 'External Mentors',
       value: stats?.mentors?.external || 0,
       subtitle: 'From other institutions',
       icon: <GlobalOutlined />,
-      iconBgColor: '#f3e8ff',
-      iconColor: '#9333ea',
-      valueColor: stats?.mentors?.external > 0 ? '#9333ea' : '#6b7280',
+      iconBgColor: 'bg-warning-light',
+      iconColor: '',
+      valueColor: stats?.mentors?.external > 0 ? 'text-purple-600 dark:text-purple-400' : 'text-text-tertiary',
       tooltip: 'Mentors from other institutions assigned to your students',
     },
     {
@@ -683,18 +678,18 @@ const MentorAssignment = () => {
       secondaryValue: stats?.students?.total || 0,
       subtitle: 'Mentor assigned',
       icon: <UserOutlined />,
-      iconBgColor: '#dcfce7',
-      iconColor: '#22c55e',
-      valueColor: '#22c55e',
+      iconBgColor: 'bg-success-light',
+      iconColor: '',
+      valueColor: 'text-success',
     },
     {
       title: 'Unassigned Students',
       value: stats?.students?.withoutMentor || 0,
       subtitle: 'Awaiting assignment',
       icon: <WarningOutlined />,
-      iconBgColor: '#fee2e2',
-      iconColor: '#ef4444',
-      valueColor: stats?.students?.withoutMentor > 0 ? '#ef4444' : '#22c55e',
+      iconBgColor: 'bg-error-light',
+      iconColor: '',
+      valueColor: stats?.students?.withoutMentor > 0 ? 'text-error' : 'text-success',
     },
   ];
 
@@ -737,14 +732,14 @@ const MentorAssignment = () => {
             </Button>
           </Space>
         }
-        className="rounded-2xl  shadow-sm overflow-hidden"
+        className="rounded-2xl shadow-soft border-border bg-surface overflow-hidden"
       >
         <div className="mb-8">
           <h3 className="text-xs uppercase tracking-widest text-text-tertiary font-bold mb-4 flex items-center gap-2">
             <TeamOutlined />
             Current Mentor Assignments
           </h3>
-          <div className="bg-background rounded-xl  overflow-hidden">
+          <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
             <Table
               columns={assignmentColumns}
               dataSource={uniqueMentorAssignments}
@@ -808,7 +803,7 @@ const MentorAssignment = () => {
             </div>
           </div>
 
-          <div className="bg-background rounded-xl  overflow-hidden shadow-sm">
+          <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
             <Table
               rowSelection={rowSelection}
               columns={studentColumns}
@@ -947,7 +942,7 @@ const MentorAssignment = () => {
       >
         {editingStudent && (
           <Form form={editForm} layout="vertical" className="mt-4">
-            <div className="mb-6 p-5 bg-background-tertiary/50 rounded-2xl border /50">
+            <div className="mb-6 p-5 bg-background-tertiary/50 rounded-2xl border border-border/50">
               <Row gutter={16}>
                 <Col span={12}>
                   <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Student</Text>
@@ -1009,3 +1004,4 @@ const MentorAssignment = () => {
 };
 
 export default MentorAssignment;
+

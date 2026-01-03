@@ -76,7 +76,7 @@ const getCurrentUser = () => {
 const SectionTitle = ({ title }) => (
   <div className="flex items-center gap-2 mb-4">
     <div className="w-1 h-5 bg-primary rounded-full" />
-    <Title level={5} className="!mb-0 text-gray-800">{title}</Title>
+    <Title level={5} className="!mb-0 text-text-primary">{title}</Title>
   </div>
 );
 
@@ -530,7 +530,7 @@ const PrincipalDashboard = () => {
           open={studentsModal.visible}
           onCancel={() => setStudentsModal({ visible: false })}
           footer={
-            <Button onClick={() => navigate('/principal/students')}>
+            <Button onClick={() => navigate('/app/students')}>
               View All Students
             </Button>
           }
@@ -609,24 +609,24 @@ const PrincipalDashboard = () => {
           open={mentorsModal.visible}
           onCancel={() => setMentorsModal({ visible: false })}
           footer={
-            <Button onClick={() => navigate('/principal/staff')}>
+            <Button onClick={() => navigate('/app/staff')}>
               View All Staff
             </Button>
           }
           width={800}
         >
           <div className="mb-4 grid grid-cols-3 gap-4">
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-xl font-bold text-green-600">{mentorCoverage?.totalMentors || 0}</div>
-              <div className="text-xs text-gray-500">Total Mentors</div>
+            <div className="text-center p-3 bg-success-light rounded-lg">
+              <div className="text-xl font-bold text-success">{mentorCoverage?.totalMentors || 0}</div>
+              <div className="text-xs text-text-tertiary">Total Mentors</div>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-xl font-bold text-blue-600">{mentorCoverage?.studentsWithMentors || 0}</div>
-              <div className="text-xs text-gray-500">Students Assigned</div>
+            <div className="text-center p-3 bg-info-light rounded-lg">
+              <div className="text-xl font-bold text-info">{mentorCoverage?.studentsWithMentors || 0}</div>
+              <div className="text-xs text-text-tertiary">Students Assigned</div>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-xl font-bold text-purple-600">{mentorCoverage?.coveragePercentage || 0}%</div>
-              <div className="text-xs text-gray-500">Coverage Rate</div>
+            <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <div className="text-xl font-bold text-purple-600 dark:text-purple-400">{mentorCoverage?.coveragePercentage || 0}%</div>
+              <div className="text-xs text-text-tertiary">Coverage Rate</div>
             </div>
           </div>
           <Table
@@ -689,43 +689,43 @@ const PrincipalDashboard = () => {
           open={companiesModal.visible}
           onCancel={() => setCompaniesModal({ visible: false })}
           footer={
-            <Button onClick={() => { setCompaniesModal({ visible: false }); navigate('/principal/internships'); }}>
+            <Button onClick={() => { setCompaniesModal({ visible: false }); navigate('/app/internships'); }}>
               View All Internships
             </Button>
           }
           width={900}
         >
           <div className="mb-4 grid grid-cols-4 gap-3">
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-xl font-bold text-blue-600">
+            <div className="text-center p-3 bg-info-light rounded-lg">
+              <div className="text-xl font-bold text-info">
                 {internshipStats?.totalUniqueCompanies || 0}
               </div>
-              <div className="text-xs text-gray-500">Total Companies</div>
+              <div className="text-xs text-text-tertiary">Total Companies</div>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-xl font-bold text-green-600">
+            <div className="text-center p-3 bg-success-light rounded-lg">
+              <div className="text-xl font-bold text-success">
                 {internshipStats?.approved || 0}
               </div>
-              <div className="text-xs text-gray-500">Approved</div>
+              <div className="text-xs text-text-tertiary">Approved</div>
             </div>
-            <div className="text-center p-3 bg-purple-50 rounded-lg">
-              <div className="text-xl font-bold text-purple-600">
+            <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+              <div className="text-xl font-bold text-purple-600 dark:text-purple-400">
                 {internshipStats?.total || 0}
               </div>
-              <div className="text-xs text-gray-500">Total Applications</div>
+              <div className="text-xs text-text-tertiary">Total Applications</div>
             </div>
-            <div className="text-center p-3 bg-orange-50 rounded-lg">
-              <div className="text-xl font-bold text-orange-600">
+            <div className="text-center p-3 bg-warning-light rounded-lg">
+              <div className="text-xl font-bold text-warning">
                 {internshipStats?.activeRate || 0}%
               </div>
-              <div className="text-xs text-gray-500">Active Rate</div>
+              <div className="text-xs text-text-tertiary">Active Rate</div>
             </div>
           </div>
           
           {internshipStatsLoading && (
             <div className="text-center py-4">
               <Spin size="small" />
-              <Text className="ml-2 text-xs text-gray-500">Loading companies data...</Text>
+              <Text className="ml-2 text-xs text-text-tertiary">Loading companies data...</Text>
             </div>
           )}
 
@@ -805,7 +805,7 @@ const PrincipalDashboard = () => {
                   description={
                     <div className="py-4">
                       <Text type="secondary">No partner companies found</Text>
-                      <div className="mt-2 text-xs text-gray-400">
+                      <div className="mt-2 text-xs text-text-tertiary">
                         Companies will appear here once students apply for internships
                       </div>
                     </div>
