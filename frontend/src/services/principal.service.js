@@ -112,7 +112,20 @@ export const principalService = {
 
   // Staff
   async getStaff(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
+    // Backend principal staff list uses `isActive` as the query param
+    // (it may come through as a string). Keep compatibility with callers
+    // that pass `active`.
+    const normalizedParams = { ...params };
+    if (normalizedParams.isActive == null && normalizedParams.active != null) {
+      normalizedParams.isActive = normalizedParams.active;
+      delete normalizedParams.active;
+    }
+
+    const cleanParams = Object.fromEntries(
+      Object.entries(normalizedParams).filter(([, v]) => v != null && v !== '')
+    );
+
+    const queryParams = new URLSearchParams(cleanParams).toString();
     const url = queryParams ? `/principal/staff?${queryParams}` : '/principal/staff';
     const response = await API.get(url);
     return response.data;

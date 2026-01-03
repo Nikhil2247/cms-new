@@ -131,7 +131,7 @@ const GenerateReportDrawer = ({
 
   const handleGenerate = async () => {
     const payload = {
-      reportType: selectedReport.id,
+      type: selectedReport.id,
       columns: selectedColumns,
       filters: filterValues,
       groupBy,

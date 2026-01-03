@@ -154,8 +154,16 @@ export const adminService = {
   // ==================== USER MANAGEMENT ====================
 
   async getUsers(params = {}) {
+    // Backend expects `isActive` as query param for filtering users
+    // (even though the stored field is `active`).
+    const normalizedParams = { ...params };
+    if (normalizedParams.isActive == null && normalizedParams.active != null) {
+      normalizedParams.isActive = normalizedParams.active;
+      delete normalizedParams.active;
+    }
+
     const cleanParams = Object.fromEntries(
-      Object.entries(params).filter(([, v]) => v != null && v !== '')
+      Object.entries(normalizedParams).filter(([, v]) => v != null && v !== '')
     );
     const queryParams = new URLSearchParams(cleanParams).toString();
     const url = queryParams ? `/system-admin/users?${queryParams}` : '/system-admin/users';
@@ -174,7 +182,13 @@ export const adminService = {
   },
 
   async updateUser(id, data) {
-    const response = await API.put(`/system-admin/users/${id}`, data);
+    // Backend expects `active` in body for updates (UpdateUserDto).
+    const normalizedData = { ...data };
+    if (normalizedData.active == null && normalizedData.isActive != null) {
+      normalizedData.active = normalizedData.isActive;
+      delete normalizedData.isActive;
+    }
+    const response = await API.put(`/system-admin/users/${id}`, normalizedData);
     return response.data;
   },
 

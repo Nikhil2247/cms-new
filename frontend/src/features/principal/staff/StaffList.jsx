@@ -52,7 +52,7 @@ const StaffList = () => {
   const [filters, setFilters] = useState({
     search: '',
     role: '',
-    active: '',
+    isActive: '',
     page: 1,
     limit: 10,
   });
@@ -426,7 +426,7 @@ const StaffList = () => {
               placeholder="Status"
               allowClear
               className="w-full md:w-32"
-              onChange={(value) => handleFilterChange('active', value)}
+              onChange={(value) => handleFilterChange('isActive', value)}
             >
               <Option value="true">Active</Option>
               <Option value="false">Inactive</Option>
