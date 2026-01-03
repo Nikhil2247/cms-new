@@ -98,6 +98,7 @@ export class LookupService {
 
   /**
    * Get all approved industries (cached)
+   * NOTE: Industry model removed - this endpoint returns empty for backward compatibility
    */
   async getIndustries() {
     const cacheKey = 'lookup:industries';
@@ -106,26 +107,10 @@ export class LookupService {
       cacheKey,
       async () => {
         try {
-          const industries = await this.prisma.industry.findMany({
-            where: {
-              isApproved: true,
-              isVerified: true,
-            },
-            select: {
-              id: true,
-              companyName: true,
-              industryType: true,
-              city: true,
-              state: true,
-              companySize: true,
-              website: true,
-            },
-            orderBy: { companyName: 'asc' },
-          });
-
+          // Industry model removed - return empty array
           return {
-            industries,
-            total: industries.length,
+            industries: [],
+            total: 0,
           };
         } catch (error) {
           this.logger.error('Failed to get industries', error.stack);

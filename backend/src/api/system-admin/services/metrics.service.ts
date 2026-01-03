@@ -437,17 +437,17 @@ export class MetricsService {
       const tableCount = Number(tableCountResult[0]?.count || 0);
 
       // Get counts from key tables
-      const [userCount, studentCount, institutionCount, internshipCount] = await Promise.all([
+      const [userCount, studentCount, institutionCount] = await Promise.all([
         this.prisma.user.count().catch(() => 0),
         this.prisma.student.count().catch(() => 0),
         this.prisma.institution.count().catch(() => 0),
-        this.prisma.internship.count().catch(() => 0),
+        // Internship model removed
       ]);
 
       return {
         activeConnections: 1, // Prisma manages connection pool
         totalCollections: tableCount, // PostgreSQL tables count
-        totalDocuments: userCount + studentCount + internshipCount,
+        totalDocuments: userCount + studentCount,
         totalUsers: userCount,
         totalStudents: studentCount,
         totalInstitutions: institutionCount,

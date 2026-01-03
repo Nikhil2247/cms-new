@@ -211,7 +211,7 @@ export class ReportBuilderService {
 
   private async getMentorOptions(institutionId?: string): Promise<{ label: string; value: string }[]> {
     const where: Record<string, unknown> = {
-      role: { in: ['TEACHER', 'FACULTY_SUPERVISOR'] },
+      role: { in: ['TEACHER'] }, // FACULTY_SUPERVISOR role removed
       active: true, // Only show active mentors
     };
     if (institutionId) {
@@ -261,13 +261,8 @@ export class ReportBuilderService {
   }
 
   private async getIndustryTypeOptions(): Promise<{ label: string; value: string }[]> {
-    const industries = await this.prisma.industry.findMany({
-      select: { industryType: true },
-      distinct: ['industryType'],
-    });
-    return industries
-      .filter((i) => i.industryType)
-      .map((i) => ({ label: i.industryType!, value: i.industryType! }));
+    // Industry model removed - return empty array
+    return [];
   }
 
   private getAcademicYearOptions(): { label: string; value: string }[] {

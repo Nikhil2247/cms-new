@@ -774,7 +774,7 @@ export class PrincipalService {
       this.prisma.user.findMany({
         where: {
           institutionId: principal.institutionId,
-          role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
+          role: { in: ['TEACHER'] },
           active: true,
         },
         select: {

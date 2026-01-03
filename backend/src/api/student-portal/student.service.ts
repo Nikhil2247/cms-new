@@ -269,21 +269,7 @@ export class StudentService {
             facultyMentorName: true,
             totalExpectedReports: true,
             totalExpectedVisits: true,
-            internship: {
-              select: {
-                id: true,
-                title: true,
-                startDate: true,
-                endDate: true,
-                industry: {
-                  select: {
-                    id: true,
-                    companyName: true,
-                    city: true,
-                  },
-                },
-              },
-            },
+            // Internship model removed - self-identified only
             mentor: {
               select: {
                 id: true,
@@ -350,11 +336,7 @@ export class StudentService {
             isSelfIdentified: true,
             updatedAt: true,
             createdAt: true,
-            internship: {
-              select: {
-                title: true,
-              },
-            },
+            // Internship model removed - self-identified only
           },
         });
 
@@ -436,21 +418,7 @@ export class StudentService {
             totalExpectedVisits: true,
             createdAt: true,
             updatedAt: true,
-            internship: {
-              select: {
-                id: true,
-                title: true,
-                startDate: true,
-                endDate: true,
-                industry: {
-                  select: {
-                    id: true,
-                    companyName: true,
-                    city: true,
-                  },
-                },
-              },
-            },
+            // Internship model removed - self-identified only
             mentor: {
               select: {
                 id: true,
@@ -674,9 +642,7 @@ export class StudentService {
     }
 
     if (industryType) {
-      where.industry = {
-        industryType: industryType as any,
-      };
+      // Industry type filter removed - Industry model no longer exists
     }
 
     const [internships, total] = await Promise.all([
@@ -684,22 +650,7 @@ export class StudentService {
         where,
         skip,
         take: limit,
-        include: {
-          industry: {
-            select: {
-              id: true,
-              companyName: true,
-              industryType: true,
-              city: true,
-              state: true,
-            },
-          },
-          _count: {
-            select: {
-              applications: true,
-            },
-          },
-        },
+        // Industry model removed - Internship model removed
         orderBy: { createdAt: 'desc' },
       }),
       this.prisma.internship.count({ where }),
@@ -806,11 +757,7 @@ export class StudentService {
         ...applicationDto,
       },
       include: {
-        internship: {
-          include: {
-            industry: true,
-          },
-        },
+        // Internship model removed - self-identified only
       },
     });
 
@@ -822,7 +769,7 @@ export class StudentService {
       userId,
       userName: student.user?.name || student.name,
       userRole: student.user?.role || Role.STUDENT,
-      description: `Applied to internship: ${internship.title} at ${application.internship?.industry?.companyName || 'Unknown Company'}`,
+      description: `Applied to internship: ${internship.title} at ${application.companyName || 'Unknown Company'}`,
       category: AuditCategory.APPLICATION_PROCESS,
       severity: AuditSeverity.MEDIUM,
       institutionId: student.institutionId || undefined,
@@ -873,18 +820,7 @@ export class StudentService {
         skip,
         take: limit,
         include: {
-          internship: {
-            include: {
-              industry: {
-                select: {
-                  id: true,
-                  companyName: true,
-                  industryType: true,
-                  city: true,
-                },
-              },
-            },
-          },
+          // Internship and Industry models removed - self-identified only
           mentor: {
             select: {
               id: true,
@@ -926,15 +862,11 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: internshipId },
-      include: {
-        industry: true,
-      },
-    });
+    // Internship model removed - return empty object for backward compatibility
+    const internship = null;
 
     if (!internship) {
-      throw new NotFoundException('Internship not found');
+      throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
     }
 
     const application = await this.prisma.internshipApplication.findFirst({
@@ -969,11 +901,7 @@ export class StudentService {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
       include: {
-        internship: {
-          include: {
-            industry: true,
-          },
-        },
+        // Internship model removed - self-identified only
         mentor: true,
         monthlyReports: true,
         facultyVisitLogs: true,
@@ -1041,11 +969,7 @@ export class StudentService {
         status: ApplicationStatus.WITHDRAWN,
       },
       include: {
-        internship: {
-          include: {
-            industry: true,
-          },
-        },
+        // Internship model removed - self-identified only
       },
     });
 
@@ -1057,7 +981,7 @@ export class StudentService {
       userId,
       userName: student.user?.name,
       userRole: student.user?.role || Role.STUDENT,
-      description: `Application withdrawn: ${application.internship?.title || application.companyName}`,
+      description: `Application withdrawn: ${application.companyName || 'Unknown Company'}`,
       category: AuditCategory.APPLICATION_PROCESS,
       severity: AuditSeverity.MEDIUM,
       institutionId: student.institutionId || undefined,
@@ -1335,19 +1259,7 @@ export class StudentService {
               designation: true,
             },
           },
-          internship: {
-            include: {
-              industry: {
-                select: {
-                  id: true,
-                  companyName: true,
-                  industryType: true,
-                  city: true,
-                  state: true,
-                },
-              },
-            },
-          },
+          // Internship and Industry models removed - self-identified only
           _count: {
             select: {
               monthlyReports: true,
@@ -1906,17 +1818,7 @@ export class StudentService {
               endDate: true,
               joiningDate: true,
               completionDate: true,
-              internship: {
-                select: {
-                  id: true,
-                  title: true,
-                  industry: {
-                    select: {
-                      companyName: true,
-                    },
-                  },
-                },
-              },
+              // Internship and Industry models removed
             },
           },
         },
@@ -1972,7 +1874,7 @@ export class StudentService {
     description: string;
     severity?: string;
     internshipId?: string;
-    industryId?: string;
+    // industryId removed - Industry model no longer exists
     actionRequested?: string;
     preferredContactMethod?: string;
     attachments?: string[];
@@ -2000,7 +1902,7 @@ export class StudentService {
         description: grievanceDto.description,
         severity: (grievanceDto.severity as any) || 'MEDIUM',
         internshipId: grievanceDto.internshipId,
-        industryId: grievanceDto.industryId,
+        // industryId removed - Industry model no longer exists
         actionRequested: grievanceDto.actionRequested,
         preferredContactMethod: grievanceDto.preferredContactMethod,
         attachments: grievanceDto.attachments || [],
@@ -2088,18 +1990,7 @@ export class StudentService {
           resolution: true,
           createdAt: true,
           updatedAt: true,
-          internship: {
-            select: {
-              id: true,
-              title: true,
-            },
-          },
-          industry: {
-            select: {
-              id: true,
-              companyName: true,
-            },
-          },
+          // Internship and Industry models removed
           assignedTo: {
             select: {
               id: true,
@@ -2276,15 +2167,7 @@ export class StudentService {
     // Verify ownership
     const application = await this.prisma.internshipApplication.findFirst({
       where: { id: applicationId, studentId: student.id },
-      include: {
-        internship: {
-          include: {
-            industry: {
-              select: { companyName: true },
-            },
-          },
-        },
-      },
+      // Internship and Industry models removed
     });
 
     if (!application) {
@@ -2360,7 +2243,7 @@ export class StudentService {
       internship: {
         startDate: application.startDate,
         endDate: application.endDate,
-        companyName: application.companyName || application.internship?.industry?.companyName,
+        companyName: application.companyName,
       },
     };
   }
@@ -2389,13 +2272,7 @@ export class StudentService {
             endDate: true,
             joiningDate: true,
             completionDate: true,
-            internship: {
-              include: {
-                industry: {
-                  select: { companyName: true },
-                },
-              },
-            },
+            // Internship and Industry models removed
           },
         },
       },

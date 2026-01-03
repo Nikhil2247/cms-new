@@ -69,7 +69,6 @@ export class StateInstitutionService {
             },
             // Count only active students for consistency with all other calculations
             Student: { where: { isActive: true } },
-            internships: true,
             batches: true,
           },
         },
@@ -527,8 +526,6 @@ export class StateInstitutionService {
           select: {
             users: true,
             Student: true,
-            internships: true,
-            industries: true,
           },
         },
       },

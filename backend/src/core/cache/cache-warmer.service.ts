@@ -72,18 +72,18 @@ export class CacheWarmerService implements OnModuleInit {
   }
 
   private async warmDashboardStats(): Promise<void> {
-    const [institutions, students, industries, internships] = await Promise.all([
+    const [institutions, students] = await Promise.all([
       this.prisma.institution.count({ where: { isActive: true } }),
       this.prisma.student.count({ where: { isActive: true } }),
-      this.prisma.industry.count({ where: { isApproved: true } }),
-      this.prisma.internship.count({ where: { isActive: true } }),
+      // Industry and Internship models removed
     ]);
 
     await this.cache.set('stats:global', {
       totalInstitutions: institutions,
       totalStudents: students,
-      totalIndustries: industries,
-      activeInternships: internships,
+      // Industry and Internship models removed
+      totalIndustries: 0,
+      activeInternships: 0,
       updatedAt: new Date(),
     }, { ttl: 60000 }); // 1 min
 
