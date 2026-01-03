@@ -161,7 +161,7 @@ export const BasicStatisticsGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
         <DashboardStatCard key={idx} {...card} />
       ))}
@@ -260,7 +260,7 @@ export const SubmissionStatusGrid = ({
 
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2  lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
           <Card key={idx} className="h-40 border-border shadow-sm rounded-xl bg-surface" loading />
         ))}
@@ -269,7 +269,7 @@ export const SubmissionStatusGrid = ({
   }
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
       {cards.map((card, idx) => (
         <DashboardStatCard key={idx} {...card} />
       ))}
