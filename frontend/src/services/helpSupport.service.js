@@ -261,7 +261,6 @@ export const SUPPORT_CATEGORIES = {
   ACCOUNT_PROFILE: { value: 'ACCOUNT_PROFILE', label: 'Account & Profile', color: 'blue' },
   FEATURE_GUIDANCE: { value: 'FEATURE_GUIDANCE', label: 'Feature Guidance', color: 'green' },
   DATA_REPORTS: { value: 'DATA_REPORTS', label: 'Data & Reports', color: 'orange' },
-  INTERNSHIP_QUERIES: { value: 'INTERNSHIP_QUERIES', label: 'Internship Queries', color: 'purple' },
   GENERAL_INQUIRIES: { value: 'GENERAL_INQUIRIES', label: 'General Inquiries', color: 'cyan' },
 };
 
