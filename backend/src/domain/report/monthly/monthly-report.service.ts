@@ -128,15 +128,7 @@ export class MonthlyReportService {
           return await this.prisma.monthlyReport.findMany({
             where: { studentId },
             include: {
-              application: {
-                include: {
-                  internship: {
-                    include: {
-                      industry: { select: { companyName: true } },
-                    },
-                  },
-                },
-              },
+              application: { select: { id: true } },
             },
             orderBy: [
               { reportYear: 'desc' },
@@ -167,15 +159,7 @@ export class MonthlyReportService {
               student: {
                 select: { id: true, name: true, rollNumber: true },
               },
-              application: {
-                include: {
-                  internship: {
-                    include: {
-                      industry: { select: { companyName: true } },
-                    },
-                  },
-                },
-              },
+              application: { select: { id: true } },
             },
             orderBy: { createdAt: 'desc' },
           });

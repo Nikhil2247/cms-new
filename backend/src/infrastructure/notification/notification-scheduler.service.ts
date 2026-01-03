@@ -71,14 +71,11 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       const mentorMap = new Map<string, { mentor: { id: string; name: string; email: string }; studentCount: number }>();
 
       for (const assignment of facultyWithAssignments) {
-        // Check if student has active internship without recent visit
-        const hasActiveInternship = await this.prisma.internshipApplication.findFirst({
+        // Check if student has active application without recent visit
+        const hasActiveApplication = await this.prisma.internshipApplication.findFirst({
           where: {
             studentId: assignment.studentId,
             status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
-            internship: {
-              endDate: { gte: new Date() },
-            },
             facultyVisitLogs: {
               none: {
                 visitDate: { gte: oneMonthAgo },
@@ -87,7 +84,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           },
         });
 
-        if (hasActiveInternship && assignment.mentor) {
+        if (hasActiveApplication && assignment.mentor) {
           const existing = mentorMap.get(assignment.mentorId);
           if (existing) {
             existing.studentCount++;
@@ -140,13 +137,10 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
-      // Find students with active internships
-      const studentsWithActiveInternships = await this.prisma.internshipApplication.findMany({
+      // Find students with active applications
+      const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
         where: {
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
-          internship: {
-            endDate: { gte: new Date() },
-          },
         },
         include: {
           student: {
@@ -164,7 +158,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         },
       });
 
-      for (const app of studentsWithActiveInternships) {
+      for (const app of studentsWithActiveApplications) {
         if (!app.student?.user?.active) continue;
 
         // Check if report already submitted
@@ -223,13 +217,10 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       const currentMonth = new Date().getMonth() + 1;
       const currentYear = new Date().getFullYear();
 
-      // Find students with active internships
-      const studentsWithActiveInternships = await this.prisma.internshipApplication.findMany({
+      // Find students with active applications
+      const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
         where: {
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
-          internship: {
-            endDate: { gte: new Date() },
-          },
         },
         include: {
           student: {
@@ -247,7 +238,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         },
       });
 
-      for (const app of studentsWithActiveInternships) {
+      for (const app of studentsWithActiveApplications) {
         if (!app.student?.user?.active) continue;
 
         // Check if report already submitted
@@ -293,107 +284,6 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       this.logger.log('Urgent report reminders sent successfully');
     } catch (error) {
       this.logger.error('Failed to send urgent report reminders', error.stack);
-    }
-  }
-
-  // ============ INTERNSHIP DEADLINE REMINDERS ============
-  /**
-   * Send internship deadline reminders 3 days before
-   * Runs every day at 8 AM
-   */
-  @Cron(CronExpression.EVERY_DAY_AT_8AM)
-  async sendInternshipDeadlineReminders(): Promise<void> {
-    this.logger.log('Checking for internship deadlines...');
-    try {
-      const threeDaysFromNow = new Date();
-      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Find internships with deadline in next 3 days
-      const upcomingDeadlines = await this.prisma.internship.findMany({
-        where: {
-          status: 'ACTIVE',
-          applicationDeadline: {
-            gte: today,
-            lte: threeDaysFromNow,
-          },
-        },
-        include: {
-          industry: {
-            select: { companyName: true },
-          },
-        },
-      });
-
-      for (const internship of upcomingDeadlines) {
-        // Find students who haven't applied and are eligible
-        const eligibleStudents = await this.prisma.student.findMany({
-          where: {
-            isActive: true,
-            branchName: { in: internship.eligibleBranches },
-          },
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                active: true,
-              },
-            },
-            internshipApplications: {
-              where: {
-                internshipId: internship.id,
-              },
-              select: { id: true },
-            },
-          },
-        });
-
-        const daysUntilDeadline = Math.ceil(
-          (internship.applicationDeadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
-        );
-
-        for (const student of eligibleStudents) {
-          // Skip if already applied
-          if (student.internshipApplications.length > 0) continue;
-          if (!student.user?.active) continue;
-
-          const userId = student.user.id;
-          const userEmail = student.user.email || student.email;
-          const userName = student.user.name || student.name;
-
-          await this.notificationService.create(
-            userId,
-            'INTERNSHIP_DEADLINE',
-            `Internship Deadline: ${daysUntilDeadline} days left!`,
-            `Application deadline for "${internship.title}" at ${internship.industry?.companyName || 'Company'} is approaching!`,
-            { internshipId: internship.id, daysLeft: daysUntilDeadline },
-          );
-
-          if (userEmail) {
-            await this.mailService.queueMail({
-              to: userEmail,
-              subject: `Internship Deadline Alert: ${internship.title}`,
-              template: 'internship-deadline',
-              context: {
-                name: userName,
-                internshipTitle: internship.title,
-                companyName: internship.industry?.companyName || 'Company',
-                daysLeft: daysUntilDeadline,
-                deadline: internship.applicationDeadline.toLocaleDateString(),
-                applyUrl: `${this.appUrl}/student/internships/${internship.id}`,
-              },
-            });
-          }
-        }
-
-        this.logger.log(`Deadline reminders sent for internship: ${internship.title}`);
-      }
-    } catch (error) {
-      this.logger.error('Failed to send internship deadline reminders', error.stack);
     }
   }
 

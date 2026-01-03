@@ -201,13 +201,7 @@ export class FacultyVisitService {
           select: {
             id: true,
             studentId: true,
-            internshipId: true,
             startDate: true,
-            internship: {
-              select: {
-                startDate: true,
-              },
-            },
           },
         }),
         this.prisma.facultyVisitLog.count({ where: { applicationId } }),
@@ -224,7 +218,7 @@ export class FacultyVisitService {
       }
 
       // Validate visitDate is not before internship start date
-      const internshipStartDate = application.internship?.startDate || application.startDate;
+      const internshipStartDate = application.startDate;
       if (internshipStartDate && data.visitDate < new Date(internshipStartDate)) {
         throw new BadRequestException(
           `Visit date cannot be before internship start date (${new Date(internshipStartDate).toLocaleDateString()})`,
@@ -235,7 +229,6 @@ export class FacultyVisitService {
         data: {
           facultyId,
           applicationId,
-          internshipId: application.internshipId,
           visitNumber: visitCount + 1,
           visitDate: data.visitDate,
           visitType: data.visitType,
@@ -254,11 +247,6 @@ export class FacultyVisitService {
           application: {
             include: {
               student: { select: { id: true, name: true, rollNumber: true } },
-              internship: {
-                include: {
-                  industry: { select: { id: true, companyName: true } },
-                },
-              },
             },
           },
         },
@@ -304,11 +292,6 @@ export class FacultyVisitService {
                       institutionId: true,
                     },
                   },
-                  internship: {
-                    include: {
-                      industry: { select: { companyName: true } },
-                    },
-                  },
                 },
               },
             },
@@ -341,15 +324,6 @@ export class FacultyVisitService {
             },
             include: {
               faculty: { select: { id: true, name: true, designation: true } },
-              application: {
-                include: {
-                  internship: {
-                    include: {
-                      industry: { select: { companyName: true } },
-                    },
-                  },
-                },
-              },
             },
             orderBy: { visitDate: 'desc' },
           });
@@ -490,16 +464,14 @@ export class FacultyVisitService {
     try {
       this.logger.log(`Generating expected visits for application ${applicationId}`);
 
-      // Get application with internship dates
+      // Get application with dates
       const application = await this.prisma.internshipApplication.findUnique({
         where: { id: applicationId },
-        include: {
-          internship: {
-            select: {
-              startDate: true,
-              endDate: true,
-            },
-          },
+        select: {
+          id: true,
+          startDate: true,
+          endDate: true,
+          mentorId: true,
         },
       });
 
@@ -507,9 +479,9 @@ export class FacultyVisitService {
         throw new NotFoundException('Application not found');
       }
 
-      // Use internship dates or application dates
-      const startDate = application.internship?.startDate || application.startDate;
-      const endDate = application.internship?.endDate || application.endDate;
+      // Use application dates
+      const startDate = application.startDate;
+      const endDate = application.endDate;
 
       if (!startDate || !endDate) {
         this.logger.warn(`Application ${applicationId} has no start/end dates, skipping visit generation`);
@@ -536,7 +508,6 @@ export class FacultyVisitService {
         if (!existingPeriods.has(key)) {
           const visitData: any = {
             applicationId,
-            internshipId: application.internshipId,
             visitMonth: period.month,
             visitYear: period.year,
             requiredByDate: period.requiredByDate,

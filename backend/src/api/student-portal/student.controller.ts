@@ -80,8 +80,8 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
-    // Get institution name for folder structure
-    const institutionName = profile.user?.Institution?.name || 'default';
+    // Get institution name for folder structure (Student has direct Institution relation)
+    const institutionName = profile.Institution?.name || 'default';
 
     // Upload to MinIO with automatic optimization (resizes, converts to WebP)
     const result = await this.fileStorageService.uploadProfileImage(
@@ -95,42 +95,6 @@ export class StudentController {
     return this.studentService.uploadProfileImage(req.user.userId, result.key);
   }
 
-  // Internships
-  @Get('internships')
-  @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Get available internships' })
-  @ApiResponse({ status: 200, description: 'Internships list retrieved successfully' })
-  async getInternships(
-    @Req() req,
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    @Query('search') search?: string,
-    @Query('industry') industry?: string,
-  ) {
-    return this.studentService.getAvailableInternships(req.user.userId, {
-      page: page ? parseInt(page, 10) : undefined,
-      limit: limit ? parseInt(limit, 10) : undefined,
-      search,
-      industryType: industry,
-    });
-  }
-
-  @Get('internships/:id')
-  @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Get internship details' })
-  @ApiResponse({ status: 200, description: 'Internship details retrieved successfully' })
-  async getInternshipDetails(@Req() req, @Param('id') id: string) {
-    return this.studentService.getInternshipDetails(req.user.userId, id);
-  }
-
-  @Post('internships/:id/apply')
-  @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Apply for internship' })
-  @ApiResponse({ status: 201, description: 'Application submitted successfully' })
-  async applyForInternship(@Req() req, @Param('id') internshipId: string, @Body() applicationDto: any) {
-    return this.studentService.applyToInternship(req.user.userId, internshipId, applicationDto);
-  }
-
   @Get('applications')
   @Roles(Role.STUDENT)
   @ApiOperation({ summary: 'Get all student applications' })
@@ -141,10 +105,10 @@ export class StudentController {
     @Query('limit') limit?: string,
     @Query('status') status?: string,
   ) {
-    return this.studentService.getApplications(req.user.userId, { 
-      page: page ? parseInt(page, 10) : undefined, 
-      limit: limit ? parseInt(limit, 10) : undefined, 
-      status 
+    return this.studentService.getApplications(req.user.userId, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+      status
     });
   }
 
@@ -200,8 +164,8 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
-    // Get institution name for folder structure
-    const institutionName = profile.user?.Institution?.name || 'default';
+    // Get institution name for folder structure (Student has direct Institution relation)
+    const institutionName = profile.Institution?.name || 'default';
 
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
@@ -244,9 +208,9 @@ export class StudentController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.studentService.getSelfIdentified(req.user.userId, { 
-      page: page ? parseInt(page, 10) : undefined, 
-      limit: limit ? parseInt(limit, 10) : undefined 
+    return this.studentService.getSelfIdentified(req.user.userId, {
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined
     });
   }
 
@@ -338,8 +302,8 @@ export class StudentController {
     const reportMonth = parseInt(reportDto.reportMonth, 10);
     const reportYear = parseInt(reportDto.reportYear, 10);
 
-    // Get institution name for folder structure
-    const institutionName = profile.user?.Institution?.name || 'default';
+    // Get institution name for folder structure (Student has direct Institution relation)
+    const institutionName = profile.Institution?.name || 'default';
 
     // Get month name
     const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
@@ -405,8 +369,8 @@ export class StudentController {
     // Get student info for proper file path
     const profile = await this.studentService.getProfile(req.user.userId);
 
-    // Get institution name for folder structure
-    const institutionName = profile.user?.Institution?.name || 'default';
+    // Get institution name for folder structure (Student has direct Institution relation)
+    const institutionName = profile.Institution?.name || 'default';
 
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {

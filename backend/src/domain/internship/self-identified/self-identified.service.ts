@@ -81,7 +81,6 @@ export class SelfIdentifiedService {
       const selfIdentified = await this.prisma.internshipApplication.create({
         data: {
           studentId,
-          internshipId: null,
           isSelfIdentified: true,
           companyName: data.companyName,
           companyAddress: data.companyAddress,

@@ -218,7 +218,7 @@ export class PrincipalService {
 
     const institutionId = principal.institutionId;
 
-    const [pendingSelfIdentified, upcomingDeadlines, pendingGrievances] = await Promise.all([
+    const [pendingSelfIdentified, pendingGrievances] = await Promise.all([
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId },
@@ -236,18 +236,6 @@ export class PrincipalService {
             },
           },
         },
-      }),
-      this.prisma.internship.findMany({
-        where: {
-          institutionId,
-          applicationDeadline: {
-            gte: new Date(),
-            lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next 7 days
-          },
-          isActive: true,
-        },
-        take: 5,
-        orderBy: { applicationDeadline: 'asc' },
       }),
       this.prisma.grievance.findMany({
         where: {
@@ -270,7 +258,7 @@ export class PrincipalService {
 
     return {
       pendingSelfIdentified,
-      upcomingDeadlines,
+      upcomingDeadlines: [], // Internship model removed - no deadlines to track
       pendingGrievances,
     };
   }
@@ -470,20 +458,6 @@ export class PrincipalService {
                   duration: true,
                   workLocation: true,
                   stipendAmount: true,
-                  industry: {
-                    select: {
-                      id: true,
-                      companyName: true,
-                      companyDescription: true,
-                      industryType: true,
-                      website: true,
-                      primaryEmail: true,
-                      primaryPhone: true,
-                      address: true,
-                      city: true,
-                      state: true,
-                    },
-                  },
                 },
               },
               monthlyReports: {
@@ -684,47 +658,27 @@ export class PrincipalService {
         application: application ? {
           id: application.id,
           status: application.status,
-          internshipTitle: application.internship?.title,
+          internshipTitle: (application as any).jobProfile || 'N/A',
           joiningDate: application.joiningDate,
           completionDate: application.completionDate,
           // Joining letter details
           joiningLetterUrl: (application as any).joiningLetterUrl,
           joiningLetterUploadedAt: (application as any).joiningLetterUploadedAt,
           hasJoiningLetter: !!(application as any).joiningLetterUrl,
-          // Company/Industry details
-          company: application.internship?.industry ? {
-            id: application.internship.industry.id,
-            name: application.internship.industry.companyName,
-            description: application.internship.industry.companyDescription,
-            type: application.internship.industry.industryType,
-            website: application.internship.industry.website,
-            logo: null,
-            email: application.internship.industry.primaryEmail,
-            phone: application.internship.industry.primaryPhone,
-            address: application.internship.industry.address,
-            city: application.internship.industry.city,
-            state: application.internship.industry.state,
-          } : (application as any).isSelfIdentified ? {
+          // Company details (from self-identified fields)
+          company: (application as any).companyName ? {
             name: (application as any).companyName,
             address: (application as any).companyAddress,
             contact: (application as any).companyContact,
             email: (application as any).companyEmail,
             isSelfIdentified: true,
           } : null,
-          // Internship details
-          workLocation: application.internship?.workLocation,
-          stipendAmount: (application as any).isSelfIdentified
-            ? (application as any).stipend
-            : application.internship?.stipendAmount,
-          duration: (application as any).isSelfIdentified
-            ? (application as any).internshipDuration
-            : application.internship?.duration,
-          startDate: (application as any).isSelfIdentified
-            ? (application as any).startDate
-            : application.internship?.startDate,
-          endDate: (application as any).isSelfIdentified
-            ? (application as any).endDate
-            : application.internship?.endDate,
+          // Internship details (from self-identified fields)
+          workLocation: (application as any).companyAddress,
+          stipendAmount: (application as any).stipend,
+          duration: (application as any).internshipDuration,
+          startDate: (application as any).startDate,
+          endDate: (application as any).endDate,
           jobProfile: (application as any).jobProfile,
           isSelfIdentified: (application as any).isSelfIdentified,
           internshipPhase: (application as any).internshipPhase,
@@ -1061,13 +1015,6 @@ export class PrincipalService {
         batch: true,
         branch: true,
         internshipApplications: {
-          include: {
-            internship: {
-              include: {
-                industry: true,
-              },
-            },
-          },
           orderBy: { createdAt: 'desc' },
         },
         mentorAssignments: {
@@ -1970,12 +1917,12 @@ export class PrincipalService {
       throw new NotFoundException('One or more students not found');
     }
 
-    // Verify mentor belongs to institution (can be FACULTY_SUPERVISOR or TEACHER)
+    // Verify mentor belongs to institution (TEACHER role)
     const mentor = await this.prisma.user.findFirst({
       where: {
         id: assignMentorDto.mentorId,
         institutionId: principal.institutionId,
-        role: { in: [Role.TEACHER] },
+        role: Role.TEACHER,
       },
     });
 
@@ -2111,12 +2058,7 @@ export class PrincipalService {
             joiningDate: true,
             startDate: true,
             endDate: true,
-            internship: {
-              select: {
-                duration: true,
-                startDate: true,
-              },
-            },
+            internshipDuration: true,
             monthlyReports: {
               where: {
                 reportYear: targetYear,
@@ -2209,8 +2151,8 @@ export class PrincipalService {
           const yearsDiff = end.getFullYear() - start.getFullYear();
           const monthsDiff = end.getMonth() - start.getMonth();
           expectedMonths = Math.max(1, yearsDiff * 12 + monthsDiff + 1);
-        } else if (application.internship?.duration) {
-          const match = application.internship.duration.match(/(\d+)\s*month/i);
+        } else if ((application as any).internshipDuration) {
+          const match = (application as any).internshipDuration.match(/(\d+)\s*month/i);
           if (match) expectedMonths = parseInt(match[1], 10);
         }
 
@@ -2351,9 +2293,6 @@ export class PrincipalService {
               student: {
                 select: { id: true, name: true, rollNumber: true },
               },
-              internship: {
-                select: { title: true },
-              },
             },
           },
         },
@@ -2408,7 +2347,7 @@ export class PrincipalService {
         studentId: log.application.student.id,
         studentName: log.application.student.name,
         studentRollNumber: log.application.student.rollNumber,
-        internshipTitle: log.application.internship?.title || 'N/A',
+        internshipTitle: (log.application as any).jobProfile || 'N/A',
         visitDate: log.visitDate,
         visitType: visitTypeMap[log.visitType] || log.visitType,
         status,
@@ -2555,7 +2494,7 @@ export class PrincipalService {
         orderBy: { updatedAt: 'desc' },
         include: {
           student: { select: { id: true, name: true, rollNumber: true } },
-          application: { select: { id: true, internshipId: true } },
+          application: { select: { id: true } },
         },
       }),
       this.prisma.monthlyReport.count({ where }),
@@ -2830,18 +2769,6 @@ export class PrincipalService {
         select: {
           companyName: true,
           companyAddress: true,
-          internship: {
-            select: {
-              industry: {
-                select: {
-                  companyName: true,
-                  industryType: true,
-                  city: true,
-                  state: true,
-                },
-              },
-            },
-          },
         },
         take: 1000, // Limit to prevent memory issues with large datasets
         orderBy: { createdAt: 'desc' }, // Most recent first
@@ -2876,27 +2803,19 @@ export class PrincipalService {
     });
 
     // Process company breakdown
-    const companyMap = new Map<string, { count: number; location?: string; industryType?: string }>();
-    const industryMap = new Map<string, number>();
+    const companyMap = new Map<string, { count: number; location?: string }>();
 
     activeInternships.forEach((app) => {
-      // Get company name (self-identified uses companyName field)
-      const companyName = app.companyName || app.internship?.industry?.companyName || 'Unknown';
-      const industryType = app.internship?.industry?.industryType || 'Other';
-      const location = app.companyAddress ||
-        (app.internship?.industry?.city && app.internship?.industry?.state
-          ? `${app.internship.industry.city}, ${app.internship.industry.state}`
-          : undefined);
+      // Get company name from self-identified field
+      const companyName = app.companyName || 'Unknown';
+      const location = app.companyAddress;
 
       // Company aggregation
       if (!companyMap.has(companyName)) {
-        companyMap.set(companyName, { count: 0, location, industryType });
+        companyMap.set(companyName, { count: 0, location });
       }
       const company = companyMap.get(companyName)!;
       company.count++;
-
-      // Industry aggregation
-      industryMap.set(industryType, (industryMap.get(industryType) || 0) + 1);
     });
 
     // Convert to sorted arrays
@@ -2906,10 +2825,6 @@ export class PrincipalService {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    const byIndustry = Array.from(industryMap.entries())
-      .map(([type, count]) => ({ type: type.replace(/_/g, ' '), count }))
-      .sort((a, b) => b.count - a.count);
-
     return {
       total,
       ...counts,
@@ -2917,7 +2832,6 @@ export class PrincipalService {
       completionRate: total > 0 ? Math.round((counts.completed / total) * 100) : 0,
       totalUniqueCompanies,
       byCompany,
-      byIndustry,
     };
   }
 
@@ -2947,29 +2861,10 @@ export class PrincipalService {
           status: 'COMPLETED',
         },
         select: {
-          companyName: true, // For self-identified, use companyName instead of industry
-          internship: {
-            select: {
-              industry: {
-                select: { industryType: true },
-              },
-            },
-          },
+          companyName: true,
         },
       }),
     ]);
-
-    // Group by industry type
-    const bySector: Record<string, number> = {};
-    completedApplications.forEach((app) => {
-      const sector = app.internship?.industry?.industryType || 'Other';
-      bySector[sector] = (bySector[sector] || 0) + 1;
-    });
-
-    const placementBySector = Object.entries(bySector).map(([name, value]) => ({
-      name: name.replace(/_/g, ' '),
-      value,
-    }));
 
     const placedCount = completedApplications.length;
 
@@ -2977,7 +2872,6 @@ export class PrincipalService {
       totalStudents,
       placedCount,
       placementRate: totalStudents > 0 ? Math.round((placedCount / totalStudents) * 100) : 0,
-      placementBySector,
     };
   }
 
@@ -3422,7 +3316,7 @@ export class PrincipalService {
 
     const where: any = {
       institutionId: principal.institutionId,
-      role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
+      role: 'TEACHER',
       active: true,
     };
 
@@ -3661,15 +3555,6 @@ export class PrincipalService {
                 internshipDuration: true,
                 startDate: true,
                 endDate: true,
-                internship: {
-                  select: {
-                    id: true,
-                    title: true,
-                    industry: {
-                      select: { companyName: true },
-                    },
-                  },
-                },
                 facultyVisitLogs: {
                   where: { facultyId },
                   orderBy: { visitDate: 'desc' },
@@ -3702,12 +3587,6 @@ export class PrincipalService {
           include: {
             student: {
               select: { id: true, name: true, rollNumber: true },
-            },
-            internship: {
-              select: {
-                title: true,
-                industry: { select: { companyName: true } },
-              },
             },
           },
         },
@@ -3788,10 +3667,8 @@ export class PrincipalService {
         rollNumber: a.student.rollNumber,
         batch: a.student.batch?.name || 'N/A',
         department: a.student.branch?.name || 'N/A',
-        internshipTitle: app?.internship?.title || null,
-        companyName: isSelfIdentified
-          ? (app as any)?.companyName
-          : app?.internship?.industry?.companyName || null,
+        internshipTitle: (app as any)?.jobProfile || null,
+        companyName: (app as any)?.companyName || null,
         jobProfile: (app as any)?.jobProfile || null,
         stipend: (app as any)?.stipend || null,
         internshipDuration: (app as any)?.internshipDuration || null,
@@ -3813,8 +3690,8 @@ export class PrincipalService {
       visitLocation: v.visitLocation,
       studentName: v.application.student.name,
       studentRollNumber: v.application.student.rollNumber,
-      companyName: v.application.internship?.industry?.companyName || 'Self-identified',
-      internshipTitle: v.application.internship?.title || 'N/A',
+      companyName: (v.application as any).companyName || 'N/A',
+      internshipTitle: (v.application as any).jobProfile || 'N/A',
       studentPerformance: v.studentPerformance,
       workEnvironment: v.workEnvironment,
       industrySupport: v.industrySupport,

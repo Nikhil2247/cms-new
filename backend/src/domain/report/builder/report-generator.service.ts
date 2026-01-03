@@ -420,17 +420,6 @@ export class ReportGeneratorService {
             user: { select: { active: true } },
           },
         },
-        internship: {
-          include: {
-            industry: {
-              select: {
-                id: true,
-                companyName: true,
-                city: true,
-              },
-            },
-          },
-        },
         mentor: { select: { id: true, name: true } },
         _count: { select: { monthlyReports: true } },
       },
@@ -441,26 +430,37 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(applications.length, 'InternshipReport');
 
-    return applications.map((application) => ({
-      studentName: application.student.name,
-      rollNumber: application.student.rollNumber,
-      branch: application.student.branchName,
-      companyName:
-        application.internship?.industry.companyName ?? application.companyName,
-      companyCity: application.internship?.industry.city ?? '',
-      jobProfile: application.jobProfile,
-      startDate: application.internship?.startDate ?? application.startDate,
-      endDate: application.internship?.endDate ?? application.endDate,
-      duration: application.internship?.duration ?? application.internshipDuration,
-      status: application.status,
-      verificationStatus: (application as any).verificationStatus ?? 'N/A',
-      mentorName: application.mentor?.name ?? 'N/A',
-      reportsSubmitted: application._count.monthlyReports,
-      location: application.internship?.workLocation ?? application.companyAddress,
-      isSelfIdentified: application.isSelfIdentified,
-      isActive: application.student.isActive,
-      userActive: (application.student as any).user?.active ?? true,
-    }));
+    return applications.map((application) => {
+      // Parse city from companyAddress (e.g., "123 Street, City, State" -> "City")
+      let companyCity = '';
+      if (application.companyAddress) {
+        const addressParts = application.companyAddress.split(',').map(part => part.trim());
+        // Assume city is the second-to-last part or second part
+        if (addressParts.length >= 2) {
+          companyCity = addressParts[1] || '';
+        }
+      }
+
+      return {
+        studentName: application.student.name,
+        rollNumber: application.student.rollNumber,
+        branch: application.student.branchName,
+        companyName: application.companyName,
+        companyCity,
+        jobProfile: application.jobProfile,
+        startDate: application.startDate,
+        endDate: application.endDate,
+        duration: application.internshipDuration,
+        status: application.status,
+        verificationStatus: (application as any).verificationStatus ?? 'N/A',
+        mentorName: application.mentor?.name ?? 'N/A',
+        reportsSubmitted: application._count.monthlyReports,
+        location: application.companyAddress,
+        isSelfIdentified: application.isSelfIdentified,
+        isActive: application.student.isActive,
+        userActive: (application.student as any).user?.active ?? true,
+      };
+    });
   }
 
   /**
@@ -541,13 +541,10 @@ export class ReportGeneratorService {
       include: {
         faculty: { select: { id: true, name: true, designation: true, active: true } },
         application: {
-          include: {
+          select: {
+            id: true,
+            companyName: true,
             student: { select: { id: true, name: true, rollNumber: true, isActive: true } },
-            internship: {
-              include: {
-                industry: { select: { id: true, companyName: true } },
-              },
-            },
           },
         },
       },
@@ -565,7 +562,7 @@ export class ReportGeneratorService {
       studentName: visit.application.student.name,
       rollNumber: visit.application.student.rollNumber,
       studentActive: visit.application.student.isActive,
-      companyName: visit.application.internship?.industry.companyName,
+      companyName: visit.application.companyName,
       visitDate: visit.visitDate,
       visitType: visit.visitType,
       visitLocation: visit.visitLocation,
@@ -629,12 +626,9 @@ export class ReportGeneratorService {
           },
         },
         application: {
-          include: {
-            internship: {
-              include: {
-                industry: { select: { companyName: true } },
-              },
-            },
+          select: {
+            id: true,
+            companyName: true,
           },
         },
       },

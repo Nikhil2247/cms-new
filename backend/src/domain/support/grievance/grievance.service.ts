@@ -20,8 +20,6 @@ export interface SubmitGrievanceDto {
   description: string;
   severity?: GrievancePriority;
   attachments?: string[];
-  internshipId?: string;
-  industryId?: string;
   assignedToId?: string;
   facultySupervisorId?: string;
   actionRequested?: string;
@@ -97,8 +95,6 @@ export class GrievanceService {
       },
       assignedTo: true,
       facultySupervisor: true,
-      industry: true,
-      internship: true,
     };
   }
 
@@ -113,8 +109,6 @@ export class GrievanceService {
       },
       assignedTo: true,
       facultySupervisor: true,
-      industry: true,
-      internship: true,
       statusHistory: {
         orderBy: { createdAt: 'asc' as const },
       },
@@ -145,8 +139,6 @@ export class GrievanceService {
           attachments: data.attachments || [],
           status: GrievanceStatus.SUBMITTED,
           escalationLevel: EscalationLevel.MENTOR,
-          internshipId: data.internshipId,
-          industryId: data.industryId,
           assignedToId: data.assignedToId,
           facultySupervisorId: data.facultySupervisorId,
           actionRequested: data.actionRequested,

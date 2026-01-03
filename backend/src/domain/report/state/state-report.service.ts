@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ApplicationStatus, InternshipPhase, InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 
@@ -23,13 +23,11 @@ export class StateReportService {
           const [
             totalInstitutions,
             totalStudents,
-            totalIndustries,
             activeInternships,
             totalFaculty,
           ] = await Promise.all([
             this.prisma.institution.count(),
             this.prisma.student.count({ where: { isActive: true } }),
-            this.prisma.industry.count({ where: { isApproved: true } }),
             // Only count self-identified internships (active students with active users, active applications only)
             this.prisma.internshipApplication.count({
               where: {
@@ -50,7 +48,7 @@ export class StateReportService {
           return {
             totalInstitutions,
             totalStudents,
-            totalIndustries,
+            totalIndustries: 0,
             activeInternships,
             totalFaculty,
           };
@@ -295,56 +293,32 @@ export class StateReportService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
-          const industries = await this.prisma.industry.findMany({
-            where: { isApproved: true },
-            include: {
-              _count: {
-                select: {
-                  internships: true,
-                },
-              },
+          // Get top companies by accepted applications count using company name aggregation
+          const topCompanies = await this.prisma.internshipApplication.groupBy({
+            by: ['companyName'],
+            where: {
+              isSelfIdentified: true,
+              isActive: true,
+              status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+              student: { isActive: true, user: { active: true } },
+              companyName: { not: null },
             },
+            _count: { id: true },
+            orderBy: { _count: { id: 'desc' } },
             take: limit,
           });
 
-          const industriesWithStats = await Promise.all(
-            industries.map(async (industry) => {
-              const [activePostings, totalApplications, acceptedApplications] = await Promise.all([
-                this.prisma.internship.count({
-                  where: {
-                    industryId: industry.id,
-                    isActive: true,
-                    status: InternshipStatus.ACTIVE,
-                  },
-                }),
-                this.prisma.internshipApplication.count({
-                  where: {
-                    internship: { industryId: industry.id },
-                    isActive: true,
-                  },
-                }),
-                this.prisma.internshipApplication.count({
-                  where: {
-                    internship: { industryId: industry.id },
-                    isActive: true,
-                    status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
-                  },
-                }),
-              ]);
+          const industriesWithStats = topCompanies.map((company, index) => ({
+            industryId: `company-${index}`,
+            industryName: company.companyName || 'Unknown Company',
+            totalPostings: 0,
+            activePostings: 0,
+            totalApplications: company._count.id,
+            acceptedApplications: company._count.id,
+            acceptanceRate: 100,
+          }));
 
-              return {
-                industryId: industry.id,
-                industryName: industry.companyName,
-                totalPostings: industry._count.internships,
-                activePostings,
-                totalApplications,
-                acceptedApplications,
-                acceptanceRate: totalApplications > 0 ? (acceptedApplications / totalApplications) * 100 : 0,
-              };
-            }),
-          );
-
-          return industriesWithStats.sort((a, b) => b.acceptedApplications - a.acceptedApplications);
+          return industriesWithStats;
         },
         this.CACHE_TTL,
       );
