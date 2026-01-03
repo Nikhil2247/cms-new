@@ -3430,7 +3430,7 @@ export class PrincipalService {
       where.OR = [
         { name: { contains: search, mode: 'insensitive' } },
         { email: { contains: search, mode: 'insensitive' } },
-        { employeeId: { contains: search, mode: 'insensitive' } },
+        { phoneNo: { contains: search, mode: 'insensitive' } },
       ];
     }
 
@@ -3442,12 +3442,8 @@ export class PrincipalService {
           name: true,
           email: true,
           phoneNo: true,
-          employeeId: true,
           designation: true,
-          profileImage: true,
-          branch: {
-            select: { id: true, name: true },
-          },
+          branchName: true,
         },
         orderBy: { name: 'asc' },
       }),
@@ -3558,11 +3554,11 @@ export class PrincipalService {
           name: f.name,
           email: f.email,
           phoneNo: f.phoneNo,
-          employeeId: f.employeeId,
+          employeeId: null,
           designation: f.designation,
-          profileImage: f.profileImage,
-          branchId: f.branch?.id,
-          branchName: f.branch?.name,
+          profileImage: null,
+          branchId: null,
+          branchName: f.branchName ?? null,
           assignedCount: mentorStudentMap.get(f.id)?.size || 0,
           // Visits
           totalVisits,
@@ -3601,13 +3597,9 @@ export class PrincipalService {
         name: true,
         email: true,
         phoneNo: true,
-        employeeId: true,
         designation: true,
-        profileImage: true,
         institutionId: true,
-        branch: {
-          select: { id: true, name: true },
-        },
+        branchName: true,
         Institution: {
           select: { id: true, name: true, code: true },
         },
