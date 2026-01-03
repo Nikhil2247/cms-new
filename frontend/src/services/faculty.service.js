@@ -198,21 +198,21 @@ export const facultyService = {
     return response.data;
   },
 
-  // Removed: Auto-approval implemented - Monthly Report approval actions no longer needed
-  // async approveMonthlyReport(reportId, remarks) {
-  //   const response = await API.put(`/faculty/monthly-reports/${reportId}/approve`, { remarks });
-  //   return response.data;
-  // },
+  // Monthly Report approval actions
+  async approveMonthlyReport(reportId, remarks) {
+    const response = await API.put(`/faculty/monthly-reports/${reportId}/approve`, { remarks });
+    return response.data;
+  },
 
-  // async rejectMonthlyReport(reportId, reason) {
-  //   const response = await API.put(`/faculty/monthly-reports/${reportId}/reject`, { reason });
-  //   return response.data;
-  // },
+  async rejectMonthlyReport(reportId, reason) {
+    const response = await API.put(`/faculty/monthly-reports/${reportId}/reject`, { reason });
+    return response.data;
+  },
 
-  // async deleteMonthlyReport(reportId) {
-  //   const response = await API.delete(`/faculty/monthly-reports/${reportId}`);
-  //   return response.data;
-  // },
+  async deleteMonthlyReport(reportId) {
+    const response = await API.delete(`/faculty/monthly-reports/${reportId}`);
+    return response.data;
+  },
 
   // Upload monthly report for a student (multipart/form-data)
   async uploadMonthlyReport(formData) {

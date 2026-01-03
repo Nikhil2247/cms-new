@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Select, DatePicker, Button, message, Row, Col, Divider, Upload, Spin } from 'antd';
+import { Modal, Form, Input, Select, DatePicker, Button, message, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
 import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import { createVisitLog, updateVisitLog, fetchVisitLogById, fetchAssignedStudents } from '../store/facultySlice';
 import { fetchCompanies } from '../../../store/slices/companySlice';
@@ -19,6 +19,8 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
   const [fileList, setFileList] = useState([]);
+  const [internshipDateError, setInternshipDateError] = useState(null);
+  const [selectedInternship, setSelectedInternship] = useState(null);
 
   const { visitLogs, students } = useSelector((state) => state.faculty);
   const currentVisitLog = visitLogs?.current;
@@ -68,7 +70,6 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
         // Observations & Feedback fields
         observationsAboutStudent: currentVisitLog.observationsAboutStudent,
         feedbackSharedWithStudent: currentVisitLog.feedbackSharedWithStudent,
-        notes: currentVisitLog.notes,
       });
     }
   }, [isEdit, currentVisitLog, form, open]);
@@ -76,8 +77,73 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const handleClose = () => {
     form.resetFields();
     setFileList([]);
+    setInternshipDateError(null);
+    setSelectedInternship(null);
     onClose();
   };
+
+  // Validate visit date against internship dates
+  const validateInternshipDates = useCallback((visitDate, internship) => {
+    if (!internship || !visitDate) {
+      setInternshipDateError(null);
+      return true;
+    }
+
+    const visit = visitDate.toDate ? visitDate.toDate() : new Date(visitDate);
+    visit.setHours(0, 0, 0, 0);
+
+    // Check if internship has started
+    if (internship.startDate) {
+      const startDate = new Date(internship.startDate);
+      startDate.setHours(0, 0, 0, 0);
+      if (visit < startDate) {
+        setInternshipDateError(`Visit date cannot be before internship start date (${startDate.toLocaleDateString()})`);
+        return false;
+      }
+    }
+
+    // Check if internship has ended
+    if (internship.endDate) {
+      const endDate = new Date(internship.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      if (visit > endDate) {
+        setInternshipDateError(`Visit date cannot be after internship end date (${new Date(internship.endDate).toLocaleDateString()})`);
+        return false;
+      }
+    }
+
+    setInternshipDateError(null);
+    return true;
+  }, []);
+
+  // Handle student selection
+  const handleStudentSelect = useCallback((studentId) => {
+    setInternshipDateError(null);
+    setSelectedInternship(null);
+
+    // Find the student in assignedStudents
+    const found = assignedStudents.find(s => s.id === studentId);
+    if (found) {
+      const applications = found.internshipApplications || [];
+      if (applications.length > 0) {
+        const application = applications[0];
+        setSelectedInternship(application);
+
+        // Validate current visit date against the internship
+        const currentVisitDate = form.getFieldValue('visitDate');
+        if (currentVisitDate) {
+          validateInternshipDates(currentVisitDate, application);
+        }
+      }
+    }
+  }, [assignedStudents, form, validateInternshipDates]);
+
+  // Handle visit date change
+  const handleVisitDateChange = useCallback((date) => {
+    if (selectedInternship) {
+      validateInternshipDates(date, selectedInternship);
+    }
+  }, [selectedInternship, validateInternshipDates]);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -165,6 +231,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
                   style={{ width: '100%' }}
                   placeholder="Select visit date"
                   format="DD/MM/YYYY"
+                  onChange={handleVisitDateChange}
                 />
               </Form.Item>
             </Col>
@@ -193,6 +260,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
                   filterOption={(input, option) =>
                     option.label.toLowerCase().includes(input.toLowerCase())
                   }
+                  onChange={handleStudentSelect}
                   options={assignedStudents?.map(student => ({
                     value: student.id,
                     label: `${student.name} (${student.rollNumber})`,
@@ -221,6 +289,16 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               </Form.Item>
             </Col>
           </Row>
+
+          {internshipDateError && (
+            <Alert
+              message="Cannot Log Visit"
+              description={internshipDateError}
+              type="error"
+              showIcon
+              className="mb-4"
+            />
+          )}
 
           <Row gutter={16}>
             <Col xs={24} md={12}>
@@ -328,28 +406,14 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
-                <Input.TextArea
-                  rows={2}
-                  placeholder="Enter feedback shared with student..."
-                  showCount
-                  maxLength={500}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="notes" label="Additional Notes">
-                <Input.TextArea
-                  rows={2}
-                  placeholder="Any additional notes or comments..."
-                  showCount
-                  maxLength={1000}
-                />
-              </Form.Item>
-            </Col>
-          </Row>
+          <Form.Item name="feedbackSharedWithStudent" label="Feedback Shared with Student">
+            <Input.TextArea
+              rows={2}
+              placeholder="Enter feedback shared with student..."
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
 
           <Divider plain>Attachments</Divider>
 
@@ -370,6 +434,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
               type="primary"
               htmlType="submit"
               loading={loading}
+              disabled={!!internshipDateError}
               icon={<SaveOutlined />}
             >
               {isEdit ? 'Update Visit Log' : 'Create Visit Log'}

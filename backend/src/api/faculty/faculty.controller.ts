@@ -109,6 +109,14 @@ export class FacultyController {
     return this.facultyService.getVisitLogs(req.user.userId, { page, limit, studentId });
   }
 
+  @Get('visit-logs/:id')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Get visit log by ID' })
+  @ApiResponse({ status: 200, description: 'Visit log retrieved successfully' })
+  async getVisitLogById(@Param('id') id: string, @Req() req) {
+    return this.facultyService.getVisitLogById(id, req.user.userId);
+  }
+
   @Post('visit-logs')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @ApiOperation({
@@ -338,6 +346,39 @@ export class FacultyController {
     return this.facultyService.uploadJoiningLetter(applicationId, result.url, req.user.userId);
   }
 
+  @Get('monthly-reports/:id/download')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Download monthly report file' })
+  @ApiResponse({ status: 200, description: 'Monthly report file downloaded successfully' })
+  async downloadMonthlyReport(@Param('id') id: string, @Req() req) {
+    return this.facultyService.downloadMonthlyReport(id, req.user.userId);
+  }
+
+  @Post('monthly-reports/upload')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: 'Upload monthly report for a student' })
+  @ApiResponse({ status: 200, description: 'Monthly report uploaded successfully' })
+  async uploadMonthlyReport(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { applicationId: string; month: string; year: string; studentId?: string },
+    @Req() req,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    return this.facultyService.uploadMonthlyReport(file, body, req.user.userId);
+  }
+
+  @Post('assignments')
+  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @ApiOperation({ summary: 'Create assignment for student' })
+  @ApiResponse({ status: 201, description: 'Assignment created successfully' })
+  async createAssignment(@Req() req, @Body() assignmentData: any) {
+    return this.facultyService.createAssignment(req.user.userId, assignmentData);
+  }
+
   @Post('visit-logs/upload-document')
   @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
   @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
@@ -362,14 +403,61 @@ export class FacultyController {
     // Get institution name for folder structure
     const institutionName = faculty?.Institution?.name || 'default';
 
-    // Upload to MinIO using 'other' type for visit documents
-    const result = await this.fileStorageService.uploadStudentDocument(file, {
-      institutionName,
-      rollNumber: 'visit-logs', // Use 'visit-logs' as identifier for faculty visit documents
-      documentType: 'other',
-      customName: docType, // Store the actual type in customName for reference
-    });
+    // Check if file is an image that should be optimized
+    const imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    const fileExt = file.originalname.split('.').pop()?.toLowerCase();
+    const isImage = imageExtensions.includes(fileExt || '');
+
+    let result;
+
+    if (isImage) {
+      // Optimize image: resize to max 1200x1200, convert to WebP, compress
+      const optimized = await this.fileStorageService.optimizeImage(file.buffer, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 85,
+        format: 'webp',
+      });
+
+      // Upload the optimized image
+      result = await this.fileStorageService.uploadBuffer(
+        optimized.buffer,
+        `${docType}_${Date.now()}.webp`,
+        {
+          folder: this.sanitizeFolderName(institutionName),
+          subfolder: 'visit-logs',
+          contentType: optimized.contentType,
+          metadata: {
+            originalName: file.originalname,
+            documentType: docType,
+          },
+        },
+      );
+    } else {
+      // Non-image files (PDFs, etc.) - upload as-is
+      result = await this.fileStorageService.uploadStudentDocument(file, {
+        institutionName,
+        rollNumber: 'visit-logs',
+        documentType: 'other',
+        customName: docType,
+      });
+    }
 
     return { url: result.url, documentType: docType };
+  }
+
+  /**
+   * Sanitize folder name for storage path
+   */
+  private sanitizeFolderName(name: string): string {
+    if (!name) return 'default';
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '_')
+      .replace(/-+/g, '_')
+      .replace(/_+/g, '_')
+      .substring(0, 100);
   }
 }

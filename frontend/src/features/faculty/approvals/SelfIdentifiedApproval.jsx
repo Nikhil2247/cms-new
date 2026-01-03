@@ -17,6 +17,7 @@ import {
   Tabs,
   Popconfirm,
   Select,
+  theme,
 } from "antd";
 import {
   CheckCircleOutlined,
@@ -34,12 +35,12 @@ import {
   ReloadOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import facultyService from "../../../services/faculty.service";
 import { toast } from "react-hot-toast";
 import {
   fetchApplications,
   approveApplication,
   rejectApplication,
+  updateInternship,
   optimisticApproveApplication,
   optimisticRejectApplication,
   rollbackApplicationUpdate,
@@ -51,6 +52,7 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 
 const SelfIdentifiedApproval = () => {
+  const { token } = theme.useToken();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
@@ -84,7 +86,7 @@ const SelfIdentifiedApproval = () => {
     setSelectedApplication(record);
     form.resetFields();
     form.setFieldsValue({
-      hasJoined: true,
+      internshipPhase: 'ACTIVE',
       joiningDate: dayjs(),
     });
     setApprovalModalVisible(true);
@@ -131,7 +133,7 @@ const SelfIdentifiedApproval = () => {
 
     setActionLoading(true);
 
-    if (values.hasJoined) {
+    if (values.internshipPhase === 'ACTIVE') {
       // Optimistically remove from list (instant UI update)
       dispatch(optimisticApproveApplication({ applicationId: appToProcess.id }));
 
@@ -150,10 +152,13 @@ const SelfIdentifiedApproval = () => {
         // If there's a joining date, also update the internship
         if (values.joiningDate) {
           try {
-            await facultyService.updateInternship(appToProcess.id, {
-              hasJoined: true,
-              joiningDate: values.joiningDate.toISOString(),
-            });
+            await dispatch(updateInternship({
+              internshipId: appToProcess.id,
+              data: {
+                internshipPhase: 'ACTIVE',
+                joiningDate: values.joiningDate.toISOString(),
+              }
+            })).unwrap();
           } catch (e) {
             // Non-critical - log but don't fail
             console.warn("Could not update joining status:", e);
@@ -199,13 +204,13 @@ const SelfIdentifiedApproval = () => {
   const getPendingApplications = () => {
     return applications.filter(
       (app) =>
-        (!app.hasJoined && app.status !== "JOINED") ||
+        (app.internshipPhase !== "ACTIVE" && app.status !== "JOINED") ||
         app.status === "UNDER_REVIEW"
     );
   };
 
   const getApprovedApplications = () => {
-    return applications.filter((app) => app.hasJoined || app.status === "JOINED");
+    return applications.filter((app) => app.internshipPhase === "ACTIVE" || app.status === "JOINED");
   };
 
   const columns = [
@@ -215,9 +220,9 @@ const SelfIdentifiedApproval = () => {
       width: "20%",
       render: (_, record) => (
         <div>
-          <div className="font-semibold text-primary">{record.student?.name}</div>
-          <div className="text-xs text-text-secondary">{record.student?.rollNumber}</div>
-          <div className="text-xs text-text-secondary">{record.student?.branchName}</div>
+          <div className="font-semibold" style={{ color: token.colorPrimary }}>{record.student?.name}</div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.rollNumber}</div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.branchName}</div>
         </div>
       ),
     },
@@ -228,16 +233,16 @@ const SelfIdentifiedApproval = () => {
       render: (_, record) => (
         <div>
           <div className="font-medium flex items-center">
-            <BankOutlined className="mr-1 text-success" />
+            <BankOutlined className="mr-1" style={{ color: token.colorSuccess }} />
             {record.companyName || "N/A"}
           </div>
           {record.jobProfile && (
-            <div className="text-xs text-text-secondary mt-1">
+            <div className="text-xs mt-1" style={{ color: token.colorTextSecondary }}>
               Role: {record.jobProfile}
             </div>
           )}
           {record.companyAddress && (
-            <div className="text-xs text-text-tertiary mt-1">
+            <div className="text-xs mt-1" style={{ color: token.colorTextTertiary }}>
               {record.companyAddress}
             </div>
           )}
@@ -252,13 +257,13 @@ const SelfIdentifiedApproval = () => {
         <div>
           <div className="text-sm font-medium">{record.hrName || "N/A"}</div>
           {record.hrContact && (
-            <div className="text-xs text-text-secondary flex items-center mt-1">
+            <div className="text-xs flex items-center mt-1" style={{ color: token.colorTextSecondary }}>
               <PhoneOutlined className="mr-1" />
               {record.hrContact}
             </div>
           )}
           {record.hrEmail && (
-            <div className="text-xs text-primary flex items-center mt-1">
+            <div className="text-xs flex items-center mt-1" style={{ color: token.colorPrimary }}>
               <MailOutlined className="mr-1" />
               {record.hrEmail}
             </div>
@@ -274,18 +279,18 @@ const SelfIdentifiedApproval = () => {
         <div>
           {record.internshipDuration && (
             <div className="text-sm flex items-center mb-1">
-              <ClockCircleOutlined className="mr-1 text-primary" />
+              <ClockCircleOutlined className="mr-1" style={{ color: token.colorPrimary }} />
               {record.internshipDuration}
             </div>
           )}
           {record.stipend && (
-            <div className="text-sm flex items-center text-success">
+            <div className="text-sm flex items-center" style={{ color: token.colorSuccess }}>
               <DollarOutlined className="mr-1" />
               ₹{record.stipend}
             </div>
           )}
           {record.startDate && (
-            <div className="text-xs text-text-secondary mt-1">
+            <div className="text-xs mt-1" style={{ color: token.colorTextSecondary }}>
               Start: {dayjs(record.startDate).format("MMM DD, YYYY")}
             </div>
           )}
@@ -306,7 +311,7 @@ const SelfIdentifiedApproval = () => {
       width: "10%",
       render: (_, record) => (
         <div>
-          {record.hasJoined ? (
+          {record.internshipPhase === "ACTIVE" ? (
             <Tag color="green" icon={<CheckCircleOutlined />}>
               Approved
             </Tag>
@@ -339,7 +344,7 @@ const SelfIdentifiedApproval = () => {
           >
             View Details
           </Button>
-          {!record.hasJoined && record.status !== "JOINED" ? (
+          {record.internshipPhase !== "ACTIVE" && record.status !== "JOINED" ? (
             <Space>
               <Button
                 type="primary"
@@ -455,7 +460,7 @@ const SelfIdentifiedApproval = () => {
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -465,21 +470,21 @@ const SelfIdentifiedApproval = () => {
               onClick={() => navigate('/app/dashboard')}
               className="rounded-lg"
             />
-            <div className="w-10 h-10 flex items-center justify-center rounded-xl bg-surface border border-border text-primary shadow-sm">
+            <div className="w-10 h-10 flex items-center justify-center rounded-xl border shadow-sm" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder, color: token.colorPrimary }}>
               <CheckCircleOutlined className="text-lg" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
                   Self-Identified Internship Approvals
                 </Title>
                 {applicationsLastFetched && (
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-xs" style={{ color: token.colorTextTertiary }}>
                     Updated {new Date(applicationsLastFetched).toLocaleTimeString()}
                   </span>
                 )}
               </div>
-              <Text className="text-text-secondary text-sm">
+              <Text className="text-sm" style={{ color: token.colorTextSecondary }}>
                 Review and approve self-identified internship applications from students
               </Text>
             </div>
@@ -496,51 +501,51 @@ const SelfIdentifiedApproval = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Card size="small" className="rounded-xl border-border shadow-sm hover:shadow-md transition-all">
+          <Card size="small" className="rounded-xl shadow-sm hover:shadow-md transition-all" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-warning/10 text-warning">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorWarningBg, color: token.colorWarning }}>
                 <ClockCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>
                   {getPendingApplications().length}
                 </div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Pending Approval</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Pending Approval</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm hover:shadow-md transition-all">
+          <Card size="small" className="rounded-xl shadow-sm hover:shadow-md transition-all" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-success/10 text-success">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}>
                 <CheckCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>
                   {getApprovedApplications().length}
                 </div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Approved</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Approved</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm hover:shadow-md transition-all">
+          <Card size="small" className="rounded-xl shadow-sm hover:shadow-md transition-all" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}>
                 <FileTextOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>
                   {applications.length}
                 </div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Total Applications</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Total Applications</div>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Main Content */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
+        <Card className="rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }} styles={{ body: { padding: 0 } }}>
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
@@ -554,10 +559,10 @@ const SelfIdentifiedApproval = () => {
         <Modal
           title={
             <div className="flex items-center gap-3 py-1">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                <FileTextOutlined className="text-primary" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
+                <FileTextOutlined style={{ color: token.colorPrimary }} />
               </div>
-              <span className="font-bold text-text-primary text-lg">Internship Details</span>
+              <span className="font-bold text-lg" style={{ color: token.colorText }}>Internship Details</span>
             </div>
           }
           open={detailModalVisible}
@@ -576,12 +581,13 @@ const SelfIdentifiedApproval = () => {
             >
               Close
             </Button>,
-            selectedApplication && !selectedApplication.hasJoined && (
+            selectedApplication && selectedApplication.internshipPhase !== "ACTIVE" && (
               <Button
                 key="approve"
                 type="primary"
                 icon={<CheckCircleOutlined />}
-                className="rounded-xl px-6 font-bold bg-primary border-0"
+                className="rounded-xl px-6 font-bold"
+                style={{ backgroundColor: token.colorPrimary, borderColor: token.colorPrimary }}
                 onClick={() => {
                   setDetailModalVisible(false);
                   handleApprove(selectedApplication);
@@ -598,25 +604,25 @@ const SelfIdentifiedApproval = () => {
           {selectedApplication && (
             <div className="py-2 space-y-4">
               {/* Student Information */}
-              <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                  <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                    <UserOutlined className="text-primary" /> Student Information
+              <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                  <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                    <UserOutlined style={{ color: token.colorPrimary }} /> Student Information
                   </Text>
                 </div>
                 <div className="p-4">
                   <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-                    <Descriptions.Item label={<Text className="text-text-tertiary font-medium">Name</Text>}>
-                      <Text className="text-text-primary font-semibold">{selectedApplication.student?.name}</Text>
+                    <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Name</Text>}>
+                      <Text className="font-semibold" style={{ color: token.colorText }}>{selectedApplication.student?.name}</Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label={<Text className="text-text-tertiary font-medium">Roll Number</Text>}>
-                      <Text className="text-text-primary">{selectedApplication.student?.rollNumber}</Text>
+                    <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Roll Number</Text>}>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.rollNumber}</Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label={<Text className="text-text-tertiary font-medium">Branch</Text>}>
-                      <Text className="text-text-primary">{selectedApplication.student?.branchName}</Text>
+                    <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Branch</Text>}>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.branchName}</Text>
                     </Descriptions.Item>
-                    <Descriptions.Item label={<Text className="text-text-tertiary font-medium">Email</Text>}>
-                      <Text className="text-text-primary">{selectedApplication.student?.email}</Text>
+                    <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Email</Text>}>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.email}</Text>
                     </Descriptions.Item>
                   </Descriptions>
                 </div>
@@ -624,44 +630,44 @@ const SelfIdentifiedApproval = () => {
 
               {/* Company & Internship Information */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                    <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                      <BankOutlined className="text-success" /> Company Information
+                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                  <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                    <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                      <BankOutlined style={{ color: token.colorSuccess }} /> Company Information
                     </Text>
                   </div>
                   <div className="p-4 space-y-3">
                     <div>
-                      <Text className="text-[10px] uppercase font-bold text-text-tertiary block leading-none mb-1">Company Name</Text>
-                      <Text className="text-text-primary font-medium">{selectedApplication.companyName || "N/A"}</Text>
+                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Company Name</Text>
+                      <Text className="font-medium" style={{ color: token.colorText }}>{selectedApplication.companyName || "N/A"}</Text>
                     </div>
                     <div>
-                      <Text className="text-[10px] uppercase font-bold text-text-tertiary block leading-none mb-1">Role</Text>
-                      <Text className="text-text-primary font-medium">{selectedApplication.jobProfile || "N/A"}</Text>
+                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Role</Text>
+                      <Text className="font-medium" style={{ color: token.colorText }}>{selectedApplication.jobProfile || "N/A"}</Text>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                  <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                    <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                      <CalendarOutlined className="text-warning" /> Internship Period
+                <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                  <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                    <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                      <CalendarOutlined style={{ color: token.colorWarning }} /> Internship Period
                     </Text>
                   </div>
                   <div className="p-4 space-y-3">
                     <div className="flex justify-between">
                       <div>
-                        <Text className="text-[10px] uppercase font-bold text-text-tertiary block leading-none mb-1">Duration</Text>
-                        <Text className="text-text-primary font-medium">{selectedApplication.internshipDuration || "N/A"}</Text>
+                        <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Duration</Text>
+                        <Text className="font-medium" style={{ color: token.colorText }}>{selectedApplication.internshipDuration || "N/A"}</Text>
                       </div>
                       <div className="text-right">
-                        <Text className="text-[10px] uppercase font-bold text-text-tertiary block leading-none mb-1">Stipend</Text>
-                        <Text className="text-success font-bold">{selectedApplication.stipend ? `₹${selectedApplication.stipend}` : "N/A"}</Text>
+                        <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Stipend</Text>
+                        <Text className="font-bold" style={{ color: token.colorSuccess }}>{selectedApplication.stipend ? `₹${selectedApplication.stipend}` : "N/A"}</Text>
                       </div>
                     </div>
                     <div>
-                      <Text className="text-[10px] uppercase font-bold text-text-tertiary block leading-none mb-1">Dates</Text>
-                      <Text className="text-text-primary font-medium">
+                      <Text className="text-[10px] uppercase font-bold block leading-none mb-1" style={{ color: token.colorTextTertiary }}>Dates</Text>
+                      <Text className="font-medium" style={{ color: token.colorText }}>
                         {selectedApplication.startDate ? dayjs(selectedApplication.startDate).format("MMM DD") : "?"} - {selectedApplication.endDate ? dayjs(selectedApplication.endDate).format("MMM DD, YYYY") : "?"}
                       </Text>
                     </div>
@@ -671,14 +677,14 @@ const SelfIdentifiedApproval = () => {
 
               {/* Joining Letter */}
               {selectedApplication.joiningLetterUrl && (
-                <div className="bg-primary-50/50 rounded-xl border border-primary-100 p-4 flex items-center justify-between">
+                <div className="rounded-xl border p-4 flex items-center justify-between" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
-                      <FileTextOutlined className="text-primary text-xl" />
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center shadow-sm" style={{ backgroundColor: token.colorBgContainer }}>
+                      <FileTextOutlined className="text-xl" style={{ color: token.colorPrimary }} />
                     </div>
                     <div>
-                      <Text className="text-text-primary font-bold block leading-none mb-1">Joining Letter</Text>
-                      <Text className="text-text-tertiary text-xs">Uploaded on {dayjs(selectedApplication.joiningLetterUploadedAt).format("MMM DD, YYYY")}</Text>
+                      <Text className="font-bold block leading-none mb-1" style={{ color: token.colorText }}>Joining Letter</Text>
+                      <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Uploaded on {dayjs(selectedApplication.joiningLetterUploadedAt).format("MMM DD, YYYY")}</Text>
                     </div>
                   </div>
                   <Button
@@ -695,19 +701,19 @@ const SelfIdentifiedApproval = () => {
 
               {/* Additional Information */}
               {(selectedApplication.coverLetter || selectedApplication.additionalInfo) && (
-                <div className="bg-background-tertiary/30 p-5 rounded-2xl border border-border/60">
-                  <Title level={5} className="!mb-3 text-xs uppercase tracking-widest text-text-tertiary font-bold">Additional Information</Title>
+                <div className="p-5 rounded-2xl border" style={{ backgroundColor: `${token.colorTextTertiary}1A`, borderColor: `${token.colorBorder}99` }}>
+                  <Title level={5} className="!mb-3 text-xs uppercase tracking-widest font-bold" style={{ color: token.colorTextTertiary }}>Additional Information</Title>
                   <div className="space-y-4">
                     {selectedApplication.coverLetter && (
                       <div>
-                        <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Cover Letter</Text>
-                        <Paragraph className="text-text-primary text-sm mb-0 italic">{selectedApplication.coverLetter}</Paragraph>
+                        <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Cover Letter</Text>
+                        <Paragraph className="text-sm mb-0 italic" style={{ color: token.colorText }}>{selectedApplication.coverLetter}</Paragraph>
                       </div>
                     )}
                     {selectedApplication.additionalInfo && (
                       <div>
-                        <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Other Info</Text>
-                        <Paragraph className="text-text-primary text-sm mb-0">{selectedApplication.additionalInfo}</Paragraph>
+                        <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Other Info</Text>
+                        <Paragraph className="text-sm mb-0" style={{ color: token.colorText }}>{selectedApplication.additionalInfo}</Paragraph>
                       </div>
                     )}
                   </div>
@@ -721,10 +727,10 @@ const SelfIdentifiedApproval = () => {
         <Modal
           title={
             <div className="flex items-center gap-3 py-1">
-              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center shrink-0 border border-success/20">
-                <CheckCircleOutlined className="text-success" />
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border" style={{ backgroundColor: token.colorSuccessBg, borderColor: token.colorSuccessBorder }}>
+                <CheckCircleOutlined style={{ color: token.colorSuccess }} />
               </div>
-              <span className="font-bold text-text-primary text-lg">Approval Confirmation</span>
+              <span className="font-bold text-lg" style={{ color: token.colorText }}>Approval Confirmation</span>
             </div>
           }
           open={approvalModalVisible}
@@ -735,18 +741,18 @@ const SelfIdentifiedApproval = () => {
           }}
           onOk={() => form.submit()}
           okText="Confirm Approval"
-          okButtonProps={{ loading: actionLoading, className: "rounded-xl font-bold bg-success border-0 px-6 h-10" }}
+          okButtonProps={{ loading: actionLoading, className: "rounded-xl font-bold border-0 px-6 h-10", style: { backgroundColor: token.colorSuccess } }}
           cancelButtonProps={{ className: "rounded-xl" }}
           width={500}
           className="rounded-2xl overflow-hidden"
         >
           {selectedApplication && (
             <div className="space-y-4">
-              <div className="bg-info-bg/50 p-4 rounded-xl border border-info-border mt-2">
-                <Text className="text-text-secondary text-sm">You are approving the internship for:</Text>
+              <div className="p-4 rounded-xl border mt-2" style={{ backgroundColor: token.colorInfoBg, borderColor: token.colorInfoBorder }}>
+                <Text className="text-sm" style={{ color: token.colorTextSecondary }}>You are approving the internship for:</Text>
                 <div className="mt-2">
-                  <Text strong className="text-text-primary block">{selectedApplication.student?.name}</Text>
-                  <Text className="text-text-tertiary text-xs">{selectedApplication.companyName}</Text>
+                  <Text strong className="block" style={{ color: token.colorText }}>{selectedApplication.student?.name}</Text>
+                  <Text className="text-xs" style={{ color: token.colorTextTertiary }}>{selectedApplication.companyName}</Text>
                 </div>
               </div>
 
@@ -755,33 +761,33 @@ const SelfIdentifiedApproval = () => {
                 layout="vertical"
                 onFinish={handleSubmitApproval}
                 initialValues={{
-                  hasJoined: true,
+                  internshipPhase: 'ACTIVE',
                   joiningDate: dayjs(),
                 }}
                 className="mt-4"
               >
                 <Form.Item
-                  name="hasJoined"
-                  label={<span className="font-medium text-text-primary">Final Status</span>}
+                  name="internshipPhase"
+                  label={<span className="font-medium" style={{ color: token.colorText }}>Final Status</span>}
                   rules={[{ required: true }]}
                 >
                   <Select className="rounded-lg h-10">
-                    <Option value={true}>Approve - Student joined</Option>
-                    <Option value={false}>Reject - Do not approve</Option>
+                    <Option value="ACTIVE">Approve - Student joined</Option>
+                    <Option value="NOT_STARTED">Reject - Do not approve</Option>
                   </Select>
                 </Form.Item>
 
                 <Form.Item
                   noStyle
                   shouldUpdate={(prevValues, currentValues) =>
-                    prevValues.hasJoined !== currentValues.hasJoined
+                    prevValues.internshipPhase !== currentValues.internshipPhase
                   }
                 >
                   {({ getFieldValue }) =>
-                    getFieldValue("hasJoined") === true ? (
+                    getFieldValue("internshipPhase") === "ACTIVE" ? (
                       <Form.Item
                         name="joiningDate"
-                        label={<span className="font-medium text-text-primary">Joining Date</span>}
+                        label={<span className="font-medium" style={{ color: token.colorText }}>Joining Date</span>}
                         rules={[
                           { required: true, message: "Please select joining date" },
                         ]}

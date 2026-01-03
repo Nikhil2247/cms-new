@@ -225,8 +225,8 @@ const FacultyProgress = () => {
   // Handle edit internship
   const handleEditInternship = (student) => {
     setEditStudent(student);
-    // Normalize status to uppercase
-    const status = student.internshipStatus?.toUpperCase?.() || student.internshipStatus || 'ONGOING';
+    // Normalize phase to the new schema
+    const phase = student.internshipPhase || 'NOT_STARTED';
     // Reset form first, then set new values
     editForm.resetFields();
     // Use setTimeout to ensure form is ready after reset
@@ -236,7 +236,7 @@ const FacultyProgress = () => {
         jobProfile: student.jobProfile || '',
         stipend: student.stipend ? Number(student.stipend) : null,
         internshipDuration: student.internshipDuration || '',
-        internshipStatus: status,
+        internshipPhase: phase,
       });
     }, 0);
     setEditVisible(true);
@@ -1044,14 +1044,14 @@ const FacultyProgress = () => {
             </Col>
             <Col xs={24} md={8}>
               <Form.Item
-                name="internshipStatus"
-                label={<span className="font-medium">Status</span>}
+                name="internshipPhase"
+                label={<span className="font-medium">Phase</span>}
               >
-                <Select placeholder="Select status" className="rounded-lg">
-                  <Select.Option value="ONGOING">Ongoing</Select.Option>
-                  <Select.Option value="IN_PROGRESS">In Progress</Select.Option>
+                <Select placeholder="Select phase" className="rounded-lg">
+                  <Select.Option value="NOT_STARTED">Not Started</Select.Option>
+                  <Select.Option value="ACTIVE">Active</Select.Option>
                   <Select.Option value="COMPLETED">Completed</Select.Option>
-                  <Select.Option value="APPROVED">Approved</Select.Option>
+                  <Select.Option value="TERMINATED">Terminated</Select.Option>
                 </Select>
               </Form.Item>
             </Col>

@@ -5,7 +5,7 @@ import {
   BulkSelfInternshipResultDto,
   BulkSelfInternshipValidationResultDto,
 } from './dto/bulk-self-internship.dto';
-import { ApplicationStatus, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { ExcelUtils } from '../../core/common/utils/excel.util';
 
@@ -405,7 +405,7 @@ export class BulkSelfInternshipService {
             studentId: student.id,
             isSelfIdentified: true,
             status: ApplicationStatus.APPLIED,
-            internshipStatus: 'SELF_IDENTIFIED',
+            internshipPhase: InternshipPhase.PENDING,
 
             // Company information
             companyName: internship.companyName,

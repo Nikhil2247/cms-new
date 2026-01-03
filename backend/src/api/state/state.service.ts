@@ -394,6 +394,10 @@ export class StateService {
     return this.mentorService.getInstitutionMentors(institutionId);
   }
 
+  async getInstitutionMentorOverview() {
+    return this.mentorService.getInstitutionMentorOverview();
+  }
+
   async assignMentorToStudent(studentId: string, mentorId: string, assignedBy: string) {
     return this.mentorService.assignMentorToStudent(studentId, mentorId, assignedBy);
   }

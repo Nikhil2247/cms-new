@@ -106,8 +106,8 @@ const Layouts = () => {
           closable
           onClose={() => setMobileOpen(false)}
           open={mobileOpen}
-          width={260}
           styles={{
+            wrapper: { width: 260 },
             body: {
               padding: 0,
               display: 'flex',

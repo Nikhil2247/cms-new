@@ -100,13 +100,15 @@ export class StudentDirectoryFilterDto extends BaseReportFilterDto {
 
 /**
  * Filters for Student Internship Status Report
+ * Note: This filters by computed internship phase status (PENDING, ACTIVE, COMPLETED)
+ * rather than the database internshipPhase enum field
  */
 export class StudentInternshipStatusFilterDto extends BaseReportFilterDto {
   @IsOptional()
-  @IsIn(['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED', 'WITHDRAWN'], {
-    message: 'Invalid internship status',
+  @IsIn(['PENDING', 'ACTIVE', 'COMPLETED'], {
+    message: 'Invalid internship phase status',
   })
-  internshipStatus?: string;
+  internshipPhase?: string;
 
   @IsOptional()
   @IsUUID('4', { message: 'Mentor ID must be a valid UUID' })

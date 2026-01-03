@@ -552,6 +552,16 @@ export class StateController {
     return { success: true, data: mentors };
   }
 
+  @Get('mentors/institution-overview')
+  @ApiOperation({
+    summary: 'Get institution mentor overview with cross-institutional statistics',
+    description: 'Shows internal and external mentoring stats for each institution',
+  })
+  async getInstitutionMentorOverview() {
+    const overview = await this.stateService.getInstitutionMentorOverview();
+    return { success: true, data: overview };
+  }
+
   @Post('students/:id/assign-mentor')
   @ApiOperation({ summary: 'Assign mentor to student' })
   async assignMentorToStudent(

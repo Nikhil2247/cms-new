@@ -1,5 +1,5 @@
 import React from 'react';
-import { Table, Tag, Button, Space, Avatar, Typography, Tooltip } from 'antd';
+import { Table, Tag, Button, Space, Avatar, Typography, Tooltip, theme } from 'antd';
 import {
   EyeOutlined,
   BankOutlined,
@@ -33,6 +33,8 @@ const ApplicationsTable = ({
   onViewDetails,
   isSelfIdentified = false,
 }) => {
+  const { token } = theme.useToken();
+
   const baseColumns = [
     {
       title: 'Company',
@@ -49,7 +51,8 @@ const ApplicationsTable = ({
               src={company?.logo ? getImageUrl(company.logo) : null}
               icon={<BankOutlined />}
               size={40}
-              className="bg-blue-100 text-blue-600 flex-shrink-0"
+              className="flex-shrink-0"
+              style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
             />
             <div className="min-w-0">
               <Text strong className="block truncate">
@@ -100,11 +103,11 @@ const ApplicationsTable = ({
         return (
           <div className="text-xs">
             <div className="flex items-center gap-1">
-              <CalendarOutlined className="text-gray-400" />
-              <span>{formatDisplayDate(startDate)}</span>
+              <CalendarOutlined style={{ color: token.colorTextQuaternary }} />
+              <span style={{ color: token.colorTextSecondary }}>{formatDisplayDate(startDate)}</span>
             </div>
             {endDate && (
-              <div className="text-gray-500 ml-4">
+              <div className="ml-4" style={{ color: token.colorTextTertiary }}>
                 to {formatDisplayDate(endDate)}
               </div>
             )}
@@ -149,7 +152,6 @@ const ApplicationsTable = ({
               size="small"
               icon={<EyeOutlined />}
               onClick={() => onViewDetails(record)}
-              className="bg-blue-500"
             >
               View
             </Button>

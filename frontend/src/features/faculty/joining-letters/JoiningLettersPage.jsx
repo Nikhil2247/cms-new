@@ -21,6 +21,7 @@ import {
   Image,
   Upload,
   Select,
+  theme,
 } from 'antd';
 import {
   FileProtectOutlined,
@@ -67,6 +68,7 @@ const getStatusConfig = (isVerified) => {
 };
 
 const JoiningLettersPage = () => {
+  const { token } = theme.useToken();
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { list: letters, loading, total } = useSelector(selectJoiningLetters);
@@ -311,10 +313,10 @@ const JoiningLettersPage = () => {
         const student = record.student;
         return (
           <div className="flex items-center gap-3">
-            <Avatar icon={<UserOutlined />} className="bg-primary" />
+            <Avatar icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary }} />
             <div>
-              <div className="font-semibold text-text-primary">{student?.name || 'Unknown'}</div>
-              <div className="text-xs text-text-tertiary">{student?.rollNumber}</div>
+              <div className="font-semibold" style={{ color: token.colorText }}>{student?.name || 'Unknown'}</div>
+              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.rollNumber}</div>
             </div>
           </div>
         );
@@ -329,8 +331,8 @@ const JoiningLettersPage = () => {
         const companyName = company?.companyName || record.companyName;
         return (
           <div className="flex items-center gap-2">
-            <BankOutlined className="text-success" />
-            <span className="text-text-primary">{companyName || 'Self-Identified'}</span>
+            <BankOutlined style={{ color: token.colorSuccess }} />
+            <span style={{ color: token.colorText }}>{companyName || 'Self-Identified'}</span>
           </div>
         );
       },
@@ -396,7 +398,7 @@ const JoiningLettersPage = () => {
                   <Button
                     type="text"
                     size="small"
-                    icon={<CheckCircleOutlined className="text-green-500" />}
+                    icon={<CheckCircleOutlined style={{ color: token.colorSuccess }} />}
                     onClick={() => setReviewModal({ visible: true, letter: record, action: 'verify' })}
                   />
                 </Tooltip>
@@ -404,7 +406,7 @@ const JoiningLettersPage = () => {
                   <Button
                     type="text"
                     size="small"
-                    icon={<CloseCircleOutlined className="text-red-500" />}
+                    icon={<CloseCircleOutlined style={{ color: token.colorError }} />}
                     onClick={() => setReviewModal({ visible: true, letter: record, action: 'reject' })}
                   />
                 </Tooltip>
@@ -452,7 +454,7 @@ const JoiningLettersPage = () => {
         <span className="flex items-center gap-2">
           <CheckCircleOutlined />
           Verified
-          <Badge count={verifiedCount} showZero className="ml-1" style={{ backgroundColor: 'rgb(var(--color-success))' }} />
+          <Badge count={verifiedCount} showZero className="ml-1" style={{ backgroundColor: token.colorSuccess }} />
         </span>
       ),
     },
@@ -462,30 +464,30 @@ const JoiningLettersPage = () => {
         <span className="flex items-center gap-2">
           <CloseCircleOutlined />
           Rejected
-          <Badge count={rejectedCount} showZero className="ml-1" style={{ backgroundColor: 'rgb(var(--color-error))' }} />
+          <Badge count={rejectedCount} showZero className="ml-1" style={{ backgroundColor: token.colorError }} />
         </span>
       ),
     },
   ];
 
   return (
-    <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-3">
             <div>
               <div className="flex items-center gap-3">
-                <Title level={2} className="mb-0 text-text-primary text-2xl">
+                <Title level={2} className="mb-0 text-2xl" style={{ color: token.colorText }}>
                   Joining Letters
                 </Title>
                 {joiningLettersLastFetched && (
-                  <span className="text-xs text-text-tertiary">
+                  <span className="text-xs" style={{ color: token.colorTextTertiary }}>
                     Updated {new Date(joiningLettersLastFetched).toLocaleTimeString()}
                   </span>
                 )}
               </div>
-              <Text className="text-text-secondary text-sm">
+              <Text className="text-sm" style={{ color: token.colorTextSecondary }}>
                 Verify and review student joining letter documents
               </Text>
             </div>
@@ -513,61 +515,61 @@ const JoiningLettersPage = () => {
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-primary/10 text-primary">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}>
                 <FileProtectOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{letters.length}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Total Letters</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{letters.length}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Total Letters</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-warning/10 text-warning">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorWarningBg, color: token.colorWarning }}>
                 <ClockCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{pendingCount}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Pending Review</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{pendingCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Pending Review</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-success/10 text-success">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}>
                 <CheckCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{verifiedCount}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Verified</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{verifiedCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Verified</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-xl border-border shadow-sm">
+          <Card size="small" className="rounded-xl shadow-sm" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-error/10 text-error">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: token.colorErrorBg, color: token.colorError }}>
                 <CloseCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-text-primary">{rejectedCount}</div>
-                <div className="text-[10px] uppercase font-bold text-text-tertiary">Rejected</div>
+                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{rejectedCount}</div>
+                <div className="text-[10px] uppercase font-bold" style={{ color: token.colorTextTertiary }}>Rejected</div>
               </div>
             </div>
           </Card>
         </div>
 
         {/* Search and Table */}
-        <Card className="rounded-2xl border-border shadow-sm overflow-hidden" styles={{ body: { padding: 0 } }}>
-          <div className="p-4 border-b border-gray-200">
+        <Card className="rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: token.colorBorder, backgroundColor: token.colorBgContainer }} styles={{ body: { padding: 0 } }}>
+          <div className="p-4" style={{ borderBottom: `1px solid ${token.colorBorder}` }}>
             <Input
               placeholder="Search by student name or roll number..."
-              prefix={<SearchOutlined className="text-text-tertiary" />}
+              prefix={<SearchOutlined style={{ color: token.colorTextTertiary }} />}
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="max-w-md rounded-lg h-10"
@@ -603,16 +605,14 @@ const JoiningLettersPage = () => {
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              reviewModal.action === 'verify' ? 'bg-success/10' : 'bg-error/10'
-            }`}>
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center`} style={{ backgroundColor: reviewModal.action === 'verify' ? token.colorSuccessBg : token.colorErrorBg }}>
               {reviewModal.action === 'verify' ? (
-                <CheckCircleOutlined className="text-success" />
+                <CheckCircleOutlined style={{ color: token.colorSuccess }} />
               ) : (
-                <CloseCircleOutlined className="text-error" />
+                <CloseCircleOutlined style={{ color: token.colorError }} />
               )}
             </div>
-            <span className="font-bold text-text-primary">
+            <span className="font-bold" style={{ color: token.colorText }}>
               {reviewModal.action === 'verify' ? 'Verify Joining Letter' : 'Reject Joining Letter'}
             </span>
           </div>
@@ -627,7 +627,7 @@ const JoiningLettersPage = () => {
             Cancel
           </Button>,
           reviewModal.action === 'verify' ? (
-            <Button key="verify" type="primary" onClick={handleVerify} className="rounded-lg bg-success border-success">
+            <Button key="verify" type="primary" onClick={handleVerify} className="rounded-lg" style={{ backgroundColor: token.colorSuccess, borderColor: token.colorSuccess }}>
               Verify
             </Button>
           ) : (
@@ -639,7 +639,7 @@ const JoiningLettersPage = () => {
         className="rounded-2xl"
       >
         {reviewModal.letter && (
-          <div className="mb-4 p-4 bg-surface rounded-xl border border-border">
+          <div className="mb-4 p-4 rounded-xl border" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
             <p><strong>Student:</strong> {reviewModal.letter.student?.name}</p>
             <p><strong>Company:</strong> {reviewModal.letter.internship?.industry?.companyName || reviewModal.letter.companyName || 'Self-Identified'}</p>
           </div>
@@ -657,10 +657,10 @@ const JoiningLettersPage = () => {
       <Modal
         title={
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-primary/10">
-              <UploadOutlined className="text-primary" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg }}>
+              <UploadOutlined style={{ color: token.colorPrimary }} />
             </div>
-            <span className="font-bold text-text-primary">Upload Joining Letter</span>
+            <span className="font-bold" style={{ color: token.colorText }}>Upload Joining Letter</span>
           </div>
         }
         open={uploadModal.visible}
@@ -727,7 +727,7 @@ const JoiningLettersPage = () => {
               className="rounded-lg"
             >
               <p className="ant-upload-drag-icon">
-                <UploadOutlined className="text-primary text-4xl" />
+                <UploadOutlined className="text-4xl" style={{ color: token.colorPrimary }} />
               </p>
               <p className="ant-upload-text">Click or drag file to upload</p>
               <p className="ant-upload-hint">
@@ -737,8 +737,8 @@ const JoiningLettersPage = () => {
           </div>
 
           {uploadModal.student && students.find(s => s.student.id === uploadModal.student) && (
-            <div className="p-4 bg-surface rounded-xl border border-border">
-              <Text className="text-xs uppercase font-bold text-text-tertiary block mb-2">
+            <div className="p-4 rounded-xl border" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <Text className="text-xs uppercase font-bold block mb-2" style={{ color: token.colorTextTertiary }}>
                 Student Information
               </Text>
               {(() => {
@@ -749,11 +749,11 @@ const JoiningLettersPage = () => {
                     <div>
                       <Text strong>{studentData?.student?.name}</Text>
                     </div>
-                    <div className="text-sm text-text-secondary">
+                    <div className="text-sm" style={{ color: token.colorTextSecondary }}>
                       {studentData?.student?.rollNumber}
                     </div>
                     {application && (
-                      <div className="text-sm text-text-secondary mt-2">
+                      <div className="text-sm mt-2" style={{ color: token.colorTextSecondary }}>
                         Company: {application.internship?.industry?.companyName || 'Self-Identified'}
                       </div>
                     )}
@@ -769,10 +769,10 @@ const JoiningLettersPage = () => {
       <Drawer
         title={
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20">
-              <FileProtectOutlined className="text-primary" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center border" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
+              <FileProtectOutlined style={{ color: token.colorPrimary }} />
             </div>
-            <span className="font-bold text-text-primary">Joining Letter Details</span>
+            <span className="font-bold" style={{ color: token.colorText }}>Joining Letter Details</span>
           </div>
         }
         placement="right"
@@ -787,17 +787,22 @@ const JoiningLettersPage = () => {
         {selectedLetter && (
           <div className="space-y-6">
             {/* Status Banner */}
-            <div className={`p-4 rounded-xl border ${
-              selectedLetter.reviewedAt && !selectedLetter.reviewRemarks?.toLowerCase().includes('reject')
-                ? 'bg-success/5 border-success/20'
+            <div className={`p-4 rounded-xl border`} style={{
+              backgroundColor: selectedLetter.reviewedAt && !selectedLetter.reviewRemarks?.toLowerCase().includes('reject')
+                ? token.colorSuccessBg
                 : selectedLetter.reviewedAt
-                  ? 'bg-error/5 border-error/20'
-                  : 'bg-warning/5 border-warning/20'
-            }`}>
+                  ? token.colorErrorBg
+                  : token.colorWarningBg,
+              borderColor: selectedLetter.reviewedAt && !selectedLetter.reviewRemarks?.toLowerCase().includes('reject')
+                ? token.colorSuccessBorder
+                : selectedLetter.reviewedAt
+                  ? token.colorErrorBorder
+                  : token.colorWarningBorder
+            }}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <FileProtectOutlined className="text-primary" />
-                  <span className="font-bold text-text-primary">Joining Letter</span>
+                  <FileProtectOutlined style={{ color: token.colorPrimary }} />
+                  <span className="font-bold" style={{ color: token.colorText }}>Joining Letter</span>
                 </div>
                 <Tag
                   color={getStatusConfig(getLetterStatus(selectedLetter)).color}
@@ -809,10 +814,10 @@ const JoiningLettersPage = () => {
             </div>
 
             {/* Student Information */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                  <UserOutlined className="text-primary" /> Student Information
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                  <UserOutlined style={{ color: token.colorPrimary }} /> Student Information
                 </Text>
               </div>
               <div className="p-4">
@@ -831,10 +836,10 @@ const JoiningLettersPage = () => {
             </div>
 
             {/* Internship Information */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                  <BankOutlined className="text-success" /> Internship Details
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                  <BankOutlined style={{ color: token.colorSuccess }} /> Internship Details
                 </Text>
               </div>
               <div className="p-4">
@@ -850,25 +855,25 @@ const JoiningLettersPage = () => {
             </div>
 
             {/* Document Details */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                  <CalendarOutlined className="text-info" /> Document Details
+            <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                  <CalendarOutlined style={{ color: token.colorInfo }} /> Document Details
                 </Text>
               </div>
               <div className="p-4 space-y-3">
                 <div className="flex justify-between">
                   <div>
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Uploaded On</Text>
-                    <Text className="text-text-primary">
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Uploaded On</Text>
+                    <Text style={{ color: token.colorText }}>
                       {selectedLetter.joiningLetterUploadedAt
                         ? dayjs(selectedLetter.joiningLetterUploadedAt).format('DD MMM YYYY, HH:mm')
                         : '-'}
                     </Text>
                   </div>
                   <div className="text-right">
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Reviewed On</Text>
-                    <Text className="text-text-primary">
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Reviewed On</Text>
+                    <Text style={{ color: token.colorText }}>
                       {selectedLetter.reviewedAt
                         ? dayjs(selectedLetter.reviewedAt).format('DD MMM YYYY, HH:mm')
                         : '-'}
@@ -877,8 +882,8 @@ const JoiningLettersPage = () => {
                 </div>
                 {selectedLetter.reviewRemarks && (
                   <div>
-                    <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Review Remarks</Text>
-                    <Paragraph className="text-text-primary mb-0 p-3 bg-background-tertiary/30 rounded-lg">
+                    <Text className="text-[10px] uppercase font-bold block mb-1" style={{ color: token.colorTextTertiary }}>Review Remarks</Text>
+                    <Paragraph className="mb-0 p-3 rounded-lg" style={{ color: token.colorText, backgroundColor: `${token.colorTextTertiary}1A` }}>
                       {selectedLetter.reviewRemarks}
                     </Paragraph>
                   </div>
@@ -888,10 +893,10 @@ const JoiningLettersPage = () => {
 
             {/* Document Preview */}
             {selectedLetter.joiningLetterUrl && (
-              <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                <div className="px-4 py-3 border-b border-border bg-background-tertiary/30">
-                  <Text className="text-xs uppercase font-bold text-text-tertiary flex items-center gap-2">
-                    <FileProtectOutlined className="text-primary" /> Document
+              <div className="rounded-xl border overflow-hidden" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
+                <div className="px-4 py-3 border-b" style={{ borderColor: token.colorBorder, backgroundColor: `${token.colorTextTertiary}1A` }}>
+                  <Text className="text-xs uppercase font-bold flex items-center gap-2" style={{ color: token.colorTextTertiary }}>
+                    <FileProtectOutlined style={{ color: token.colorPrimary }} /> Document
                   </Text>
                 </div>
                 <div className="p-4 flex justify-center">
@@ -908,7 +913,7 @@ const JoiningLettersPage = () => {
             )}
 
             {/* Actions */}
-            <div className="pt-4 flex justify-end gap-3 border-t border-border">
+            <div className="pt-4 flex justify-end gap-3 border-t" style={{ borderColor: token.colorBorder }}>
               {!selectedLetter.reviewedAt && (
                 <>
                   <Button
@@ -918,7 +923,8 @@ const JoiningLettersPage = () => {
                       setDetailDrawer(false);
                       setReviewModal({ visible: true, letter: selectedLetter, action: 'verify' });
                     }}
-                    className="rounded-lg bg-success border-success"
+                    className="rounded-lg"
+                    style={{ backgroundColor: token.colorSuccess, borderColor: token.colorSuccess }}
                   >
                     Verify
                   </Button>

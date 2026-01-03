@@ -250,20 +250,22 @@ const CompaniesOverview = () => {
       ),
     },
     {
-      title: 'Placement Stats',
+      title: 'Active Students',
       key: 'stats',
       width: 140,
       align: 'center',
       render: (_, record) => (
-        <div className="flex flex-col items-center p-2 rounded-xl bg-background-tertiary/30 border border-border/50">
-          <div className="flex items-baseline gap-1">
-            <Text className="text-lg font-black text-primary leading-none">{record.totalStudents || 0}</Text>
-            <Text className="text-[10px] text-text-tertiary font-bold uppercase">Students</Text>
+        <Tooltip title="Count includes only currently active students">
+          <div className="flex flex-col items-center p-2 rounded-xl bg-background-tertiary/30 border border-border/50 cursor-help">
+            <div className="flex items-baseline gap-1">
+              <Text className="text-lg font-black text-primary leading-none">{record.totalStudents || 0}</Text>
+              <Text className="text-[10px] text-text-tertiary font-bold uppercase">Active</Text>
+            </div>
+            <Text className="text-[10px] text-text-tertiary mt-1">
+              across <strong className="text-text-primary">{record.institutionCount || 0}</strong> institutes
+            </Text>
           </div>
-          <Text className="text-[10px] text-text-tertiary mt-1">
-            across <strong className="text-text-primary">{record.institutionCount || 0}</strong> institutes
-          </Text>
-        </div>
+        </Tooltip>
       ),
     },
     {
@@ -450,6 +452,16 @@ const CompaniesOverview = () => {
       {/* Error Alert */}
       {error && <Alert type="error" message="Error" description={error} showIcon closable className="rounded-xl border-error/20 bg-error/5" />}
 
+      {/* Active Students Info Alert */}
+      <Alert
+        type="info"
+        message="Active Students Only"
+        description="All student counts shown include only currently active students. Inactive or withdrawn students are excluded from placement statistics."
+        showIcon
+        className="mb-4 rounded-xl border-blue-200/50 bg-blue-50/50"
+        closable
+      />
+
       {/* Companies Table */}
       <Card className="rounded-2xl border-border shadow-soft bg-surface overflow-hidden" styles={{ body: { padding: 0 } }}>
         <Table
@@ -493,7 +505,7 @@ const CompaniesOverview = () => {
                 )}
               </div>
               <Text className="text-text-tertiary text-xs font-medium uppercase tracking-wide">
-                {selectedCompanyDetails?.totalStudents || 0} students across {selectedCompanyDetails?.institutionCount || 0} institutions
+                {selectedCompanyDetails?.totalStudents || 0} active students across {selectedCompanyDetails?.institutionCount || 0} institutions
               </Text>
             </div>
           </div>

@@ -239,7 +239,7 @@ const InternshipList = () => {
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           <Card 
-            bordered={false} 
+            variant="borderless" 
             className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
             style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           >
@@ -258,7 +258,7 @@ const InternshipList = () => {
           </Card>
 
           <Card 
-            bordered={false} 
+            variant="borderless" 
             className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
             style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           >
@@ -277,7 +277,7 @@ const InternshipList = () => {
           </Card>
 
           <Card 
-            bordered={false} 
+            variant="borderless" 
             className="rounded-2xl shadow-sm hover:shadow-md transition-all duration-300"
             style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           >
@@ -298,7 +298,7 @@ const InternshipList = () => {
 
         {/* Filters */}
         <Card 
-          bordered={false} 
+          variant="borderless" 
           className="rounded-2xl shadow-sm"
           style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           styles={{ body: { padding: '16px' } }}
@@ -349,7 +349,7 @@ const InternshipList = () => {
 
         {/* Table Container */}
         <Card 
-          bordered={false} 
+          variant="borderless" 
           className="rounded-2xl shadow-sm overflow-hidden"
           style={{ backgroundColor: token.colorBgContainer, border: `1px solid ${token.colorBorder}` }}
           styles={{ body: { padding: 0 } }}

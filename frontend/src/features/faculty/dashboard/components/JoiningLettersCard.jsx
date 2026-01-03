@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar } from 'antd';
+import { useDispatch } from 'react-redux';
+import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
 import {
   FileProtectOutlined,
   RightOutlined,
@@ -13,7 +14,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import facultyService from '../../../../services/faculty.service';
+import { verifyJoiningLetter, rejectJoiningLetter, deleteJoiningLetter } from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
@@ -30,7 +31,9 @@ const getStatusConfig = (status) => {
 };
 
 const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => {
+  const { token } = theme.useToken();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const [actionModal, setActionModal] = useState({ visible: false, letter: null, action: null });
   const [remarks, setRemarks] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
@@ -54,13 +57,14 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
     if (!actionModal.letter) return;
     setActionLoading(true);
     try {
-      await facultyService.verifyJoiningLetter(actionModal.letter.id, { remarks });
+      await dispatch(verifyJoiningLetter({ letterId: actionModal.letter.id, remarks })).unwrap();
       message.success('Joining letter verified successfully');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to verify joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to verify joining letter';
+      message.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -73,13 +77,14 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
     }
     setActionLoading(true);
     try {
-      await facultyService.rejectJoiningLetter(actionModal.letter.id, remarks);
+      await dispatch(rejectJoiningLetter({ letterId: actionModal.letter.id, reason: remarks })).unwrap();
       message.success('Joining letter rejected');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to reject joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reject joining letter';
+      message.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -93,11 +98,12 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
       okType: 'danger',
       onOk: async () => {
         try {
-          await facultyService.deleteJoiningLetter(letter.id);
+          await dispatch(deleteJoiningLetter(letter.id)).unwrap();
           message.success('Joining letter deleted');
           onRefresh?.();
         } catch (error) {
-          message.error(error.message || 'Failed to delete joining letter');
+          const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
+          message.error(errorMessage);
         }
       },
     });
@@ -118,7 +124,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
       <Card
         title={
           <div className="flex items-center gap-2">
-            <FileProtectOutlined className="text-primary" />
+            <FileProtectOutlined style={{ color: token.colorPrimary }} />
             <span>Joining Letters</span>
             {pendingCount > 0 && (
               <Badge count={pendingCount} className="ml-2" />
@@ -130,7 +136,8 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
             View All <RightOutlined />
           </Button>
         }
-        className="h-full border border-border !rounded-xl"
+        className="h-full !rounded-xl"
+        style={{ borderColor: token.colorBorder }}
         styles={{ body: { padding: letters.length > 0 ? 0 : 24 } }}
       >
         {letters.length > 0 ? (
@@ -143,9 +150,13 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
               return (
                 <div
                   key={letter.id || index}
-                  className={`px-4 py-3 hover:bg-surface-hover flex items-start gap-4 ${index !== letters.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}`}
+                  className={`px-4 py-3 flex items-start gap-4`}
+                  style={{ 
+                    borderBottom: index !== letters.slice(0, 5).length - 1 ? `1px solid ${token.colorBorder}` : 'none',
+                    ':hover': { backgroundColor: token.colorBgTextHover }
+                  }}
                 >
-                  <ProfileAvatar profileImage={student?.profileImage} className="bg-primary shrink-0" />
+                  <ProfileAvatar profileImage={student?.profileImage} className="shrink-0" style={{ backgroundColor: token.colorPrimary }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium truncate mr-2">{student?.name || 'Unknown Student'}</span>
@@ -154,12 +165,12 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
                       </Tag>
                     </div>
                     <div className="space-y-1">
-                      <div className="flex items-center gap-1 text-xs text-text-secondary">
+                      <div className="flex items-center gap-1 text-xs" style={{ color: token.colorTextSecondary }}>
                         <BankOutlined />
                         <span className="truncate">{company?.companyName || 'N/A'}</span>
                       </div>
                       {letter.uploadedAt && (
-                        <div className="text-xs text-text-tertiary">
+                        <div className="text-xs" style={{ color: token.colorTextTertiary }}>
                           Uploaded: {dayjs(letter.uploadedAt).format('DD/MM/YYYY')}
                         </div>
                       )}
@@ -182,7 +193,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
                               <Button
                                 type="text"
                                 size="small"
-                                icon={<CheckCircleOutlined className="text-green-500" />}
+                                icon={<CheckCircleOutlined style={{ color: token.colorSuccess }} />}
                                 onClick={() => setActionModal({ visible: true, letter, action: 'verify' })}
                               />
                             </Tooltip>
@@ -190,7 +201,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
                               <Button
                                 type="text"
                                 size="small"
-                                icon={<CloseCircleOutlined className="text-red-500" />}
+                                icon={<CloseCircleOutlined style={{ color: token.colorError }} />}
                                 onClick={() => setActionModal({ visible: true, letter, action: 'reject' })}
                               />
                             </Tooltip>

@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, ApplicationStatus, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { Prisma, ApplicationStatus, InternshipPhase, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import {
   calculateExpectedMonths,
   getExpectedReportsAsOfToday,
@@ -643,7 +643,7 @@ export class StateInstitutionService {
       // Self-identified internship total
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
         },
       }),
@@ -651,7 +651,7 @@ export class StateInstitutionService {
       // Self-identified approved
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           status: ApplicationStatus.APPROVED,
         },
@@ -660,7 +660,7 @@ export class StateInstitutionService {
       // Self-identified pending
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           status: ApplicationStatus.APPLIED,
         },
@@ -669,7 +669,7 @@ export class StateInstitutionService {
       // Self-identified rejected
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           status: ApplicationStatus.REJECTED,
         },
@@ -679,7 +679,7 @@ export class StateInstitutionService {
       // Include: startDate is NULL (assumed active) OR (startDate <= now AND (endDate >= now OR endDate IS NULL))
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           status: ApplicationStatus.APPROVED,
           OR: [
@@ -700,7 +700,7 @@ export class StateInstitutionService {
       // Joining letters submitted (self-identified with joining letter)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null },
         },
@@ -709,7 +709,7 @@ export class StateInstitutionService {
       // Joining letters pending (approved self-identified without joining letter)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           status: ApplicationStatus.APPROVED,
           joiningLetterUrl: null,
@@ -719,7 +719,7 @@ export class StateInstitutionService {
       // Joining letters approved (with verified status)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null },
           hasJoined: true,
@@ -729,7 +729,7 @@ export class StateInstitutionService {
       // Joining letters rejected
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null },
           hasJoined: false,
@@ -743,6 +743,7 @@ export class StateInstitutionService {
         where: {
           student: {
             institutionId: id,
+            isActive: true,
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
@@ -769,6 +770,7 @@ export class StateInstitutionService {
         where: {
           student: {
             institutionId: id,
+            isActive: true,
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
@@ -795,6 +797,7 @@ export class StateInstitutionService {
         where: {
           student: {
             institutionId: id,
+            isActive: true,
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
@@ -821,6 +824,7 @@ export class StateInstitutionService {
         where: {
           student: {
             institutionId: id,
+            isActive: true,
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
@@ -846,6 +850,7 @@ export class StateInstitutionService {
       this.prisma.student.count({
         where: {
           institutionId: id,
+          isActive: true,
           monthlyReports: {
             none: {
               reportMonth: currentMonth,
@@ -873,7 +878,7 @@ export class StateInstitutionService {
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id },
+            student: { institutionId: id, isActive: true },
             OR: [
               { startDate: null },
               {
@@ -894,7 +899,7 @@ export class StateInstitutionService {
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id },
+            student: { institutionId: id, isActive: true },
             OR: [
               { startDate: null },
               {
@@ -915,7 +920,7 @@ export class StateInstitutionService {
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id },
+            student: { institutionId: id, isActive: true },
             OR: [
               { startDate: null },
               {
@@ -934,7 +939,7 @@ export class StateInstitutionService {
       // Branch-wise student distribution
       this.prisma.student.groupBy({
         by: ['branchName'],
-        where: { institutionId: id },
+        where: { institutionId: id, isActive: true },
         _count: { id: true },
       }),
 
@@ -1426,13 +1431,10 @@ export class StateInstitutionService {
       industryWhere.companyName = { contains: search, mode: 'insensitive' };
     }
 
-    // Query 2: Get self-identified applications (check both isSelfIdentified and internshipStatus)
+    // Query 2: Get self-identified applications
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
-      OR: [
-        { isSelfIdentified: true },
-        { internshipStatus: 'SELF_IDENTIFIED' },
-      ],
-      student: { institutionId: id },
+      isSelfIdentified: true,
+      student: { institutionId: id, isActive: true },
     };
     if (search) {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
@@ -1459,7 +1461,7 @@ export class StateInstitutionService {
               applications: {
                 where: {
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
-                  student: { institutionId: id },
+                  student: { institutionId: id, isActive: true },
                 },
                 select: {
                   id: true,

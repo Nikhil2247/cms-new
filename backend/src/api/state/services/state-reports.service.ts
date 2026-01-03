@@ -79,7 +79,7 @@ export class StateReportsService {
         where: { application: { student: { institutionId } } },
       }),
       this.prisma.monthlyReport.count({
-        where: { student: { institutionId } },
+        where: { student: { institutionId, isActive: true } },
       }),
     ]);
 
@@ -136,7 +136,7 @@ export class StateReportsService {
     // Add institution-specific filter if needed
     if (institutionId) {
       const where: Prisma.MonthlyReportWhereInput = {
-        student: { institutionId },
+        student: { institutionId, isActive: true },
         reportMonth: targetMonth,
         reportYear: targetYear,
       };
@@ -462,6 +462,7 @@ export class StateReportsService {
             where: {
               student: {
                 institutionId: { in: institutionIds },
+                isActive: true,
                 internshipApplications: {
                   some: {
                     isSelfIdentified: true,
@@ -760,7 +761,7 @@ export class StateReportsService {
         where: { visitDate: { gte: startDate, lte: endDate } },
       }),
       this.prisma.monthlyReport.count({
-        where: { reportMonth: targetMonth, reportYear: targetYear },
+        where: { student: { isActive: true }, reportMonth: targetMonth, reportYear: targetYear },
       }),
     ]);
 

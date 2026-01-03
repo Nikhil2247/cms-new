@@ -150,7 +150,7 @@ const LoginForm = () => {
     <ConfigProvider theme={darkMode ? darkThemeConfig : lightThemeConfig}>
       <div className="flex items-center justify-center h-screen overflow-hidden  p-4">
         <Card
-          bordered={false}
+          variant="borderless"
           className="w-full max-w-lg rounded-2xl shadow-2xl shadow-slate-300/50 dark:shadow-black/30 bg-white dark:bg-slate-900 border border-slate-200/50 dark:border-slate-700/50"
           styles={{ body: { padding: "28px 32px" } }}
         >

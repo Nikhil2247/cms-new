@@ -27,7 +27,7 @@ const FacultyMonthlyFeedbackModal = ({
       const applications = student?.internshipApplications || [];
 
       return applications
-        .filter((app) => app.hasJoined || app.status === "SELECTED" || app.status === "ACTIVE")
+        .filter((app) => app.internshipPhase === "ACTIVE" || app.status === "SELECTED" || app.status === "ACTIVE")
         .map((app) => ({
           ...app,
           studentName: student.name,

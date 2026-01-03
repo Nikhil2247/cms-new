@@ -1,11 +1,13 @@
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
-import { Card, Empty, Spin, Button, Typography, Tag, theme } from 'antd';
+import { Card, Empty, Spin, Button, Typography, Tag, theme, Row, Col, Space } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   RocketOutlined,
   PlusOutlined,
   ReloadOutlined,
+  LaptopOutlined,
+  SyncOutlined
 } from '@ant-design/icons';
 
 import {
@@ -20,7 +22,7 @@ import {
   selectApplicationsLastFetched,
 } from '../store/studentSelectors';
 
-const { Text } = Typography;
+const { Text, Title, Paragraph } = Typography;
 
 const MyApplications = () => {
   const navigate = useNavigate();
@@ -117,7 +119,10 @@ const MyApplications = () => {
   // Render loading state
   if (loading && !lastFetched) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div 
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: token.colorBgLayout }}
+      >
         <Spin size="large" />
       </div>
     );
@@ -126,7 +131,10 @@ const MyApplications = () => {
   // Render details view
   if (showDetailsView && selectedApplication) {
     return (
-      <div className="min-h-screen p-4 md:p-5">
+      <div 
+        className="min-h-screen p-4 md:p-5"
+        style={{ backgroundColor: token.colorBgLayout }}
+      >
         <ApplicationDetailsView
           application={selectedApplication}
           onBack={handleCloseDetailsView}
@@ -147,49 +155,68 @@ const MyApplications = () => {
   }
 
   return (
-    <div className="p-4 md:p-5 min-h-screen">
+    <div 
+      className="p-4 md:p-5 min-h-screen"
+      style={{ backgroundColor: token.colorBgLayout }}
+    >
       {/* Header Section */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-6 rounded-full bg-purple-500" />
-          <div>
-            <h1 className="text-lg font-semibold text-text-primary m-0">My Applications</h1>
-            <Text className="text-xs text-text-tertiary">Manage your internship applications</Text>
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            type="text"
-            icon={<ReloadOutlined spin={loading} />}
-            onClick={refetch}
-            className="rounded-lg"
-          />
-          {!derivedData.hasActiveApplication && (
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => navigate('/self-identified-internship')}
-              size="small"
-              className="rounded-lg"
-            >
-              Add Internship
-            </Button>
-          )}
-        </div>
-      </div>
+      <Card 
+        className="!mb-4 rounded-xl shadow-sm border"
+        style={{ borderColor: token.colorBorderSecondary }}
+        styles={{ body: { padding: '24px' } }}
+      >
+        <Row justify="space-between" align="middle" gutter={[16, 16]}>
+          <Col>
+            <Title level={3} className="!mb-1">
+              My Applications
+            </Title>
+            <Paragraph type="secondary" className="!mb-0 text-sm">
+              Manage your internship applications and track their status.
+            </Paragraph>
+          </Col>
+          <Col>
+            <Space size="middle">
+              <div className="flex gap-2">
+                <Button
+                  type="text"
+                  icon={<ReloadOutlined spin={loading} />}
+                  onClick={refetch}
+                  className="rounded-lg"
+                />
+                {!derivedData.hasActiveApplication && (
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={() => navigate('/self-identified-internship')}
+                    className="rounded-lg"
+                  >
+                    Add Internship
+                  </Button>
+                )}
+              </div>
+            </Space>
+          </Col>
+        </Row>
+      </Card>
 
       {/* Applications List */}
       <Card
-        className="rounded-xl border border-gray-100 shadow-sm"
+        className="rounded-xl border shadow-sm"
+        style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
         styles={{ body: { padding: 0 } }}
       >
         {/* Card Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <div 
+          className="flex items-center justify-between px-4 py-3 border-b"
+          style={{ borderColor: token.colorBorderSecondary }}
+        >
           <div className="flex items-center gap-2">
-            <RocketOutlined className="text-purple-500" />
-            <Text className="font-medium text-text-primary">Self-Identified Internships</Text>
-            <Tag color="purple" className="rounded-full text-xs ml-1">
+            <RocketOutlined style={{ color: token.colorPrimary }} />
+            <Text className="font-medium" style={{ color: token.colorText }}>Self-Identified Internships</Text>
+            <Tag 
+              color="blue" 
+              className="rounded-full text-xs ml-1 border-0"
+            >
               {derivedData.selfIdentifiedCount}
             </Tag>
           </div>
@@ -206,12 +233,12 @@ const MyApplications = () => {
             />
           ) : (
             <Empty
-              image={<RocketOutlined className="text-5xl text-gray-300" />}
+              image={<RocketOutlined style={{ fontSize: '48px', color: token.colorTextQuaternary }} />}
               imageStyle={{ height: 60 }}
               description={
                 <div className="text-center py-2">
-                  <Text className="text-sm text-text-secondary block mb-1">No internships yet</Text>
-                  <Text className="text-xs text-text-tertiary">Add your self-identified internship to get started</Text>
+                  <Text className="text-sm block mb-1" style={{ color: token.colorTextSecondary }}>No internships yet</Text>
+                  <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Add your self-identified internship to get started</Text>
                 </div>
               }
             >
@@ -220,7 +247,6 @@ const MyApplications = () => {
                 icon={<PlusOutlined />}
                 onClick={() => navigate('/self-identified-internship')}
                 className="rounded-lg"
-                style={{ backgroundColor: '#9333ea' }}
               >
                 Add Self-Identified Internship
               </Button>

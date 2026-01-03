@@ -10,6 +10,7 @@ import {
   Card,
   Tooltip,
   Dropdown,
+  theme,
 } from "antd";
 import {
   UserOutlined,
@@ -40,6 +41,8 @@ const StudentsList = React.memo(({
   onLogVisitForApplication,
   onAddFeedback,
 }) => {
+  const { token } = theme.useToken();
+  
   // Table columns for assigned students
   const studentColumns = [
     {
@@ -48,13 +51,13 @@ const StudentsList = React.memo(({
       width: "25%",
       render: (_, record) => (
         <div>
-          <Text strong className="text-primary">
+          <Text strong style={{ color: token.colorPrimary }}>
             {record.student?.name || "N/A"}
           </Text>
-          <Text className="text-text-secondary block text-sm">
+          <Text className="block text-sm" style={{ color: token.colorTextSecondary }}>
             Roll No: {record.student?.rollNumber || "N/A"}
           </Text>
-          <Text className="text-text-secondary block text-sm">
+          <Text className="block text-sm" style={{ color: token.colorTextSecondary }}>
             {record.student?.branchName || "N/A"}
           </Text>
           <div className="flex items-center mt-1">
@@ -77,12 +80,12 @@ const StudentsList = React.memo(({
       render: (_, record) => (
         <div>
           <div className="flex items-center mb-1">
-            <PhoneOutlined className="text-text-tertiary mr-1" />
+            <PhoneOutlined className="mr-1" style={{ color: token.colorTextTertiary }} />
             <Text className="text-sm">{record.student?.contact || "N/A"}</Text>
           </div>
           <div className="flex items-center">
-            <MailOutlined className="text-text-tertiary mr-1" />
-            <Text className="text-primary text-sm">
+            <MailOutlined className="mr-1" style={{ color: token.colorTextTertiary }} />
+            <Text className="text-sm" style={{ color: token.colorPrimary }}>
               {record.student?.email || "N/A"}
             </Text>
           </div>
@@ -99,7 +102,7 @@ const StudentsList = React.memo(({
         if (applications.length === 0) {
           return (
             <div className="text-center py-2">
-              <Text className="text-text-tertiary text-sm">No applications</Text>
+              <Text className="text-sm" style={{ color: token.colorTextTertiary }}>No applications</Text>
             </div>
           );
         }
@@ -137,7 +140,7 @@ const StudentsList = React.memo(({
                   {/* Company/Industry Info for regular internships */}
                   {!isSelfIdentified &&
                     app.internship?.industry?.companyName && (
-                      <Text className="text-text-secondary text-xs block">
+                      <Text className="text-xs block" style={{ color: token.colorTextSecondary }}>
                         {app.internship.industry.companyName}
                       </Text>
                     )}
@@ -152,7 +155,7 @@ const StudentsList = React.memo(({
                           ? "red"
                           : app.status === "UNDER_REVIEW"
                           ? "orange"
-                          : app.hasJoined
+                          : app.internshipPhase === "ACTIVE"
                           ? "green"
                           : app.isSelected
                           ? "gold"
@@ -160,9 +163,9 @@ const StudentsList = React.memo(({
                       }
                       size="small"
                     >
-                      {app.hasJoined ? "ACTIVE" : app.status}
+                      {app.internshipPhase === "ACTIVE" ? "ACTIVE" : app.status}
                     </Tag>
-                    {app.isSelected && !app.hasJoined && (
+                    {app.isSelected && app.internshipPhase !== "ACTIVE" && (
                       <Tag color="gold" size="small">
                         Selected
                       </Tag>
@@ -176,11 +179,11 @@ const StudentsList = React.memo(({
 
                   {/* Additional Info */}
                   <div className="flex gap-3 mt-2 flex-wrap">
-                    <Text className="text-xs text-text-tertiary">
+                    <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
                       Applied: {dayjs(app.applicationDate).format("MMM DD")}
                     </Text>
                     {app.proposedFirstVisit && (
-                      <Text className="text-xs text-text-tertiary">
+                      <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
                         First Visit:{" "}
                         {dayjs(app.proposedFirstVisit).format("MMM DD")}
                       </Text>
@@ -190,7 +193,7 @@ const StudentsList = React.memo(({
               );
             })}
             {applications.length > 2 && (
-              <Text className="text-xs text-primary">
+              <Text className="text-xs" style={{ color: token.colorPrimary }}>
                 +{applications.length - 2} more applications
               </Text>
             )}
@@ -235,7 +238,7 @@ const StudentsList = React.memo(({
                     {/* Show the latest visit date if available */}
                     {app.facultyVisitLogs &&
                       app.facultyVisitLogs.length > 0 && (
-                        <div className="text-xs text-text-secondary mt-1">
+                        <div className="text-xs mt-1" style={{ color: token.colorTextSecondary }}>
                           Last:{" "}
                           {dayjs(
                             app.facultyVisitLogs[
@@ -247,8 +250,8 @@ const StudentsList = React.memo(({
 
                     {/* Show internship title for context */}
                     <div
-                      className="text-xs text-text-tertiary truncate"
-                      style={TRUNCATE_STYLE}
+                      className="text-xs truncate"
+                      style={{ ...TRUNCATE_STYLE, color: token.colorTextTertiary }}
                     >
                       {app.internship?.title || app.companyName || "N/A"}
                     </div>
@@ -256,7 +259,7 @@ const StudentsList = React.memo(({
                 );
               })
             ) : (
-              <Text className="text-xs text-text-tertiary">No Applications</Text>
+              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>No Applications</Text>
             )}
           </div>
         );
@@ -274,7 +277,7 @@ const StudentsList = React.memo(({
           </Tag>
           {record.assignmentReason && (
             <Tooltip title={record.assignmentReason}>
-              <InfoCircleOutlined className="text-text-tertiary text-xs" />
+              <InfoCircleOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
             </Tooltip>
           )}
         </div>
@@ -290,7 +293,7 @@ const StudentsList = React.memo(({
           (app) =>
             app.status === "ACTIVE" ||
             app.status === "ACCEPTED" ||
-            app.hasJoined
+            app.internshipPhase === "ACTIVE"
         );
 
         const sortedApplications = [
@@ -354,7 +357,7 @@ const StudentsList = React.memo(({
                 <br />
                 <Tag
                   color={
-                    app.hasJoined
+                    app.internshipPhase === "ACTIVE"
                       ? "green"
                       : app.status === "COMPLETED"
                       ? "green"
@@ -366,7 +369,7 @@ const StudentsList = React.memo(({
                   }
                   size="small"
                 >
-                  {app.hasJoined ? "ACTIVE" : app.status || "N/A"}
+                  {app.internshipPhase === "ACTIVE" ? "ACTIVE" : app.status || "N/A"}
                 </Tag>
               </div>
             ),
@@ -442,7 +445,7 @@ const StudentsList = React.memo(({
   return (
     <div>
       <div className="mb-4">
-        <Text className="text-text-secondary">
+        <Text style={{ color: token.colorTextSecondary }}>
           Monitor your assigned students' internship progress and schedule
           industry visits.
         </Text>

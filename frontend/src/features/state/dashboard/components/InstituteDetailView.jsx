@@ -55,6 +55,8 @@ import {
   AuditOutlined,
   ExclamationCircleOutlined,
   SearchOutlined,
+  GlobalOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import {
   fetchInstituteOverview,
@@ -77,6 +79,7 @@ import {
 } from '../../store/stateSlice';
 import { useDebounce } from '../../../../hooks/useDebounce';
 import { getImageUrl } from '../../../../utils/imageUtils';
+import { stateService } from '../../../../services/state.service';
 
 const { Title, Text } = Typography;
 
@@ -89,6 +92,377 @@ const STATUS_COLORS = {
 };
 
 const getStatusColor = (status) => STATUS_COLORS[status] || 'default';
+
+// Memoized Mentor Overview Tab - Shows detailed mentor stats for selected institution
+const MentorOverviewTab = memo(({ institutionId }) => {
+  const [overviewData, setOverviewData] = useState(null);
+  const [mentorDetails, setMentorDetails] = useState({ internal: [], incoming: [], outgoing: [] });
+  const [loading, setLoading] = useState(true);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [activeSection, setActiveSection] = useState('internal');
+  const [studentBreakdown, setStudentBreakdown] = useState(null);
+
+  useEffect(() => {
+    if (!institutionId) return;
+
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // Fetch overview data
+        const overviewResponse = await stateService.getInstitutionMentorOverview();
+        const allData = overviewResponse?.data || [];
+        const institutionData = allData.find(inst => inst.institutionId === institutionId);
+        setOverviewData(institutionData || null);
+
+        // Fetch detailed mentor assignments
+        setDetailsLoading(true);
+        const [studentsResponse, mentorsResponse] = await Promise.all([
+          stateService.getInstitutionStudents(institutionId, { page: 1, limit: 1000 }),
+          stateService.getInstitutionMentors(institutionId),
+        ]);
+
+        const students = studentsResponse?.data?.students || [];
+        const mentors = mentorsResponse?.data || [];
+
+        // Calculate student breakdown for discrepancy display
+        const totalStudents = students.length;
+        const activeStudents = students.filter(s => s.isActive === true);
+        const inactiveStudents = students.filter(s => s.isActive !== true);
+        const studentsWithMentor = activeStudents.filter(s =>
+          s.mentorAssignments?.some(ma => ma.isActive === true)
+        );
+        const studentsWithoutMentor = activeStudents.filter(s =>
+          !s.mentorAssignments?.some(ma => ma.isActive === true)
+        );
+
+        setStudentBreakdown({
+          total: totalStudents,
+          active: activeStudents.length,
+          inactive: inactiveStudents.length,
+          withMentor: studentsWithMentor.length,
+          withoutMentor: studentsWithoutMentor.length,
+        });
+
+        // Process internal mentors
+        const internalMentors = mentors.map(mentor => {
+          const assignedStudents = activeStudents.filter(s =>
+            s.mentorAssignments?.some(ma => ma.isActive && ma.mentorId === mentor.id)
+          );
+          return {
+            ...mentor,
+            studentCount: assignedStudents.length,
+            students: assignedStudents,
+          };
+        }).filter(m => m.studentCount > 0);
+
+        // Process external assignments (mock for now - would need specific endpoint)
+        setMentorDetails({
+          internal: internalMentors,
+          incoming: [],
+          outgoing: [],
+        });
+      } catch (err) {
+        setError(err?.message || 'Failed to load mentor overview');
+      } finally {
+        setLoading(false);
+        setDetailsLoading(false);
+      }
+    };
+    fetchData();
+  }, [institutionId]);
+
+  // Internal Mentors Table Columns
+  const internalMentorColumns = [
+    {
+      title: 'Mentor',
+      key: 'mentor',
+      fixed: 'left',
+      width: 180,
+      render: (_, record) => (
+        <div className="min-w-0">
+          <div className="font-medium text-text-primary text-xs truncate">{record.name}</div>
+          <div className="text-[10px] text-text-tertiary">{record.email}</div>
+        </div>
+      ),
+    },
+    {
+      title: 'Role',
+      dataIndex: 'role',
+      key: 'role',
+      width: 120,
+      render: (role) => <Tag color="blue" className="text-[10px] m-0">{role?.replace(/_/g, ' ')}</Tag>,
+    },
+    {
+      title: 'Students',
+      key: 'students',
+      width: 100,
+      align: 'center',
+      render: (_, record) => (
+        <Badge count={record.studentCount} showZero style={{ backgroundColor: '#16a34a' }} />
+      ),
+    },
+    {
+      title: 'Contact',
+      dataIndex: 'phoneNo',
+      key: 'contact',
+      width: 110,
+      render: (phone) => <span className="text-xs text-text-secondary">{phone || '-'}</span>,
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 80,
+      render: (_, record) => (
+        record.active ? (
+          <Tag color="success" className="text-[10px] m-0">Active</Tag>
+        ) : (
+          <Tag color="default" className="text-[10px] m-0">Inactive</Tag>
+        )
+      ),
+    },
+  ];
+
+  if (!institutionId) return <Empty description="No institution selected" className="py-20" />;
+  if (loading) return <div className="flex justify-center py-20"><Spin size="large" tip="Loading mentor overview..." /></div>;
+  if (error) return <Alert type="error" message="Failed to load" description={error} showIcon className="m-4" />;
+  if (!overviewData) return <Empty description="No mentor data available for this institution" className="py-20" />;
+
+  return (
+    <div className="space-y-5">
+      {/* Top Stats Row - Compact Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-green-500">
+          <div className="text-2xl font-bold text-green-700">{overviewData.internal.mentors}</div>
+          <div className="text-[10px] text-text-tertiary mt-1">Internal Mentors</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-green-600">
+          <div className="text-2xl font-bold text-green-600">{overviewData.internal.students}</div>
+          <div className="text-[10px] text-text-tertiary mt-1">Students Mentored</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-blue-500">
+          <div className="text-2xl font-bold text-blue-600">{overviewData.incomingExternal.students}</div>
+          <div className="text-[10px] text-text-tertiary mt-1">Incoming Help</div>
+        </div>
+        <div className="bg-surface rounded-xl border border-border p-3 text-center border-l-4 border-l-orange-500">
+          <div className="text-2xl font-bold text-orange-600">{overviewData.outgoingExternal.students}</div>
+          <div className="text-[10px] text-text-tertiary mt-1">Outgoing Help</div>
+        </div>
+      </div>
+
+      {/* Summary Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card size="small" title={<span className="text-xs font-semibold">Internal Mentoring</span>} className="rounded-xl border-border">
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">Mentors:</span>
+              <span className="font-semibold text-text-primary">{overviewData.internal.mentors}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">Students:</span>
+              <span className="font-semibold text-success">{overviewData.internal.students}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">Assignments:</span>
+              <span className="font-semibold text-text-primary">{overviewData.internal.assignments}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card size="small" title={<span className="text-xs font-semibold">Incoming External</span>} className="rounded-xl border-border">
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">External Mentors:</span>
+              <span className="font-semibold text-primary">{overviewData.incomingExternal.mentors}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">Your Students:</span>
+              <span className="font-semibold text-primary">{overviewData.incomingExternal.students}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">From Institutions:</span>
+              <span className="font-semibold text-text-primary">{overviewData.incomingExternal.fromInstitutions}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card size="small" title={<span className="text-xs font-semibold">Outgoing External</span>} className="rounded-xl border-border">
+          <div className="space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">Your Mentors:</span>
+              <span className="font-semibold text-warning">{overviewData.outgoingExternal.mentors}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">External Students:</span>
+              <span className="font-semibold text-warning">{overviewData.outgoingExternal.students}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-text-tertiary">To Institutions:</span>
+              <span className="font-semibold text-text-primary">{overviewData.outgoingExternal.toInstitutions}</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Student Mentoring Status & Discrepancy Explanation */}
+      {studentBreakdown && (
+        <Card
+          size="small"
+          title={
+            <div className="flex items-center gap-2">
+              <TeamOutlined className="text-primary" />
+              <span className="text-sm font-semibold">Student Mentoring Status</span>
+            </div>
+          }
+          className="rounded-xl border-border bg-blue-50/30"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2.5 text-xs">
+              <div className="flex justify-between items-center py-1">
+                <span className="text-text-tertiary font-medium">Total Students:</span>
+                <span className="font-bold text-text-primary text-base">{studentBreakdown.total}</span>
+              </div>
+              <div className="pl-4 space-y-1.5">
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-text-tertiary flex items-center gap-1">
+                    <CheckCircleOutlined className="text-success text-xs" />
+                    Active Students:
+                  </span>
+                  <span className="font-semibold text-success text-sm">{studentBreakdown.active}</span>
+                </div>
+                <div className="pl-6 space-y-1">
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-text-tertiary">• With Mentor:</span>
+                    <Tag color="green" className="m-0 font-semibold">{studentBreakdown.withMentor}</Tag>
+                  </div>
+                  <div className="flex justify-between items-center py-0.5">
+                    <span className="text-text-tertiary">• Without Mentor:</span>
+                    <Tag color={studentBreakdown.withoutMentor > 0 ? "orange" : "default"} className="m-0 font-semibold">
+                      {studentBreakdown.withoutMentor}
+                    </Tag>
+                  </div>
+                </div>
+              </div>
+              <div className="pl-4">
+                <div className="flex justify-between items-center py-0.5">
+                  <span className="text-text-tertiary flex items-center gap-1">
+                    <CloseCircleOutlined className="text-text-tertiary text-xs" />
+                    Inactive Students:
+                  </span>
+                  <span className="font-semibold text-text-tertiary text-sm">{studentBreakdown.inactive}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              <Alert
+                type="info"
+                message={
+                  <span className="text-xs font-semibold">
+                    {studentBreakdown.inactive > 0 ? 'Discrepancy Explained' : 'All Students Active'}
+                  </span>
+                }
+                description={
+                  <div className="text-[11px] mt-1 space-y-1">
+                    {studentBreakdown.inactive > 0 ? (
+                      <>
+                        <p className="text-text-secondary leading-relaxed">
+                          Only <strong className="text-primary">{studentBreakdown.active} active students</strong> are considered for mentoring.
+                          <strong className="text-text-tertiary"> {studentBreakdown.inactive} inactive students</strong> are excluded from all mentor assignment counts and statistics.
+                        </p>
+                        {studentBreakdown.withoutMentor > 0 && (
+                          <p className="text-warning font-medium mt-2">
+                            ⚠ {studentBreakdown.withoutMentor} active {studentBreakdown.withoutMentor === 1 ? 'student needs' : 'students need'} mentor assignment.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-text-secondary leading-relaxed">
+                        All {studentBreakdown.total} students are active.
+                        {studentBreakdown.withMentor === studentBreakdown.active ? (
+                          <span className="text-success font-medium"> All students have been assigned mentors.</span>
+                        ) : (
+                          <span className="text-warning font-medium"> {studentBreakdown.withoutMentor} {studentBreakdown.withoutMentor === 1 ? 'student needs' : 'students need'} mentor assignment.</span>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                }
+                showIcon
+                className="w-full"
+              />
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Detailed Mentor List */}
+      <Card
+        size="small"
+        title={<span className="text-sm font-semibold text-text-primary">Internal Mentors & Assignments</span>}
+        extra={
+          <Space size="small">
+            <Tag color="green" className="text-[10px] m-0">
+              {mentorDetails.internal.length} Active Mentors
+            </Tag>
+          </Space>
+        }
+        className="rounded-xl border-border"
+      >
+        {detailsLoading ? (
+          <div className="flex justify-center py-8"><Spin /></div>
+        ) : mentorDetails.internal.length > 0 ? (
+          <Table
+            columns={internalMentorColumns}
+            dataSource={mentorDetails.internal}
+            rowKey="id"
+            size="small"
+            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
+            scroll={{ x: 600 }}
+            className="custom-table"
+          />
+        ) : (
+          <Empty description="No mentor assignments yet" className="py-8" />
+        )}
+      </Card>
+
+      {/* Cross-Institutional Info */}
+      {(overviewData.incomingExternal.students > 0 || overviewData.outgoingExternal.students > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {overviewData.incomingExternal.students > 0 && (
+            <Alert
+              type="info"
+              message={<span className="text-xs font-semibold">Receiving External Support</span>}
+              description={
+                <div className="text-[11px] mt-1 text-text-secondary">
+                  {overviewData.incomingExternal.mentors} faculty from {overviewData.incomingExternal.fromInstitutions} other {overviewData.incomingExternal.fromInstitutions === 1 ? 'institution' : 'institutions'} are helping mentor {overviewData.incomingExternal.students} of your students.
+                </div>
+              }
+              showIcon
+              className="rounded-lg"
+            />
+          )}
+
+          {overviewData.outgoingExternal.students > 0 && (
+            <Alert
+              type="warning"
+              message={<span className="text-xs font-semibold">Providing External Support</span>}
+              description={
+                <div className="text-[11px] mt-1 text-text-secondary">
+                  {overviewData.outgoingExternal.mentors} of your faculty are mentoring {overviewData.outgoingExternal.students} students from {overviewData.outgoingExternal.toInstitutions} other {overviewData.outgoingExternal.toInstitutions === 1 ? 'institution' : 'institutions'}.
+                </div>
+              }
+              showIcon
+              className="rounded-lg"
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
 
 // Memoized Overview Tab Component
 const OverviewTab = memo(({ data, loading, error }) => {
@@ -1264,7 +1638,16 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                 </div>
               ),
             },
-          ]} 
+            {
+              key: 'mentor-overview',
+              label: <span className="flex items-center gap-2"><GlobalOutlined /> Mentor Overview</span>,
+              children: (
+                <div className="h-full overflow-y-auto hide-scrollbar p-4">
+                  <MentorOverviewTab institutionId={selectedInstitute?.id} />
+                </div>
+              ),
+            },
+          ]}
         />
       </div>
 

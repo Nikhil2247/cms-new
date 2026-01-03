@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect, useCallback } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import {
   Card,
   Table,
@@ -44,8 +44,16 @@ import {
   MessageOutlined,
 } from "@ant-design/icons";
 import toast from "react-hot-toast";
-import grievanceService from "../../../services/grievance.service";
 import dayjs from "dayjs";
+import {
+  fetchFacultyGrievances,
+  fetchGrievanceEscalationChain,
+  respondToGrievance,
+  escalateGrievance,
+  rejectGrievance,
+  updateGrievanceStatus,
+  selectFacultyGrievances,
+} from "../store/facultySlice";
 import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
@@ -62,77 +70,55 @@ const ESCALATION_LEVELS = {
 };
 
 export default function FacultyGrievances() {
+  const dispatch = useDispatch();
   // Get user from Redux state
   const user = useSelector((state) => state.auth.user);
+  const { list: grievances, loading, escalationChain } = useSelector(selectFacultyGrievances);
 
-  const [grievances, setGrievances] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [respondModalVisible, setRespondModalVisible] = useState(false);
   const [escalateModalVisible, setEscalateModalVisible] = useState(false);
   const [selectedGrievance, setSelectedGrievance] = useState(null);
-  const [escalationChain, setEscalationChain] = useState(null);
   const [respondForm] = Form.useForm();
   const [escalateForm] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    inProgress: 0,
-    resolved: 0,
-    escalated: 0,
-  });
 
   // Derive user info from Redux state
   const userId = user?.id;
-  const userName = user?.name || "";
-  const institutionId = user?.institutionId;
+
+  // Calculate stats from grievances
+  const stats = {
+    total: (grievances || []).length,
+    pending: (grievances || []).filter(
+      (g) => g.status === "PENDING" || g.status === "SUBMITTED"
+    ).length,
+    inProgress: (grievances || []).filter(
+      (g) => g.status === "IN_PROGRESS" || g.status === "UNDER_REVIEW"
+    ).length,
+    resolved: (grievances || []).filter((g) => g.status === "RESOLVED" || g.status === "CLOSED").length,
+    escalated: (grievances || []).filter((g) => g.status === "ESCALATED").length,
+  };
 
   useEffect(() => {
     if (userId) {
-      fetchGrievances();
+      dispatch(fetchFacultyGrievances(userId));
     }
-  }, [userId]);
+  }, [userId, dispatch]);
 
-  const fetchGrievances = async () => {
-    try {
-      setLoading(true);
-      const data = await grievanceService.getByFaculty(userId);
-      const assignedGrievances = data || [];
-
-      setGrievances(assignedGrievances);
-
-      // Calculate stats
-      const newStats = {
-        total: assignedGrievances.length,
-        pending: assignedGrievances.filter(
-          (g) => g.status === "PENDING" || g.status === "SUBMITTED"
-        ).length,
-        inProgress: assignedGrievances.filter(
-          (g) => g.status === "IN_PROGRESS" || g.status === "UNDER_REVIEW"
-        ).length,
-        resolved: assignedGrievances.filter((g) => g.status === "RESOLVED" || g.status === "CLOSED").length,
-        escalated: assignedGrievances.filter((g) => g.status === "ESCALATED").length,
-      };
-
-      setStats(newStats);
-    } catch (error) {
-      console.error("Error fetching grievances:", error);
-      toast.error("Failed to load grievances");
-    } finally {
-      setLoading(false);
+  const refreshGrievances = useCallback(() => {
+    if (userId) {
+      dispatch(fetchFacultyGrievances(userId));
     }
-  };
+  }, [userId, dispatch]);
 
-  const fetchEscalationChain = async (grievanceId) => {
+  const fetchEscalationChainData = useCallback(async (grievanceId) => {
     try {
-      const chain = await grievanceService.getEscalationChain(grievanceId);
-      setEscalationChain(chain);
+      await dispatch(fetchGrievanceEscalationChain(grievanceId)).unwrap();
     } catch (error) {
       console.error("Error fetching escalation chain:", error);
     }
-  };
+  }, [dispatch]);
 
   const getStatusColor = (status) => {
     const statusColors = {
@@ -178,18 +164,19 @@ export default function FacultyGrievances() {
   const handleRespond = async (values) => {
     try {
       setSubmitting(true);
-      await grievanceService.respond(
-        selectedGrievance.id,
-        values.response,
-        values.status || null
-      );
+      await dispatch(respondToGrievance({
+        grievanceId: selectedGrievance.id,
+        response: values.response,
+        status: values.status || null
+      })).unwrap();
       toast.success("Response submitted successfully");
       setRespondModalVisible(false);
       respondForm.resetFields();
-      fetchGrievances();
+      refreshGrievances();
     } catch (error) {
       console.error("Error responding to grievance:", error);
-      toast.error(error.response?.data?.message || "Failed to submit response");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to submit response";
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -198,15 +185,19 @@ export default function FacultyGrievances() {
   const handleEscalate = async (values) => {
     try {
       setSubmitting(true);
-      await grievanceService.escalate(selectedGrievance.id, values.reason);
+      await dispatch(escalateGrievance({
+        grievanceId: selectedGrievance.id,
+        reason: values.reason
+      })).unwrap();
       toast.success("Grievance escalated successfully");
       setEscalateModalVisible(false);
       escalateForm.resetFields();
       setDetailModalVisible(false);
-      fetchGrievances();
+      refreshGrievances();
     } catch (error) {
       console.error("Error escalating grievance:", error);
-      toast.error(error.response?.data?.message || "Failed to escalate grievance");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to escalate grievance";
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -217,22 +208,23 @@ export default function FacultyGrievances() {
       if (newStatus === "REJECTED") {
         const reason = window.prompt("Please provide a reason for rejection:");
         if (!reason) return;
-        await grievanceService.reject(grievanceId, reason);
+        await dispatch(rejectGrievance({ grievanceId, reason })).unwrap();
       } else {
-        await grievanceService.updateStatus(grievanceId, newStatus);
+        await dispatch(updateGrievanceStatus({ grievanceId, status: newStatus })).unwrap();
       }
       toast.success(`Grievance marked as ${newStatus.toLowerCase().replace("_", " ")}`);
       setDetailModalVisible(false);
-      fetchGrievances();
+      refreshGrievances();
     } catch (error) {
-      toast.error("Failed to update status");
+      const errorMessage = typeof error === 'string' ? error : error?.message || "Failed to update status";
+      toast.error(errorMessage);
     }
   };
 
   const openDetailModal = async (grievance) => {
     setSelectedGrievance(grievance);
     setDetailModalVisible(true);
-    await fetchEscalationChain(grievance.id);
+    await fetchEscalationChainData(grievance.id);
   };
 
   const openRespondModal = (grievance) => {
@@ -562,7 +554,6 @@ export default function FacultyGrievances() {
           onCancel={() => {
             setDetailModalVisible(false);
             setSelectedGrievance(null);
-            setEscalationChain(null);
           }}
           width={900}
           footer={

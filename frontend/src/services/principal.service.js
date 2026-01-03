@@ -159,6 +159,13 @@ export const principalService = {
     return response.data;
   },
 
+  async getExternalMentorAssignments(params = {}) {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = queryParams ? `/principal/mentors/external-assignments?${queryParams}` : '/principal/mentors/external-assignments';
+    const response = await API.get(url);
+    return response.data;
+  },
+
   async getMentorStats() {
     const response = await API.get('/principal/mentors/stats');
     return response.data;

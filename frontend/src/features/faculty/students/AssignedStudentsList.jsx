@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Input, Select, Modal, Descriptions, Avatar, Divider, Progress, Row, Col } from 'antd';
+import { Card, Table, Button, Tag, Space, Input, Select, Modal, Descriptions, Avatar, Divider, Progress, Row, Col, theme } from 'antd';
 import { SearchOutlined, UserOutlined, EyeOutlined, PhoneOutlined, MailOutlined } from '@ant-design/icons';
 import { fetchAssignedStudents } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
@@ -11,6 +11,7 @@ const INPUT_STYLE = { width: 300 };
 const PROGRESS_STYLE = { width: 100 };
 
 const AssignedStudentsList = React.memo(() => {
+  const { token } = theme.useToken();
   const dispatch = useDispatch();
   const { list: assignedStudentsList, loading } = useSelector((state) => state.faculty.students);
   const [searchText, setSearchText] = useState('');
@@ -27,7 +28,7 @@ const AssignedStudentsList = React.memo(() => {
   const students = useMemo(() => {
     return assignedStudentsList?.map(assignment => {
       const student = assignment.student;
-      const activeInternship = student.internshipApplications?.find(app => app.hasJoined && !app.completionDate);
+      const activeInternship = student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate);
       const appliedCount = student.internshipApplications?.length || 0;
 
       return {
@@ -86,7 +87,7 @@ const AssignedStudentsList = React.memo(() => {
           <ProfileAvatar profileImage={record.profileImage} />
           <div>
             <div className="font-medium">{record.name}</div>
-            <div className="text-text-secondary text-xs">{record.rollNumber}</div>
+            <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.rollNumber}</div>
           </div>
         </Space>
       ),
@@ -139,7 +140,7 @@ const AssignedStudentsList = React.memo(() => {
         </Button>
       ),
     },
-  ], [getInternshipStatus, setSelectedStudent, setDetailModalVisible]);
+  ], [getInternshipStatus, setSelectedStudent, setDetailModalVisible, token.colorTextSecondary]);
 
   return (
     <div className="p-6">
@@ -212,12 +213,12 @@ const AssignedStudentsList = React.memo(() => {
               <ProfileAvatar size={100} profileImage={selectedStudent.profileImage} />
               <div>
                 <h2 className="text-2xl font-bold">{selectedStudent.name}</h2>
-                <p className="text-text-secondary text-lg">{selectedStudent.rollNumber}</p>
+                <p className="text-lg" style={{ color: token.colorTextSecondary }}>{selectedStudent.rollNumber}</p>
                 <div className="mt-2 flex gap-4">
-                  <span className="flex items-center gap-2 text-text-secondary">
+                  <span className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
                     <MailOutlined /> <a href={`mailto:${selectedStudent.email}`}>{selectedStudent.email}</a>
                   </span>
-                  <span className="flex items-center gap-2 text-text-secondary">
+                  <span className="flex items-center gap-2" style={{ color: token.colorTextSecondary }}>
                     <PhoneOutlined /> <a href={`tel:${selectedStudent.phone}`}>{selectedStudent.phone}</a>
                   </span>
                 </div>
@@ -227,7 +228,7 @@ const AssignedStudentsList = React.memo(() => {
             <Row gutter={[24, 24]}>
               {/* Personal Information */}
               <Col xs={24} md={12}>
-                <Card title="Personal Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                <Card title="Personal Information" size="small" bordered={false} className="h-full" style={{ backgroundColor: token.colorFillQuaternary }}>
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Date of Birth">
                       {selectedStudent.dateOfBirth || 'N/A'}
@@ -253,7 +254,7 @@ const AssignedStudentsList = React.memo(() => {
 
               {/* Academic Information */}
               <Col xs={24} md={12}>
-                <Card title="Academic Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                <Card title="Academic Information" size="small" bordered={false} className="h-full" style={{ backgroundColor: token.colorFillQuaternary }}>
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Branch">
                       {selectedStudent.branchName || selectedStudent.department?.name || 'N/A'}
@@ -286,7 +287,7 @@ const AssignedStudentsList = React.memo(() => {
 
               {/* Guardian Information */}
               <Col xs={24} md={12}>
-                <Card title="Guardian Information" size="small" bordered={false} className="bg-gray-50 h-full">
+                <Card title="Guardian Information" size="small" bordered={false} className="h-full" style={{ backgroundColor: token.colorFillQuaternary }}>
                   <Descriptions column={1} size="small">
                     <Descriptions.Item label="Guardian Name">
                       {selectedStudent.guardianName || 'N/A'}
@@ -300,7 +301,7 @@ const AssignedStudentsList = React.memo(() => {
 
               {/* Skills */}
               <Col xs={24} md={12}>
-                <Card title="Skills" size="small" bordered={false} className="bg-gray-50 h-full">
+                <Card title="Skills" size="small" bordered={false} className="h-full" style={{ backgroundColor: token.colorFillQuaternary }}>
                   {selectedStudent.skills ? (
                     <div className="flex flex-wrap gap-2">
                       {selectedStudent.skills.split(',').map((skill, idx) => (
@@ -308,7 +309,7 @@ const AssignedStudentsList = React.memo(() => {
                       ))}
                     </div>
                   ) : (
-                    <span className="text-text-secondary">No skills listed</span>
+                    <span style={{ color: token.colorTextSecondary }}>No skills listed</span>
                   )}
                 </Card>
               </Col>
@@ -316,7 +317,7 @@ const AssignedStudentsList = React.memo(() => {
               {/* Current Internship */}
               <Col xs={24}>
                 {selectedStudent.currentInternship && (
-                  <Card title="Current Internship" size="small" bordered={false} className="bg-blue-50 border-blue-100">
+                  <Card title="Current Internship" size="small" bordered={false} style={{ backgroundColor: token.colorInfoBg, borderColor: token.colorInfoBorder }}>
                     <Descriptions column={{ xs: 1, md: 3 }} size="small">
                       <Descriptions.Item label="Company">
                         {selectedStudent.currentInternship.company?.name}
@@ -338,7 +339,7 @@ const AssignedStudentsList = React.memo(() => {
               {/* Documents */}
               <Col xs={24}>
                 {selectedStudent.resumeUrl && (
-                  <Card title="Documents" size="small" bordered={false} className="bg-gray-50">
+                  <Card title="Documents" size="small" bordered={false} style={{ backgroundColor: token.colorFillQuaternary }}>
                     <Button type="primary" ghost href={selectedStudent.resumeUrl} target="_blank" rel="noopener noreferrer">
                       View Resume
                     </Button>

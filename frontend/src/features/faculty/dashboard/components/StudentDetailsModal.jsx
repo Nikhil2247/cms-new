@@ -22,6 +22,9 @@ import {
   Tooltip,
   Upload,
   Popconfirm,
+  theme,
+  Row,
+  Col,
 } from 'antd';
 import {
   UserOutlined,
@@ -41,9 +44,17 @@ import {
   UploadOutlined,
   SaveOutlined,
   CloseOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import facultyService from '../../../../services/faculty.service';
+import { useDispatch } from 'react-redux';
+import {
+  updateInternship,
+  uploadJoiningLetter,
+  deleteJoiningLetter,
+  deleteMonthlyReport,
+  uploadMonthlyReport,
+} from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
@@ -61,6 +72,8 @@ const StudentDetailsModal = ({
   onRefresh,
   loading = false,
 }) => {
+  const { token } = theme.useToken();
+  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('overview');
   const [isEditingInternship, setIsEditingInternship] = useState(false);
   const [editForm] = Form.useForm();
@@ -124,7 +137,7 @@ const StudentDetailsModal = ({
     const end = dayjs(app.endDate);
     const months = end.diff(start, 'month');
     const days = end.diff(start.add(months, 'month'), 'day');
-    if (months > 0 && days > 0) return `${months} months ${days} days`;
+    if (months > 0 && days > 0) return `${months} m ${days} d`;
     if (months > 0) return `${months} months`;
     return `${end.diff(start, 'day')} days`;
   };
@@ -232,7 +245,7 @@ const StudentDetailsModal = ({
 
       // API call in background
       try {
-        const response = await facultyService.updateInternship(internshipApp.id, updateData);
+        const response = await dispatch(updateInternship({ internshipId: internshipApp.id, data: updateData })).unwrap();
         // Update with server response
         if (response?.data) {
           setLocalInternshipData(response.data);
@@ -242,7 +255,8 @@ const StudentDetailsModal = ({
       } catch (apiError) {
         // Revert optimistic update on failure
         setLocalInternshipData(null);
-        message.error(apiError.message || 'Failed to save changes. Please try again.');
+        const errorMessage = typeof apiError === 'string' ? apiError : apiError?.message || 'Failed to save changes. Please try again.';
+        message.error(errorMessage);
         setIsEditingInternship(true); // Re-open edit form
       }
     } catch (error) {
@@ -262,11 +276,12 @@ const StudentDetailsModal = ({
   const handleJoiningLetterUpload = async (file) => {
     setUploadingJoiningLetter(true);
     try {
-      await facultyService.uploadJoiningLetter(internshipApp?.id, file);
+      await dispatch(uploadJoiningLetter({ applicationId: internshipApp?.id, file })).unwrap();
       message.success('Joining letter uploaded successfully');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to upload joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
+      message.error(errorMessage);
     } finally {
       setUploadingJoiningLetter(false);
     }
@@ -276,22 +291,24 @@ const StudentDetailsModal = ({
   // Handle joining letter delete
   const handleDeleteJoiningLetter = async () => {
     try {
-      await facultyService.deleteJoiningLetter(internshipApp?.id);
+      await dispatch(deleteJoiningLetter(internshipApp?.id)).unwrap();
       message.success('Joining letter deleted successfully');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to delete joining letter');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
+      message.error(errorMessage);
     }
   };
 
   // Handle monthly report delete
   const handleDeleteReport = async (reportId) => {
     try {
-      await facultyService.deleteMonthlyReport(reportId);
+      await dispatch(deleteMonthlyReport(reportId)).unwrap();
       message.success('Report deleted successfully');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to delete report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
+      message.error(errorMessage);
     }
   };
 
@@ -305,11 +322,12 @@ const StudentDetailsModal = ({
       formData.append('reportMonth', dayjs().month() + 1);
       formData.append('reportYear', dayjs().year());
 
-      await facultyService.uploadMonthlyReport(formData);
+      await dispatch(uploadMonthlyReport(formData)).unwrap();
       message.success('Monthly report uploaded successfully');
       onRefresh?.();
     } catch (error) {
-      message.error(error.message || 'Failed to upload report');
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload report';
+      message.error(errorMessage);
     } finally {
       setUploadingReport(false);
     }
@@ -331,273 +349,216 @@ const StudentDetailsModal = ({
       key: 'overview',
       label: 'Overview',
       children: (
-        <div className="!space-y-4">
-          {/* Student Info Card */}
-          <Card size="small" title="Student Information" className="border-border">
-            <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-              <Descriptions.Item label="Name">
-                <Text strong>{studentData?.name || 'N/A'}</Text>
-              </Descriptions.Item>
-              <Descriptions.Item label="Roll Number">
-                {studentData?.rollNumber || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Email">
-                {studentData?.email || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Phone">
-                {studentData?.phone || studentData?.mobileNumber || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Branch">
-                {studentData?.branchName || studentData?.branch?.name || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="College">
-                {studentData?.collegeName || studentData?.college?.name || 'N/A'}
-              </Descriptions.Item>
-            </Descriptions>
-          </Card>
+        <div className="space-y-4">
+          {/* Quick Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card size="small" className="text-center border shadow-sm" style={{ borderColor: token.colorBorder }}>
+              <div className="text-xl font-bold" style={{ color: token.colorPrimary }}>
+                {visits.length}<span className="text-xs font-normal" style={{ color: token.colorTextSecondary }}>/{getExpectedVisits()}</span>
+              </div>
+              <Text style={{ color: token.colorTextSecondary }} className="text-xs">Visits Logged</Text>
+            </Card>
+            <Card size="small" className="text-center border shadow-sm" style={{ borderColor: token.colorBorder }}>
+              <div className="text-xl font-bold" style={{ color: token.colorSuccess }}>
+                {monthlyReports.length}<span className="text-xs font-normal" style={{ color: token.colorTextSecondary }}>/{getExpectedReports()}</span>
+              </div>
+              <Text style={{ color: token.colorTextSecondary }} className="text-xs">Reports Submitted</Text>
+            </Card>
+            <Card size="small" className="text-center border shadow-sm" style={{ borderColor: token.colorBorder }}>
+              <div className="text-xl font-bold" style={{ color: token.colorWarning }}>
+                {monthlyReports.filter(r => r.status === 'DRAFT').length}
+              </div>
+              <Text style={{ color: token.colorTextSecondary }} className="text-xs">Pending Review</Text>
+            </Card>
+          </div>
 
-          {/* Internship Info Card */}
-          <Card
-            size="small"
-            title="Internship Information"
-            className="border-border"
-            extra={
-              !isEditingInternship ? (
-                <Button
-                  type="link"
-                  icon={<EditOutlined />}
-                  onClick={handleEditInternship}
-                  size="small"
-                >
-                  Edit
-                </Button>
-              ) : (
-                <Space>
-                  <Button
-                    type="primary"
-                    icon={<SaveOutlined />}
-                    onClick={handleSaveInternship}
-                    size="small"
-                    loading={saving}
-                  >
-                    Save
-                  </Button>
-                  <Button
-                    icon={<CloseOutlined />}
-                    onClick={() => setIsEditingInternship(false)}
-                    size="small"
-                  >
-                    Cancel
-                  </Button>
-                </Space>
-              )
-            }
-          >
-            {isEditingInternship ? (
-              <Form form={editForm} layout="vertical" size="small">
-                <Divider orientation="left" className="!text-sm !my-2">Company Information</Divider>
-                <div className="grid grid-cols-2 !gap-4">
-                  <Form.Item
-                    name="companyName"
-                    label="Company Name"
-                    rules={[{ required: true, message: 'Required' }]}
-                  >
-                    <Input placeholder="Enter company name" />
-                  </Form.Item>
-                  <Form.Item name="companyAddress" label="Address/Location">
-                    <Input placeholder="Enter company address" />
-                  </Form.Item>
-                  <Form.Item name="companyContact" label="Company Contact">
-                    <Input placeholder="Enter contact number" />
-                  </Form.Item>
-                  <Form.Item name="companyEmail" label="Company Email">
-                    <Input placeholder="Enter company email" type="email" />
-                  </Form.Item>
+          <Row gutter={[16, 16]}>
+            {/* Student Info - Left Column */}
+            <Col xs={24} md={10}>
+              <Card 
+                size="small" 
+                title={<span className="font-semibold text-sm">Contact Info</span>}
+                className="h-full border shadow-sm" 
+                style={{ borderColor: token.colorBorder }}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2">
+                    <MailOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
+                    <div>
+                      <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Email</Text>
+                      <Text className="text-sm break-all">{studentData?.email || 'N/A'}</Text>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <PhoneOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
+                    <div>
+                      <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Phone</Text>
+                      <Text className="text-sm">{studentData?.phone || studentData?.mobileNumber || 'N/A'}</Text>
+                    </div>
+                  </div>
+                  <Divider className="my-2" />
+                  <div className="flex items-start gap-2">
+                    <BankOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
+                    <div>
+                      <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>College & Branch</Text>
+                      <Text className="text-sm block">{studentData?.collegeName || studentData?.college?.name || 'N/A'}</Text>
+                      <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{studentData?.branchName || studentData?.branch?.name || 'N/A'}</Text>
+                    </div>
+                  </div>
                 </div>
+              </Card>
+            </Col>
 
-                <Divider orientation="left" className="!text-sm !my-2">HR/Supervisor Details</Divider>
-                <div className="grid grid-cols-2 !gap-4">
-                  <Form.Item name="hrName" label="HR/Supervisor Name">
-                    <Input placeholder="Enter HR name" />
-                  </Form.Item>
-                  <Form.Item name="hrDesignation" label="Designation">
-                    <Input placeholder="Enter designation" />
-                  </Form.Item>
-                  <Form.Item name="hrContact" label="HR Contact">
-                    <Input placeholder="Enter HR contact" />
-                  </Form.Item>
-                  <Form.Item name="hrEmail" label="HR Email">
-                    <Input placeholder="Enter HR email" type="email" />
-                  </Form.Item>
-                </div>
+            {/* Internship Info - Right Column */}
+            <Col xs={24} md={14}>
+              <Card
+                size="small"
+                title={
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-sm">Internship Details</span>
+                    {!isEditingInternship && (
+                      <Button type="text" size="small" icon={<EditOutlined />} onClick={handleEditInternship} className="text-xs">Edit</Button>
+                    )}
+                  </div>
+                }
+                className="h-full border shadow-sm"
+                style={{ borderColor: token.colorBorder }}
+              >
+                {isEditingInternship ? (
+                  <Form form={editForm} layout="vertical" size="small">
+                    <div className="grid grid-cols-2 gap-3">
+                      <Form.Item name="companyName" label="Company" rules={[{ required: true }]} className="mb-2">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="jobProfile" label="Role" className="mb-2">
+                        <Input />
+                      </Form.Item>
+                      <Form.Item name="startDate" label="Start" rules={[{ required: true }]} className="mb-2">
+                        <DatePicker className="w-full" />
+                      </Form.Item>
+                      <Form.Item name="endDate" label="End" rules={[{ required: true }]} className="mb-2">
+                        <DatePicker className="w-full" />
+                      </Form.Item>
+                      <Form.Item name="stipend" label="Stipend" className="mb-2">
+                        <InputNumber className="w-full" />
+                      </Form.Item>
+                      <Form.Item name="companyAddress" label="Location" className="mb-2">
+                        <Input />
+                      </Form.Item>
+                    </div>
+                    <Form.Item name="hrName" label="HR Name" className="mb-2">
+                      <Input />
+                    </Form.Item>
+                    <div className="flex justify-end gap-2 mt-2">
+                      <Button size="small" onClick={() => setIsEditingInternship(false)}>Cancel</Button>
+                      <Button type="primary" size="small" onClick={handleSaveInternship} loading={saving}>Save</Button>
+                    </div>
+                  </Form>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Company</Text>
+                        <Text strong className="text-sm">{effectiveInternship?.companyName || 'Not Assigned'}</Text>
+                      </div>
+                      <div className="text-right">
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Status</Text>
+                        <Tag color={getStatusColor(effectiveInternship?.status)} className="mr-0">
+                          {effectiveInternship?.status || 'N/A'}
+                        </Tag>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Role</Text>
+                        <Text className="text-sm">{effectiveInternship?.jobProfile || 'N/A'}</Text>
+                      </div>
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Stipend</Text>
+                        <Text className="text-sm">{effectiveInternship?.stipend ? `₹${effectiveInternship.stipend}` : 'N/A'}</Text>
+                      </div>
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Duration</Text>
+                        <Text className="text-sm">{getDuration()}</Text>
+                      </div>
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Location</Text>
+                        <Text className="text-sm truncate" title={effectiveInternship?.companyAddress || effectiveInternship?.location}>
+                          {effectiveInternship?.companyAddress || effectiveInternship?.location || 'N/A'}
+                        </Text>
+                      </div>
+                    </div>
 
-                <Divider orientation="left" className="!text-sm !my-2">Internship Details</Divider>
-                <div className="grid grid-cols-2 !gap-4">
-                  <Form.Item
-                    name="startDate"
-                    label="Start Date"
-                    rules={[{ required: true, message: 'Required' }]}
-                  >
-                    <DatePicker className="w-full" />
-                  </Form.Item>
-                  <Form.Item
-                    name="endDate"
-                    label="End Date"
-                    rules={[{ required: true, message: 'Required' }]}
-                  >
-                    <DatePicker className="w-full" />
-                  </Form.Item>
-                  <Form.Item name="stipend" label="Stipend (₹/month)">
-                    <InputNumber className="w-full" min={0} placeholder="Enter stipend amount" />
-                  </Form.Item>
-                  <Form.Item name="jobProfile" label="Job Profile/Role">
-                    <Input placeholder="Enter job profile" />
-                  </Form.Item>
-                  <Form.Item name="notes" label="Notes" className="col-span-2">
-                    <TextArea rows={2} placeholder="Any additional notes..." />
-                  </Form.Item>
-                </div>
-              </Form>
-            ) : (
-              <>
-                <Descriptions column={{ xs: 1, sm: 2 }} size="small">
-                  <Descriptions.Item label="Company">
-                    <Text strong>{effectiveInternship?.companyName || 'Not Assigned'}</Text>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Status">
-                    <Tag color={getStatusColor(effectiveInternship?.status)}>
-                      {effectiveInternship?.status || 'N/A'}
-                    </Tag>
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Start Date">
-                    {effectiveInternship?.startDate
-                      ? dayjs(effectiveInternship.startDate).format('DD MMM YYYY')
-                      : 'N/A'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="End Date">
-                    {effectiveInternship?.endDate
-                      ? dayjs(effectiveInternship.endDate).format('DD MMM YYYY')
-                      : 'N/A'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Duration">
-                    {getDuration()}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Location">
-                    {effectiveInternship?.companyAddress || effectiveInternship?.location || 'N/A'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Stipend">
-                    {effectiveInternship?.stipend ? `₹${effectiveInternship.stipend}` : 'N/A'}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Job Profile">
-                    {effectiveInternship?.jobProfile || 'N/A'}
-                  </Descriptions.Item>
-                </Descriptions>
-                {(effectiveInternship?.hrName || effectiveInternship?.hrContact) && (
-                  <>
-                    <Divider className="!my-2" />
-                    <Descriptions column={{ xs: 1, sm: 2 }} size="small" title={<Text type="secondary" className="text-xs">HR/Supervisor</Text>}>
-                      <Descriptions.Item label="Name">
-                        {effectiveInternship?.hrName || 'N/A'}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Designation">
-                        {effectiveInternship?.hrDesignation || 'N/A'}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Contact">
-                        {effectiveInternship?.hrContact || 'N/A'}
-                      </Descriptions.Item>
-                      <Descriptions.Item label="Email">
-                        {effectiveInternship?.hrEmail || 'N/A'}
-                      </Descriptions.Item>
-                    </Descriptions>
-                  </>
+                    {(effectiveInternship?.hrName || effectiveInternship?.hrContact) && (
+                      <div className="pt-2 border-t border-dashed" style={{ borderColor: token.colorBorder }}>
+                        <Text className="text-xs block mb-1" style={{ color: token.colorTextTertiary }}>Supervisor</Text>
+                        <div className="flex items-center gap-2">
+                          <UserOutlined className="text-xs" />
+                          <Text className="text-sm">{effectiveInternship?.hrName || 'N/A'}</Text>
+                          {effectiveInternship?.hrContact && <Tag className="ml-auto text-xs">{effectiveInternship.hrContact}</Tag>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {effectiveInternship?.notes && (
-                  <>
-                    <Divider className="!my-2" />
-                    <Text type="secondary" className="text-xs">Notes: </Text>
-                    <Text>{effectiveInternship.notes}</Text>
-                  </>
-                )}
-              </>
-            )}
-          </Card>
+              </Card>
+            </Col>
+          </Row>
 
-          {/* Joining Letter Card */}
-          <Card size="small" title="Joining Letter" className="border-border">
+          {/* Joining Letter Section - Compact */}
+          <Card size="small" className="border shadow-sm" style={{ borderColor: token.colorBorder }}>
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileTextOutlined />
-                <Text>
-                  {internshipApp?.joiningLetterUrl ? 'Joining letter uploaded' : 'No joining letter'}
-                </Text>
-                {internshipApp?.joiningLetterUrl && (
-                  <Tag color="green">Uploaded</Tag>
-                )}
+              <div className="flex items-center gap-3">
+                <FileTextOutlined style={{ fontSize: '16px', color: token.colorPrimary }} />
+                <div>
+                  <Text className="font-medium">Joining Letter</Text>
+                  <div className="text-xs mt-0.5">
+                    {internshipApp?.joiningLetterUrl ? (
+                      <Space size={4}>
+                        <CheckCircleOutlined style={{ color: token.colorSuccess }} />
+                        <span style={{ color: token.colorSuccess }}>Uploaded</span>
+                        <span style={{ color: token.colorTextTertiary }}>•</span>
+                        <a 
+                          onClick={(e) => { e.preventDefault(); handleViewDocument(internshipApp.joiningLetterUrl); }}
+                          className="hover:underline"
+                        >
+                          View Document
+                        </a>
+                      </Space>
+                    ) : (
+                      <span style={{ color: token.colorTextTertiary }}>Not uploaded yet</span>
+                    )}
+                  </div>
+                </div>
               </div>
               <Space>
-                {internshipApp?.joiningLetterUrl && (
-                  <>
-                    <Tooltip title="View">
-                      <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewDocument(internshipApp.joiningLetterUrl)}
-                      />
-                    </Tooltip>
-                    <Popconfirm
-                      title="Delete joining letter?"
-                      description="This action cannot be undone."
-                      onConfirm={handleDeleteJoiningLetter}
-                      okText="Delete"
-                      okButtonProps={{ danger: true }}
-                    >
-                      <Tooltip title="Delete">
-                        <Button type="text" danger icon={<DeleteOutlined />} />
-                      </Tooltip>
-                    </Popconfirm>
-                  </>
-                )}
                 <Upload
                   showUploadList={false}
                   beforeUpload={handleJoiningLetterUpload}
                   accept=".pdf,.jpg,.jpeg,.png"
                 >
-                  <Tooltip title={internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}>
-                    <Button
-                      type={internshipApp?.joiningLetterUrl ? 'default' : 'primary'}
-                      icon={<UploadOutlined />}
-                      loading={uploadingJoiningLetter}
-                      size="small"
-                    >
-                      {internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}
-                    </Button>
-                  </Tooltip>
+                  <Button
+                    size="small"
+                    icon={<UploadOutlined />}
+                    loading={uploadingJoiningLetter}
+                  >
+                    {internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}
+                  </Button>
                 </Upload>
+                {internshipApp?.joiningLetterUrl && (
+                  <Popconfirm
+                    title="Delete joining letter?"
+                    onConfirm={handleDeleteJoiningLetter}
+                    okText="Delete"
+                    okButtonProps={{ danger: true }}
+                  >
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                  </Popconfirm>
+                )}
               </Space>
             </div>
           </Card>
-
-          {/* Quick Stats - Done/Expected */}
-          <div className="grid grid-cols-3 !gap-4">
-            <Card size="small" className="text-center border-border">
-              <div className="text-2xl font-bold text-primary">
-                {visits.length}<span className="text-sm font-normal text-text-secondary">/{getExpectedVisits()}</span>
-              </div>
-              <Text type="secondary" className="text-xs">Visits</Text>
-            </Card>
-            <Card size="small" className="text-center border-border">
-              <div className="text-2xl font-bold text-success">
-                {monthlyReports.length}<span className="text-sm font-normal text-text-secondary">/{getExpectedReports()}</span>
-              </div>
-              <Text type="secondary" className="text-xs">Reports</Text>
-            </Card>
-            <Card size="small" className="text-center border-border">
-              <div className="text-2xl font-bold text-warning">
-                {monthlyReports.filter(r => r.status === 'DRAFT').length}
-              </div>
-              <Text type="secondary" className="text-xs">Draft Reports</Text>
-            </Card>
-          </div>
         </div>
       ),
     },
@@ -617,6 +578,7 @@ const StudentDetailsModal = ({
           </div>
           {visits.length > 0 ? (
             <Timeline
+              className="mt-2"
               items={visits.map((visit, idx) => ({
                 key: idx,
                 color: dayjs(visit.visitDate).isAfter(dayjs()) ? 'blue' : 'green',
@@ -633,14 +595,9 @@ const StudentDetailsModal = ({
                       </div>
                     </div>
                     {visit.visitLocation && (
-                      <div className="text-text-secondary text-sm mt-1">
+                      <div className="text-sm mt-1" style={{ color: token.colorTextSecondary }}>
                         <EnvironmentOutlined className="mr-1" />
                         {visit.visitLocation}
-                      </div>
-                    )}
-                    {visit.notes && (
-                      <div className="text-text-secondary text-sm mt-1">
-                        {visit.notes}
                       </div>
                     )}
                   </div>
@@ -676,7 +633,7 @@ const StudentDetailsModal = ({
           {monthlyReports.length > 0 ? (
             <div className="space-y-3">
               {monthlyReports.map((report, idx) => (
-                <Card key={report.id || idx} size="small" className="border-border">
+                <Card key={report.id || idx} size="small" className="border shadow-sm" style={{ borderColor: token.colorBorder }}>
                   <div className="flex justify-between items-center">
                     <div>
                       <Text strong>
@@ -688,24 +645,24 @@ const StudentDetailsModal = ({
                     </div>
                     <Space size={4}>
                       {report.reportFileUrl && (
-                        <Tooltip title="View Report">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<EyeOutlined />}
-                            onClick={() => handleViewDocument(report.reportFileUrl)}
-                          />
-                        </Tooltip>
-                      )}
-                      {report.reportFileUrl && (
-                        <Tooltip title="Download">
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<DownloadOutlined />}
-                            onClick={() => handleViewDocument(report.reportFileUrl)}
-                          />
-                        </Tooltip>
+                        <>
+                          <Tooltip title="View">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<EyeOutlined />}
+                              onClick={() => handleViewDocument(report.reportFileUrl)}
+                            />
+                          </Tooltip>
+                          <Tooltip title="Download">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<DownloadOutlined />}
+                              onClick={() => handleViewDocument(report.reportFileUrl)}
+                            />
+                          </Tooltip>
+                        </>
                       )}
                       <Popconfirm
                         title="Delete this report?"
@@ -726,7 +683,7 @@ const StudentDetailsModal = ({
                     </Space>
                   </div>
                   {report.submittedAt && (
-                    <Text type="secondary" className="text-xs block mt-1">
+                    <Text className="text-xs block mt-1" style={{ color: token.colorTextSecondary }}>
                       Submitted: {dayjs(report.submittedAt).format('DD MMM YYYY')}
                     </Text>
                   )}
@@ -747,20 +704,22 @@ const StudentDetailsModal = ({
         title={
           <div className="flex items-center gap-3">
             <ProfileAvatar size={40} profileImage={studentData?.profileImage} className="bg-primary" />
-            <div>
-              <Title level={5} className="m-0">
-                {studentData?.name || 'Student Details'}
-              </Title>
-              <Text type="secondary" className="text-xs">
-                {studentData?.rollNumber || ''}
-                {internshipApp?.companyName && ` • ${internshipApp.companyName}`}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <Title level={5} className="m-0 truncate">
+                  {studentData?.name || 'Student Details'}
+                </Title>
+                <Tag className="m-0 text-[10px] uppercase">{studentData?.rollNumber}</Tag>
+              </div>
+              <Text className="text-xs truncate block" style={{ color: token.colorTextSecondary }}>
+                {internshipApp?.companyName ? internshipApp.companyName : 'No Active Internship'}
               </Text>
             </div>
           </div>
         }
         open={visible}
         onCancel={onClose}
-        width={800}
+        width={700}
         footer={[
           <Button key="close" onClick={onClose}>
             Close
@@ -775,12 +734,15 @@ const StudentDetailsModal = ({
           </Button>,
         ]}
         className="student-details-modal"
+        styles={{ body: { padding: '16px 24px' } }}
       >
         <Spin spinning={loading}>
           <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
+            size="small"
+            className="mb-0"
           />
         </Spin>
       </Modal>

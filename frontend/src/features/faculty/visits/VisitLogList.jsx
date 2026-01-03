@@ -1,11 +1,14 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Typography, Segmented, theme, Row, Col, Empty } from 'antd';
-import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined, UserOutlined, ProjectOutlined, MessageOutlined } from '@ant-design/icons';
+import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined, UserOutlined, ProjectOutlined, MessageOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
 import UnifiedVisitLogModal from './UnifiedVisitLogModal';
 import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
 import { openFileWithPresignedUrl } from '../../../utils/imageUtils';
+
+dayjs.extend(relativeTime);
 
 const { RangePicker } = DatePicker;
 const { Title, Text, Paragraph } = Typography;
@@ -91,9 +94,11 @@ const VisitLogList = React.memo(() => {
 
   const filteredLogs = useMemo(() => {
     return visitLogsList?.filter(log => {
+      const studentName = log.application?.student?.name || '';
+      const companyName = log.application?.internship?.industry?.companyName || '';
       const matchesSearch = !searchText ||
-        log.student?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        log.company?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        studentName.toLowerCase().includes(searchText.toLowerCase()) ||
+        companyName.toLowerCase().includes(searchText.toLowerCase()) ||
         log.visitLocation?.toLowerCase().includes(searchText.toLowerCase()) ||
         log.titleOfProjectWork?.toLowerCase().includes(searchText.toLowerCase());
       const matchesDate = !dateRange || (
@@ -120,13 +125,12 @@ const VisitLogList = React.memo(() => {
     },
     {
       title: 'Student',
-      dataIndex: ['student', 'name'],
       key: 'student',
       width: 180,
-      render: (text, record) => (
+      render: (_, record) => (
         <div>
-          <div className="font-medium">{text}</div>
-          <div className="text-xs text-gray-500">{record.student?.rollNumber}</div>
+          <div className="font-medium">{record.application?.student?.name || '-'}</div>
+          <div className="text-xs text-gray-500">{record.application?.student?.rollNumber}</div>
         </div>
       ),
     },
@@ -135,7 +139,7 @@ const VisitLogList = React.memo(() => {
       key: 'company',
       width: 180,
       ellipsis: true,
-      render: (_, record) => record.company?.name || record.application?.internship?.industry?.companyName || '-',
+      render: (_, record) => record.application?.internship?.industry?.companyName || '-',
     },
     {
       title: 'Visit Type',
@@ -185,21 +189,6 @@ const VisitLogList = React.memo(() => {
       },
     },
   ], [handleDelete]);
-
-  // Section component for Modal
-  const DetailSection = ({ icon, title, children }) => (
-    <div className="mb-4">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="w-6 h-6 rounded flex items-center justify-center" style={{ backgroundColor: token.colorPrimaryBg }}>
-          {React.cloneElement(icon, { style: { color: token.colorPrimary, fontSize: '12px' } })}
-        </div>
-        <Text strong className="text-xs uppercase tracking-wide" style={{ color: token.colorTextSecondary }}>{title}</Text>
-      </div>
-      <div className="rounded-lg p-3" style={{ backgroundColor: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}>
-        {children}
-      </div>
-    </div>
-  );
 
   // Info row component for Modal
   const InfoRow = ({ label, value, fullWidth }) => (
@@ -276,105 +265,147 @@ const VisitLogList = React.memo(() => {
 
       {/* Detail Modal */}
       <Modal
-        title={<div className="flex items-center gap-2"><EyeOutlined style={{ color: token.colorPrimary }} /><span>Visit Log Details</span></div>}
+        title={null}
         open={detailModalVisible}
         onCancel={() => { setDetailModalVisible(false); setSelectedLog(null); }}
-        width={700}
+        width={640}
+        styles={{ body: { padding: 0 } }}
         footer={
-          <Space>
-            <Button onClick={() => setDetailModalVisible(false)}>Close</Button>
-            <Button type="primary" icon={<EditOutlined />} onClick={() => { setDetailModalVisible(false); handleOpenModal(selectedLog?.id, selectedLog); }}>
-              {selectedLog?.status?.toUpperCase() === 'DRAFT' ? 'Complete Visit' : 'Edit'}
+          <div className="flex justify-end gap-2 px-4 py-3 border-t" style={{ borderColor: token.colorBorderSecondary }}>
+            <Button size="small" onClick={() => setDetailModalVisible(false)}>Close</Button>
+            <Button type="primary" size="small" icon={<EditOutlined />} onClick={() => { setDetailModalVisible(false); handleOpenModal(selectedLog?.id, selectedLog); }}>
+              {selectedLog?.status?.toUpperCase() === 'DRAFT' ? 'Complete' : 'Edit'}
             </Button>
-          </Space>
+          </div>
         }
       >
         {selectedLog ? (
-          <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-            {/* Status Header */}
-            <div className="rounded-lg p-3 flex justify-between items-center" style={{ backgroundColor: token.colorBgLayout }}>
-              <Space>
-                <CalendarOutlined />
-                <Text strong>{dayjs(selectedLog.visitDate).format('dddd, DD MMMM YYYY')}</Text>
-              </Space>
-              <Tag color={selectedLog.status?.toUpperCase() === 'COMPLETED' ? 'success' : 'orange'}>{selectedLog.status}</Tag>
-            </div>
-
-            {/* Student Info */}
-            <DetailSection icon={<UserOutlined />} title="Student Information">
-              <Row gutter={12}>
-                <InfoRow label="Name" value={selectedLog.student?.name} />
-                <InfoRow label="Roll Number" value={selectedLog.student?.rollNumber} />
-                <InfoRow label="Email" value={selectedLog.student?.email} fullWidth />
-              </Row>
-            </DetailSection>
-
-            {/* Visit Details */}
-            <DetailSection icon={<EnvironmentOutlined />} title="Visit Details">
-              <Row gutter={12}>
-                <InfoRow label="Visit Type" value={<Tag color={selectedLog.visitType === 'PHYSICAL' ? 'green' : 'blue'}>{selectedLog.visitType}</Tag>} />
-                <InfoRow label="Location" value={selectedLog.visitLocation} />
-                <InfoRow label="Company" value={selectedLog.company?.name || selectedLog.application?.internship?.industry?.companyName} />
-                {selectedLog.latitude && <InfoRow label="GPS" value={<Text code>{selectedLog.latitude?.toFixed(4)}, {selectedLog.longitude?.toFixed(4)}</Text>} />}
-              </Row>
-            </DetailSection>
-
-            {/* Project Information */}
-            <DetailSection icon={<ProjectOutlined />} title="Project Information">
-              <Row gutter={12}>
-                <InfoRow label="Title of Project/Work" value={selectedLog.titleOfProjectWork} fullWidth />
-                <InfoRow label="Assistance Required from Institute" value={selectedLog.assistanceRequiredFromInstitute} fullWidth />
-                <InfoRow label="Response from Organisation" value={selectedLog.responseFromOrganisation} fullWidth />
-                <InfoRow label="Remarks of Organisation Supervisor" value={selectedLog.remarksOfOrganisationSupervisor} fullWidth />
-                <InfoRow label="Significant Change in Plan" value={selectedLog.significantChangeInPlan} fullWidth />
-              </Row>
-            </DetailSection>
-
-            {/* Observations & Feedback */}
-            <DetailSection icon={<MessageOutlined />} title="Observations & Feedback">
-              <div className="space-y-3">
+          <div className="max-h-[70vh] overflow-y-auto">
+            {/* Header Banner */}
+            <div className="px-5 py-4 border-b" style={{ backgroundColor: token.colorPrimaryBg, borderColor: token.colorPrimaryBorder }}>
+              <div className="flex justify-between items-start mb-2">
                 <div>
-                  <Text className="text-[10px] block text-gray-400 mb-1">Observations about Student</Text>
-                  <div className="p-2 rounded bg-white">
-                    <Paragraph className="!mb-0 text-sm">{selectedLog.observationsAboutStudent || <span className="text-gray-300">No observations</span>}</Paragraph>
-                  </div>
+                  <Text className="text-xs uppercase tracking-wider" style={{ color: token.colorPrimary }}>Visit Log</Text>
+                  <Title level={5} className="!mb-0 !mt-1">{selectedLog.application?.student?.name || 'Unknown Student'}</Title>
+                  <Text type="secondary" className="text-xs">{selectedLog.application?.student?.rollNumber}</Text>
                 </div>
-                <div>
-                  <Text className="text-[10px] block text-gray-400 mb-1">Feedback Shared with Student</Text>
-                  <div className="p-2 rounded bg-white">
-                    <Paragraph className="!mb-0 text-sm">{selectedLog.feedbackSharedWithStudent || <span className="text-gray-300">No feedback</span>}</Paragraph>
-                  </div>
-                </div>
-                {selectedLog.notes && (
-                  <div>
-                    <Text className="text-[10px] block text-gray-400 mb-1">Additional Notes</Text>
-                    <div className="p-2 rounded bg-white">
-                      <Paragraph className="!mb-0 text-sm">{selectedLog.notes}</Paragraph>
-                    </div>
-                  </div>
+                <Space direction="vertical" align="end" size={4}>
+                  <Tag color={selectedLog.status?.toUpperCase() === 'COMPLETED' ? 'success' : selectedLog.status?.toUpperCase() === 'DRAFT' ? 'orange' : 'blue'}>
+                    {selectedLog.status}
+                  </Tag>
+                  <Tag color={selectedLog.visitType === 'PHYSICAL' ? 'green' : selectedLog.visitType === 'VIRTUAL' ? 'blue' : 'orange'}>
+                    {selectedLog.visitType}
+                  </Tag>
+                </Space>
+              </div>
+              <div className="flex items-center gap-4 mt-3 text-xs">
+                <Space size={4}><CalendarOutlined /><Text>{dayjs(selectedLog.visitDate).format('ddd, DD MMM YYYY • h:mm A')}</Text></Space>
+                {selectedLog.application?.internship?.industry?.companyName && (
+                  <Space size={4}><EnvironmentOutlined /><Text>{selectedLog.application.internship.industry.companyName}</Text></Space>
                 )}
               </div>
-            </DetailSection>
+            </div>
 
-            {/* Documents */}
-            {(selectedLog.signedDocumentUrl || selectedLog.visitPhotos?.length > 0) && (
-              <DetailSection icon={<FileImageOutlined />} title="Documents & Photos">
-                <div className="space-y-2">
-                  {selectedLog.signedDocumentUrl && (
-                    <Button icon={<FileTextOutlined />} onClick={() => openFileWithPresignedUrl(selectedLog.signedDocumentUrl)}>
-                      View Signed Document
-                    </Button>
-                  )}
-                  {selectedLog.visitPhotos?.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedLog.visitPhotos.map((url, idx) => (
-                        <img key={idx} src={url} alt={`Photo ${idx + 1}`} className="w-16 h-16 object-cover rounded cursor-pointer border hover:opacity-80" onClick={() => openFileWithPresignedUrl(url)} />
-                      ))}
+            <div className="p-4 space-y-3">
+              {/* Follow-up Alert */}
+              {(selectedLog.nextVisitDate || selectedLog.followUpRequired) && (
+                <div className="rounded-lg p-3 flex items-center justify-between" style={{ backgroundColor: selectedLog.followUpRequired ? token.colorWarningBg : token.colorInfoBg, border: `1px solid ${selectedLog.followUpRequired ? token.colorWarningBorder : token.colorInfoBorder}` }}>
+                  <Space>
+                    <ClockCircleOutlined style={{ color: selectedLog.followUpRequired ? token.colorWarning : token.colorInfo }} />
+                    <div>
+                      <Text strong className="text-xs block">{selectedLog.followUpRequired ? 'Follow-up Required' : 'Next Visit Scheduled'}</Text>
+                      {selectedLog.nextVisitDate && (
+                        <Text className="text-xs">{dayjs(selectedLog.nextVisitDate).format('DD MMM YYYY')} ({dayjs(selectedLog.nextVisitDate).fromNow()})</Text>
+                      )}
                     </div>
-                  )}
+                  </Space>
+                  {selectedLog.followUpRequired && <Tag color="warning" className="!m-0">Action Needed</Tag>}
                 </div>
-              </DetailSection>
-            )}
+              )}
+
+              {/* Visit Location & GPS */}
+              {(selectedLog.visitLocation || selectedLog.latitude) && (
+                <Card size="small" className="!mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <EnvironmentOutlined style={{ color: token.colorPrimary }} />
+                    <Text strong className="text-xs uppercase">Location</Text>
+                  </div>
+                  <Row gutter={12}>
+                    {selectedLog.visitLocation && <InfoRow label="Visit Location" value={selectedLog.visitLocation} />}
+                    {selectedLog.latitude && <InfoRow label="GPS Coordinates" value={<Text code className="text-xs">{selectedLog.latitude?.toFixed(5)}, {selectedLog.longitude?.toFixed(5)}</Text>} />}
+                  </Row>
+                </Card>
+              )}
+
+              {/* Project Info */}
+              {(selectedLog.titleOfProjectWork || selectedLog.assistanceRequiredFromInstitute || selectedLog.responseFromOrganisation || selectedLog.remarksOfOrganisationSupervisor || selectedLog.significantChangeInPlan) && (
+                <Card size="small" className="!mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ProjectOutlined style={{ color: token.colorPrimary }} />
+                    <Text strong className="text-xs uppercase">Project Details</Text>
+                  </div>
+                  <Row gutter={[12, 8]}>
+                    {selectedLog.titleOfProjectWork && <InfoRow label="Project Title" value={selectedLog.titleOfProjectWork} fullWidth />}
+                    {selectedLog.assistanceRequiredFromInstitute && <InfoRow label="Assistance Required" value={selectedLog.assistanceRequiredFromInstitute} fullWidth />}
+                    {selectedLog.responseFromOrganisation && <InfoRow label="Org Response" value={selectedLog.responseFromOrganisation} fullWidth />}
+                    {selectedLog.remarksOfOrganisationSupervisor && <InfoRow label="Supervisor Remarks" value={selectedLog.remarksOfOrganisationSupervisor} fullWidth />}
+                    {selectedLog.significantChangeInPlan && <InfoRow label="Changes in Plan" value={selectedLog.significantChangeInPlan} fullWidth />}
+                  </Row>
+                </Card>
+              )}
+
+              {/* Observations & Feedback */}
+              {(selectedLog.observationsAboutStudent || selectedLog.feedbackSharedWithStudent) && (
+                <Card size="small" className="!mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageOutlined style={{ color: token.colorPrimary }} />
+                    <Text strong className="text-xs uppercase">Observations & Feedback</Text>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedLog.observationsAboutStudent && (
+                      <div>
+                        <Text className="text-[10px] block text-gray-400 mb-1">Observations</Text>
+                        <Paragraph className="!mb-0 text-sm" style={{ backgroundColor: token.colorBgLayout, padding: '8px', borderRadius: '4px' }}>
+                          {selectedLog.observationsAboutStudent}
+                        </Paragraph>
+                      </div>
+                    )}
+                    {selectedLog.feedbackSharedWithStudent && (
+                      <div>
+                        <Text className="text-[10px] block text-gray-400 mb-1">Feedback to Student</Text>
+                        <Paragraph className="!mb-0 text-sm" style={{ backgroundColor: token.colorBgLayout, padding: '8px', borderRadius: '4px' }}>
+                          {selectedLog.feedbackSharedWithStudent}
+                        </Paragraph>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+
+              {/* Attachments */}
+              {(selectedLog.signedDocumentUrl || selectedLog.visitPhotos?.length > 0) && (
+                <Card size="small" className="!mb-0">
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileImageOutlined style={{ color: token.colorPrimary }} />
+                    <Text strong className="text-xs uppercase">Attachments</Text>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedLog.signedDocumentUrl && (
+                      <Button size="small" icon={<FileTextOutlined />} onClick={() => openFileWithPresignedUrl(selectedLog.signedDocumentUrl)}>
+                        View Signed Document
+                      </Button>
+                    )}
+                    {selectedLog.visitPhotos?.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {selectedLog.visitPhotos.map((url, idx) => (
+                          <img key={idx} src={url} alt={`Photo ${idx + 1}`} className="w-14 h-14 object-cover rounded cursor-pointer border hover:opacity-80 transition-opacity" onClick={() => openFileWithPresignedUrl(url)} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              )}
+            </div>
           </div>
         ) : (
           <Empty description="No visit log selected" />

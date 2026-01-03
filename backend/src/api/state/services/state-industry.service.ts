@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, ApplicationStatus, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
+import { Prisma, ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 @Injectable()
 export class StateIndustryService {
@@ -287,10 +287,7 @@ export class StateIndustryService {
 
     // Query 2: Get self-identified applications
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
-      OR: [
-        { isSelfIdentified: true },
-        { internshipStatus: 'SELF_IDENTIFIED' },
-      ],
+      isSelfIdentified: true,
     };
     if (search) {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
@@ -318,6 +315,7 @@ export class StateIndustryService {
               applications: {
                 where: {
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
+                  student: { isActive: true },
                 },
                 select: {
                   id: true,
@@ -347,7 +345,10 @@ export class StateIndustryService {
       }),
       // Get all self-identified applications
       this.prisma.internshipApplication.findMany({
-        where: selfIdWhere,
+        where: {
+          ...selfIdWhere,
+          student: { isActive: true },
+        },
         select: {
           id: true,
           companyName: true,
@@ -581,16 +582,13 @@ export class StateIndustryService {
     const paginatedCompanies = companies.slice(skip, skip + limit);
 
     // Calculate summary
-    // For self-identified companies, use totalApplications to match institution overview count
+    // Always use deduplicated studentCount for consistent counting
     const totalStudentsPlaced = companies.reduce((sum, c) => {
-      if (c.isSelfIdentifiedCompany) {
-        return sum + (c.totalApplications || c.totalStudents);
-      }
       return sum + c.totalStudents;
     }, 0);
     const totalSelfIdentified = companies
       .filter(c => c.isSelfIdentifiedCompany)
-      .reduce((sum, c) => sum + (c.totalApplications || c.totalStudents), 0);
+      .reduce((sum, c) => sum + c.totalStudents, 0);
     const uniqueIndustryTypes = [...new Set(industryTypes.map(t => t.industryType).filter(Boolean)), 'Self-Identified'];
 
     return {
@@ -623,11 +621,9 @@ export class StateIndustryService {
       // First fetch all self-identified applications
       const allSelfIdApps = await this.prisma.internshipApplication.findMany({
         where: {
-          OR: [
-            { isSelfIdentified: true },
-            { internshipStatus: 'SELF_IDENTIFIED' },
-          ],
+          isSelfIdentified: true,
           companyName: { not: '' },
+          student: { isActive: true },
         },
         select: {
           id: true,
@@ -765,6 +761,7 @@ export class StateIndustryService {
             applications: {
               where: {
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
+                student: { isActive: true },
               },
               select: {
                 id: true,

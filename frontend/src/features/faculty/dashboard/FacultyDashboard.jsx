@@ -12,7 +12,6 @@ import {
   AssignedStudentsList,
   VisitLogsCard,
   MonthlyReportsCard,
-  JoiningLettersCard,
   StudentDetailsModal,
 } from './components';
 import QuickVisitModal from '../visits/QuickVisitModal';
@@ -32,6 +31,8 @@ const FacultyDashboard = () => {
     dashboard,
     students,
     visitLogs,
+    joiningLetters,
+    monthlyReports,
     mentor,
     stats,
     upcomingVisits,
@@ -165,8 +166,10 @@ const FacultyDashboard = () => {
               <StatisticsGrid
                 stats={stats}
                 students={students}
-                monthlyReports={dashboard?.monthlyReports || []}
+                monthlyReports={monthlyReports}
                 visitLogs={visitLogs}
+                joiningLetters={joiningLetters}
+                onRefresh={refresh}
               />
             </div>
 
@@ -196,7 +199,7 @@ const FacultyDashboard = () => {
                 {/* Monthly Reports */}
                 <Col xs={24} xl={12}>
                   <MonthlyReportsCard
-                    reports={dashboard?.monthlyReports || []}
+                    reports={monthlyReports}
                     loading={isLoading}
                     onRefresh={refresh}
                     onViewAll={() => navigate('/app/monthly-reports')}

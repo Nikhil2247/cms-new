@@ -183,7 +183,7 @@ const UserProfile = ({ visible, onClose }) => {
       footer={null}
       width={720}
       centered
-      destroyOnClose
+      destroyOnHidden
       closable={!editing}
       maskClosable={!editing}
       className="profile-modal"

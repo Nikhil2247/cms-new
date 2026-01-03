@@ -169,6 +169,7 @@
       "WebFetch(domain:www.meity.gov.in)",
       "WebFetch(domain:strobes.co)",
       "WebFetch(domain:pwonlyias.com)",
+<<<<<<< HEAD
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\puttygen.exe\" \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" -O private-openssh -o \"D:\\\\chrome download\\\\gunjan_openssh.key\")",
       "Bash(wsl puttygen:*)",
       "Bash(wsl sudo apt-get:*)",
@@ -212,6 +213,16 @@
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"mongosh -u admin -p ''Admin1234'' --authenticationDatabase admin internship /tmp/khunimajra_fix_inactive_students.js\")",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\pscp.exe\" -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" \"D:\\\\chrome download\\\\fix_all_inactive_students.js\" root@144.208.66.222:/tmp/fix_all_inactive_students.js)",
       "Bash(\"C:\\\\Program Files\\\\PuTTY\\\\plink.exe\" -i \"D:\\\\chrome download\\\\gunjan.privatekey \\(1\\).ppk\" root@144.208.66.222 \"mongosh -u admin -p ''Admin1234'' --authenticationDatabase admin internship /tmp/fix_all_inactive_students.js\")"
+=======
+      "Bash(npx prisma migrate dev:*)",
+      "Bash(node prisma/query-duplicates.js:*)",
+      "Bash(timeout 30 npx tsc:*)",
+      "Bash(timeout 20 npx tsc:*)",
+      "Bash(Get-Date -Format \"yyyyMMddHHmmss\")",
+      "Bash(dir /B \"C:\\\\Users\\\\hp\\\\Videos\\\\cms-new\")",
+      "Bash(dir \"C:\\\\Users\\\\hp\\\\Videos\\\\cms-new\")",
+      "Bash(wc:*)"
+>>>>>>> c4da984967b220ddb4d5cb10b06f84c730d521c7
     ]
   }
 }

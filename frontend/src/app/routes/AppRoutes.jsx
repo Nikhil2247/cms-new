@@ -40,7 +40,7 @@ import StudentLogin from '../../features/auth/components/StudentLogin';
 import StateDashboard from '../../features/state/dashboard/StateDashboard';
 import InstituteManagement from '../../features/state/institutions/InstituteManagement';
 import InstitutionBulkUpload from '../../features/state/institutions/BulkUpload';
-import { InstitutionOverview } from '../../features/state/overview';
+import { InstitutionOverview, MentorOverview } from '../../features/state/overview';
 import PrincipalList from '../../features/state/principals/PrincipalList';
 import StateStaffList from '../../features/state/staff/StaffList';
 import ReportBuilder from '../../features/state/reports/ReportBuilder';
@@ -197,6 +197,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <InstitutionOverview />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="mentor-overview"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <MentorOverview />
             </ProtectedRoute>
           }
         />

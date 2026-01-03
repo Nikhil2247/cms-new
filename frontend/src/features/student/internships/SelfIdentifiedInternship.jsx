@@ -171,7 +171,7 @@ const SelfIdentifiedInternship = () => {
 
       // Append self-identified flags
       formData.append("isSelfIdentified", "true");
-      formData.append("internshipStatus", "SELF_IDENTIFIED");
+      formData.append("internshipPhase", "NOT_STARTED");
       formData.append("status", "PENDING");
       formData.append(
         "notes",

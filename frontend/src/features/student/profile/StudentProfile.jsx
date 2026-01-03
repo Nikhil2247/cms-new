@@ -362,9 +362,7 @@ export default function StudentProfile() {
 
   if (loading)
     return (
-      <div className="flex justify-center items-center min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
-        <Spin size="large" tip="Loading profile..." />
-      </div>
+      <Spin fullscreen tip="Loading profile..." />
     );
 
   if (error)
@@ -377,12 +375,15 @@ export default function StudentProfile() {
   // Info Card Component
   const InfoCard = ({ icon, label, value, color = token.colorPrimary }) => (
     <div
-      className="p-4 rounded-xl border flex items-center gap-3 hover:shadow-sm transition-shadow"
-      style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+      className="p-4 rounded-xl border flex items-center gap-3 transition-shadow hover:shadow-sm"
+      style={{ 
+        backgroundColor: token.colorBgContainer, 
+        borderColor: token.colorBorderSecondary 
+      }}
     >
       <div
         className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-        style={{ backgroundColor: `${color}10`, color }}
+        style={{ backgroundColor: `${color}15`, color }}
       >
         {icon}
       </div>
@@ -398,8 +399,11 @@ export default function StudentProfile() {
   );
 
   return (
-    <div className="p-4 md:p-6 min-h-screen overflow-y-auto hide-scrollbar" style={{ backgroundColor: token.colorBgLayout }}>
-      <div className="max-w-7xl mx-auto !space-y-4 pb-8">
+    <div 
+      className="p-4 md:p-6 min-h-screen overflow-y-auto hide-scrollbar"
+      style={{ backgroundColor: token.colorBgLayout }}
+    >
+      <div className="max-w-7xl mx-auto space-y-4 pb-8">
 
         {/* Header with Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -434,9 +438,12 @@ export default function StudentProfile() {
 
         {/* Profile Header Card - Compact */}
         <Card
-          bordered={false}
-          className="rounded-xl shadow-sm"
-          style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+          variant="borderless"
+          className="rounded-xl shadow-sm border"
+          style={{ 
+            backgroundColor: token.colorBgContainer, 
+            borderColor: token.colorBorderSecondary 
+          }}
           styles={{ body: { padding: '20px' } }}
         >
           <div className="flex flex-col sm:flex-row items-center gap-5">
@@ -469,8 +476,8 @@ export default function StudentProfile() {
                   {student.name}
                 </Title>
                 <Tag
-                  className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase m-0"
-                  style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, border: 'none' }}
+                  className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase m-0 border-0"
+                  color="blue"
                 >
                   {student.branchName}
                 </Tag>
@@ -481,7 +488,7 @@ export default function StudentProfile() {
                   <IdcardOutlined style={{ color: token.colorTextTertiary, fontSize: '12px' }} />
                   {student.rollNumber}
                 </span>
-                <span className="hidden sm:inline text-text-tertiary">•</span>
+                <span className="hidden sm:inline" style={{ color: token.colorTextTertiary }}>•</span>
                 <span className="flex items-center gap-1.5">
                   <BankOutlined style={{ color: token.colorTextTertiary, fontSize: '12px' }} />
                   Batch {student.batch?.name || 'N/A'}
@@ -489,15 +496,15 @@ export default function StudentProfile() {
               </div>
 
               <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
-                <Tag color={getCategoryColor(student.category)} className="rounded-md text-[10px] font-semibold uppercase m-0 px-2">
+                <Tag color={getCategoryColor(student.category)} className="rounded-md text-[10px] font-semibold uppercase m-0 px-2 border-0">
                   {student.category}
                 </Tag>
-                <Tag className="rounded-md text-[10px] font-semibold uppercase m-0 px-2" style={{ backgroundColor: token.colorFillSecondary, color: token.colorTextSecondary, border: 'none' }}>
+                <Tag className="rounded-md text-[10px] font-semibold uppercase m-0 px-2 border-0" color="default">
                   {student.admissionType}
                 </Tag>
                 {student.clearanceStatus && (
                   <Tag
-                    className="rounded-md text-[10px] font-semibold uppercase m-0 px-2"
+                    className="rounded-md text-[10px] font-semibold uppercase m-0 px-2 border-0"
                     color={student.clearanceStatus === "CLEARED" ? "success" : "warning"}
                   >
                     {student.clearanceStatus}
@@ -526,26 +533,29 @@ export default function StudentProfile() {
             icon={<CalendarOutlined className="text-base" />}
             label="Date of Birth"
             value={student.dob?.slice(0, 10)}
-            color="#a855f7"
+            color={token.colorWarning} // Replaced hardcoded purple
           />
           <InfoCard
             icon={<TeamOutlined className="text-base" />}
             label="Parent Contact"
             value={student.parentContact}
-            color="#f59e0b"
+            color={token.colorWarning} // Replaced hardcoded amber
           />
         </div>
 
         {/* Tabs Container */}
         <Card
-          bordered={false}
-          className="rounded-xl shadow-sm overflow-hidden"
-          style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+          variant="borderless"
+          className="rounded-xl shadow-sm overflow-hidden border"
+          style={{ 
+            backgroundColor: token.colorBgContainer, 
+            borderColor: token.colorBorderSecondary 
+          }}
           styles={{ body: { padding: 0 } }}
         >
           <Tabs
             defaultActiveKey="1"
-            className="[&_.ant-tabs-nav]:px-4 [&_.ant-tabs-nav]:pt-2"
+            className="custom-tabs"
             items={[
               {
                 key: "1",
@@ -572,7 +582,7 @@ export default function StudentProfile() {
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Branch</Text>
-                            <Tag className="m-0 text-[10px] rounded-md" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, border: 'none' }}>
+                            <Tag className="m-0 text-[10px] rounded-md border-0" color="blue">
                               {student.branchName}
                             </Tag>
                           </div>
@@ -635,9 +645,12 @@ export default function StudentProfile() {
                           <Col xs={12} sm={8} md={6} key={doc.id || idx}>
                             <Card
                               hoverable
-                              bordered={false}
+                              variant="borderless"
                               className="rounded-xl border overflow-hidden group"
-                              style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+                              style={{ 
+                                backgroundColor: token.colorBgContainer, 
+                                borderColor: token.colorBorderSecondary 
+                              }}
                               styles={{ body: { padding: '12px' } }}
                               onClick={() => openFileWithPresignedUrl(doc.fileUrl)}
                             >
@@ -693,13 +706,16 @@ export default function StudentProfile() {
                           <Col xs={24} sm={12} lg={8} key={i}>
                             <div
                               className="p-4 rounded-xl border"
-                              style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+                              style={{ 
+                                backgroundColor: token.colorBgContainer, 
+                                borderColor: token.colorBorderSecondary 
+                              }}
                             >
                               <div className="flex justify-between items-start mb-3">
                                 <Title level={5} className="!mb-0 !text-sm font-semibold" style={{ color: token.colorText }}>
                                   {p.companyName}
                                 </Title>
-                                <Tag color={getPlacementStatusColor(p.status)} className="m-0 text-[10px] rounded-md">
+                                <Tag color={getPlacementStatusColor(p.status)} className="m-0 text-[10px] rounded-md border-0">
                                   {p.status}
                                 </Tag>
                               </div>
@@ -755,23 +771,26 @@ export default function StudentProfile() {
                               <Col xs={24} sm={12} key={i}>
                                 <div
                                   className="p-4 rounded-xl border"
-                                  style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorderSecondary }}
+                                  style={{ 
+                                    backgroundColor: token.colorBgContainer, 
+                                    borderColor: token.colorBorderSecondary 
+                                  }}
                                 >
                                   <div className="flex justify-between items-start mb-2">
                                     <div className="flex-1 min-w-0">
                                       {isSelf && (
-                                        <Tag className="m-0 mb-1.5 text-[9px] rounded-md" style={{ backgroundColor: '#f3e8ff', color: '#9333ea', border: 'none' }}>
+                                        <Tag className="m-0 mb-1.5 text-[9px] rounded-md border-0" color="purple">
                                           Self-Identified
                                         </Tag>
                                       )}
                                       <Title level={5} className="!mb-0 !text-sm font-semibold truncate" style={{ color: token.colorText }}>
                                         {isSelf ? app.companyName : app.internship?.title}
                                       </Title>
-                                      <Text className="text-[10px] font-semibold uppercase" style={{ color: '#6366f1' }}>
+                                      <Text className="text-[10px] font-semibold uppercase" style={{ color: token.colorTextSecondary }}>
                                         {!isSelf ? app.internship?.industry?.companyName : 'External'}
                                       </Text>
                                     </div>
-                                    <Tag color={getInternshipStatusColor(app.status)} className="m-0 text-[10px] rounded-md shrink-0">
+                                    <Tag color={getInternshipStatusColor(app.status)} className="m-0 text-[10px] rounded-md shrink-0 border-0">
                                       {app.status}
                                     </Tag>
                                   </div>

@@ -288,6 +288,146 @@ export class StateMentorService {
   }
 
   /**
+   * Get institution mentor overview with cross-institutional statistics
+   * Shows for each institution:
+   * - Internal mentoring (their faculty → their students)
+   * - Incoming external (other faculty → their students)
+   * - Outgoing external (their faculty → other students)
+   * @returns Array of institution mentor statistics
+   */
+  async getInstitutionMentorOverview() {
+    try {
+      const cacheKey = 'state:institution-mentor-overview';
+
+      return this.cache.getOrSet(
+        cacheKey,
+        async () => {
+          // Get all institutions
+          const lookupData = await this.lookupService.getInstitutions();
+          const institutions = lookupData.institutions;
+
+          // Get all active assignments with institution info
+          const assignments = await this.prisma.mentorAssignment.findMany({
+            where: { isActive: true },
+            select: {
+              id: true,
+              mentorId: true,
+              studentId: true,
+              mentor: {
+                select: {
+                  id: true,
+                  institutionId: true,
+                  role: true,
+                },
+              },
+              student: {
+                select: {
+                  id: true,
+                  institutionId: true,
+                },
+              },
+            },
+          });
+
+          // Calculate stats for each institution
+          const institutionStats = institutions.map(institution => {
+            const institutionId = institution.id;
+
+            // Internal: their faculty → their students
+            const internalAssignments = assignments.filter(
+              a =>
+                a.mentor?.institutionId === institutionId &&
+                a.student?.institutionId === institutionId
+            );
+
+            // Incoming external: other faculty → their students
+            const incomingExternalAssignments = assignments.filter(
+              a =>
+                a.mentor?.institutionId !== institutionId &&
+                a.student?.institutionId === institutionId
+            );
+
+            // Outgoing external: their faculty → other students
+            const outgoingExternalAssignments = assignments.filter(
+              a =>
+                a.mentor?.institutionId === institutionId &&
+                a.student?.institutionId !== institutionId
+            );
+
+            // Get unique mentors and students
+            const internalMentors = new Set(internalAssignments.map(a => a.mentorId)).size;
+            const internalStudents = new Set(internalAssignments.map(a => a.studentId)).size;
+
+            const incomingMentors = new Set(incomingExternalAssignments.map(a => a.mentorId)).size;
+            const incomingStudents = new Set(incomingExternalAssignments.map(a => a.studentId))
+              .size;
+
+            const outgoingMentors = new Set(outgoingExternalAssignments.map(a => a.mentorId)).size;
+            const outgoingStudents = new Set(outgoingExternalAssignments.map(a => a.studentId))
+              .size;
+
+            // Get external institutions involved (for outgoing)
+            const externalInstitutionsOutgoing = new Set(
+              outgoingExternalAssignments
+                .map(a => a.student?.institutionId)
+                .filter(id => id && id !== institutionId)
+            );
+
+            // Get external institutions involved (for incoming)
+            const externalInstitutionsIncoming = new Set(
+              incomingExternalAssignments
+                .map(a => a.mentor?.institutionId)
+                .filter(id => id && id !== institutionId)
+            );
+
+            return {
+              institutionId: institution.id,
+              institutionName: institution.name,
+              institutionCode: institution.code,
+              city: institution.city,
+              state: institution.state,
+              internal: {
+                mentors: internalMentors,
+                students: internalStudents,
+                assignments: internalAssignments.length,
+              },
+              incomingExternal: {
+                mentors: incomingMentors,
+                students: incomingStudents,
+                assignments: incomingExternalAssignments.length,
+                fromInstitutions: externalInstitutionsIncoming.size,
+              },
+              outgoingExternal: {
+                mentors: outgoingMentors,
+                students: outgoingStudents,
+                assignments: outgoingExternalAssignments.length,
+                toInstitutions: externalInstitutionsOutgoing.size,
+              },
+              totals: {
+                mentors: new Set([
+                  ...internalAssignments.map(a => a.mentorId),
+                  ...outgoingExternalAssignments.map(a => a.mentorId),
+                ]).size,
+                students: new Set([
+                  ...internalAssignments.map(a => a.studentId),
+                  ...incomingExternalAssignments.map(a => a.studentId),
+                ]).size,
+              },
+            };
+          });
+
+          // Sort by institution name
+          return institutionStats.sort((a, b) => a.institutionName.localeCompare(b.institutionName));
+        },
+        { ttl: 10 * 60 * 1000, tags: ['state', 'institutions', 'mentors'] }, // 10 minutes cache
+      );
+    } catch (error) {
+      this.logger.error('Error fetching institution mentor overview:', error);
+      throw new BadRequestException('Failed to fetch institution mentor overview');
+    }
+  }
+
+  /**
    * Deactivate student (soft delete) - State Directorate only
    * Preserves all historical data for audit trail
    */

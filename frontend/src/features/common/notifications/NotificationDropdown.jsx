@@ -301,7 +301,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
         open={open}
         onOpenChange={setOpen}
         placement="bottomRight"
-        overlayStyle={{ zIndex: 1050 }}
+        styles={{ root: { zIndex: 1050 } }}
       >
         <Badge count={unreadCount} size="small" offset={[-2, 2]}>
           <Button
@@ -356,7 +356,7 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
           </div>
         }
         placement="right"
-        width={420}
+        styles={{ wrapper: { width: 420 } }}
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
         styles={{

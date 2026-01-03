@@ -228,7 +228,8 @@ export const useFacultyDashboard = () => {
     // Computed
     stats: {
       ...stats,
-      pendingJoiningLetters: pendingJoiningLetters.length,
+      pendingJoiningLetters: dashboard.stats?.pendingJoiningLetters ?? pendingJoiningLetters.length,
+      totalJoiningLetters: dashboard.stats?.totalJoiningLetters ?? joiningLetters.list.length,
       pendingMonthlyReports: pendingMonthlyReports.length,
       pendingGrievances: grievanceStats.pending,
       totalGrievances: grievanceStats.total,
@@ -237,7 +238,6 @@ export const useFacultyDashboard = () => {
     pendingJoiningLetters,
     pendingMonthlyReports,
     upcomingVisits,
-    recentActivities: dashboard.recentActivities || [],
 
     // Actions
     refresh,
