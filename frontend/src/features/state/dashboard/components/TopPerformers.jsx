@@ -66,7 +66,7 @@ const PerformerItem = ({ item, rank, type }) => {
                 <span>{stats.studentsWithInternships || 0} interns</span>
               </Tooltip>
               {stats.unassigned > 0 && (
-                <Tooltip title={`${stats.unassigned} students without an assigned mentor (out of ${stats.totalStudents || 0} total students)`}>
+                <Tooltip title={`${stats.unassigned} students without an assigned mentor (out of ${stats.activeStudents || 0} active students)`}>
                   <Tag color="warning" className="text-[10px] m-0 leading-tight px-1 py-0 border-0 rounded-sm font-bold">
                     {stats.unassigned} NEED MENTOR
                   </Tag>

@@ -1147,7 +1147,7 @@ model InternshipApplication {
   additionalInfo  String?
 
   // Selection Status
-  status          ApplicationStatus @default(APPLIED)
+  status          ApplicationStatus @default(APPROVED)
   appliedDate     DateTime          @default(now())
   reviewedDate    DateTime?
   internshipPhase InternshipPhase   @default(NOT_STARTED)

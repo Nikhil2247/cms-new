@@ -45,9 +45,9 @@ export class StateReportsService {
     // Use placement service for statistics
     const placementStats = await this.placementService.getPlacementStatistics(institutionId);
 
-    // Only count self-identified internships
+    // Only count self-identified internships (from active students only)
     const dateFilter: Prisma.InternshipApplicationWhereInput = {
-      student: { institutionId },
+      student: { institutionId, isActive: true },
       isSelfIdentified: true,
     };
 
@@ -76,7 +76,7 @@ export class StateReportsService {
       }),
       this.prisma.internship.count({ where: { institutionId } }),
       this.prisma.facultyVisitLog.count({
-        where: { application: { student: { institutionId } } },
+        where: { application: { student: { institutionId, isActive: true } } },
       }),
       this.prisma.monthlyReport.count({
         where: { student: { institutionId, isActive: true } },
@@ -283,7 +283,7 @@ export class StateReportsService {
     const where: Prisma.FacultyVisitLogWhereInput = {};
 
     if (institutionId) {
-      where.application = { student: { institutionId } };
+      where.application = { student: { institutionId, isActive: true } };
     }
 
     if (facultyId) {
@@ -341,6 +341,7 @@ export class StateReportsService {
         // Batch fetch all counts using groupBy - reduces from N*7 queries to 7 queries total
         const [
           studentCountsByInst,
+          activeStudentCountsByInst,
           approvedAppsByInst,
           inTrainingByInst,
           joiningLettersByInst,
@@ -353,11 +354,17 @@ export class StateReportsService {
             where: { institutionId: { in: institutionIds } },
             _count: { id: true },
           }),
+          // Active students by institution (used for compliance calculation)
+          this.prisma.student.groupBy({
+            by: ['institutionId'],
+            where: { institutionId: { in: institutionIds }, isActive: true },
+            _count: { id: true },
+          }),
           // Approved self-identified applications by institution
           this.prisma.internshipApplication.groupBy({
             by: ['studentId'],
             where: {
-              student: { institutionId: { in: institutionIds } },
+              student: { institutionId: { in: institutionIds }, isActive: true },
               isSelfIdentified: true,
               status: ApplicationStatus.APPROVED,
             },
@@ -379,11 +386,11 @@ export class StateReportsService {
             });
             return instCounts;
           }),
-          // Internships in training by institution (simplified - count approved self-identified)
+          // Internships in training by institution (simplified - count approved self-identified, active students only)
           this.prisma.internshipApplication.groupBy({
             by: ['studentId'],
             where: {
-              student: { institutionId: { in: institutionIds } },
+              student: { institutionId: { in: institutionIds }, isActive: true },
               isSelfIdentified: true,
               status: ApplicationStatus.APPROVED,
               OR: [
@@ -414,11 +421,11 @@ export class StateReportsService {
             });
             return instCounts;
           }),
-          // Joining letters submitted by institution
+          // Joining letters submitted by institution (active students only)
           this.prisma.internshipApplication.groupBy({
             by: ['studentId'],
             where: {
-              student: { institutionId: { in: institutionIds } },
+              student: { institutionId: { in: institutionIds }, isActive: true },
               isSelfIdentified: true,
               joiningLetterUrl: { not: null },
             },
@@ -439,10 +446,11 @@ export class StateReportsService {
             });
             return instCounts;
           }),
-          // Active mentor assignments by institution (unique students)
+          // Active mentor assignments by institution (unique ACTIVE students only)
+          // Consistent with dashboard and institution service calculations
           this.prisma.mentorAssignment.findMany({
             where: {
-              student: { institutionId: { in: institutionIds } },
+              student: { institutionId: { in: institutionIds }, isActive: true },
               isActive: true,
             },
             select: { studentId: true, student: { select: { institutionId: true } } },
@@ -491,30 +499,40 @@ export class StateReportsService {
         const studentCountMap = new Map(
           studentCountsByInst.map(s => [s.institutionId, s._count.id])
         );
+        const activeStudentCountMap = new Map(
+          activeStudentCountsByInst.map(s => [s.institutionId, s._count.id])
+        );
 
         // Calculate performance for each institution
         const performanceWithStats = institutions.map((inst) => {
           const totalStudents = studentCountMap.get(inst.id) || 0;
+          const activeStudents = activeStudentCountMap.get(inst.id) || 0;
           const selfIdentifiedApproved = approvedAppsByInst.get(inst.id) || 0;
           const internshipsInTraining = inTrainingByInst.get(inst.id) || 0;
           const joiningLettersSubmitted = joiningLettersByInst.get(inst.id) || 0;
           const activeAssignments = mentorAssignmentsByInst.get(inst.id) || 0;
           const reportsSubmittedThisMonth = reportsThisMonthByInst.get(inst.id) || 0;
 
-          // Calculate unassigned (total students - students with mentors)
-          const unassigned = Math.max(0, totalStudents - activeAssignments);
+          // Calculate unassigned (active students - students with mentors)
+          // Uses activeStudents as base, consistent with dashboard and institution service
+          const unassigned = Math.max(0, activeStudents - activeAssignments);
 
-          // Calculate compliance score
-          const mentorAssignmentRate = totalStudents > 0
-            ? Math.min((activeAssignments / totalStudents) * 100, 100)
-            : 100;
-          const joiningLetterRate = selfIdentifiedApproved > 0
-            ? Math.min((joiningLettersSubmitted / selfIdentifiedApproved) * 100, 100)
-            : 0;
+          // Calculate compliance score using 2-metric formula (consistent with other services)
+          // Compliance = (MentorAssignmentRate + JoiningLetterRate) / 2
+          // Denominator: activeStudents for both metrics
+          const mentorAssignmentRate = activeStudents > 0
+            ? Math.min((activeAssignments / activeStudents) * 100, 100)
+            : null;
+          const joiningLetterRate = activeStudents > 0
+            ? Math.min((joiningLettersSubmitted / activeStudents) * 100, 100)
+            : null;
+          // Monthly report rate tracked separately (NOT included in compliance score)
           const monthlyReportRate = internshipsInTraining > 0
             ? Math.min((reportsSubmittedThisMonth / internshipsInTraining) * 100, 100)
-            : 100;
-          const complianceScore = Math.round((mentorAssignmentRate + joiningLetterRate + monthlyReportRate) / 3);
+            : null;
+          // Use 2-metric formula (consistent with state-institution.service.ts and state-dashboard.service.ts)
+          const validRates = [mentorAssignmentRate, joiningLetterRate].filter(r => r !== null) as number[];
+          const complianceScore = validRates.length > 0 ? Math.round(validRates.reduce((a, b) => a + b, 0) / validRates.length) : null;
 
           return {
             id: inst.id,
@@ -523,6 +541,7 @@ export class StateReportsService {
             city: inst.city,
             stats: {
               totalStudents,
+              activeStudents,
               studentsWithInternships: selfIdentifiedApproved,
               selfIdentifiedApproved,
               joiningLettersSubmitted,
@@ -531,12 +550,13 @@ export class StateReportsService {
               reportsSubmitted: reportsSubmittedThisMonth,
               complianceScore,
             },
-            score: complianceScore,
-            placementRate: complianceScore,
+            score: complianceScore ?? 0,
+            placementRate: complianceScore ?? 0,
           };
         });
 
-        const sorted = performanceWithStats.sort((a, b) => b.score - a.score);
+        // Sort by score (handle nulls by treating them as 0)
+        const sorted = performanceWithStats.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
 
         return {
           topPerformers: sorted.slice(0, limit),
@@ -571,6 +591,7 @@ export class StateReportsService {
         const placements = await this.prisma.placement.findMany({
           where: {
             createdAt: { gte: new Date(startYear, 0, 1) },
+            student: { isActive: true, Institution: { isActive: true } },
           },
           include: {
             student: {
@@ -625,8 +646,11 @@ export class StateReportsService {
       cacheKey,
       async () => {
         const [totalStudents, placements, lookupData] = await Promise.all([
-          this.prisma.student.count({ where: { isActive: true } }),
+          this.prisma.student.count({ where: { isActive: true, Institution: { isActive: true } } }),
           this.prisma.placement.findMany({
+            where: {
+              student: { isActive: true, Institution: { isActive: true } },
+            },
             include: {
               student: { include: { branch: true, Institution: true } },
             },
@@ -733,7 +757,7 @@ export class StateReportsService {
 
     const dateFilter = { createdAt: { gte: startDate, lte: endDate } };
 
-    // Focus on self-identified internships only
+    // Focus on self-identified internships only (from active students in active institutions)
     const [
       newStudents,
       newApplications,
@@ -743,25 +767,31 @@ export class StateReportsService {
       facultyVisits,
       monthlyReports,
     ] = await Promise.all([
-      this.prisma.student.count({ where: dateFilter }),
-      // Self-identified applications only
-      this.prisma.internshipApplication.count({
-        where: { ...dateFilter, isSelfIdentified: true },
+      // New active students from active institutions
+      this.prisma.student.count({
+        where: { ...dateFilter, isActive: true, Institution: { isActive: true } },
       }),
-      // Use APPROVED status for self-identified internships
+      // Self-identified applications only (active students)
       this.prisma.internshipApplication.count({
-        where: { ...dateFilter, isSelfIdentified: true, status: ApplicationStatus.APPROVED },
+        where: { ...dateFilter, isSelfIdentified: true, student: { isActive: true, Institution: { isActive: true } } },
       }),
-      // Self-identified approved internships count (active internships)
+      // Use APPROVED status for self-identified internships (active students)
       this.prisma.internshipApplication.count({
-        where: { ...dateFilter, isSelfIdentified: true, status: ApplicationStatus.APPROVED },
+        where: { ...dateFilter, isSelfIdentified: true, status: ApplicationStatus.APPROVED, student: { isActive: true, Institution: { isActive: true } } },
+      }),
+      // Self-identified approved internships count (active internships, active students)
+      this.prisma.internshipApplication.count({
+        where: { ...dateFilter, isSelfIdentified: true, status: ApplicationStatus.APPROVED, student: { isActive: true, Institution: { isActive: true } } },
       }),
       this.prisma.industry.count({ where: dateFilter }),
       this.prisma.facultyVisitLog.count({
-        where: { visitDate: { gte: startDate, lte: endDate } },
+        where: {
+          visitDate: { gte: startDate, lte: endDate },
+          application: { student: { isActive: true, Institution: { isActive: true } } },
+        },
       }),
       this.prisma.monthlyReport.count({
-        where: { student: { isActive: true }, reportMonth: targetMonth, reportYear: targetYear },
+        where: { student: { isActive: true, Institution: { isActive: true } }, reportMonth: targetMonth, reportYear: targetYear },
       }),
     ]);
 
@@ -776,6 +806,7 @@ export class StateReportsService {
           where: {
             createdAt: { gte: trendMonth, lte: trendEndDate },
             isSelfIdentified: true,
+            student: { isActive: true, Institution: { isActive: true } },
           },
         }),
         this.prisma.internshipApplication.count({
@@ -783,6 +814,7 @@ export class StateReportsService {
             createdAt: { gte: trendMonth, lte: trendEndDate },
             isSelfIdentified: true,
             status: ApplicationStatus.APPROVED,
+            student: { isActive: true, Institution: { isActive: true } },
           },
         }),
       ]);

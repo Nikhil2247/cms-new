@@ -161,12 +161,13 @@ export class StateIndustryService {
    * Internal method to fetch top industries data
    */
   private async _fetchTopIndustries(limit: number) {
-    // Get all approved self-identified applications with company info
+    // Get all approved self-identified applications with company info (active students with active users only)
     const applications = await this.prisma.internshipApplication.findMany({
       where: {
         isSelfIdentified: true,
         status: ApplicationStatus.APPROVED,
         companyName: { not: '' },
+        student: { isActive: true, user: { active: true } },
       },
       select: {
         companyName: true,
@@ -315,7 +316,7 @@ export class StateIndustryService {
               applications: {
                 where: {
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-                  student: { isActive: true },
+                  student: { isActive: true, user: { active: true } },
                 },
                 select: {
                   id: true,
@@ -343,11 +344,11 @@ export class StateIndustryService {
           },
         },
       }),
-      // Get all self-identified applications
+      // Get all self-identified applications (active students with active users only)
       this.prisma.internshipApplication.findMany({
         where: {
           ...selfIdWhere,
-          student: { isActive: true },
+          student: { isActive: true, user: { active: true } },
         },
         select: {
           id: true,
@@ -618,12 +619,12 @@ export class StateIndustryService {
       // Extract the normalized key part (e.g., "self-tech-hub" → "tech-hub")
       const normalizedKey = companyId.replace('self-', '');
 
-      // First fetch all self-identified applications
+      // First fetch all self-identified applications (active students with active users only)
       const allSelfIdApps = await this.prisma.internshipApplication.findMany({
         where: {
           isSelfIdentified: true,
           companyName: { not: '' },
-          student: { isActive: true },
+          student: { isActive: true, user: { active: true } },
         },
         select: {
           id: true,

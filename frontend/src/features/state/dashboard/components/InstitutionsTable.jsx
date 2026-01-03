@@ -65,39 +65,46 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
     },
     {
       title: (
-        <Tooltip title="Total active students">
+        <Tooltip title="Active students (used for all compliance calculations)">
           <Space size={4}>
             <TeamOutlined />
             <span>Students</span>
           </Space>
         </Tooltip>
       ),
-      dataIndex: ['stats', 'totalStudents'],
-      key: 'totalStudents',
+      dataIndex: ['stats', 'activeStudents'],
+      key: 'activeStudents',
       width: 100,
       align: 'center',
-      render: (value) => (
-        <Text strong className="text-text-primary">{value || 0}</Text>
-      ),
+      render: (value, record) => {
+        const active = value ?? record.stats?.activeStudents ?? 0;
+        const total = record.stats?.totalStudents ?? active;
+        return (
+          <Tooltip title={`${active} active / ${total} total`}>
+            <Text strong className="text-text-primary">{active}</Text>
+          </Tooltip>
+        );
+      },
     },
     {
       title: (
-        <Tooltip title="Students with active self-identified internships">
+        <Tooltip title="Approved self-identified internship applications">
           <Space size={4}>
             <BookOutlined />
             <span>Internships</span>
           </Space>
         </Tooltip>
       ),
-      dataIndex: ['stats', 'studentsWithInternships'],
-      key: 'studentsWithInternships',
+      dataIndex: ['stats', 'selfIdentifiedApproved'],
+      key: 'selfIdentifiedApproved',
       width: 120,
       align: 'center',
       render: (value, record) => {
-        const total = record.stats?.totalStudents || 0;
-        const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+        // Use activeStudents as denominator (consistent with compliance calculations)
+        const activeStudents = record.stats?.activeStudents ?? 0;
+        const percent = activeStudents > 0 ? Math.round((value / activeStudents) * 100) : 0;
         return (
-          <Tooltip title={`${percent}% of students have internships`}>
+          <Tooltip title={`${percent}% of active students have internships`}>
             <div className="text-center w-full px-2">
               <Text strong className="text-blue-500">{value || 0}</Text>
               <Progress
@@ -220,7 +227,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
         else if (score < 75) color = 'rgb(var(--color-warning))';
 
         return (
-          <Tooltip title="Overall compliance score based on assignments, visits, and reports">
+          <Tooltip title="Compliance score = (Mentor Assignment Rate + Joining Letter Rate) / 2">
             <Progress
               type="circle"
               percent={score}

@@ -54,7 +54,7 @@ export class StateMentorService {
           }),
           // Get all active assignments to count unique students per mentor
           this.prisma.mentorAssignment.findMany({
-            where: { isActive: true },
+            where: { isActive: true, student: { isActive: true } },
             select: { mentorId: true, studentId: true },
           }),
           // Get all institutions from cached LookupService
@@ -117,6 +117,7 @@ export class StateMentorService {
         where: {
           mentor: { institutionId },
           isActive: true,
+          student: { isActive: true },
         },
         select: { mentorId: true, studentId: true },
       }),
@@ -306,9 +307,15 @@ export class StateMentorService {
           const lookupData = await this.lookupService.getInstitutions();
           const institutions = lookupData.institutions;
 
-          // Get all active assignments with institution info
+          // Get all active assignments with institution info (only active students from active institutions)
           const assignments = await this.prisma.mentorAssignment.findMany({
-            where: { isActive: true },
+            where: {
+              isActive: true,
+              student: {
+                isActive: true,
+                Institution: { isActive: true },
+              },
+            },
             select: {
               id: true,
               mentorId: true,

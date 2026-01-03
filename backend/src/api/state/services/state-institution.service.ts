@@ -67,7 +67,8 @@ export class StateInstitutionService {
                 role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
               },
             },
-            Student: true,
+            // Count only active students for consistency with all other calculations
+            Student: { where: { isActive: true } },
             internships: true,
             batches: true,
           },
@@ -198,19 +199,20 @@ export class StateInstitutionService {
         _count: true,
       }),
 
-      // 1b. Active students per institution (isActive = true) - used for compliance calculation
+      // 1b. Active students per institution (isActive = true, user.active = true) - used for compliance calculation
       this.prisma.student.groupBy({
         by: ['institutionId'],
-        where: { institutionId: { in: institutionIds }, isActive: true },
+        where: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
         _count: true,
       }),
 
-      // 2. Students with active self-identified internships per institution (APPROVED status)
+      // 2. Students with active self-identified internships per institution (APPROVED status, active applications)
       this.prisma.internshipApplication.groupBy({
         by: ['studentId'],
         where: {
-          student: { institutionId: { in: institutionIds } },
+          student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
         },
         _count: true,
@@ -231,11 +233,12 @@ export class StateInstitutionService {
         return instCounts;
       }),
 
-      // 3. Self-identified approved internships per institution (count applications, not unique students - matches getInstitutionOverview)
+      // 3. Self-identified approved internships per institution (count applications, not unique students - matches getInstitutionOverview, active applications)
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId: { in: institutionIds } },
+          student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
         },
         select: {
@@ -250,11 +253,13 @@ export class StateInstitutionService {
         return instCounts;
       }),
 
-      // 4. Joining letters submitted per institution (count applications, not unique students - matches getInstitutionOverview)
+      // 4. Joining letters submitted per institution (count applications, not unique students - matches getInstitutionOverview, active applications, APPROVED status)
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId: { in: institutionIds } },
+          student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
           joiningLetterUrl: { not: null },
         },
         select: {
@@ -269,12 +274,14 @@ export class StateInstitutionService {
         return instCounts;
       }),
 
-      // 5. Unique students with active mentor assignments per institution
-      // Count ALL students with active mentors (not filtered by internships)
+      // 5. Unique ACTIVE students with active mentor assignments per institution
+      // Count only ACTIVE students with active mentors (consistent with dashboard calculation)
       this.prisma.mentorAssignment.findMany({
         where: {
           student: {
             institutionId: { in: institutionIds },
+            isActive: true,
+            user: { active: true },
           },
           isActive: true,
         },
@@ -298,7 +305,7 @@ export class StateInstitutionService {
         where: {
           visitDate: { gte: startOfMonth, lte: endOfMonth },
           application: {
-            student: { institutionId: { in: institutionIds } },
+            student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
             startDate: { lte: now },
           },
         },
@@ -318,7 +325,7 @@ export class StateInstitutionService {
       // With auto-approval, all submitted reports are APPROVED
       this.prisma.monthlyReport.findMany({
         where: {
-          student: { institutionId: { in: institutionIds } },
+          student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
           reportMonth: currentMonth,
           reportYear: currentYear,
           status: 'APPROVED',
@@ -346,12 +353,13 @@ export class StateInstitutionService {
         _count: true,
       }),
 
-      // 9. Internships currently in their training period per institution (with dates for monthly cycle calculation)
+      // 9. Internships currently in their training period per institution (with dates for monthly cycle calculation, active applications)
       // Requires startDate to be set and in the past, with endDate in the future or not set
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId: { in: institutionIds } },
+          student: { institutionId: { in: institutionIds }, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
           startDate: { not: null, lte: now },
           OR: [
@@ -465,12 +473,13 @@ export class StateInstitutionService {
         ...inst,
         stats: {
           totalStudents,
+          activeStudents, // Active students (used for compliance calculations)
           studentsWithInternships,
           internshipsInTraining, // Internships currently in training period
           selfIdentifiedApproved,
           joiningLettersSubmitted,
-          assigned: activeAssignments,
-          unassigned: unassignedStudents,
+          assigned: activeAssignments, // Based on activeStudents
+          unassigned: unassignedStudents, // Based on activeStudents (activeStudents - assigned)
           facultyVisits: facultyVisitsThisMonth,
           visitsExpected: expectedVisitsThisMonth, // Expected visits based on monthly cycles
           visitsMissing: missingVisits,
@@ -616,11 +625,13 @@ export class StateInstitutionService {
       // Active students (isActive = true) - used for compliance calculation
       this.prisma.student.count({ where: { institutionId: id, isActive: true } }),
 
-      // Assigned students (unique students with active mentor assignment - all students)
+      // Assigned students (unique ACTIVE students with active mentor assignment)
+      // Only count active students for consistency with dashboard calculations
       this.prisma.mentorAssignment.findMany({
         where: {
           student: {
             institutionId: id,
+            isActive: true, // Only count active students
           },
           isActive: true,
         },
@@ -640,19 +651,21 @@ export class StateInstitutionService {
         },
       }),
 
-      // Self-identified internship total
+      // Self-identified internship total (active students with active users, active applications only)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
         },
       }),
 
       // Self-identified approved
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
         },
       }),
@@ -660,8 +673,9 @@ export class StateInstitutionService {
       // Self-identified pending
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPLIED,
         },
       }),
@@ -669,18 +683,20 @@ export class StateInstitutionService {
       // Self-identified rejected
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.REJECTED,
         },
       }),
 
-      // Internships currently in training period
+      // Internships currently in training period (active applications only)
       // Include: startDate is NULL (assumed active) OR (startDate <= now AND (endDate >= now OR endDate IS NULL))
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
           OR: [
             // No startDate set - treat as active (legacy data)
@@ -697,40 +713,47 @@ export class StateInstitutionService {
         },
       }),
 
-      // Joining letters submitted (self-identified with joining letter)
+      // Joining letters submitted (self-identified APPROVED with joining letter, active applications)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
           joiningLetterUrl: { not: null },
         },
       }),
 
-      // Joining letters pending (approved self-identified without joining letter)
+      // Joining letters pending (approved self-identified without joining letter, active applications)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
           status: ApplicationStatus.APPROVED,
           joiningLetterUrl: null,
         },
       }),
 
-      // Joining letters approved (with verified status)
+      // Joining letters approved (with verified status, active applications)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
           joiningLetterUrl: { not: null },
           joiningDate: { not: null },
         },
       }),
 
-      // Joining letters rejected
+      // Joining letters rejected (active applications)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId: id, isActive: true },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
           joiningLetterUrl: { not: null },
           joiningDate: null,
           reviewedAt: { not: null },
@@ -738,15 +761,17 @@ export class StateInstitutionService {
       }),
 
       // Monthly reports submitted for current month
-      // Include students with internships where startDate is NULL or in training period
+      // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
           student: {
             institutionId: id,
             isActive: true,
+            user: { active: true },
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
+                isActive: true,
                 status: ApplicationStatus.APPROVED,
                 OR: [
                   { startDate: null },
@@ -765,15 +790,17 @@ export class StateInstitutionService {
       }),
 
       // Monthly reports pending (draft) for current month
-      // Include students with internships where startDate is NULL or in training period
+      // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
           student: {
             institutionId: id,
             isActive: true,
+            user: { active: true },
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
+                isActive: true,
                 status: ApplicationStatus.APPROVED,
                 OR: [
                   { startDate: null },
@@ -792,15 +819,17 @@ export class StateInstitutionService {
       }),
 
       // Monthly reports approved
-      // Include students with internships where startDate is NULL or in training period
+      // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
           student: {
             institutionId: id,
             isActive: true,
+            user: { active: true },
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
+                isActive: true,
                 status: ApplicationStatus.APPROVED,
                 OR: [
                   { startDate: null },
@@ -819,15 +848,17 @@ export class StateInstitutionService {
       }),
 
       // Monthly reports rejected
-      // Include students with internships where startDate is NULL or in training period
+      // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
           student: {
             institutionId: id,
             isActive: true,
+            user: { active: true },
             internshipApplications: {
               some: {
                 isSelfIdentified: true,
+                isActive: true,
                 status: ApplicationStatus.APPROVED,
                 OR: [
                   { startDate: null },
@@ -846,11 +877,12 @@ export class StateInstitutionService {
       }),
 
       // Students without monthly report this month (need to calculate after total students)
-      // Include students with internships where startDate is NULL or in training period
+      // Include students with active internships where startDate is NULL or in training period
       this.prisma.student.count({
         where: {
           institutionId: id,
           isActive: true,
+          user: { active: true },
           monthlyReports: {
             none: {
               reportMonth: currentMonth,
@@ -861,6 +893,7 @@ export class StateInstitutionService {
             some: {
               status: ApplicationStatus.APPROVED,
               isSelfIdentified: true,
+              isActive: true,
               OR: [
                 { startDate: null },
                 {
@@ -874,11 +907,12 @@ export class StateInstitutionService {
       }),
 
       // Faculty visits scheduled this month
-      // Include visits for internships where startDate is NULL or in training period
+      // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id, isActive: true },
+            isActive: true,
+            student: { institutionId: id, isActive: true, user: { active: true } },
             OR: [
               { startDate: null },
               {
@@ -895,11 +929,12 @@ export class StateInstitutionService {
       }),
 
       // Faculty visits completed this month
-      // Include visits for internships where startDate is NULL or in training period
+      // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id, isActive: true },
+            isActive: true,
+            student: { institutionId: id, isActive: true, user: { active: true } },
             OR: [
               { startDate: null },
               {
@@ -916,11 +951,12 @@ export class StateInstitutionService {
       }),
 
       // Faculty visits to be done (scheduled but not completed)
-      // Include visits for internships where startDate is NULL or in training period
+      // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
           application: {
-            student: { institutionId: id, isActive: true },
+            isActive: true,
+            student: { institutionId: id, isActive: true, user: { active: true } },
             OR: [
               { startDate: null },
               {
@@ -936,10 +972,10 @@ export class StateInstitutionService {
         },
       }),
 
-      // Branch-wise student distribution
+      // Branch-wise student distribution (active students with active users)
       this.prisma.student.groupBy({
         by: ['branchName'],
-        where: { institutionId: id, isActive: true },
+        where: { institutionId: id, isActive: true, user: { active: true } },
         _count: { id: true },
       }),
 
@@ -961,10 +997,10 @@ export class StateInstitutionService {
         },
       }),
 
-      // External mentors count (mentors from other institutions assigned to this institution's students)
+      // External mentors count (mentors from other institutions assigned to this institution's active students)
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true, user: { active: true } },
           isActive: true,
           mentor: {
             institutionId: { not: id },
@@ -974,10 +1010,10 @@ export class StateInstitutionService {
         distinct: ['mentorId'],
       }).then(results => results.length),
 
-      // Students with external mentors (students assigned to mentors from other institutions)
+      // Active students with external mentors (students assigned to mentors from other institutions)
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId: id },
+          student: { institutionId: id, isActive: true },
           isActive: true,
           mentor: {
             institutionId: { not: id },
@@ -1228,6 +1264,7 @@ export class StateInstitutionService {
         },
         internshipApplications: {
           where: {
+            isActive: true,
             OR: [
               { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] } },
               { isSelfIdentified: true },
@@ -1432,10 +1469,12 @@ export class StateInstitutionService {
       industryWhere.companyName = { contains: search, mode: 'insensitive' };
     }
 
-    // Query 2: Get self-identified applications
+    // Query 2: Get self-identified applications (active applications only)
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
       isSelfIdentified: true,
-      student: { institutionId: id, isActive: true },
+      isActive: true,
+      status: ApplicationStatus.APPROVED,
+      student: { institutionId: id, isActive: true, user: { active: true } },
     };
     if (search) {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
@@ -1734,7 +1773,7 @@ export class StateInstitutionService {
           where: { institutionId: id, role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] }, active: true },
         }),
         this.prisma.internshipApplication.count({
-          where: { student: { institutionId: id, isActive: true }, status: ApplicationStatus.APPLIED },
+          where: { student: { institutionId: id, isActive: true }, isActive: true, status: ApplicationStatus.APPLIED },
         }),
       ]),
     ]);

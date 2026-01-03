@@ -212,6 +212,7 @@ export class ReportBuilderService {
   private async getMentorOptions(institutionId?: string): Promise<{ label: string; value: string }[]> {
     const where: Record<string, unknown> = {
       role: { in: ['TEACHER', 'FACULTY_SUPERVISOR'] },
+      active: true, // Only show active mentors
     };
     if (institutionId) {
       where.institutionId = institutionId;

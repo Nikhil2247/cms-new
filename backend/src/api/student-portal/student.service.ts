@@ -1221,7 +1221,7 @@ export class StudentService {
 
     const studentId = student.id;
 
-    // Check if student already has an active internship
+    // Check if student already has an active internship application
     const activeApplication = await this.prisma.internshipApplication.findFirst({
       where: {
         studentId,
@@ -1231,6 +1231,20 @@ export class StudentService {
 
     if (activeApplication && !activeApplication.isSelfIdentified) {
       throw new BadRequestException('You already have an active internship application');
+    }
+
+    // Check if student already has an approved self-identified internship
+    const existingSelfIdentified = await this.prisma.internshipApplication.findFirst({
+      where: {
+        studentId,
+        isSelfIdentified: true,
+        status: ApplicationStatus.APPROVED,
+        internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
+      },
+    });
+
+    if (existingSelfIdentified) {
+      throw new BadRequestException('You already have an approved self-identified internship. Please edit the existing one instead of creating a new application.');
     }
 
     // Self-identified internships are auto-approved

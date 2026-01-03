@@ -60,7 +60,8 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'endDate', label: 'End Date', type: 'date', default: true },
       { id: 'reportsSubmitted', label: 'Reports Submitted', type: 'number', default: true },
       { id: 'visitsCompleted', label: 'Visits Completed', type: 'number', default: false },
-      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Student active status' },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false, description: 'User account active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
@@ -71,6 +72,10 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
         { label: 'Completed', value: 'COMPLETED' },
       ]},
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
+      { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
+      ]},
     ],
     groupBy: ['internshipStatus', 'branchName', 'mentorName'],
     sortableColumns: ['rollNumber', 'name', 'branchName', 'internshipStatus'],
@@ -94,7 +99,9 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'monthlyReportsPending', label: 'Pending Reports', type: 'number', default: true },
       { id: 'lastReportDate', label: 'Last Report Date', type: 'date', default: true },
       { id: 'complianceScore', label: 'Compliance %', type: 'number', default: true },
-      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Student active status' },
+      { id: 'complianceLevel', label: 'Compliance Level', type: 'string', default: true },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false, description: 'User account active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false, placeholder: 'All Institutions' },
@@ -103,6 +110,10 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
         { label: 'Compliant (80%+)', value: 'high' },
         { label: 'Partial (50-80%)', value: 'medium' },
         { label: 'Non-Compliant (<50%)', value: 'low' },
+      ]},
+      { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
       ]},
     ],
     groupBy: ['branchName', 'mentorName', 'complianceLevel'],

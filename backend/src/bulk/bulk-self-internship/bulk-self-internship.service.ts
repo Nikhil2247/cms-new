@@ -80,9 +80,9 @@ export class BulkSelfInternshipService {
     const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
     const warnings: Array<{ row: number; field?: string; message: string }> = [];
 
-    // Fetch all students in the institution for validation
+    // Fetch all ACTIVE students with ACTIVE users in the institution for validation
     const students = await this.prisma.student.findMany({
-      where: { institutionId },
+      where: { institutionId, isActive: true, user: { active: true } },
       select: {
         id: true,
         user: { select: { email: true } },
@@ -225,12 +225,13 @@ export class BulkSelfInternshipService {
       }
     }
 
-    // BATCH QUERY: Check for existing active self-identified internships for all valid students at once
+    // BATCH QUERY: Check for existing active self-identified internships for all valid students at once (active applications only)
     if (validStudentIds.length > 0) {
       const existingApplications = await this.prisma.internshipApplication.findMany({
         where: {
           studentId: { in: validStudentIds },
           isSelfIdentified: true,
+          isActive: true,
           status: {
             in: [ApplicationStatus.APPLIED, ApplicationStatus.APPROVED, ApplicationStatus.JOINED],
           },
@@ -299,9 +300,9 @@ export class BulkSelfInternshipService {
       },
     }).catch(() => {});
 
-    // Fetch all students for processing
+    // Fetch all ACTIVE students with ACTIVE users for processing
     const students = await this.prisma.student.findMany({
-      where: { institutionId },
+      where: { institutionId, isActive: true, user: { active: true } },
       select: {
         id: true,
         user: { select: { email: true } },

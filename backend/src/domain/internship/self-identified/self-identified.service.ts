@@ -44,6 +44,21 @@ export class SelfIdentifiedService {
         throw new NotFoundException('Student not found');
       }
 
+      // Check if student already has an approved self-identified internship (active applications only)
+      const existingSelfIdentified = await this.prisma.internshipApplication.findFirst({
+        where: {
+          studentId,
+          isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
+          internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
+        },
+      });
+
+      if (existingSelfIdentified) {
+        throw new BadRequestException('You already have an approved self-identified internship. Please edit the existing one instead of creating a new application.');
+      }
+
       // Validate internship start date against minimum allowed date
       const minimumStartDateStr = await this.systemConfigService.get<string>('internship.minimumStartDate');
       if (minimumStartDateStr) {
@@ -130,7 +145,7 @@ export class SelfIdentifiedService {
         cacheKey,
         async () => {
           return await this.prisma.internshipApplication.findMany({
-            where: { studentId, isSelfIdentified: true },
+            where: { studentId, isSelfIdentified: true, isActive: true },
             include: {
               mentor: true,
             },

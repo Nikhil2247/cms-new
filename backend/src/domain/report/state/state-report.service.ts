@@ -30,11 +30,13 @@ export class StateReportService {
             this.prisma.institution.count(),
             this.prisma.student.count({ where: { isActive: true } }),
             this.prisma.industry.count({ where: { isApproved: true } }),
-            // Only count self-identified internships
+            // Only count self-identified internships (active students with active users, active applications only)
             this.prisma.internshipApplication.count({
               where: {
                 isSelfIdentified: true,
-                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] }
+                isActive: true,
+                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+                student: { isActive: true, user: { active: true } },
               },
             }),
             this.prisma.user.count({
@@ -83,6 +85,7 @@ export class StateReportService {
             }),
             this.prisma.student.groupBy({
               by: ['institutionId'],
+              where: { isActive: true, user: { active: true } },
               _count: { id: true },
             }),
             this.prisma.user.groupBy({
@@ -94,36 +97,44 @@ export class StateReportService {
               },
               _count: { id: true },
             }),
-            // Get students with active internships grouped by institution
+            // Get active students with active internships grouped by institution (active applications only)
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
+                isActive: true,
+                user: { active: true },
                 internshipApplications: {
                   some: {
                     isSelfIdentified: true,
+                    isActive: true,
                     status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                   },
                 },
               },
               _count: { id: true },
             }),
-            // Get students with completed internships grouped by institution
+            // Get active students with completed internships grouped by institution (active applications only)
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
+                isActive: true,
+                user: { active: true },
                 internshipApplications: {
                   some: {
                     isSelfIdentified: true,
+                    isActive: true,
                     status: ApplicationStatus.COMPLETED,
                   },
                 },
               },
               _count: { id: true },
             }),
-            // Get students with approved monthly reports grouped by institution
+            // Get active students with approved monthly reports grouped by institution
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
+                isActive: true,
+                user: { active: true },
                 monthlyReports: {
                   some: {
                     status: MonthlyReportStatus.APPROVED,
@@ -169,24 +180,31 @@ export class StateReportService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
+          // Base filter: only count reports from active students with active user accounts
+          const baseWhere = {
+            reportMonth: month,
+            reportYear: year,
+            student: { isActive: true, user: { active: true } },
+          };
+
           const [total, approved, pending, rejected, needsRevision] = await Promise.all([
-            this.prisma.monthlyReport.count({ where: { reportMonth: month, reportYear: year } }),
+            this.prisma.monthlyReport.count({ where: baseWhere }),
             this.prisma.monthlyReport.count({
-              where: { reportMonth: month, reportYear: year, status: MonthlyReportStatus.APPROVED },
+              where: { ...baseWhere, status: MonthlyReportStatus.APPROVED },
             }),
             this.prisma.monthlyReport.count({
-              where: { reportMonth: month, reportYear: year, status: MonthlyReportStatus.SUBMITTED },
+              where: { ...baseWhere, status: MonthlyReportStatus.SUBMITTED },
             }),
             this.prisma.monthlyReport.count({
-              where: { reportMonth: month, reportYear: year, status: MonthlyReportStatus.REJECTED },
+              where: { ...baseWhere, status: MonthlyReportStatus.REJECTED },
             }),
             this.prisma.monthlyReport.count({
-              where: { reportMonth: month, reportYear: year, status: MonthlyReportStatus.REVISION_REQUIRED },
+              where: { ...baseWhere, status: MonthlyReportStatus.REVISION_REQUIRED },
             }),
           ]);
 
           const rows = await this.prisma.monthlyReport.findMany({
-            where: { reportMonth: month, reportYear: year },
+            where: baseWhere,
             select: { studentId: true },
           });
           const uniqueStudents = new Set(rows.map((r) => r.studentId));
@@ -221,26 +239,30 @@ export class StateReportService {
           const startDate = new Date(year, month - 1, 1);
           const endDate = new Date(year, month, 0, 23, 59, 59);
 
+          // Base filter: only count visits from active faculty for active students
+          const baseWhere = {
+            visitDate: {
+              gte: startDate,
+              lte: endDate,
+            },
+            faculty: { active: true },
+            application: {
+              student: { isActive: true, user: { active: true } },
+            },
+          };
+
           const [totalVisits, pendingFollowUps, facultyParticipation] = await Promise.all([
             this.prisma.facultyVisitLog.count({
-              where: {
-                visitDate: {
-                  gte: startDate,
-                  lte: endDate,
-                },
-              },
+              where: baseWhere,
             }),
             this.prisma.facultyVisitLog.count({
               where: {
-                visitDate: {
-                  gte: startDate,
-                  lte: endDate,
-                },
+                ...baseWhere,
                 followUpRequired: true,
               },
             }),
             this.prisma.facultyVisitLog.findMany({
-              where: { visitDate: { gte: startDate, lte: endDate } },
+              where: baseWhere,
               select: { facultyId: true },
             }),
           ]);
@@ -298,11 +320,13 @@ export class StateReportService {
                 this.prisma.internshipApplication.count({
                   where: {
                     internship: { industryId: industry.id },
+                    isActive: true,
                   },
                 }),
                 this.prisma.internshipApplication.count({
                   where: {
                     internship: { industryId: industry.id },
+                    isActive: true,
                     status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
                   },
                 }),
@@ -337,11 +361,13 @@ export class StateReportService {
       return await this.cache.getOrSet(
         cacheKey,
         async () => {
-          // Get only APPROVED self-identified applications - these are expected to upload joining letters
+          // Get only APPROVED self-identified applications - these are expected to upload joining letters (active students with active users, active applications only)
           const applications = await this.prisma.internshipApplication.findMany({
             where: {
               isSelfIdentified: true,
+              isActive: true,
               status: ApplicationStatus.APPROVED,
+              student: { isActive: true, user: { active: true } },
             },
             select: {
               joiningLetterUrl: true,
@@ -425,11 +451,13 @@ export class StateReportService {
             { total: 0, noLetter: 0, pendingReview: 0, verified: 0, rejected: 0 }
           );
 
-          // Get recent activity (last 10 verifications/rejections)
+          // Get recent activity (last 10 verifications/rejections) - active students with active users, active applications only
           const recentActivityRaw = await this.prisma.internshipApplication.findMany({
             where: {
               isSelfIdentified: true,
+              isActive: true,
               joiningLetterUrl: { not: '' },
+              student: { isActive: true, user: { active: true } },
             },
             select: {
               id: true,

@@ -124,7 +124,7 @@ const MentorOverviewTab = memo(({ institutionId }) => {
           stateService.getInstitutionMentors(institutionId),
         ]);
 
-        const students = studentsResponse?.data?.students || [];
+        const students = studentsResponse?.students || [];
         const mentors = mentorsResponse?.data || [];
 
         // Calculate student breakdown for discrepancy display
@@ -475,8 +475,8 @@ const OverviewTab = memo(({ data, loading, error }) => {
       {/* Top Stats Row - Simplified */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-surface rounded-xl border border-border p-4 text-center">
-          <div className="text-3xl font-bold text-text-primary">{data.totalStudents || 0}</div>
-          <div className="text-xs text-text-tertiary mt-1">Students</div>
+          <div className="text-3xl font-bold text-text-primary">{data.activeStudents || 0}</div>
+          <div className="text-xs text-text-tertiary mt-1">Active Students</div>
         </div>
         <div className="bg-surface rounded-xl border border-border p-4 text-center">
           <div className="text-3xl font-bold text-text-primary">{data.companiesCount || 0}</div>

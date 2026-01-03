@@ -108,6 +108,10 @@ const SelfIdentifiedInternship = () => {
   };
 
   const handleSubmit = async (values) => {
+    // Immediately disable button to prevent double-clicks
+    if (loading) return;
+    setLoading(true);
+
     try {
       // Get login data
       const loginData = getStoredLoginResponse();
@@ -119,6 +123,7 @@ const SelfIdentifiedInternship = () => {
 
       if (!studentId) {
         toast.error("Student ID not found. Please login again.");
+        setLoading(false);
         return;
       }
 
@@ -131,10 +136,9 @@ const SelfIdentifiedInternship = () => {
         toast.error(
           "You already have an active internship application. Ask your mentor to deactivate it before adding another."
         );
+        setLoading(false);
         return;
       }
-
-      setLoading(true);
 
       // Get selected mentor details
       const mentorDetails = values.mentorId
@@ -211,6 +215,7 @@ const SelfIdentifiedInternship = () => {
       if (joiningLetterFile) {
         if (joiningLetterFile.size > 5 * 1024 * 1024) {
           toast.error(`File too large (${(joiningLetterFile.size / (1024 * 1024)).toFixed(2)}MB). Maximum size is 5MB. Please compress or use a smaller file.`);
+          setLoading(false);
           return;
         }
       }
@@ -492,6 +497,7 @@ const SelfIdentifiedInternship = () => {
                 type="primary"
                 htmlType="submit"
                 loading={loading}
+                disabled={loading}
                 block
                 className="h-12 rounded-xl font-bold text-lg bg-primary border-0 shadow-lg shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all"
               >

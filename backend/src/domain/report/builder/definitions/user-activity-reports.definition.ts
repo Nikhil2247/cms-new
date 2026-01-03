@@ -26,6 +26,8 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'daysSinceLastLogin', label: 'Days Since Last Login', type: 'number', default: true },
       { id: 'daysSinceCreation', label: 'Days Since Creation', type: 'number', default: false },
       { id: 'isActive', label: 'Active', type: 'boolean', default: true },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Record Active', type: 'boolean', default: false },
       { id: 'status', label: 'Login Status', type: 'string', default: true },
     ],
     filters: [
@@ -109,6 +111,9 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'userAgent', label: 'Browser/Device', type: 'string', default: false },
       { id: 'deviceInfo', label: 'Device Info', type: 'string', default: false },
       { id: 'isActive', label: 'Session Active', type: 'boolean', default: true },
+      { id: 'isUserActive', label: 'User Active', type: 'boolean', default: false },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Record Active', type: 'boolean', default: false },
       { id: 'expiresAt', label: 'Expires At', type: 'date', default: false },
     ],
     filters: [
@@ -151,6 +156,8 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'daysSinceCreation', label: 'Days Since Creation', type: 'number', default: true, sortable: true },
       { id: 'hasChangedPassword', label: 'Password Changed', type: 'boolean', default: true },
       { id: 'isActive', label: 'Active', type: 'boolean', default: true },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Record Active', type: 'boolean', default: false },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
@@ -163,6 +170,10 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       ]},
       { id: 'createdAfter', label: 'Created After', type: 'date', required: false },
       { id: 'createdBefore', label: 'Created Before', type: 'date', required: false },
+      { id: 'isActive', label: 'Account Status', type: 'select', required: false, options: [
+        { label: 'Active Users', value: true },
+        { label: 'Inactive Users', value: false },
+      ]},
     ],
     groupBy: ['institutionName', 'role'],
     sortableColumns: ['userName', 'role', 'accountCreatedAt', 'daysSinceCreation'],
@@ -187,6 +198,8 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'loginCount', label: 'Login Count', type: 'number', default: true },
       { id: 'lastLoginAt', label: 'Last Login', type: 'date', default: true },
       { id: 'isActive', label: 'Active', type: 'boolean', default: true },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Record Active', type: 'boolean', default: false },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
@@ -200,6 +213,10 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'hasLoggedIn', label: 'Login Status', type: 'select', required: false, options: [
         { value: true, label: 'Has Logged In' },
         { value: false, label: 'Never Logged In' },
+      ]},
+      { id: 'isActive', label: 'Account Status', type: 'select', required: false, options: [
+        { label: 'Active Users', value: true },
+        { label: 'Inactive Users', value: false },
       ]},
     ],
     groupBy: ['institutionName', 'role'],
@@ -225,6 +242,8 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'loginCount', label: 'Total Logins', type: 'number', default: true },
       { id: 'accountCreatedAt', label: 'Account Created', type: 'date', default: false },
       { id: 'isActive', label: 'Account Active', type: 'boolean', default: true },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false },
+      { id: 'studentActive', label: 'Student Record Active', type: 'boolean', default: false },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: false },
@@ -241,6 +260,10 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
         { value: 30, label: '30+ days' },
         { value: 60, label: '60+ days' },
         { value: 90, label: '90+ days' },
+      ]},
+      { id: 'isActive', label: 'Account Status', type: 'select', required: false, options: [
+        { label: 'Active Accounts', value: true },
+        { label: 'Inactive Accounts', value: false },
       ]},
     ],
     groupBy: ['institutionName', 'role'],

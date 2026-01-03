@@ -52,6 +52,30 @@ export class ReportGeneratorService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Parse common boolean-ish inputs coming from JSON bodies, query params, or forms.
+   * Returns undefined when the value is "not provided".
+   */
+  private parseBooleanLike(value: unknown): boolean | undefined {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      if (value === 1) return true;
+      if (value === 0) return false;
+      return Boolean(value);
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      if (normalized === 'true' || normalized === '1' || normalized === 'yes' || normalized === 'y') return true;
+      if (normalized === 'false' || normalized === '0' || normalized === 'no' || normalized === 'n') return false;
+    }
+    return undefined;
+  }
+
+  /**
    * Get pagination parameters with defaults
    * Enforces maximum record limit to prevent memory overflow
    */
@@ -163,18 +187,13 @@ export class ReportGeneratorService {
       where.currentSemester = Number(filters.currentSemester);
     }
 
-    // IMPORTANT: isActive filter - properly handle boolean values
-    // This ensures the filter works correctly regardless of input type
-    if (filters?.isActive !== undefined && filters?.isActive !== null && filters?.isActive !== '') {
-      // Convert various input types to boolean
-      const isActiveValue =
-        filters.isActive === true ||
-        filters.isActive === 'true' ||
-        filters.isActive === 1 ||
-        filters.isActive === '1';
+    // IMPORTANT: isActive filter - properly handle boolean-ish values
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
       where.isActive = isActiveValue;
-
-      this.logger.debug(`Student directory filter: isActive=${isActiveValue} (raw: ${filters.isActive})`);
+      this.logger.debug(
+        `Student directory filter: isActive=${isActiveValue} (raw: ${String(filters?.isActive)})`,
+      );
     }
 
     // Mentor filter - filter students assigned to specific mentor
@@ -309,7 +328,7 @@ export class ReportGeneratorService {
         // Status info
         clearanceStatus: student.clearanceStatus,
         studentActive: student.isActive,
-        userActive: student.user?.active ?? true,
+        userActive: student.user?.active ?? false,
 
         // Timestamps
         createdAt: student.createdAt,
@@ -330,9 +349,13 @@ export class ReportGeneratorService {
     const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
 
+    // Default to active applications only
+    where.isActive = true;
+
     // Handle isSelfIdentified filter - default to showing all if not specified
-    if (filters?.isSelfIdentified !== undefined && filters?.isSelfIdentified !== null) {
-      where.isSelfIdentified = filters.isSelfIdentified === true || filters.isSelfIdentified === 'true';
+    const isSelfIdentified = this.parseBooleanLike(filters?.isSelfIdentified);
+    if (isSelfIdentified !== undefined) {
+      where.isSelfIdentified = isSelfIdentified;
     }
 
     // Handle institution filter with proper nesting for student relation
@@ -343,6 +366,16 @@ export class ReportGeneratorService {
     if (filters?.branchId) {
       studentWhere.branchId = filters.branchId;
     }
+
+    // Default to active students with active user accounts
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentWhere.isActive = isActiveValue;
+    } else {
+      studentWhere.isActive = true;
+      studentWhere.user = { active: true };
+    }
+
     if (Object.keys(studentWhere).length > 0) {
       where.student = studentWhere;
     }
@@ -386,6 +419,7 @@ export class ReportGeneratorService {
             branchName: true,
             institutionId: true,
             isActive: true,
+            user: { select: { active: true } },
           },
         },
         internship: {
@@ -427,6 +461,7 @@ export class ReportGeneratorService {
       location: application.internship?.workLocation ?? application.companyAddress,
       isSelfIdentified: application.isSelfIdentified,
       isActive: application.student.isActive,
+      userActive: (application.student as any).user?.active ?? true,
     }));
   }
 
@@ -442,10 +477,38 @@ export class ReportGeneratorService {
     const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
 
-    // Handle institution filter through application -> student relation
+    // Build student filter with active checks
+    const studentFilter: Record<string, unknown> = {};
     if (filters?.institutionId) {
-      where.application = { student: { institutionId: filters.institutionId } };
+      studentFilter.institutionId = filters.institutionId;
     }
+
+    // Default to active students only, unless explicitly filtering for inactive
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentFilter.isActive = isActiveValue;
+    } else {
+      // By default, only show visits for active students with active accounts
+      studentFilter.isActive = true;
+      studentFilter.user = { active: true };
+    }
+
+    // Build faculty filter - default to active faculty
+    const facultyFilter: Record<string, unknown> = {};
+    const facultyActiveValue = this.parseBooleanLike(filters?.facultyActive);
+    if (facultyActiveValue !== undefined) {
+      facultyFilter.active = facultyActiveValue;
+    } else {
+      facultyFilter.active = true; // Default to active faculty
+    }
+
+    // Handle institution filter through application -> student relation
+    if (Object.keys(studentFilter).length > 0) {
+      where.application = { student: studentFilter };
+    }
+
+    // Apply faculty active filter
+    where.faculty = facultyFilter;
 
     // Handle faculty/mentor filter
     if (filters?.facultyId || filters?.mentorId) {
@@ -470,8 +533,9 @@ export class ReportGeneratorService {
     }
 
     // Handle follow-up required filter
-    if (filters?.followUpRequired !== undefined && filters?.followUpRequired !== null) {
-      where.followUpRequired = filters.followUpRequired === true || filters.followUpRequired === 'true';
+    const followUpRequired = this.parseBooleanLike(filters?.followUpRequired);
+    if (followUpRequired !== undefined) {
+      where.followUpRequired = followUpRequired;
     }
 
     const visits = await this.prisma.facultyVisitLog.findMany({
@@ -529,8 +593,24 @@ export class ReportGeneratorService {
       where.studentId = filters.studentId;
     }
 
+    // Build student filter with active checks
+    const studentFilter: Record<string, unknown> = {};
     if (filters?.institutionId) {
-      where.student = { institutionId: filters.institutionId };
+      studentFilter.institutionId = filters.institutionId;
+    }
+
+    // Default to active students only, unless explicitly filtering for inactive
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentFilter.isActive = isActiveValue;
+    } else {
+      // By default, only show reports for active students with active accounts
+      studentFilter.isActive = true;
+      studentFilter.user = { active: true };
+    }
+
+    if (Object.keys(studentFilter).length > 0) {
+      where.student = studentFilter;
     }
 
     if (filters?.month && filters?.year) {
@@ -541,7 +621,15 @@ export class ReportGeneratorService {
     const reports = await this.prisma.monthlyReport.findMany({
       where,
       include: {
-        student: { select: { id: true, name: true, rollNumber: true, isActive: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            isActive: true,
+            user: { select: { active: true } },
+          },
+        },
         application: {
           include: {
             internship: {
@@ -569,6 +657,7 @@ export class ReportGeneratorService {
       submittedAt: report.submittedAt,
       reportFileUrl: report.reportFileUrl,
       isActive: report.student.isActive,
+      userActive: (report.student as any).user?.active ?? true,
     }));
   }
 
@@ -584,11 +673,32 @@ export class ReportGeneratorService {
     const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
 
+    // Build student filter with active checks
+    const studentActiveFilter: Record<string, unknown> = {};
+
+    // Default to active students only, unless explicitly filtering for inactive
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentActiveFilter.isActive = isActiveValue;
+    } else {
+      // By default, only show placements for active students with active accounts
+      studentActiveFilter.isActive = true;
+      studentActiveFilter.user = { active: true };
+    }
+
     if (filters?.institutionId) {
       where.OR = [
         { institutionId: filters.institutionId },
-        { student: { institutionId: filters.institutionId } },
+        {
+          student: {
+            institutionId: filters.institutionId,
+            ...studentActiveFilter,
+          },
+        },
       ];
+    } else {
+      // Apply student active filter directly when no institutionId
+      where.student = studentActiveFilter;
     }
 
     if (filters?.minSalary || filters?.maxSalary) {
@@ -604,7 +714,16 @@ export class ReportGeneratorService {
     const placements = await this.prisma.placement.findMany({
       where,
       include: {
-        student: { select: { id: true, name: true, rollNumber: true, email: true, isActive: true } },
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            email: true,
+            isActive: true,
+            user: { select: { active: true } },
+          },
+        },
       },
       take,
       skip,
@@ -623,6 +742,7 @@ export class ReportGeneratorService {
       offerDate: placement.offerDate,
       status: placement.status,
       isActive: placement.student.isActive,
+      userActive: (placement.student as any).user?.active ?? true,
     }));
   }
 
@@ -646,11 +766,20 @@ export class ReportGeneratorService {
       branches,
       avgPlacementSalary,
     ] = await Promise.all([
-      this.prisma.student.count({ where: { institutionId } }),
+      // Only count active students with active user accounts
+      this.prisma.student.count({
+        where: {
+          institutionId,
+          isActive: true,
+          user: { active: true },
+        },
+      }),
+      // Only count active faculty members
       this.prisma.user.count({
         where: {
           institutionId,
           role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+          active: true,
         },
       }),
       this.prisma.internship.count({
@@ -666,18 +795,42 @@ export class ReportGeneratorService {
           status: InternshipStatus.COMPLETED,
         },
       }),
+      // Only count placements for active students
       this.prisma.placement.count({
-        where: { OR: [{ institutionId }, { student: { institutionId } }] },
+        where: {
+          OR: [
+            { institutionId },
+            { student: { institutionId, isActive: true, user: { active: true } } },
+          ],
+        },
       }),
+      // Only count applications from active students with active applications
       this.prisma.internshipApplication.count({
-        where: { student: { institutionId } },
+        where: {
+          isActive: true,
+          student: { institutionId, isActive: true, user: { active: true } },
+        },
       }),
       this.prisma.branch.findMany({
         where: { institutionId },
-        include: { _count: { select: { students: true } } },
+        include: {
+          _count: {
+            select: {
+              students: {
+                where: { isActive: true, user: { active: true } },
+              },
+            },
+          },
+        },
       }),
+      // Only aggregate placement salary for active students
       this.prisma.placement.aggregate({
-        where: { OR: [{ institutionId }, { student: { institutionId } }] },
+        where: {
+          OR: [
+            { institutionId },
+            { student: { institutionId, isActive: true, user: { active: true } } },
+          ],
+        },
         _avg: { salary: true },
       }),
     ]);
@@ -741,7 +894,11 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      // Only include active students with active user accounts by default
+      isActive: true,
+      user: { active: true },
+    };
     const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.institutionId) {
@@ -752,15 +909,25 @@ export class ReportGeneratorService {
       where.branchId = filters.branchId;
     }
 
+    // Handle explicit isActive filter override
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.isActive = isActiveValue;
+    }
+
     // Fetch students with their internship applications and monthly reports
     const students = await this.prisma.student.findMany({
       where,
       include: {
+        user: { select: { active: true } },
         branch: { select: { name: true } },
         internshipApplications: {
-          where: { status: { in: ['APPROVED', 'SELECTED'] } },
+          where: {
+            status: { in: ['APPROVED', 'SELECTED'] },
+            isActive: true, // Only active applications
+          },
           include: {
-            mentor: { select: { name: true } },
+            mentor: { select: { name: true, active: true } },
             monthlyReports: {
               select: { status: true, submittedAt: true },
               orderBy: { submittedAt: 'desc' },
@@ -805,6 +972,7 @@ export class ReportGeneratorService {
         complianceScore,
         complianceLevel,
         isActive: student.isActive,
+        userActive: (student as any).user?.active ?? true,
       };
     });
 
@@ -880,15 +1048,24 @@ export class ReportGeneratorService {
       }
     }
 
-    // Handle account status filter
-    if (filters?.isActive !== undefined && filters?.isActive !== null) {
-      where.active = filters.isActive === true || filters.isActive === 'true';
+    // Handle account status filter - checks BOTH User.active AND Student.isActive for students
+    const accountActive = this.parseBooleanLike(filters?.isActive);
+    if (accountActive !== undefined) {
+      where.active = accountActive;
+      // For students, also filter by Student.isActive
+      if (accountActive === true) {
+        where.OR = [
+          { role: { not: 'STUDENT' } }, // Non-students just need User.active
+          { role: 'STUDENT', Student: { isActive: true } }, // Students need both User.active AND Student.isActive
+        ];
+      }
     }
 
     const users = await this.prisma.user.findMany({
       where,
       include: {
         Institution: { select: { name: true } },
+        Student: { select: { isActive: true } }, // Include Student.isActive for accurate reporting
       },
       take,
       skip,
@@ -916,6 +1093,15 @@ export class ReportGeneratorService {
         }
       }
 
+      // For students: check BOTH User.active AND Student.isActive
+      // For non-students: only check User.active
+      const userActive = user.active;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      // isActive is true only when BOTH conditions are met (for students)
+      const isActive = user.role === 'STUDENT'
+        ? (userActive && studentActive === true)
+        : userActive;
+
       return {
         userName: user.name,
         email: user.email,
@@ -933,7 +1119,9 @@ export class ReportGeneratorService {
         passwordChangedAt: user.passwordChangedAt,
         daysSinceLastLogin,
         daysSinceCreation,
-        isActive: user.active,
+        isActive, // Combined: User.active AND (for students) Student.isActive
+        userActive, // User account active status
+        studentActive, // Student record active status (null for non-students)
         status,
       };
     });
@@ -956,8 +1144,33 @@ export class ReportGeneratorService {
       where.userId = filters.userId;
     }
 
+    // Build user filter with institution and active status
+    const userFilter: Record<string, unknown> = {};
     if (filters?.institutionId) {
-      where.user = { institutionId: filters.institutionId };
+      userFilter.institutionId = filters.institutionId;
+    }
+
+    // Filter by active users only by default (both User.active AND Student.isActive for students)
+    const accountActive = this.parseBooleanLike(filters?.isActive);
+    if (accountActive !== undefined) {
+      userFilter.active = accountActive;
+      if (accountActive === true) {
+        userFilter.OR = [
+          { role: { not: 'STUDENT' } },
+          { role: 'STUDENT', Student: { isActive: true } },
+        ];
+      }
+    } else {
+      // Default to active users only
+      userFilter.active = true;
+      userFilter.OR = [
+        { role: { not: 'STUDENT' } },
+        { role: 'STUDENT', Student: { isActive: true } },
+      ];
+    }
+
+    if (Object.keys(userFilter).length > 0) {
+      where.user = userFilter;
     }
 
     // Handle session status filter
@@ -991,7 +1204,9 @@ export class ReportGeneratorService {
             name: true,
             email: true,
             role: true,
+            active: true,
             Institution: { select: { name: true } },
+            Student: { select: { isActive: true } },
           },
         },
       },
@@ -1006,7 +1221,16 @@ export class ReportGeneratorService {
       const sessionDuration = Math.floor(
         (session.lastActivityAt.getTime() - session.createdAt.getTime()) / (1000 * 60)
       );
-      const isActive = session.expiresAt > now && !session.invalidatedAt;
+      const isSessionActive = session.expiresAt > now && !session.invalidatedAt;
+
+      // User active status
+      const userActive = session.user.active;
+      const studentActive = session.user.role === 'STUDENT'
+        ? ((session.user as any).Student?.isActive ?? false)
+        : null;
+      const isUserActive = session.user.role === 'STUDENT'
+        ? (userActive && studentActive === true)
+        : userActive;
 
       return {
         userName: session.user.name,
@@ -1019,7 +1243,10 @@ export class ReportGeneratorService {
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
         deviceInfo: session.deviceInfo,
-        isActive,
+        isActive: isSessionActive, // Session active status
+        isUserActive, // User account active status (combined)
+        userActive, // User.active
+        studentActive, // Student.isActive (null for non-students)
         expiresAt: session.expiresAt,
       };
     });
@@ -1039,6 +1266,28 @@ export class ReportGeneratorService {
       loginCount: 0,
     };
     const { take, skip } = this.getPaginationParams(pagination);
+
+    // Default to active users only, unless explicitly filtering for inactive
+    // This makes sense for "never logged in" report - we want to identify active users who haven't logged in
+    // For students, we also check Student.isActive
+    const accountActive = this.parseBooleanLike(filters?.isActive);
+    if (accountActive !== undefined) {
+      where.active = accountActive;
+      // For students, also filter by Student.isActive when filtering for active users
+      if (accountActive === true) {
+        where.OR = [
+          { role: { not: 'STUDENT' } }, // Non-students just need User.active
+          { role: 'STUDENT', Student: { isActive: true } }, // Students need both
+        ];
+      }
+    } else {
+      // Default to active users only (both User.active AND Student.isActive for students)
+      where.active = true;
+      where.OR = [
+        { role: { not: 'STUDENT' } },
+        { role: 'STUDENT', Student: { isActive: true } },
+      ];
+    }
 
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
@@ -1064,6 +1313,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
+        Student: { select: { isActive: true } }, // Include Student.isActive
       },
       take,
       skip,
@@ -1074,18 +1324,28 @@ export class ReportGeneratorService {
 
     const now = new Date();
 
-    return users.map((user) => ({
-      userName: user.name,
-      email: user.email,
-      phoneNo: user.phoneNo,
-      role: user.role,
-      institutionName: user.Institution?.name ?? 'N/A',
-      rollNumber: user.rollNumber,
-      accountCreatedAt: user.createdAt,
-      daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
-      hasChangedPassword: user.hasChangedDefaultPassword,
-      isActive: user.active,
-    }));
+    return users.map((user) => {
+      const userActive = user.active;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const isActive = user.role === 'STUDENT'
+        ? (userActive && studentActive === true)
+        : userActive;
+
+      return {
+        userName: user.name,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        role: user.role,
+        institutionName: user.Institution?.name ?? 'N/A',
+        rollNumber: user.rollNumber,
+        accountCreatedAt: user.createdAt,
+        daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        hasChangedPassword: user.hasChangedDefaultPassword,
+        isActive, // Combined: User.active AND (for students) Student.isActive
+        userActive,
+        studentActive,
+      };
+    });
   }
 
   /**
@@ -1103,6 +1363,27 @@ export class ReportGeneratorService {
     };
     const { take, skip } = this.getPaginationParams(pagination);
 
+    // Default to active users only, unless explicitly filtering for inactive
+    // Security concern: We want to identify active users with default passwords
+    // For students, we also check Student.isActive
+    const accountActive = this.parseBooleanLike(filters?.isActive);
+    if (accountActive !== undefined) {
+      where.active = accountActive;
+      if (accountActive === true) {
+        where.OR = [
+          { role: { not: 'STUDENT' } },
+          { role: 'STUDENT', Student: { isActive: true } },
+        ];
+      }
+    } else {
+      // Default to active users only (both User.active AND Student.isActive for students)
+      where.active = true;
+      where.OR = [
+        { role: { not: 'STUDENT' } },
+        { role: 'STUDENT', Student: { isActive: true } },
+      ];
+    }
+
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
     }
@@ -1115,18 +1396,16 @@ export class ReportGeneratorService {
       }
     }
 
-    if (filters?.hasLoggedIn !== undefined) {
-      if (filters.hasLoggedIn === true || filters.hasLoggedIn === 'true') {
-        where.loginCount = { gt: 0 };
-      } else {
-        where.loginCount = 0;
-      }
+    const hasLoggedIn = this.parseBooleanLike(filters?.hasLoggedIn);
+    if (hasLoggedIn !== undefined) {
+      where.loginCount = hasLoggedIn ? { gt: 0 } : 0;
     }
 
     const users = await this.prisma.user.findMany({
       where,
       include: {
         Institution: { select: { name: true } },
+        Student: { select: { isActive: true } },
       },
       take,
       skip,
@@ -1137,18 +1416,28 @@ export class ReportGeneratorService {
 
     const now = new Date();
 
-    return users.map((user) => ({
-      userName: user.name,
-      email: user.email,
-      phoneNo: user.phoneNo,
-      role: user.role,
-      institutionName: user.Institution?.name ?? 'N/A',
-      accountCreatedAt: user.createdAt,
-      daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
-      loginCount: user.loginCount,
-      lastLoginAt: user.lastLoginAt,
-      isActive: user.active,
-    }));
+    return users.map((user) => {
+      const userActive = user.active;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const isActive = user.role === 'STUDENT'
+        ? (userActive && studentActive === true)
+        : userActive;
+
+      return {
+        userName: user.name,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        role: user.role,
+        institutionName: user.Institution?.name ?? 'N/A',
+        accountCreatedAt: user.createdAt,
+        daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
+        loginCount: user.loginCount,
+        lastLoginAt: user.lastLoginAt,
+        isActive,
+        userActive,
+        studentActive,
+      };
+    });
   }
 
   /**
@@ -1163,6 +1452,35 @@ export class ReportGeneratorService {
   ): Promise<any[]> {
     const where: Record<string, unknown> = {};
     const { take, skip } = this.getPaginationParams(pagination);
+
+    // Default to active users only, unless explicitly filtering for inactive
+    // This report identifies active user accounts that haven't been used recently
+    // For students, we also check Student.isActive
+    const accountActive = this.parseBooleanLike(filters?.isActive);
+    if (accountActive !== undefined) {
+      where.active = accountActive;
+      if (accountActive === true) {
+        where.AND = [
+          {
+            OR: [
+              { role: { not: 'STUDENT' } },
+              { role: 'STUDENT', Student: { isActive: true } },
+            ],
+          },
+        ];
+      }
+    } else {
+      // Default to active users only (both User.active AND Student.isActive for students)
+      where.active = true;
+      where.AND = [
+        {
+          OR: [
+            { role: { not: 'STUDENT' } },
+            { role: 'STUDENT', Student: { isActive: true } },
+          ],
+        },
+      ];
+    }
 
     if (filters?.institutionId) {
       where.institutionId = filters.institutionId;
@@ -1180,10 +1498,19 @@ export class ReportGeneratorService {
     const inactiveDays = Number(filters?.inactiveDays) || 30;
     const cutoffDate = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
 
-    where.OR = [
-      { lastLoginAt: { lt: cutoffDate } },
-      { lastLoginAt: null, loginCount: { gt: 0 } }, // Has logged in before but no lastLoginAt (edge case)
-    ];
+    // Add to existing AND array or create new one
+    const inactiveCondition = {
+      OR: [
+        { lastLoginAt: { lt: cutoffDate } },
+        { lastLoginAt: null, loginCount: { gt: 0 } }, // Has logged in before but no lastLoginAt (edge case)
+      ],
+    };
+
+    if (where.AND) {
+      (where.AND as any[]).push(inactiveCondition);
+    } else {
+      where.AND = [inactiveCondition];
+    }
 
     // Ensure we only get users who have logged in at least once
     where.loginCount = { gt: 0 };
@@ -1192,6 +1519,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
+        Student: { select: { isActive: true } },
       },
       take,
       skip,
@@ -1202,20 +1530,30 @@ export class ReportGeneratorService {
 
     const now = new Date();
 
-    return users.map((user) => ({
-      userName: user.name,
-      email: user.email,
-      phoneNo: user.phoneNo,
-      role: user.role,
-      institutionName: user.Institution?.name ?? 'N/A',
-      lastLoginAt: user.lastLoginAt,
-      daysSinceLastLogin: user.lastLoginAt
-        ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
-        : null,
-      loginCount: user.loginCount,
-      accountCreatedAt: user.createdAt,
-      isActive: user.active,
-    }));
+    return users.map((user) => {
+      const userActive = user.active;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const isActive = user.role === 'STUDENT'
+        ? (userActive && studentActive === true)
+        : userActive;
+
+      return {
+        userName: user.name,
+        email: user.email,
+        phoneNo: user.phoneNo,
+        role: user.role,
+        institutionName: user.Institution?.name ?? 'N/A',
+        lastLoginAt: user.lastLoginAt,
+        daysSinceLastLogin: user.lastLoginAt
+          ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+        loginCount: user.loginCount,
+        accountCreatedAt: user.createdAt,
+        isActive,
+        userActive,
+        studentActive,
+      };
+    });
   }
 
   /**

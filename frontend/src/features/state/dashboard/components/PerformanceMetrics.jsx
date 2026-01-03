@@ -50,12 +50,12 @@ const PerformanceMetrics = ({ stats }) => {
   if (!stats) return null;
 
   // Use the detailed stats if available, otherwise fallback
-  // Use studentsWithInternships as fallback (students with active internships)
+  // Use activeStudentsWithInternships as fallback (students with active internships)
   const assignments = stats.assignments || {
-    total: stats.assignments?.studentsWithInternships || 0,
+    total: stats.assignments?.activeStudentsWithInternships || 0,
     assigned: 0,
-    unassigned: stats.assignments?.studentsWithInternships || 0,
-    studentsWithInternships: stats.assignments?.studentsWithInternships || 0
+    unassigned: stats.assignments?.activeStudentsWithInternships || 0,
+    activeStudentsWithInternships: stats.assignments?.activeStudentsWithInternships || 0
   };
 
   const visits = stats.facultyVisits || {
@@ -104,8 +104,8 @@ const PerformanceMetrics = ({ stats }) => {
           
           <MetricItem
             label="Mentor Assignment"
-            value={assignments.assigned}
-            total={assignments.studentsWithInternships || assignments.total}
+            value={assignments.activeStudentsWithMentors || assignments.assigned || 0}
+            total={assignments.activeStudents || assignments.activeStudentsWithInternships || assignments.total || 0}
             color="rgb(var(--color-primary))"
             icon={<UserSwitchOutlined className="text-primary" />}
             tooltip="Active students with assigned mentors"
