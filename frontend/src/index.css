@@ -1,6 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
+/* ============================================
+   Global Selection Fix - Override Tailwind preflight
+   ============================================ */
+*, *::before, *::after {
+  /* Ensure user-select is not set to none by default */
+  -webkit-user-select: auto;
+  -moz-user-select: auto;
+  -ms-user-select: auto;
+  user-select: auto;
+}
+
 :root {
   --color-primary: 59 130 246;
   --color-primary-100: 219 234 254; /* blue-100 */
@@ -135,6 +146,229 @@ body {
 .ant-input-number {
   border-radius: 8px;
   border-color: rgb(var(--color-border));
+}
+
+/* ============================================
+   Ant Design Select Dropdown Styling
+   ============================================ */
+/* Selected option in dropdown */
+.ant-select-dropdown .ant-select-item-option-selected {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+  font-weight: 600 !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-selected .ant-select-item-option-content {
+  color: rgb(var(--color-primary-700)) !important;
+}
+
+/* Checkmark icon for selected items */
+.ant-select-dropdown .ant-select-item-option-selected .ant-select-item-option-state {
+  color: rgb(var(--color-primary)) !important;
+}
+
+/* Active/hovered option */
+.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgba(var(--color-primary), 0.06) !important;
+}
+
+/* Dropdown container styling */
+.ant-select-dropdown {
+  border-radius: 12px !important;
+  padding: 6px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid rgb(var(--color-border)) !important;
+}
+
+/* Individual option item */
+.ant-select-dropdown .ant-select-item {
+  border-radius: 8px !important;
+  margin: 2px 0 !important;
+  padding: 8px 12px !important;
+  transition: all 0.2s ease !important;
+}
+
+/* Option text color */
+.ant-select-dropdown .ant-select-item-option-content {
+  color: rgb(var(--color-text-primary)) !important;
+}
+
+/* Multiple select - selected tags in input */
+.ant-select-multiple .ant-select-selection-item {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+  border: 1px solid rgba(var(--color-primary), 0.3) !important;
+  border-radius: 6px !important;
+  color: rgb(var(--color-primary-700)) !important;
+}
+
+.ant-select-multiple .ant-select-selection-item-remove {
+  color: rgb(var(--color-primary)) !important;
+}
+
+.ant-select-multiple .ant-select-selection-item-remove:hover {
+  color: rgb(var(--color-error)) !important;
+}
+
+/* Focused select border */
+.ant-select-focused .ant-select-selector {
+  border-color: rgb(var(--color-primary)) !important;
+  box-shadow: 0 0 0 3px rgba(var(--color-primary), 0.1) !important;
+}
+
+/* Dark mode adjustments for Select */
+.dark .ant-select-dropdown {
+  background-color: rgb(var(--color-card-bg)) !important;
+  border-color: rgb(var(--color-border)) !important;
+}
+
+.dark .ant-select-dropdown .ant-select-item-option-content {
+  color: rgb(var(--color-text-primary)) !important;
+}
+
+.dark .ant-select-dropdown .ant-select-item-option-selected {
+  background-color: rgba(var(--color-primary), 0.2) !important;
+}
+
+.dark .ant-select-dropdown .ant-select-item-option-selected .ant-select-item-option-content {
+  color: rgb(var(--color-primary)) !important;
+}
+
+.dark .ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+}
+
+.dark .ant-select-multiple .ant-select-selection-item {
+  background-color: rgba(var(--color-primary), 0.2) !important;
+  border-color: rgba(var(--color-primary), 0.4) !important;
+  color: rgb(var(--color-primary)) !important;
+}
+
+/* ============================================
+   Ant Design Checkbox Styling
+   ============================================ */
+.ant-checkbox-checked .ant-checkbox-inner {
+  background-color: rgb(var(--color-primary)) !important;
+  border-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-checkbox-checked::after {
+  border-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ant-checkbox:hover .ant-checkbox-inner,
+.ant-checkbox-input:focus + .ant-checkbox-inner {
+  border-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-checkbox-indeterminate .ant-checkbox-inner::after {
+  background-color: rgb(var(--color-primary)) !important;
+}
+
+/* ============================================
+   Ant Design Radio Styling
+   ============================================ */
+.ant-radio-checked .ant-radio-inner {
+  border-color: rgb(var(--color-primary)) !important;
+  background-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-radio-checked .ant-radio-inner::after {
+  background-color: #ffffff !important;
+}
+
+.ant-radio-wrapper:hover .ant-radio-inner,
+.ant-radio:hover .ant-radio-inner,
+.ant-radio-input:focus + .ant-radio-inner {
+  border-color: rgb(var(--color-primary)) !important;
+}
+
+/* Radio button group - selected state */
+.ant-radio-button-wrapper-checked {
+  background-color: rgb(var(--color-primary)) !important;
+  border-color: rgb(var(--color-primary)) !important;
+  color: #ffffff !important;
+}
+
+.ant-radio-button-wrapper-checked:hover {
+  background-color: rgb(var(--color-primary-600)) !important;
+  border-color: rgb(var(--color-primary-600)) !important;
+}
+
+/* ============================================
+   Ant Design Switch Styling
+   ============================================ */
+.ant-switch-checked {
+  background-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-switch-checked:hover:not(.ant-switch-disabled) {
+  background-color: rgb(var(--color-primary-600)) !important;
+}
+
+/* ============================================
+   Ant Design TreeSelect & Tree Styling
+   ============================================ */
+.ant-tree .ant-tree-node-selected {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+}
+
+.ant-tree .ant-tree-node-selected .ant-tree-title {
+  color: rgb(var(--color-primary-700)) !important;
+}
+
+.ant-tree-select-dropdown .ant-select-tree-node-selected {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+}
+
+/* ============================================
+   Ant Design Transfer Styling
+   ============================================ */
+.ant-transfer-list-content-item-checked {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+}
+
+/* ============================================
+   Ant Design Cascader Styling
+   ============================================ */
+.ant-cascader-menu-item-active {
+  background-color: rgba(var(--color-primary), 0.06) !important;
+}
+
+.ant-cascader-menu-item-active:not(.ant-cascader-menu-item-disabled) {
+  font-weight: 600 !important;
+}
+
+/* ============================================
+   Ant Design Segmented Control Styling
+   ============================================ */
+.ant-segmented-item-selected {
+  background-color: rgb(var(--color-card-bg)) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.ant-segmented-item-selected .ant-segmented-item-label {
+  color: rgb(var(--color-primary)) !important;
+  font-weight: 600 !important;
+}
+
+/* ============================================
+   Ant Design DatePicker Selection Styling
+   ============================================ */
+.ant-picker-cell-selected .ant-picker-cell-inner {
+  background-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-picker-cell-in-range::before {
+  background-color: rgba(var(--color-primary), 0.1) !important;
+}
+
+.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-cell-range-end .ant-picker-cell-inner {
+  background-color: rgb(var(--color-primary)) !important;
+}
+
+.ant-picker-cell:hover:not(.ant-picker-cell-selected):not(.ant-picker-cell-range-start):not(.ant-picker-cell-range-end) .ant-picker-cell-inner {
+  background-color: rgba(var(--color-primary), 0.1) !important;
 }
 
 .ant-table {
@@ -778,38 +1012,9 @@ body {
   scroll-behavior: smooth;
 }
 
-/* Text selection - Enable text selection globally */
-* {
-  user-select: text;
-  -webkit-user-select: text;
-  -moz-user-select: text;
-  -ms-user-select: text;
-}
-
-/* Disable selection for UI elements that shouldn't be selectable */
-button,
-.ant-btn,
-.ant-menu,
-.ant-menu-item,
-.ant-tabs-tab,
-[role="button"],
-[role="tab"],
-svg,
-img {
-  user-select: none;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-}
-
-/* Selection highlight styling */
+/* Text selection - highly visible */
 ::selection {
-  background: rgba(var(--color-primary), 0.3);
-  color: rgb(var(--color-text-primary));
-}
-
-::-moz-selection {
-  background: rgba(var(--color-primary), 0.3);
+  background: rgba(var(--color-primary), 0.2);
   color: rgb(var(--color-text-primary));
 }
 

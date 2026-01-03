@@ -333,11 +333,23 @@ export class UserManagementService {
         where: { id: userId },
       });
     } else {
-      // Soft delete - just deactivate
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { active: false },
-      });
+      // Soft delete - deactivate user and keep Student profile in sync (if any)
+      await this.prisma.$transaction([
+        // If this user is a mentor, deactivate active mentor assignments
+        this.prisma.mentorAssignment.updateMany({
+          where: { mentorId: userId, isActive: true },
+          data: { isActive: false, deactivatedAt: new Date() },
+        }),
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { active: false },
+        }),
+        // No-op if this user is not a student
+        this.prisma.student.updateMany({
+          where: { userId },
+          data: { isActive: false },
+        }),
+      ]);
     }
 
     // Audit log
@@ -387,23 +399,54 @@ export class UserManagementService {
       try {
         switch (action) {
           case 'activate':
-            await this.prisma.user.update({
-              where: { id: userId },
-              data: { active: true },
-            });
+            await this.prisma.$transaction([
+              this.prisma.user.update({
+                where: { id: userId },
+                data: { active: true },
+              }),
+              // No-op if not a student
+              this.prisma.student.updateMany({
+                where: { userId },
+                data: { isActive: true },
+              }),
+            ]);
             break;
           case 'deactivate':
-            await this.prisma.user.update({
-              where: { id: userId },
-              data: { active: false },
-            });
+            await this.prisma.$transaction([
+              // If this user is a mentor, deactivate active mentor assignments
+              this.prisma.mentorAssignment.updateMany({
+                where: { mentorId: userId, isActive: true },
+                data: { isActive: false, deactivatedAt: new Date() },
+              }),
+              this.prisma.user.update({
+                where: { id: userId },
+                data: { active: false },
+              }),
+              // No-op if not a student
+              this.prisma.student.updateMany({
+                where: { userId },
+                data: { isActive: false },
+              }),
+            ]);
             await this.tokenBlacklistService.invalidateUserTokens(userId);
             break;
           case 'delete':
-            await this.prisma.user.update({
-              where: { id: userId },
-              data: { active: false },
-            });
+            await this.prisma.$transaction([
+              // If this user is a mentor, deactivate active mentor assignments
+              this.prisma.mentorAssignment.updateMany({
+                where: { mentorId: userId, isActive: true },
+                data: { isActive: false, deactivatedAt: new Date() },
+              }),
+              this.prisma.user.update({
+                where: { id: userId },
+                data: { active: false },
+              }),
+              // No-op if not a student
+              this.prisma.student.updateMany({
+                where: { userId },
+                data: { isActive: false },
+              }),
+            ]);
             await this.tokenBlacklistService.invalidateUserTokens(userId);
             break;
           case 'resetPassword':

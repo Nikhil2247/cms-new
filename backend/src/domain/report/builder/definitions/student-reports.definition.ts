@@ -19,8 +19,9 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'institutionName', label: 'Institution', type: 'string', default: true, sortable: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
       { id: 'internshipStatus', label: 'Internship Status', type: 'string', default: true },
-      { id: 'studentActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student record active status' },
-      { id: 'userActive', label: 'User Active', type: 'boolean', default: true, description: 'User account active status' },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
+      { id: 'studentActive', label: 'Student Active', type: 'boolean', default: false, description: 'Student record active status' },
+      { id: 'userActive', label: 'User Active', type: 'boolean', default: false, description: 'User account active status' },
       { id: 'createdAt', label: 'Registered On', type: 'date', default: false },
     ],
     filters: [

@@ -308,11 +308,18 @@ export class StateStaffService {
       throw new BadRequestException('Staff member is already deactivated');
     }
 
-    // Soft delete - deactivate user account (preserves audit trail and historical data)
-    await this.prisma.user.update({
-      where: { id },
-      data: { active: false },
-    });
+    // Soft delete - deactivate user account and any active mentor assignments
+    // (prevents active assignments pointing to an inactive mentor)
+    await this.prisma.$transaction([
+      this.prisma.mentorAssignment.updateMany({
+        where: { mentorId: id, isActive: true },
+        data: { isActive: false, deactivatedAt: new Date() },
+      }),
+      this.prisma.user.update({
+        where: { id },
+        data: { active: false },
+      }),
+    ]);
 
     await this.cache.invalidateByTags(['state', 'staff']);
 

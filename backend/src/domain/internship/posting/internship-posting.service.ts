@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
+import { ApplicationStatus, InternshipStatus } from '../../../generated/prisma/client';
 
 export interface CreatePostingDto {
   title: string;
@@ -176,8 +177,27 @@ export class InternshipPostingService {
         throw new NotFoundException('Internship posting not found');
       }
 
-      await this.prisma.internship.delete({
+      // Prevent deactivation if there are active students tied to this internship.
+      // (Hard delete would also fail in many cases due to relations; we provide a clear error.)
+      const activeApplicationsCount = await this.prisma.internshipApplication.count({
+        where: {
+          internshipId: id,
+          status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED] },
+        },
+      });
+
+      if (activeApplicationsCount > 0) {
+        throw new BadRequestException(
+          `Cannot delete internship with ${activeApplicationsCount} active students`,
+        );
+      }
+
+      await this.prisma.internship.update({
         where: { id },
+        data: {
+          isActive: false,
+          status: InternshipStatus.INACTIVE,
+        },
       });
 
       // Invalidate cache (parallel)

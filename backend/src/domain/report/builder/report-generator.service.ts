@@ -188,12 +188,17 @@ export class ReportGeneratorService {
     }
 
     // IMPORTANT: isActive filter - properly handle boolean-ish values
+    // Default to active students with active user accounts
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
       where.isActive = isActiveValue;
       this.logger.debug(
         `Student directory filter: isActive=${isActiveValue} (raw: ${String(filters?.isActive)})`,
       );
+    } else {
+      // By default, only show active students with active user accounts
+      where.isActive = true;
+      where.user = { active: true };
     }
 
     // Mentor filter - filter students assigned to specific mentor
@@ -327,6 +332,7 @@ export class ReportGeneratorService {
 
         // Status info
         clearanceStatus: student.clearanceStatus,
+        isActive: student.isActive && (student.user?.active ?? false),
         studentActive: student.isActive,
         userActive: student.user?.active ?? false,
 

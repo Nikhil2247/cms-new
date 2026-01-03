@@ -22,11 +22,16 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'stipend', label: 'Stipend', type: 'number', default: false },
       { id: 'isSelfIdentified', label: 'Self Identified', type: 'boolean', default: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
-      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false, description: 'User account active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
+      ]},
       { id: 'status', label: 'Status', type: 'select', required: false, options: [
         { label: 'Draft', value: 'DRAFT' },
         { label: 'Submitted', value: 'SUBMITTED' },
@@ -118,11 +123,16 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'endDate', label: 'End Date', type: 'date', default: true },
       { id: 'verificationStatus', label: 'Verification', type: 'string', default: true },
       { id: 'mentorName', label: 'Mentor', type: 'string', default: true },
-      { id: 'isActive', label: 'Student Active', type: 'boolean', default: true, description: 'Student active status' },
+      { id: 'isActive', label: 'Active', type: 'boolean', default: true, description: 'Combined student and user active status' },
+      { id: 'userActive', label: 'User Account Active', type: 'boolean', default: false, description: 'User account active status' },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'branchId', label: 'Branch', type: 'select', dynamic: true, required: false },
+      { id: 'isActive', label: 'Student Status', type: 'select', required: false, options: [
+        { label: 'Active', value: true },
+        { label: 'Inactive', value: false },
+      ]},
       { id: 'verificationStatus', label: 'Verification Status', type: 'select', required: false, options: [
         { label: 'Pending', value: 'PENDING' },
         { label: 'Verified', value: 'VERIFIED' },
