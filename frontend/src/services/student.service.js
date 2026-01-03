@@ -36,24 +36,10 @@ export const studentService = {
   },
 
   // =====================
-  // Internships
+  // Internships - REMOVED
   // =====================
-  async getAvailableInternships(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `/student/internships?${queryParams}` : '/student/internships';
-    const response = await API.get(url);
-    return response.data;
-  },
-
-  async getInternshipDetails(internshipId) {
-    const response = await API.get(`/student/internships/${internshipId}`);
-    return response.data;
-  },
-
-  async applyForInternship(internshipId, applicationData = {}) {
-    const response = await API.post(`/student/internships/${internshipId}/apply`, applicationData);
-    return response.data;
-  },
+  // Industry internship browsing methods removed.
+  // Use self-identified internship methods instead.
 
   // =====================
   // Applications
@@ -207,10 +193,6 @@ export const studentService = {
   // =====================
   // Legacy aliases (for backward compatibility)
   // =====================
-  async getMyInternships(params = {}) {
-    return this.getAvailableInternships(params);
-  },
-
   async getMyReports(params = {}) {
     return this.getMonthlyReports(params);
   },

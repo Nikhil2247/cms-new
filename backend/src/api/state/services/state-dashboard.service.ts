@@ -246,11 +246,6 @@ export class StateDashboardService {
           }),
         ]);
 
-        // Industry portal removed - no industry registrations to track
-        const totalIndustries = 0;
-        const approvedIndustries = 0;
-        const recentIndustryRegistrations = 0;
-
         // Get count from the distinct studentIds arrays
         const activeStudentsWithMentors = studentsWithActiveMentorsData.length;
         const internshipsWithMentors = internshipsWithMentorsData.length;
@@ -348,10 +343,6 @@ export class StateDashboardService {
               ? Math.round((acceptedApplications / totalApplications) * 100)
               : 0,
           },
-          industries: {
-            total: totalIndustries,
-            approved: approvedIndustries,
-          },
           // Student & Mentor Assignment breakdown - all based on ACTIVE students
           assignments: {
             // Raw assignment record counts (for reference only)
@@ -404,7 +395,6 @@ export class StateDashboardService {
           },
           recentActivity: {
             applicationsLastWeek: recentApplications,
-            industriesLastMonth: recentIndustryRegistrations,
           },
         };
       },
@@ -665,9 +655,6 @@ export class StateDashboardService {
           }),
         ]);
 
-        // Industry portal removed - no pending industry approvals
-        const pendingApprovals: any[] = [];
-
         // Institutions requiring intervention (compliance < 30%)
         // Use activeStudents as denominator per approved specification
         // Compliance = (MentorRate + JoiningLetterRate) / 2
@@ -704,24 +691,11 @@ export class StateDashboardService {
         return {
           timestamp: now.toISOString(),
           summary: {
-            totalActionItems: pendingApprovals.length + requiresIntervention.length + overdueItems.length,
-            pendingApprovalsCount: pendingApprovals.length,
+            totalActionItems: requiresIntervention.length + overdueItems.length,
             interventionRequiredCount: requiresIntervention.length,
             overdueComplianceCount: overdueItems.length,
           },
           actions: {
-            pendingIndustryApprovals: pendingApprovals.map(p => ({
-              industryId: p.id,
-              companyName: p.companyName,
-              industryType: p.industryType,
-              city: p.city,
-              state: p.state,
-              submittedAt: p.createdAt,
-              contactName: p.user?.name,
-              contactEmail: p.user?.email,
-              daysPending: Math.floor((now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)),
-              priority: Math.floor((now.getTime() - new Date(p.createdAt).getTime()) / (1000 * 60 * 60 * 24)) > 7 ? 'high' : 'normal',
-            })),
             institutionsRequiringIntervention: requiresIntervention,
             overdueComplianceItems: overdueItems.map(s => ({
               studentId: s.id,

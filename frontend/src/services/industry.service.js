@@ -1,111 +1,80 @@
-import API from './api';
-
 /**
- * Industry Service
- * API methods for industry partner operations
+ * Industry Service - STUBBED
+ * Industry portal has been removed - only self-identified internships are supported
  */
 export const industryService = {
   // Dashboard
   async getDashboard() {
-    const response = await API.get('/industry/dashboard');
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   // Internship Postings
   async getMyPostings(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `/industry/postings?${queryParams}` : '/industry/postings';
-    const response = await API.get(url);
-    return response.data;
+    return [];
   },
 
   async getPostingById(id) {
-    const response = await API.get(`/industry/postings/${id}`);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async createPosting(data) {
-    const response = await API.post('/industry/postings', data);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async updatePosting(id, data) {
-    const response = await API.put(`/industry/postings/${id}`, data);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async deletePosting(id) {
-    const response = await API.delete(`/industry/postings/${id}`);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async togglePostingStatus(id, isActive) {
-    const response = await API.patch(`/industry/postings/${id}/status`, { isActive });
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   // Applications
   async getMyApplications(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `/industry/applications?${queryParams}` : '/industry/applications';
-    const response = await API.get(url);
-    return response.data;
+    return [];
   },
 
   async getApplicationById(id) {
-    const response = await API.get(`/industry/applications/${id}`);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async updateApplicationStatus(id, status, rejectionReason = null) {
-    const response = await API.patch(`/industry/applications/${id}/status`, {
-      status,
-      rejectionReason,
-    });
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async shortlistApplication(id) {
-    const response = await API.post(`/industry/applications/${id}/shortlist`);
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async selectApplication(id, joiningDate = null) {
-    const response = await API.post(`/industry/applications/${id}/select`, { joiningDate });
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async rejectApplication(id, reason) {
-    const response = await API.post(`/industry/applications/${id}/reject`, { reason });
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   // Profile
   async getProfile() {
-    const response = await API.get('/industry/profile');
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   async updateProfile(data, logo = null) {
-    const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
-        formData.append(key, value);
-      }
-    });
-    if (logo) {
-      formData.append('logo', logo);
-    }
-    const response = await API.put('/industry/profile', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return response.data;
+    throw new Error('Industry portal no longer available - only self-identified internships supported');
   },
 
   // Statistics
   async getStatistics() {
-    const response = await API.get('/industry/statistics');
-    return response.data;
+    return {
+      totalPostings: 0,
+      activePostings: 0,
+      totalApplications: 0,
+      pendingApplications: 0,
+    };
   },
 };
 

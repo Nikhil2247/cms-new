@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import industryService from '../../../services/industry.service';
-import { CACHE_DURATIONS, isCacheValid } from '../../../utils/cacheConfig';
+
+// Note: Industry portal has been removed. All async thunks will reject with an error message.
 
 const initialState = {
   dashboard: {
@@ -42,87 +42,22 @@ const initialState = {
 
 export const fetchIndustryDashboard = createAsyncThunk(
   'industry/fetchDashboard',
-  async (params, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.industry.lastFetched.dashboard;
-
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
-        return { cached: true };
-      }
-
-      const response = await industryService.getDashboard();
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
-    }
+  async (params, { rejectWithValue }) => {
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const fetchMyPostings = createAsyncThunk(
   'industry/fetchMyPostings',
-  async (params = {}, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.industry.lastFetched.postings;
-
-      // Cache must be param-aware; otherwise pagination/search may show stale data.
-      const normalizedParams = {
-        page: params?.page ?? 1,
-        limit: params?.limit ?? 10,
-        search: params?.search ?? '',
-        status: params?.status ?? '',
-      };
-      const requestKey = JSON.stringify(normalizedParams);
-      const lastKey = state.industry.lastFetched.postingsKey;
-
-      if (
-        !params?.forceRefresh &&
-        lastKey === requestKey &&
-        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
-      ) {
-        return { cached: true };
-      }
-
-      const response = await industryService.getMyPostings(params);
-      return { ...response, _cacheKey: requestKey };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch postings');
-    }
+  async (params = {}, { rejectWithValue }) => {
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const fetchMyApplications = createAsyncThunk(
   'industry/fetchMyApplications',
-  async (params = {}, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.industry.lastFetched.applications;
-
-      // Cache must be param-aware; otherwise pagination/search may show stale data.
-      const normalizedParams = {
-        page: params?.page ?? 1,
-        limit: params?.limit ?? 10,
-        search: params?.search ?? '',
-        status: params?.status ?? '',
-        postingId: params?.postingId ?? '',
-      };
-      const requestKey = JSON.stringify(normalizedParams);
-      const lastKey = state.industry.lastFetched.applicationsKey;
-
-      if (
-        !params?.forceRefresh &&
-        lastKey === requestKey &&
-        isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)
-      ) {
-        return { cached: true };
-      }
-
-      const response = await industryService.getMyApplications(params);
-      return { ...response, _cacheKey: requestKey };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch applications');
-    }
+  async (params = {}, { rejectWithValue }) => {
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
@@ -130,48 +65,28 @@ export const fetchMyApplications = createAsyncThunk(
 export const createPosting = createAsyncThunk(
   'industry/createPosting',
   async (postingData, { rejectWithValue }) => {
-    try {
-      const response = await industryService.createPosting(postingData);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to create posting');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const updatePosting = createAsyncThunk(
   'industry/updatePosting',
   async ({ id, data }, { rejectWithValue }) => {
-    try {
-      const response = await industryService.updatePosting(id, data);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update posting');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const deletePosting = createAsyncThunk(
   'industry/deletePosting',
   async (id, { rejectWithValue }) => {
-    try {
-      const response = await industryService.deletePosting(id);
-      return { id, ...response };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete posting');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const togglePostingStatus = createAsyncThunk(
   'industry/togglePostingStatus',
   async ({ id, isActive }, { rejectWithValue }) => {
-    try {
-      const response = await industryService.togglePostingStatus(id, isActive);
-      return { id, isActive, ...response };
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to toggle posting status');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
@@ -179,80 +94,43 @@ export const togglePostingStatus = createAsyncThunk(
 export const updateApplicationStatus = createAsyncThunk(
   'industry/updateApplicationStatus',
   async ({ id, status, rejectionReason }, { rejectWithValue }) => {
-    try {
-      const response = await industryService.updateApplicationStatus(id, status, rejectionReason);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update application status');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const shortlistApplication = createAsyncThunk(
   'industry/shortlistApplication',
   async (id, { rejectWithValue }) => {
-    try {
-      const response = await industryService.shortlistApplication(id);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to shortlist application');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const selectApplication = createAsyncThunk(
   'industry/selectApplication',
   async ({ id, joiningDate }, { rejectWithValue }) => {
-    try {
-      const response = await industryService.selectApplication(id, joiningDate);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to select application');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const rejectApplication = createAsyncThunk(
   'industry/rejectApplication',
   async ({ id, reason }, { rejectWithValue }) => {
-    try {
-      const response = await industryService.rejectApplication(id, reason);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to reject application');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 // Profile
 export const fetchProfile = createAsyncThunk(
   'industry/fetchProfile',
-  async (params, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.industry.lastFetched.profile;
-
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.PROFILE)) {
-        return { cached: true };
-      }
-
-      const response = await industryService.getProfile();
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile');
-    }
+  async (params, { rejectWithValue }) => {
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 
 export const updateProfile = createAsyncThunk(
   'industry/updateProfile',
   async (profileData, { rejectWithValue }) => {
-    try {
-      const response = await industryService.updateProfile(profileData);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
-    }
+    return rejectWithValue('Industry portal has been removed. This feature is no longer available.');
   }
 );
 

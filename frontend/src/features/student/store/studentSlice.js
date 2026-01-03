@@ -28,11 +28,6 @@ const initialState = {
     loading: false,
     error: null,
   },
-  availableInternships: {
-    list: [],
-    loading: false,
-    error: null,
-  },
   applications: {
     list: [],
     loading: false,
@@ -59,7 +54,6 @@ const initialState = {
     internships: null,
     reports: null,
     enrollments: null,
-    availableInternships: null,
     applications: null,
     mentor: null,
     grievances: null,
@@ -201,36 +195,19 @@ export const updateProfile = createAsyncThunk(
   }
 );
 
-// Internship application
+// Internship application - STUBBED (industry internship browsing removed)
 export const applyForInternship = createAsyncThunk(
   'student/applyForInternship',
   async ({ internshipId, applicationData }, { rejectWithValue }) => {
-    try {
-      const response = await studentService.applyForInternship(internshipId, applicationData);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to apply for internship');
-    }
+    return rejectWithValue('Industry internship browsing has been removed. Please use self-identified internships.');
   }
 );
 
-// Available internships
+// Available internships - STUBBED (industry internship browsing removed)
 export const fetchAvailableInternships = createAsyncThunk(
   'student/fetchAvailableInternships',
-  async (filters, { getState, rejectWithValue }) => {
-    try {
-      const state = getState();
-      const lastFetched = state.student.lastFetched.availableInternships;
-
-      if (!filters?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.LISTS)) {
-        return { cached: true };
-      }
-
-      const response = await studentService.getAvailableInternships(filters);
-      return response;
-    } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch available internships');
-    }
+  async (filters, { rejectWithValue }) => {
+    return rejectWithValue('Industry internship browsing has been removed. Please use self-identified internships.');
   }
 );
 
@@ -534,39 +511,8 @@ const studentSlice = createSlice({
         state.internships.error = action.payload;
       })
 
-      // Available Internships
-      .addCase(fetchAvailableInternships.pending, (state) => {
-        state.availableInternships.loading = true;
-        state.availableInternships.error = null;
-      })
-      .addCase(fetchAvailableInternships.fulfilled, (state, action) => {
-        state.availableInternships.loading = false;
-        if (!action.payload.cached) {
-          state.availableInternships.list = action.payload.data || action.payload;
-          state.lastFetched.availableInternships = Date.now();
-        }
-      })
-      .addCase(fetchAvailableInternships.rejected, (state, action) => {
-        state.availableInternships.loading = false;
-        state.availableInternships.error = action.payload;
-      })
-
-      // Apply for internship
-      .addCase(applyForInternship.pending, (state) => {
-        state.internships.loading = true;
-        state.internships.error = null;
-      })
-      .addCase(applyForInternship.fulfilled, (state, action) => {
-        state.internships.loading = false;
-        // Add to internships list
-        state.internships.list = [action.payload, ...state.internships.list];
-        state.lastFetched.internships = null; // Invalidate cache after mutation
-        state.lastFetched.applications = null; // Also invalidate applications
-      })
-      .addCase(applyForInternship.rejected, (state, action) => {
-        state.internships.loading = false;
-        state.internships.error = action.payload;
-      })
+      // Available Internships - REMOVED (industry internship browsing removed)
+      // Apply for internship - REMOVED (industry internship browsing removed)
 
       // Reports
       .addCase(fetchMyReports.pending, (state) => {

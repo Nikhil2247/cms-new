@@ -1684,7 +1684,6 @@ export class StudentService {
     category: string;
     description: string;
     severity?: string;
-    internshipId?: string;
     // industryId removed - Industry model no longer exists
     actionRequested?: string;
     preferredContactMethod?: string;
