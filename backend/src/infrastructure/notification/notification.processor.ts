@@ -343,20 +343,5 @@ export class NotificationProcessor extends WorkerHost {
     if (!settingKey) {
       return true;
     }
-
-    try {
-      const settings = await this.prisma.notificationSettings.findUnique({
-        where: { userId },
-      });
-
-      // If no settings, default to enabled
-      if (!settings) {
-        return true;
-      }
-
-      return settings[settingKey as keyof typeof settings] === true;
-    } catch {
-      return true;
-    }
-  }
+}
 }

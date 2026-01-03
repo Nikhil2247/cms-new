@@ -53,7 +53,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           isActive: true,
           mentor: {
             active: true,
-            role: 'FACULTY_SUPERVISOR',
+            role: 'TEACHER',
           },
         },
         include: {

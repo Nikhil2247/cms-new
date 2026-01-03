@@ -35,7 +35,7 @@ export class GrievanceController {
    * Other roles see grievances for their institution
    */
   @Get()
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async getAllGrievances(@Query() params: any, @Request() req: any) {
     // STATE_DIRECTORATE users can see all grievances across all institutions
     if (req.user.role === 'STATE_DIRECTORATE') {
@@ -58,7 +58,7 @@ export class GrievanceController {
    * STATE_DIRECTORATE users see stats for ALL grievances (no institution filter)
    */
   @Get('statistics')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async getStatistics(@Query('institutionId') institutionId?: string, @Request() req?: any) {
     // STATE_DIRECTORATE users see global statistics
     if (req?.user?.role === 'STATE_DIRECTORATE') {
@@ -86,7 +86,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
    */
   @Get('institution/:institutionId')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async getGrievancesByInstitution(@Param('institutionId') institutionId: string) {
     return this.grievanceService.getGrievancesByInstitution(institutionId);
   }
@@ -96,7 +96,7 @@ export class GrievanceController {
    * Access: TEACHER, FACULTY_SUPERVISOR, PRINCIPAL
    */
   @Get('faculty/:userId')
-  @Roles('TEACHER', 'FACULTY_SUPERVISOR', 'PRINCIPAL')
+  @Roles('TEACHER', 'PRINCIPAL')
   async getGrievancesByFaculty(@Param('userId') userId: string, @Request() req: any) {
     // Faculty can only see their own assigned grievances unless they're admin
     if (req.user.userId !== userId && !['STATE_DIRECTORATE', 'PRINCIPAL'].includes(req.user.role)) {
@@ -174,7 +174,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Post(':id/respond')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
   async respondToGrievance(
     @Param('id') id: string,
     @Body() data: RespondToGrievanceDto,
@@ -188,7 +188,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Post(':id/escalate')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
   async escalateGrievance(
     @Param('id') id: string,
     @Body() data: EscalateGrievanceDto,
@@ -202,7 +202,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
    */
   @Patch(':id/assign')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async assignGrievance(
     @Param('id') id: string,
     @Body() data: AssignGrievanceDto,
@@ -216,7 +216,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR, TEACHER
    */
   @Patch(':id/status')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR', 'TEACHER')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'TEACHER')
   async updateGrievanceStatus(
     @Param('id') id: string,
     @Body() data: { status: GrievanceStatus; remarks?: string },
@@ -230,7 +230,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
    */
   @Patch(':id/close')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async closeGrievance(
     @Param('id') id: string,
     @Body() data: { remarks?: string },
@@ -244,7 +244,7 @@ export class GrievanceController {
    * Access: STATE_DIRECTORATE, PRINCIPAL, FACULTY_SUPERVISOR
    */
   @Patch(':id/reject')
-  @Roles('STATE_DIRECTORATE', 'PRINCIPAL', 'FACULTY_SUPERVISOR')
+  @Roles('STATE_DIRECTORATE', 'PRINCIPAL')
   async rejectGrievance(
     @Param('id') id: string,
     @Body() data: { reason: string },

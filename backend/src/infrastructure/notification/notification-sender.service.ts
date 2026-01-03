@@ -512,21 +512,5 @@ export class NotificationSenderService {
     if (!settingKey) {
       return true;
     }
-
-    try {
-      const settings = await this.prisma.notificationSettings.findUnique({
-        where: { userId },
-      });
-
-      // If no settings, default to enabled
-      if (!settings) {
-        return true;
-      }
-
-      return settings[settingKey as keyof typeof settings] === true;
-    } catch (error) {
-      this.logger.warn(`Failed to check notification settings for user ${userId}, defaulting to enabled`);
-      return true;
-    }
   }
 }
