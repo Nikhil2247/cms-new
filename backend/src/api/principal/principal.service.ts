@@ -407,7 +407,8 @@ export class PrincipalService {
           branch: { select: { id: true, name: true } },
           mentorAssignments: {
             where: { isActive: true },
-            include: {
+            select: {
+              id: true,
               mentor: { select: { id: true, name: true } },
             },
             take: 1,

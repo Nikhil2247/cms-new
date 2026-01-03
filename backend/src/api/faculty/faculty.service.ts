@@ -159,13 +159,6 @@ export class FacultyService {
         branch: true,
         Institution: true,
         internshipApplications: {
-          include: {
-            internship: {
-              include: {
-                industry: true,
-              },
-            },
-          },
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -242,10 +235,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { isActive: true },
               isActive: true,
-              OR: [
-                { isSelfIdentified: true },
-                { internshipId: null },
-              ],
+              isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
             },
           }),
@@ -257,10 +247,7 @@ export class FacultyService {
                 studentId: { in: studentIds },
                 student: { isActive: true },
                 isActive: true,
-                OR: [
-                  { isSelfIdentified: true },
-                  { internshipId: null },
-                ],
+                isSelfIdentified: true,
                 startDate: { lte: new Date() }, // Only count if internship has started
               },
               status: MonthlyReportStatus.SUBMITTED,
@@ -272,10 +259,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { isActive: true },
               isActive: true,
-              OR: [
-                { isSelfIdentified: true },
-                { internshipId: null },
-              ],
+              isSelfIdentified: true,
               status: ApplicationStatus.APPLIED,
             },
           }),
@@ -309,10 +293,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { isActive: true },
               isActive: true,
-              OR: [
-                { isSelfIdentified: true },
-                { internshipId: null },
-              ],
+              isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
               joiningLetterUrl: null,
             },
@@ -323,10 +304,7 @@ export class FacultyService {
               studentId: { in: studentIds },
               student: { isActive: true },
               isActive: true,
-              OR: [
-                { isSelfIdentified: true },
-                { internshipId: null },
-              ],
+              isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
             },
           }),
@@ -437,19 +415,11 @@ export class FacultyService {
               internshipApplications: {
                 where: {
                   isActive: true,
-                  OR: [
-                    { isSelfIdentified: true },
-                    { internshipId: null }, // No linked internship = self-identified
-                  ],
+                  isSelfIdentified: true,
                   // Only show active/approved internships for assigned students
                   status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
                 },
                 include: {
-                  internship: {
-                    include: {
-                      industry: true,
-                    },
-                  },
                   monthlyReports: {
                     orderBy: { createdAt: 'desc' as const },
                     take: 5,
@@ -517,17 +487,9 @@ export class FacultyService {
         internshipApplications: {
           where: {
             isActive: true,
-            OR: [
-              { isSelfIdentified: true },
-              { internshipId: null }, // No linked internship = self-identified
-            ],
+            isSelfIdentified: true,
           },
           include: {
-            internship: {
-              include: {
-                industry: true,
-              },
-            },
             monthlyReports: {
               orderBy: { reportMonth: 'asc' },
             },
@@ -623,18 +585,6 @@ export class FacultyService {
                 profileImage: true,
               },
             },
-            internship: {
-              include: {
-                industry: {
-                  select: {
-                    id: true,
-                    companyName: true,
-                    city: true,
-                    address: true,
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -687,17 +637,6 @@ export class FacultyService {
                   id: true,
                   name: true,
                   rollNumber: true,
-                },
-              },
-              internship: {
-                include: {
-                  industry: {
-                    select: {
-                      id: true,
-                      companyName: true,
-                      city: true,
-                    },
-                  },
                 },
               },
             },
@@ -862,11 +801,6 @@ export class FacultyService {
         application: {
           include: {
             student: true,
-            internship: {
-              include: {
-                industry: true,
-              },
-            },
           },
         },
       },
@@ -890,8 +824,8 @@ export class FacultyService {
       newValues: {
         visitLogId: visitLog.id,
         applicationId: application.id,
-        studentId: visitLog.application?.student?.id,
-        studentName: visitLog.application?.student?.name,
+        studentId: visitLog.application.student.id,
+        studentName: visitLog.application.student.name,
         visitType,
         visitLocation,
         visitDate: visitLog.visitDate,
@@ -913,7 +847,13 @@ export class FacultyService {
   async updateVisitLog(id: string, updateVisitLogDto: any, facultyId: string) {
     const visitLog = await this.prisma.facultyVisitLog.findUnique({
       where: { id },
-      include: { application: { include: { student: true } } },
+      include: {
+        application: {
+          include: {
+            student: true
+          }
+        }
+      },
     });
 
     if (!visitLog) {
@@ -1060,7 +1000,13 @@ export class FacultyService {
   async deleteVisitLog(id: string, facultyId: string) {
     const visitLog = await this.prisma.facultyVisitLog.findUnique({
       where: { id },
-      include: { application: { include: { student: true } } },
+      include: {
+        application: {
+          include: {
+            student: true
+          }
+        }
+      },
     });
 
     if (!visitLog) {
@@ -1075,8 +1021,8 @@ export class FacultyService {
     const deletedInfo = {
       visitLogId: id,
       applicationId: visitLog.applicationId,
-      studentId: visitLog.application?.studentId,
-      studentName: visitLog.application?.student?.name,
+      studentId: visitLog.application.studentId,
+      studentName: visitLog.application.student.name,
       visitType: visitLog.visitType,
       visitLocation: visitLog.visitLocation,
       visitDate: visitLog.visitDate,
@@ -1171,16 +1117,6 @@ export class FacultyService {
                   id: true,
                   name: true,
                   rollNumber: true,
-                },
-              },
-              internship: {
-                include: {
-                  industry: {
-                    select: {
-                      id: true,
-                      companyName: true,
-                    },
-                  },
                 },
               },
             },
@@ -1371,9 +1307,6 @@ export class FacultyService {
           rejectionReason: approvalDto.reviewRemarks,
         }),
       },
-      include: {
-        student: true,
-      },
     });
 
     // Get faculty for audit
@@ -1387,15 +1320,15 @@ export class FacultyService {
       userId: approvalDto.facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Self-identified internship ${approvalDto.status.toLowerCase()}: ${updated.student?.name} at ${application.companyName}`,
+      description: `Self-identified internship ${approvalDto.status.toLowerCase()}: ${application.student?.name} at ${application.companyName}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
       oldValues: { status: oldStatus },
       newValues: {
         status: newStatus,
-        studentId: updated.studentId,
-        studentName: updated.student?.name,
+        studentId: application.studentId,
+        studentName: application.student?.name,
         companyName: application.companyName,
         reviewRemarks: approvalDto.reviewRemarks,
       },
@@ -1408,128 +1341,21 @@ export class FacultyService {
 
   /**
    * Submit monthly feedback for student (from faculty perspective)
+   * Note: MonthlyFeedback model has been removed from the schema
    */
   async submitMonthlyFeedback(facultyId: string, feedbackDto: any) {
-    const { applicationId, ...feedbackData } = feedbackDto;
-
-    // Verify application and mentor relationship (active applications only)
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        id: applicationId,
-        isActive: true,
-        mentorId: facultyId,
-      },
-      include: { student: true },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Application not found or you are not the assigned mentor');
-    }
-
-    // Note: Monthly feedback is typically submitted by industry, but faculty can add observations
-    // This could be an internal note or observation
-
-    const feedback = await this.prisma.monthlyFeedback.create({
-      data: {
-        applicationId,
-        studentId: application.studentId,
-        internshipId: application.internshipId,
-        submittedBy: facultyId,
-        ...feedbackData,
-      },
-    });
-
-    // Get faculty for audit
-    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
-
-    // Audit feedback submission
-    this.auditService.log({
-      action: AuditAction.MONTHLY_FEEDBACK_SUBMIT,
-      entityType: 'MonthlyFeedback',
-      entityId: feedback.id,
-      userId: facultyId,
-      userName: faculty?.name,
-      userRole: faculty?.role || Role.TEACHER,
-      description: `Monthly feedback submitted for student: ${application.student?.name}`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: AuditSeverity.LOW,
-      institutionId: faculty?.institutionId || undefined,
-      newValues: {
-        feedbackId: feedback.id,
-        applicationId,
-        studentId: application.studentId,
-        studentName: application.student?.name,
-        feedbackMonth: feedbackData.feedbackMonth,
-      },
-    }).catch(() => {});
-
-    await this.cache.invalidateByTags(['feedback', `application:${applicationId}`]);
-
-    return feedback;
+    throw new BadRequestException('Monthly feedback feature is not available. This model has been removed from the system.');
   }
 
   /**
    * Get feedback history
+   * Note: MonthlyFeedback model has been removed from the schema
    */
   async getFeedbackHistory(
     facultyId: string,
     params: { page?: number; limit?: number; studentId?: string },
   ) {
-    const { studentId } = params;
-    const page = Number(params.page) || 1;
-    const limit = Number(params.limit) || 10;
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.MonthlyFeedbackWhereInput = {
-      application: {
-        mentorId: facultyId,
-      },
-    };
-
-    if (studentId) {
-      where.studentId = studentId;
-    }
-
-    const [feedback, total] = await Promise.all([
-      this.prisma.monthlyFeedback.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          application: {
-            include: {
-              student: {
-                select: {
-                  id: true,
-                  name: true,
-                  rollNumber: true,
-                },
-              },
-              internship: {
-                include: {
-                  industry: {
-                    select: {
-                      id: true,
-                      companyName: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
-        orderBy: { feedbackMonth: 'desc' },
-      }),
-      this.prisma.monthlyFeedback.count({ where }),
-    ]);
-
-    return {
-      feedback,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    throw new BadRequestException('Feedback history feature is not available. MonthlyFeedback model has been removed from the system.');
   }
 
   // ==================== Internship Management ====================
@@ -1556,17 +1382,6 @@ export class FacultyService {
     const internships = await this.prisma.internshipApplication.findMany({
       where: { studentId, isActive: true },
       include: {
-        internship: {
-          include: {
-            industry: {
-              select: {
-                id: true,
-                companyName: true,
-                address: true,
-              },
-            },
-          },
-        },
         mentor: {
           select: {
             id: true,
@@ -1654,11 +1469,6 @@ export class FacultyService {
       data: updateData,
       include: {
         student: true,
-        internship: {
-          include: {
-            industry: true,
-          },
-        },
       },
     });
 
@@ -2038,8 +1848,11 @@ export class FacultyService {
       this.prisma.internshipApplication.count({ where }),
     ]);
 
+    // Remove internship/industry includes from the select
+    const lettersWithoutInternship = letters.map(({ internship, ...letter }) => letter);
+
     return {
-      letters,
+      letters: lettersWithoutInternship,
       total,
       page,
       limit,
@@ -2390,62 +2203,10 @@ export class FacultyService {
 
   /**
    * Create assignment for student
+   * Note: MonthlyFeedback model has been removed from the schema
    */
   async createAssignment(facultyId: string, assignmentData: any) {
-    const { studentId, title, description, dueDate, ...rest } = assignmentData;
-
-    if (!studentId) {
-      throw new BadRequestException('Student ID is required');
-    }
-
-    // Verify faculty is assigned to this student
-    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
-      where: {
-        mentorId: facultyId,
-        studentId,
-        isActive: true,
-      },
-    });
-
-    if (!mentorAssignment) {
-      throw new BadRequestException('You are not authorized to create assignments for this student');
-    }
-
-    // Get the student's active application (active applications only)
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId,
-        isActive: true,
-        status: { in: ['JOINED', 'APPROVED'] },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    // Create as a monthly feedback entry (since there's no Assignment model)
-    // This acts as a task/assignment for the student
-    const assignment = await this.prisma.monthlyFeedback.create({
-      data: {
-        studentId,
-        applicationId: application?.id,
-        internshipId: application?.internshipId,
-        submittedBy: facultyId,
-        feedbackMonth: new Date().getMonth() + 1,
-        feedbackYear: new Date().getFullYear(),
-        // Store assignment details in available fields
-        facultyObservations: title,
-        areasOfImprovement: description,
-        // Additional metadata
-        ...rest,
-      },
-    });
-
-    await this.cache.invalidateByTags(['feedback', `student:${studentId}`]);
-
-    return {
-      success: true,
-      message: 'Assignment created successfully',
-      data: assignment,
-    };
+    throw new BadRequestException('Assignment creation is not available. MonthlyFeedback model has been removed from the system.');
   }
 
   /**
@@ -2530,16 +2291,6 @@ export class FacultyService {
             id: true,
             name: true,
             rollNumber: true,
-          },
-        },
-        internship: {
-          include: {
-            industry: {
-              select: {
-                id: true,
-                companyName: true,
-              },
-            },
           },
         },
       },

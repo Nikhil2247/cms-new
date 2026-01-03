@@ -289,16 +289,8 @@ export class StudentService {
           },
         });
 
-        // Get available internships count
-        const availableInternships = await this.prisma.internship.count({
-          where: {
-            status: InternshipStatus.ACTIVE,
-            isActive: true,
-            applicationDeadline: {
-              gte: new Date(),
-            },
-          },
-        });
+        // Get available internships count - Internship model removed
+        const availableInternships = 0;
 
         // FIXED: Get total self-identified applications count - filter by appropriate status
         const totalApplications = await this.prisma.internshipApplication.count({
@@ -381,6 +373,11 @@ export class StudentService {
             },
           },
         },
+        Institution: {
+          select: {
+            name: true,
+          },
+        },
         batch: true,
         branch: true,
         mentorAssignments: {
@@ -418,7 +415,6 @@ export class StudentService {
             totalExpectedVisits: true,
             createdAt: true,
             updatedAt: true,
-            // Internship model removed - self-identified only
             mentor: {
               select: {
                 id: true,
@@ -656,22 +652,8 @@ export class StudentService {
       this.prisma.internship.count({ where }),
     ]);
 
-    // Check if student has already applied to these internships
-    const internshipIds = internships.map(i => i.id);
-    const existingApplications = await this.prisma.internshipApplication.findMany({
-      where: {
-        studentId: student.id,
-        internshipId: { in: internshipIds },
-      },
-      select: {
-        internshipId: true,
-        status: true,
-      },
-    });
-
-    const applicationsMap = new Map(
-      existingApplications.map(app => [app.internshipId, app.status])
-    );
+    // Internship model removed - no need to check applications
+    const applicationsMap = new Map();
 
     const internshipsWithStatus = internships.map(internship => ({
       ...internship,
@@ -707,22 +689,8 @@ export class StudentService {
 
     const studentId = student.id;
 
-    // Check if internship exists and is active
-    const internship = await this.prisma.internship.findUnique({
-      where: { id: internshipId },
-    });
-
-    if (!internship) {
-      throw new NotFoundException('Internship not found');
-    }
-
-    if (internship.status !== InternshipStatus.ACTIVE || !internship.isActive) {
-      throw new BadRequestException('Internship is not active');
-    }
-
-    if (new Date(internship.applicationDeadline) < new Date()) {
-      throw new BadRequestException('Application deadline has passed');
-    }
+    // Internship model removed - throw error
+    throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
 
     // Check if student has already applied
     const existingApplication = await this.prisma.internshipApplication.findFirst({
@@ -751,13 +719,9 @@ export class StudentService {
     const application = await this.prisma.internshipApplication.create({
       data: {
         studentId,
-        internshipId,
         status: ApplicationStatus.APPLIED,
         isSelfIdentified: false,
         ...applicationDto,
-      },
-      include: {
-        // Internship model removed - self-identified only
       },
     });
 
@@ -869,18 +833,7 @@ export class StudentService {
       throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
     }
 
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId: student.id,
-        internshipId,
-      },
-      select: {
-        id: true,
-        status: true,
-        appliedDate: true,
-        isSelfIdentified: true,
-      },
-    });
+    const application = null; // Internship model removed
 
     return { internship, application };
   }
@@ -935,7 +888,6 @@ export class StudentService {
 
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id: applicationId },
-      include: { internship: true },
     });
 
     if (!application) {
@@ -967,9 +919,6 @@ export class StudentService {
       where: { id: applicationId },
       data: {
         status: ApplicationStatus.WITHDRAWN,
-      },
-      include: {
-        // Internship model removed - self-identified only
       },
     });
 
@@ -1901,8 +1850,6 @@ export class StudentService {
         category: grievanceDto.category as any,
         description: grievanceDto.description,
         severity: (grievanceDto.severity as any) || 'MEDIUM',
-        internshipId: grievanceDto.internshipId,
-        // industryId removed - Industry model no longer exists
         actionRequested: grievanceDto.actionRequested,
         preferredContactMethod: grievanceDto.preferredContactMethod,
         attachments: grievanceDto.attachments || [],
