@@ -821,11 +821,6 @@ export class UpdateInternshipDto {
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Has student joined' })
-  @IsOptional()
-  @IsBoolean()
-  hasJoined?: boolean;
-
   @ApiPropertyOptional({ description: 'Is student selected' })
   @IsOptional()
   @IsBoolean()
@@ -847,6 +842,17 @@ export class UpdateInternshipDto {
   @IsNumber()
   @Type(() => Number)
   internshipDuration?: number;
+
+  @ApiPropertyOptional({ description: 'Date when application was reviewed' })
+  @IsOptional()
+  @IsDateString()
+  reviewedAt?: string;
+
+  @ApiPropertyOptional({ description: 'Review remarks/comments' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  reviewRemarks?: string;
 }
 
 // ==================== Joining Letter DTOs ====================

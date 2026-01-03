@@ -170,7 +170,13 @@
       "WebFetch(domain:strobes.co)",
       "WebFetch(domain:pwonlyias.com)",
       "Bash(npx prisma migrate dev:*)",
-      "Bash(node prisma/query-duplicates.js:*)"
+      "Bash(node prisma/query-duplicates.js:*)",
+      "Bash(timeout 30 npx tsc:*)",
+      "Bash(timeout 20 npx tsc:*)",
+      "Bash(Get-Date -Format \"yyyyMMddHHmmss\")",
+      "Bash(dir /B \"C:\\\\Users\\\\hp\\\\Videos\\\\cms-new\")",
+      "Bash(dir \"C:\\\\Users\\\\hp\\\\Videos\\\\cms-new\")",
+      "Bash(wc:*)"
     ]
   }
 }

@@ -104,20 +104,31 @@ export class StateDashboardService {
           }),
           // Count self-identified internships only
           this.prisma.internshipApplication.count({
-            where: { isSelfIdentified: true },
+            where: {
+              isSelfIdentified: true,
+              student: { isActive: true },
+            },
           }),
           this.prisma.internshipApplication.count({
             where: {
               isSelfIdentified: true,
               status: ApplicationStatus.APPROVED,
+              student: { isActive: true },
             },
           }),
           // All application counts are for self-identified only
           this.prisma.internshipApplication.count({
-            where: { isSelfIdentified: true },
+            where: {
+              isSelfIdentified: true,
+              student: { isActive: true },
+            },
           }),
           this.prisma.internshipApplication.count({
-            where: { isSelfIdentified: true, status: ApplicationStatus.APPROVED },
+            where: {
+              isSelfIdentified: true,
+              status: ApplicationStatus.APPROVED,
+              student: { isActive: true },
+            },
           }),
           this.prisma.industry.count(),
           this.prisma.industry.count({
@@ -139,6 +150,7 @@ export class StateDashboardService {
             where: {
               isActive: true,
               student: {
+                isActive: true,
                 internshipApplications: {
                   some: {
                     isSelfIdentified: true,
@@ -156,6 +168,7 @@ export class StateDashboardService {
               visitDate: { gte: startOfTargetMonth, lte: endOfTargetMonth },
               application: {
                 startDate: { lte: endOfTargetMonth },
+                student: { isActive: true },
               },
             },
           }),
@@ -165,6 +178,7 @@ export class StateDashboardService {
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
                 startDate: { lte: endOfPrevMonth },
+                student: { isActive: true },
               },
             },
           }),
@@ -173,6 +187,7 @@ export class StateDashboardService {
             where: {
               application: {
                 startDate: { lte: endOfTargetMonth },
+                student: { isActive: true },
               },
             },
           }),
@@ -182,6 +197,7 @@ export class StateDashboardService {
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
+              student: { isActive: true },
             },
           }),
           // Monthly reports - submitted previous month (with auto-approval, all are APPROVED)
@@ -190,25 +206,39 @@ export class StateDashboardService {
               reportMonth: prevMonth,
               reportYear: prevMonthYear,
               status: 'APPROVED',
+              student: { isActive: true },
             },
           }),
           // Monthly reports - pending review (should be 0 with auto-approval, kept for legacy)
-          this.prisma.monthlyReport.count({ where: { status: 'SUBMITTED' } }),
+          this.prisma.monthlyReport.count({
+            where: {
+              status: 'SUBMITTED',
+              student: { isActive: true },
+            },
+          }),
           // Monthly reports - approved for target month
           this.prisma.monthlyReport.count({
             where: {
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
+              student: { isActive: true },
             },
           }),
           // Total reports submitted (with auto-approval, all are APPROVED)
           this.prisma.monthlyReport.count({
-            where: { status: 'APPROVED' },
+            where: {
+              status: 'APPROVED',
+              student: { isActive: true },
+            },
           }),
           // Recent activity
           this.prisma.internshipApplication.count({
-            where: { isSelfIdentified: true, createdAt: { gte: lastWeek } },
+            where: {
+              isSelfIdentified: true,
+              createdAt: { gte: lastWeek },
+              student: { isActive: true },
+            },
           }),
           this.prisma.industry.count({
             where: { createdAt: { gte: lastMonthDate } },
@@ -230,6 +260,7 @@ export class StateDashboardService {
             isSelfIdentified: true,
             status: ApplicationStatus.APPROVED,
             startDate: { not: null, lte: endOfTargetMonth },
+            student: { isActive: true },
             OR: [
               { endDate: { gte: startOfTargetMonth } },
               { endDate: null },
@@ -729,12 +760,14 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               status: ApplicationStatus.APPROVED,
+              student: { isActive: true },
             },
           }),
           // Count unique students with active mentor assignments
           this.prisma.mentorAssignment.findMany({
             where: {
               isActive: true,
+              student: { isActive: true },
             },
             select: { studentId: true },
             distinct: ['studentId'],
@@ -745,10 +778,14 @@ export class StateDashboardService {
               isSelfIdentified: true,
               status: ApplicationStatus.APPROVED,
               joiningLetterUrl: { not: null },
+              student: { isActive: true },
             },
           }),
           this.prisma.facultyVisitLog.count({
-            where: { visitDate: { gte: startOfMonth } },
+            where: {
+              visitDate: { gte: startOfMonth },
+              application: { student: { isActive: true } },
+            },
           }),
           // With auto-approval, all submitted reports are APPROVED
           this.prisma.monthlyReport.count({
@@ -756,6 +793,7 @@ export class StateDashboardService {
               reportMonth: currentMonth,
               reportYear: currentYear,
               status: 'APPROVED',
+              student: { isActive: true },
             },
           }),
           // Run institution stats in parallel with state-wide counts
@@ -950,6 +988,7 @@ export class StateDashboardService {
                 reportMonth: targetMonth,
                 reportYear: targetYear,
                 status: 'APPROVED',
+                student: { isActive: true },
               },
               select: {
                 student: { select: { institutionId: true } },
@@ -970,6 +1009,7 @@ export class StateDashboardService {
                 isSelfIdentified: true,
                 status: ApplicationStatus.APPROVED,
                 startDate: { not: null, lte: endOfMonth },
+                student: { isActive: true },
                 OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
               },
               select: {
@@ -1007,7 +1047,10 @@ export class StateDashboardService {
 
             // Get students with active mentor assignments per institution
             const assignmentCounts = await this.prisma.mentorAssignment.findMany({
-              where: { isActive: true },
+              where: {
+                isActive: true,
+                student: { isActive: true },
+              },
               select: {
                 student: { select: { institutionId: true } },
               },
@@ -1032,7 +1075,10 @@ export class StateDashboardService {
           case 'visits': {
             // Get visits this month per institution
             const visitsThisMonth = await this.prisma.facultyVisitLog.findMany({
-              where: { visitDate: { gte: startOfMonth } },
+              where: {
+                visitDate: { gte: startOfMonth },
+                application: { student: { isActive: true } },
+              },
               select: {
                 application: {
                   select: {
@@ -1055,6 +1101,7 @@ export class StateDashboardService {
                 isSelfIdentified: true,
                 status: ApplicationStatus.APPROVED,
                 startDate: { not: null, lte: now },
+                student: { isActive: true },
                 OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
               },
               select: {

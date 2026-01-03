@@ -28,7 +28,7 @@ const AssignedStudentsList = React.memo(() => {
   const students = useMemo(() => {
     return assignedStudentsList?.map(assignment => {
       const student = assignment.student;
-      const activeInternship = student.internshipApplications?.find(app => app.hasJoined && !app.completionDate);
+      const activeInternship = student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate);
       const appliedCount = student.internshipApplications?.length || 0;
 
       return {

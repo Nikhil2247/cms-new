@@ -3,7 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
-import { Prisma, ApplicationStatus, InternshipStatus, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, InternshipStatus, InternshipPhase, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
   calculateExpectedMonths,
@@ -251,10 +251,7 @@ export class StudentService {
             studentId,
             isSelfIdentified: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
-            OR: [
-              { status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] } },
-              { internshipStatus: 'ONGOING' },
-            ],
+            internshipPhase: InternshipPhase.ACTIVE,
           },
           select: {
             id: true,
@@ -1214,7 +1211,7 @@ export class StudentService {
         studentId,
         isSelfIdentified: true,
         status: ApplicationStatus.APPROVED,
-        internshipStatus: 'ONGOING',
+        internshipPhase: InternshipPhase.ACTIVE,
         reviewedAt: new Date(),
         reviewedBy: hasJoiningLetter ? 'SYSTEM' : null, // Auto-approve joining letter
         hasJoined: hasJoiningLetter, // Auto-set hasJoined when joining letter is provided

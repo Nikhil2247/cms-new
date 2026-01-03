@@ -716,6 +716,41 @@ const MentorAssignment = () => {
         ))}
       </div>
 
+      {/* External Mentoring Alert - Our faculty mentoring students from other institutions */}
+      {stats?.externalMentoring?.externalStudentsCount > 0 && (
+        <Alert
+          message={
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GlobalOutlined className="text-purple-600" />
+                <span className="font-semibold">External Mentoring Active</span>
+              </div>
+              <Tag color="purple" className="m-0 text-sm px-3 py-0.5">
+                {stats.externalMentoring.ourMentorsWithExternalAssignments} Faculty • {stats.externalMentoring.externalStudentsCount} External Students
+              </Tag>
+            </div>
+          }
+          description={
+            <div className="mt-2">
+              <Text className="text-xs text-gray-600 block mb-2">
+                Your faculty are mentoring students from other institutions:
+              </Text>
+              <div className="flex flex-wrap gap-2">
+                {stats.externalMentoring.externalInstitutions?.map((inst) => (
+                  <Tag key={inst.id} className="m-0" color="purple">
+                    <BankOutlined className="mr-1" />
+                    {inst.name}
+                  </Tag>
+                ))}
+              </div>
+            </div>
+          }
+          type="info"
+          className="rounded-xl border-purple-200 bg-purple-50"
+          showIcon={false}
+        />
+      )}
+
       <Card
         title={<span className="text-text-primary font-semibold">Mentor Assignment</span>}
         extra={

@@ -38,12 +38,12 @@ const getTimelineItems = (application) => {
     });
   }
 
-  if (application.hasJoined) {
+  if (application.internshipPhase === "ACTIVE") {
     items.push({
       color: 'cyan',
       children: (
         <div>
-          <Text strong>Joined Internship</Text>
+          <Text strong>Internship Active</Text>
           <br />
           <Text type="secondary" className="text-xs">
             {formatDisplayDate(application.joiningDate, true)}

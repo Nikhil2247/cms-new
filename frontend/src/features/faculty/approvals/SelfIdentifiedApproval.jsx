@@ -86,7 +86,7 @@ const SelfIdentifiedApproval = () => {
     setSelectedApplication(record);
     form.resetFields();
     form.setFieldsValue({
-      hasJoined: true,
+      internshipPhase: 'ACTIVE',
       joiningDate: dayjs(),
     });
     setApprovalModalVisible(true);
@@ -133,7 +133,7 @@ const SelfIdentifiedApproval = () => {
 
     setActionLoading(true);
 
-    if (values.hasJoined) {
+    if (values.internshipPhase === 'ACTIVE') {
       // Optimistically remove from list (instant UI update)
       dispatch(optimisticApproveApplication({ applicationId: appToProcess.id }));
 
@@ -155,7 +155,7 @@ const SelfIdentifiedApproval = () => {
             await dispatch(updateInternship({
               internshipId: appToProcess.id,
               data: {
-                hasJoined: true,
+                internshipPhase: 'ACTIVE',
                 joiningDate: values.joiningDate.toISOString(),
               }
             })).unwrap();
@@ -204,13 +204,13 @@ const SelfIdentifiedApproval = () => {
   const getPendingApplications = () => {
     return applications.filter(
       (app) =>
-        (!app.hasJoined && app.status !== "JOINED") ||
+        (app.internshipPhase !== "ACTIVE" && app.status !== "JOINED") ||
         app.status === "UNDER_REVIEW"
     );
   };
 
   const getApprovedApplications = () => {
-    return applications.filter((app) => app.hasJoined || app.status === "JOINED");
+    return applications.filter((app) => app.internshipPhase === "ACTIVE" || app.status === "JOINED");
   };
 
   const columns = [
@@ -311,7 +311,7 @@ const SelfIdentifiedApproval = () => {
       width: "10%",
       render: (_, record) => (
         <div>
-          {record.hasJoined ? (
+          {record.internshipPhase === "ACTIVE" ? (
             <Tag color="green" icon={<CheckCircleOutlined />}>
               Approved
             </Tag>
@@ -344,7 +344,7 @@ const SelfIdentifiedApproval = () => {
           >
             View Details
           </Button>
-          {!record.hasJoined && record.status !== "JOINED" ? (
+          {record.internshipPhase !== "ACTIVE" && record.status !== "JOINED" ? (
             <Space>
               <Button
                 type="primary"
@@ -581,7 +581,7 @@ const SelfIdentifiedApproval = () => {
             >
               Close
             </Button>,
-            selectedApplication && !selectedApplication.hasJoined && (
+            selectedApplication && selectedApplication.internshipPhase !== "ACTIVE" && (
               <Button
                 key="approve"
                 type="primary"
@@ -761,30 +761,30 @@ const SelfIdentifiedApproval = () => {
                 layout="vertical"
                 onFinish={handleSubmitApproval}
                 initialValues={{
-                  hasJoined: true,
+                  internshipPhase: 'ACTIVE',
                   joiningDate: dayjs(),
                 }}
                 className="mt-4"
               >
                 <Form.Item
-                  name="hasJoined"
+                  name="internshipPhase"
                   label={<span className="font-medium" style={{ color: token.colorText }}>Final Status</span>}
                   rules={[{ required: true }]}
                 >
                   <Select className="rounded-lg h-10">
-                    <Option value={true}>Approve - Student joined</Option>
-                    <Option value={false}>Reject - Do not approve</Option>
+                    <Option value="ACTIVE">Approve - Student joined</Option>
+                    <Option value="NOT_STARTED">Reject - Do not approve</Option>
                   </Select>
                 </Form.Item>
 
                 <Form.Item
                   noStyle
                   shouldUpdate={(prevValues, currentValues) =>
-                    prevValues.hasJoined !== currentValues.hasJoined
+                    prevValues.internshipPhase !== currentValues.internshipPhase
                   }
                 >
                   {({ getFieldValue }) =>
-                    getFieldValue("hasJoined") === true ? (
+                    getFieldValue("internshipPhase") === "ACTIVE" ? (
                       <Form.Item
                         name="joiningDate"
                         label={<span className="font-medium" style={{ color: token.colorText }}>Joining Date</span>}

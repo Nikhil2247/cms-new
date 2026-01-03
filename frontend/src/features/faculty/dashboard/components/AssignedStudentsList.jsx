@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space, theme } from 'antd';
+import { Card, Table, Input, Button, Typography, Badge, Tooltip, Space, Tag, theme } from 'antd';
 import {
   TeamOutlined,
   SearchOutlined,
@@ -8,6 +8,7 @@ import {
   ClockCircleOutlined,
   MinusCircleOutlined,
   EnvironmentOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
@@ -275,13 +276,30 @@ const AssignedStudentsList = ({
       render: (_, student) => {
         const name = student.name || student.student?.name || 'N/A';
         const rollNumber = student.rollNumber || student.student?.rollNumber || 'N/A';
+        const isExternal = student.isExternalStudent || false;
+        const institution = student.student?.Institution || student.Institution;
 
         return (
           <div style={{ maxWidth: 140 }}>
-            <Text strong style={{ display: 'block', fontSize: 13 }} ellipsis={{ tooltip: name }}>
-              {name}
-            </Text>
+            <div className="flex items-center gap-1">
+              <Text strong style={{ display: 'block', fontSize: 13 }} ellipsis={{ tooltip: name }}>
+                {name}
+              </Text>
+              {isExternal && (
+                <Tooltip title={`External student from ${institution?.name || 'Other Institution'}`}>
+                  <Tag color="purple" className="m-0 px-1 py-0 text-[9px] leading-[14px] border-0">
+                    <GlobalOutlined style={{ fontSize: '8px' }} />
+                  </Tag>
+                </Tooltip>
+              )}
+            </div>
             <Text type="secondary" style={{ fontSize: 11 }}>{rollNumber}</Text>
+            {isExternal && institution && (
+              <Text type="secondary" style={{ fontSize: 10, display: 'block', marginTop: 2 }} ellipsis={{ tooltip: institution.name }}>
+                <GlobalOutlined style={{ fontSize: 8, marginRight: 2 }} />
+                {institution.code || institution.name}
+              </Text>
+            )}
           </div>
         );
       },

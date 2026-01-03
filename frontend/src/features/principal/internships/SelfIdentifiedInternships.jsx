@@ -147,7 +147,7 @@ const SelfIdentifiedInternships = () => {
             endDate: application?.endDate,
             duration: application?.duration,
             status: application?.status || 'APPROVED',
-            internshipStatus: application?.internshipStatus || student.internshipStatus,
+            internshipPhase: application?.internshipPhase || 'NOT_STARTED',
             mentorName: facultyMentor?.name || student.mentor,
             mentorEmail: facultyMentor?.email,
             mentorContact: facultyMentor?.contact,

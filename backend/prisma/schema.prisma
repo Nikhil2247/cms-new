@@ -1147,9 +1147,11 @@ model InternshipApplication {
   additionalInfo  String?
 
   // Selection Status
-  status       ApplicationStatus @default(APPLIED)
-  appliedDate  DateTime          @default(now())
-  reviewedDate DateTime?
+  status          ApplicationStatus @default(APPLIED)
+  appliedDate     DateTime          @default(now())
+  reviewedDate    DateTime?
+  internshipPhase InternshipPhase   @default(NOT_STARTED)
+  isActive        Boolean           @default(true)
 
   // Industry Decision
   isSelected      Boolean   @default(false)
@@ -1157,7 +1159,6 @@ model InternshipApplication {
   rejectionReason String?
 
   // Joining Information
-  hasJoined      Boolean   @default(false)
   joiningDate    DateTime?
   completionDate DateTime?
 
@@ -1177,7 +1178,6 @@ model InternshipApplication {
   hrDesignation    String?
   hrContact        String?
   hrEmail          String?
-  internshipStatus String? // SELF_IDENTIFIED or OFFERED_BY_COLLEGE
 
   // Joining Letter
   joiningLetterUrl        String?
@@ -1197,7 +1197,6 @@ model InternshipApplication {
   jobProfile         String?
 
   // Review Details
-  reviewedBy    String?
   reviewedAt    DateTime?
   reviewRemarks String?
 
@@ -1236,6 +1235,10 @@ model InternshipApplication {
   @@index([mentorId, isSelfIdentified, status])
   @@index([applicationDate, status])
   @@index([studentId, status, isSelfIdentified])
+  @@index([internshipPhase])
+  @@index([internshipPhase, isActive])
+  @@index([studentId, internshipPhase])
+  @@index([status, internshipPhase])
   @@map("internship_applications")
 }
 
@@ -1881,6 +1884,13 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
+enum InternshipPhase {
+  NOT_STARTED // Before joining date
+  ACTIVE // Currently ongoing
+  COMPLETED // Successfully finished
+  TERMINATED // Ended early/cancelled
+}
+
 enum VisitType {
   PHYSICAL
   VIRTUAL
@@ -2204,7 +2214,7 @@ model SupportTicket {
 
   // Submitter information
   submittedById  String
-  submittedBy    User   @relation("TicketSubmitter", fields: [submittedById], references: [id])
+  submittedBy    User    @relation("TicketSubmitter", fields: [submittedById], references: [id])
   submitterRole  Role
   submitterName  String // Cached for quick reference
   submitterEmail String?
@@ -2515,7 +2525,7 @@ model PasswordHistory {
   id        String   @id @default(uuid())
   userId    String
   user      User     @relation("UserPasswordHistory", fields: [userId], references: [id], onDelete: Cascade)
-  hash      String   // Bcrypt hash of the password
+  hash      String // Bcrypt hash of the password
   createdAt DateTime @default(now())
 
   @@index([userId])

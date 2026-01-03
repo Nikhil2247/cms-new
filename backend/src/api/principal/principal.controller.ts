@@ -183,6 +183,12 @@ export class PrincipalController {
     return this.principalService.getMentorAssignments(req.user.userId);
   }
 
+  @Get('mentors/external-assignments')
+  @ApiOperation({ summary: 'Get external mentor assignments (our faculty mentoring students from other institutions)' })
+  async getExternalMentorAssignments(@Request() req) {
+    return this.principalService.getExternalMentorAssignments(req.user.userId);
+  }
+
   @Post('mentors/assign')
   @ApiOperation({ summary: 'Assign mentor to students' })
   async assignMentor(@Request() req, @Body() assignMentorDto: AssignMentorDto) {

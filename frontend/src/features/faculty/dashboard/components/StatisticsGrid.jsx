@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Card, Tooltip } from 'antd';
+import { Card, Tooltip, Tag } from 'antd';
 import {
   TeamOutlined,
   FileTextOutlined,
@@ -7,6 +7,7 @@ import {
   ExclamationCircleOutlined,
   EyeOutlined,
   FileProtectOutlined,
+  GlobalOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import MonthlyReportsOverviewModal from './MonthlyReportsOverviewModal';
@@ -169,8 +170,10 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     });
   }, [visitLogs, currentMonthStart]);
 
-  // Total students
+  // Total students (with breakdown)
   const totalStudents = stats.totalStudents || students.length || 0;
+  const internalStudents = stats.internalStudents || 0;
+  const externalStudents = stats.externalStudents || 0;
 
   // Expected total for current month - students with active internships
   const expectedTotal = studentsActiveThisMonth.length || totalStudents;
@@ -192,7 +195,30 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
       iconBgColor: '#dbeafe',
       iconColor: '#3b82f6',
       valueColor: '#3b82f6',
-      subtitle: `${expectedTotal} active this month`,
+      subtitle: (() => {
+        const activeCount = stats.activeStudents || expectedTotal;
+        const inactiveCount = totalStudents - activeCount;
+
+        return (
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-1">
+              <span className="text-success text-xs">● {activeCount} active</span>
+              {inactiveCount > 0 && (
+                <span className="text-text-tertiary text-xs">● {inactiveCount} inactive</span>
+              )}
+            </div>
+            {externalStudents > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                <span>{internalStudents} internal</span>
+                <Tag color="purple" className="m-0 px-1 py-0 text-[9px] leading-[14px] border-0">
+                  <GlobalOutlined className="mr-0.5" style={{ fontSize: '8px' }} />
+                  {externalStudents} ext
+                </Tag>
+              </div>
+            )}
+          </div>
+        );
+      })(),
     },
     {
       title: 'Monthly Reports',

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
-import { ApplicationStatus, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
@@ -80,7 +80,7 @@ export class SelfIdentifiedService {
           facultyMentorName: data.mentorName,
           facultyMentorDesignation: data.mentorDesignation,
           status: ApplicationStatus.APPROVED, // Auto-approved
-          internshipStatus: 'ONGOING', // Set internship as ongoing
+          internshipPhase: InternshipPhase.ACTIVE, // Set internship as active
           reviewedAt: new Date(), // Mark as reviewed
         },
         include: {

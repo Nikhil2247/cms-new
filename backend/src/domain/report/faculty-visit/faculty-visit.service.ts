@@ -285,7 +285,14 @@ export class FacultyVisitService {
         cacheKey,
         async () => {
           return await this.prisma.facultyVisitLog.findMany({
-            where: { facultyId },
+            where: {
+              facultyId,
+              application: {
+                student: {
+                  isActive: true,
+                },
+              },
+            },
             include: {
               application: {
                 include: {
@@ -324,7 +331,14 @@ export class FacultyVisitService {
         cacheKey,
         async () => {
           return await this.prisma.facultyVisitLog.findMany({
-            where: { application: { studentId } },
+            where: {
+              application: {
+                studentId,
+                student: {
+                  isActive: true,
+                },
+              },
+            },
             include: {
               faculty: { select: { id: true, name: true, designation: true } },
               application: {
@@ -435,17 +449,17 @@ export class FacultyVisitService {
           const [totalVisits, pendingFollowUps, facultyStats] = await Promise.all([
             this.prisma.facultyVisitLog.count({
               where: {
-                application: { student: { institutionId } },
+                application: { student: { institutionId, isActive: true } },
               },
             }),
             this.prisma.facultyVisitLog.count({
               where: {
-                application: { student: { institutionId } },
+                application: { student: { institutionId, isActive: true } },
                 followUpRequired: true,
               },
             }),
             this.prisma.facultyVisitLog.findMany({
-              where: { application: { student: { institutionId } } },
+              where: { application: { student: { institutionId, isActive: true } } },
               select: { facultyId: true },
             }),
           ]);
@@ -583,7 +597,14 @@ export class FacultyVisitService {
         async () => {
           // Get all visits for application
           const visits = await this.prisma.facultyVisitLog.findMany({
-            where: { applicationId },
+            where: {
+              applicationId,
+              application: {
+                student: {
+                  isActive: true,
+                },
+              },
+            },
             include: {
               faculty: { select: { id: true, name: true, designation: true } },
             },
@@ -703,7 +724,14 @@ export class FacultyVisitService {
   async getVisitsByApplication(applicationId: string) {
     try {
       return await this.prisma.facultyVisitLog.findMany({
-        where: { applicationId },
+        where: {
+          applicationId,
+          application: {
+            student: {
+              isActive: true,
+            },
+          },
+        },
         include: {
           faculty: { select: { id: true, name: true, designation: true } },
         },

@@ -357,9 +357,9 @@ const StudentProgressPage = () => {
     
     // Find active application
     const activeApp = selected.student?.internshipApplications?.find(
-      (app) => app.status === "ACTIVE" || app.status === "ACCEPTED" || app.hasJoined
+      (app) => app.status === "ACTIVE" || app.status === "ACCEPTED" || app.internshipPhase === "ACTIVE"
     );
-    
+
     if (!activeApp) {
       toast.error("Student has no active internship application");
       return;
@@ -384,7 +384,7 @@ const StudentProgressPage = () => {
 
     // Find active application
     const activeApp = selected.student?.internshipApplications?.find(
-      (app) => app.status === "ACTIVE" || app.status === "ACCEPTED" || app.hasJoined
+      (app) => app.status === "ACTIVE" || app.status === "ACCEPTED" || app.internshipPhase === "ACTIVE"
     );
 
     if (!activeApp?.id) {
@@ -440,7 +440,7 @@ const StudentProgressPage = () => {
     setEditInternshipModal({ visible: true, internship: app });
     editInternshipForm.setFieldsValue({
       status: app.status,
-      hasJoined: app.hasJoined,
+      internshipPhase: app.internshipPhase || 'NOT_STARTED',
       isSelected: app.isSelected,
       isApproved: app.isApproved,
       remarks: app.remarks || '',
@@ -845,10 +845,10 @@ const StudentProgressPage = () => {
                                               </div>
                                               <div className="text-right shrink-0">
                                                 <Tag 
-                                                  color={app.hasJoined ? "success" : "processing"}
+                                                  color={app.internshipPhase === "ACTIVE" ? "success" : "processing"}
                                                   className="rounded-full border-0 px-3 font-bold uppercase tracking-widest text-[10px]"
                                                 >
-                                                  {app.hasJoined ? "Active" : app.status}
+                                                  {app.internshipPhase === "ACTIVE" ? "Active" : app.status}
                                                 </Tag>
                                                 <div className="mt-2 flex gap-1 justify-end">
                                                   <Tooltip title="Edit">
@@ -1208,10 +1208,12 @@ const StudentProgressPage = () => {
 
           <Row gutter={16}>
             <Col span={8}>
-              <Form.Item name="hasJoined" label="Has Joined" valuePropName="checked">
+              <Form.Item name="internshipPhase" label="Internship Phase">
                 <Select>
-                  <Select.Option value={true}>Yes</Select.Option>
-                  <Select.Option value={false}>No</Select.Option>
+                  <Select.Option value="NOT_STARTED">Not Started</Select.Option>
+                  <Select.Option value="ACTIVE">Active</Select.Option>
+                  <Select.Option value="COMPLETED">Completed</Select.Option>
+                  <Select.Option value="TERMINATED">Terminated</Select.Option>
                 </Select>
               </Form.Item>
             </Col>

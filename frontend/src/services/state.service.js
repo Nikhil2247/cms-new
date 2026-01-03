@@ -333,6 +333,11 @@ export const stateService = {
     return response.data;
   },
 
+  async getInstitutionMentorOverview() {
+    const response = await API.get('/state/mentors/institution-overview');
+    return response.data;
+  },
+
   async assignMentorToStudent(studentId, mentorId) {
     const response = await API.post(`/state/students/${studentId}/assign-mentor`, { mentorId });
     return response.data;

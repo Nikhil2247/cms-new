@@ -155,7 +155,7 @@ const StudentsList = React.memo(({
                           ? "red"
                           : app.status === "UNDER_REVIEW"
                           ? "orange"
-                          : app.hasJoined
+                          : app.internshipPhase === "ACTIVE"
                           ? "green"
                           : app.isSelected
                           ? "gold"
@@ -163,9 +163,9 @@ const StudentsList = React.memo(({
                       }
                       size="small"
                     >
-                      {app.hasJoined ? "ACTIVE" : app.status}
+                      {app.internshipPhase === "ACTIVE" ? "ACTIVE" : app.status}
                     </Tag>
-                    {app.isSelected && !app.hasJoined && (
+                    {app.isSelected && app.internshipPhase !== "ACTIVE" && (
                       <Tag color="gold" size="small">
                         Selected
                       </Tag>
@@ -293,7 +293,7 @@ const StudentsList = React.memo(({
           (app) =>
             app.status === "ACTIVE" ||
             app.status === "ACCEPTED" ||
-            app.hasJoined
+            app.internshipPhase === "ACTIVE"
         );
 
         const sortedApplications = [
@@ -357,7 +357,7 @@ const StudentsList = React.memo(({
                 <br />
                 <Tag
                   color={
-                    app.hasJoined
+                    app.internshipPhase === "ACTIVE"
                       ? "green"
                       : app.status === "COMPLETED"
                       ? "green"
@@ -369,7 +369,7 @@ const StudentsList = React.memo(({
                   }
                   size="small"
                 >
-                  {app.hasJoined ? "ACTIVE" : app.status || "N/A"}
+                  {app.internshipPhase === "ACTIVE" ? "ACTIVE" : app.status || "N/A"}
                 </Tag>
               </div>
             ),

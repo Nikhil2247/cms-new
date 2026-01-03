@@ -60,7 +60,7 @@ const AssignedStudents = React.memo(() => {
             // Ensure these fields exist for filtering/sorting
             branchName: student.branchName || student.branch?.name || "N/A",
             // Helper for active internship
-            activeInternship: student.internshipApplications?.find(app => app.hasJoined && !app.completionDate),
+            activeInternship: student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate),
             // Helper for pending applications
             hasPendingApps: student.internshipApplications?.some(app => app.status === 'APPLIED' || app.status === 'UNDER_REVIEW')
         };

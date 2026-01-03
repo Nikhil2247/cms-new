@@ -187,15 +187,38 @@ export class FacultyService {
     return this.cache.getOrSet(
       cacheKey,
       async () => {
+        // Get faculty's institution for external student detection
+        const faculty = await this.prisma.user.findUnique({
+          where: { id: facultyId },
+          select: { institutionId: true },
+        });
+
         // First, get all student IDs assigned to this faculty
-        const assignedStudentIds = await this.prisma.mentorAssignment.findMany({
+        const assignedStudentAssignments = await this.prisma.mentorAssignment.findMany({
           where: {
             mentorId: facultyId,
             isActive: true,
           },
-          select: { studentId: true },
+          select: {
+            studentId: true,
+            student: {
+              select: {
+                institutionId: true,
+              },
+            },
+          },
         });
-        const studentIds = assignedStudentIds.map((a) => a.studentId);
+        const studentIds = assignedStudentAssignments.map((a) => a.studentId);
+
+        // Calculate internal vs external students (with null safety)
+        const internalStudents = assignedStudentAssignments.filter(
+          a => a.student?.institutionId && faculty?.institutionId &&
+               a.student.institutionId === faculty.institutionId
+        ).length;
+        const externalStudents = assignedStudentAssignments.filter(
+          a => a.student?.institutionId && faculty?.institutionId &&
+               a.student.institutionId !== faculty.institutionId
+        ).length;
 
         // Only count self-identified internships (not placement-based)
         const [
@@ -217,6 +240,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
+              student: { isActive: true },
               OR: [
                 { isSelfIdentified: true },
                 { internshipId: null },
@@ -230,6 +254,7 @@ export class FacultyService {
             where: {
               application: {
                 studentId: { in: studentIds },
+                student: { isActive: true },
                 OR: [
                   { isSelfIdentified: true },
                   { internshipId: null },
@@ -243,6 +268,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
+              student: { isActive: true },
               OR: [
                 { isSelfIdentified: true },
                 { internshipId: null },
@@ -255,6 +281,7 @@ export class FacultyService {
             where: {
               facultyId,
               application: {
+                student: { isActive: true },
                 startDate: { lte: new Date() }, // Only count visits for started internships
               },
             },
@@ -276,6 +303,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
+              student: { isActive: true },
               OR: [
                 { isSelfIdentified: true },
                 { internshipId: null },
@@ -288,6 +316,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
+              student: { isActive: true },
               OR: [
                 { isSelfIdentified: true },
                 { internshipId: null },
@@ -305,6 +334,7 @@ export class FacultyService {
               gte: new Date(),
             },
             application: {
+              student: { isActive: true },
               startDate: { lte: new Date() }, // Only show visits for started internships
             },
           },
@@ -327,6 +357,8 @@ export class FacultyService {
 
         return {
           totalStudents: assignedStudents,
+          internalStudents, // Students from same institution
+          externalStudents, // Students from other institutions (cross-institutional mentoring)
           // Self-identified internships only (no placement-based)
           activeInternships: activeSelfIdentifiedInternships,
           pendingReports,
@@ -357,13 +389,23 @@ export class FacultyService {
     const search = params.search;
     const skip = (page - 1) * limit;
 
+    // Get faculty's institution for external student detection
+    const faculty = await this.prisma.user.findUnique({
+      where: { id: facultyId },
+      select: { institutionId: true },
+    });
+
     const where: Prisma.MentorAssignmentWhereInput = {
       mentorId: facultyId,
       isActive: true,
+      student: {
+        isActive: true,
+      },
     };
 
     if (search) {
       where.student = {
+        isActive: true,
         OR: [
           { name: { contains: search, mode: 'insensitive' } },
           { rollNumber: { contains: search, mode: 'insensitive' } },
@@ -383,7 +425,7 @@ export class FacultyService {
               batch: true,
               branch: true,
               Institution: {
-                select: { id: true, name: true, code: true },
+                select: { id: true, name: true, code: true, city: true, state: true },
               },
               internshipApplications: {
                 where: {
@@ -424,8 +466,18 @@ export class FacultyService {
       this.prisma.mentorAssignment.count({ where }),
     ]);
 
+    // Add isExternalStudent flag to each assignment (with null safety)
+    const studentsWithFlag = assignments.map(assignment => ({
+      ...assignment,
+      isExternalStudent: !!(
+        faculty?.institutionId &&
+        assignment.student?.institutionId &&
+        faculty.institutionId !== assignment.student.institutionId
+      ),
+    }));
+
     return {
-      students: assignments,
+      students: studentsWithFlag,
       total,
       page,
       limit,
