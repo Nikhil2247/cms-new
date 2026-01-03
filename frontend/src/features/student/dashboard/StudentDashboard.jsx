@@ -446,7 +446,7 @@ const StudentDashboard = () => {
 
   // Calculate monthly report status
   const monthlyReportStatus = useMemo(() => {
-    if (!currentInternship) return { submitted: 0, total: 0, pending: [] };
+    if (!currentInternship) return { submitted: 0, total: 0, pending: [], startDateInfo: null };
 
     let startDate, endDate;
     if (currentInternship.isSelfIdentified) {
@@ -459,13 +459,36 @@ const StudentDashboard = () => {
       endDate = currentInternship.internship?.endDate;
     }
 
-    if (!startDate || !endDate) return { submitted: 0, total: 0, pending: [] };
+    if (!startDate || !endDate) return { submitted: 0, total: 0, pending: [], startDateInfo: null };
 
     const start = new Date(startDate);
     const end = new Date(endDate);
     const currentDate = new Date();
 
-    if (currentDate < start) return { submitted: 0, total: 0, pending: [] };
+    // Check if internship starts in the future
+    if (currentDate < start) {
+      const threeMonthsLater = new Date(currentDate.getFullYear(), currentDate.getMonth() + 3, currentDate.getDate());
+
+      // Show start date if internship starts within next 3 months
+      if (start <= threeMonthsLater) {
+        const startMonth = start.toLocaleString('default', { month: 'short' });
+        const monthsUntilStart = Math.ceil((start - currentDate) / (1000 * 60 * 60 * 24 * 30));
+
+        return {
+          submitted: 0,
+          total: 0,
+          pending: [],
+          startDateInfo: {
+            dateStr: `${startMonth} ${start.getDate()}, ${start.getFullYear()}`,
+            message: monthsUntilStart <= 1
+              ? "Starting soon - Reports will be due monthly"
+              : `Starts in ~${monthsUntilStart} month${monthsUntilStart > 1 ? 's' : ''}`
+          }
+        };
+      }
+
+      return { submitted: 0, total: 0, pending: [], startDateInfo: null };
+    }
 
     const monthsDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30));
     const totalReports = Math.max(1, Math.min(monthsDiff, 12));
@@ -514,6 +537,7 @@ const StudentDashboard = () => {
       submitted: currentInternshipReports.length,
       total: totalReports,
       pending: pendingMonths,
+      startDateInfo: null,
     };
   }, [currentInternship, currentInternshipReports]);
 
@@ -970,12 +994,16 @@ const StudentDashboard = () => {
                   value={monthlyReportStatus.submitted}
                   secondaryValue={monthlyReportStatus.total}
                   statusTag={
-                    monthlyReportStatus.pending.length > 0
+                    monthlyReportStatus.startDateInfo
+                      ? `Starts: ${monthlyReportStatus.startDateInfo.dateStr}`
+                      : monthlyReportStatus.pending.length > 0
                       ? `${monthlyReportStatus.pending.length} pending`
                       : "All submitted"
                   }
                   statusColor={
-                    monthlyReportStatus.pending.length > 0
+                    monthlyReportStatus.startDateInfo
+                      ? "blue"
+                      : monthlyReportStatus.pending.length > 0
                       ? "warning"
                       : "success"
                   }
@@ -984,6 +1012,7 @@ const StudentDashboard = () => {
                   onViewAction={handleViewReports}
                   showAddAction={hasInternshipStarted}
                   onAddAction={handleNavigateToReports}
+                  subtitle={monthlyReportStatus.startDateInfo?.message}
                 />
               </Col>
             </Row>

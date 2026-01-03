@@ -272,27 +272,27 @@ export default function StudentProfile() {
   const handleEditSubmit = async (values) => {
     try {
       setImageUploading(true);
-      const formData = new FormData();
-      Object.keys(values).forEach((key) => {
-        if (values[key] !== undefined && values[key] !== null) {
-          formData.append(key, values[key]);
-        }
-      });
+
+      // Step 1: Update profile data (text fields)
+      await API.put(`/student/profile`, values);
+
+      // Step 2: Upload profile image if provided
       if (profileImageList.length > 0 && profileImageList[0].originFileObj) {
-        formData.append("profileImage", profileImageList[0].originFileObj);
+        const formData = new FormData();
+        formData.append("file", profileImageList[0].originFileObj);
+
+        await API.post(`/student/profile/image`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
       }
 
-      await API.put(`/students/update-student/${student.id}`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-
-      toast.success("Student updated successfully", { duration: 4000, position: 'top-center' });
+      toast.success("Profile updated successfully", { duration: 4000, position: 'top-center' });
       setIsModalOpen(false);
       setProfileImageList([]);
       fetchStudent();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update student", { duration: 5000, position: 'top-center' });
+      toast.error(error.response?.data?.message || "Failed to update profile", { duration: 5000, position: 'top-center' });
     } finally {
       setImageUploading(false);
     }
@@ -362,7 +362,7 @@ export default function StudentProfile() {
 
   if (loading)
     return (
-      <Spin fullscreen tip="Loading profile..." />
+      <Spin  tip="Loading profile..." />
     );
 
   if (error)
@@ -403,7 +403,7 @@ export default function StudentProfile() {
       className="p-4 md:p-6 min-h-screen overflow-y-auto hide-scrollbar"
       style={{ backgroundColor: token.colorBgLayout }}
     >
-      <div className="max-w-7xl mx-auto space-y-4 pb-8">
+      <div className="max-w-7xl mx-auto !space-y-4 pb-8">
 
         {/* Header with Actions */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">

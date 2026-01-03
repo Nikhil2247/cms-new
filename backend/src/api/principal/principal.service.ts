@@ -3450,7 +3450,7 @@ export class PrincipalService {
       ];
     }
 
-    const [faculty, mentorAssignmentsList, visitCounts] = await Promise.all([
+    const [faculty, mentorAssignmentsList, visitCounts, reportCounts] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: {
@@ -3477,6 +3477,18 @@ export class PrincipalService {
         },
         _count: { id: true },
       }),
+      // Get report counts per faculty (pending and completed)
+      this.prisma.monthlyReport.findMany({
+        where: {
+          application: {
+            student: { institutionId: principal.institutionId },
+          },
+        },
+        select: {
+          reviewedBy: true,
+          status: true,
+        },
+      }),
     ]);
 
     // Compute unique students per mentor
@@ -3491,6 +3503,23 @@ export class PrincipalService {
     // Build visit count map
     const visitCountMap = new Map(visitCounts.map(v => [v.facultyId, v._count.id]));
 
+    // Build report count map (pending and completed per faculty)
+    const reportCountMap = new Map<string, { pending: number; completed: number }>();
+    for (const report of reportCounts) {
+      if (!report.reviewedBy) continue; // Skip reports not yet assigned to faculty
+
+      if (!reportCountMap.has(report.reviewedBy)) {
+        reportCountMap.set(report.reviewedBy, { pending: 0, completed: 0 });
+      }
+
+      const counts = reportCountMap.get(report.reviewedBy)!;
+      if (report.status === MonthlyReportStatus.APPROVED || report.status === MonthlyReportStatus.REJECTED) {
+        counts.completed++;
+      } else {
+        counts.pending++;
+      }
+    }
+
     return {
       faculty: faculty.map((f) => ({
         id: f.id,
@@ -3500,6 +3529,8 @@ export class PrincipalService {
         employeeId: null,
         assignedCount: mentorStudentMap.get(f.id)?.size || 0,
         totalVisits: visitCountMap.get(f.id) || 0,
+        pendingReports: reportCountMap.get(f.id)?.pending || 0,
+        completedReports: reportCountMap.get(f.id)?.completed || 0,
       })),
     };
   }

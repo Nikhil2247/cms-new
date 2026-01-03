@@ -15,6 +15,8 @@ import {
   EyeOutlined,
   WarningOutlined,
   CheckCircleOutlined,
+  FileTextOutlined,
+  ClockCircleOutlined,
 } from '@ant-design/icons';
 import {
   fetchFacultyWorkload,
@@ -104,6 +106,35 @@ const FacultyWorkloadCard = () => {
         </Tooltip>
       ),
       sorter: (a, b) => (a.totalVisits || 0) - (b.totalVisits || 0),
+    },
+    {
+      title: 'Reports',
+      key: 'reports',
+      width: 120,
+      align: 'center',
+      render: (_, record) => {
+        const pending = record.pendingReports || 0;
+        const completed = record.completedReports || 0;
+        const total = pending + completed;
+        return (
+          <Tooltip title={`Total: ${total} | Pending: ${pending} | Completed: ${completed}`}>
+            <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center gap-1">
+                <FileTextOutlined className="text-primary" />
+                <span className="font-semibold">{total}</span>
+              </div>
+              <div className="text-xs text-text-tertiary">
+                ({pending}<ClockCircleOutlined className="ml-0.5" /> / {completed}✓)
+              </div>
+            </div>
+          </Tooltip>
+        );
+      },
+      sorter: (a, b) => {
+        const totalA = (a.pendingReports || 0) + (a.completedReports || 0);
+        const totalB = (b.pendingReports || 0) + (b.completedReports || 0);
+        return totalA - totalB;
+      },
     },
     {
       title: 'Load',

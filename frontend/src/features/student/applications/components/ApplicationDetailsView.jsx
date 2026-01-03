@@ -186,58 +186,60 @@ const ApplicationDetailsView = ({
   ];
 
   return (
-    <div className="space-y-4">
+    <div className="!space-y-3">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between mb-1">
         <Button
           icon={<ArrowLeftOutlined />}
           onClick={onBack}
           type="text"
+          size="small"
           style={{ color: token.colorTextSecondary }}
-          className="hover:text-text-primary"
+          className="hover:text-text-primary -ml-2"
         >
           Back
         </Button>
-        <Tag color={getStatusColor(application.status)} className="rounded-full px-3 border-0">
+        <Tag color={getStatusColor(application.status)} className="rounded-full px-3 py-1 border-0 font-medium">
           {application.status?.replace(/_/g, ' ')}
         </Tag>
       </div>
 
       {/* Company Info Card */}
-      <Card 
-        className="rounded-xl shadow-sm border" 
+      <Card
+        className="rounded-xl shadow-sm border"
         style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
-        styles={{ body: { padding: '16px' } }}
+        styles={{ body: { padding: '20px' } }}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div 
-              className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
               style={{ backgroundColor: token.colorPrimaryBg }}
             >
-              <BankOutlined className="text-lg" style={{ color: token.colorPrimary }} />
+              <BankOutlined className="text-xl" style={{ color: token.colorPrimary }} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <Text strong className="text-base" style={{ color: token.colorText }}>{company.companyName || 'Company'}</Text>
-                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full border-0">Self-Identified</Tag>}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-0.5">
+                <Text strong className="text-base truncate" style={{ color: token.colorText }}>{company.companyName || 'Company'}</Text>
+                {isSelfIdentified && <Tag color="purple" className="text-[10px] rounded-full border-0 shrink-0">Self-Identified</Tag>}
               </div>
-              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>{application.jobProfile || internship?.title || 'Internship'}</Text>
+              <Text className="text-xs block truncate" style={{ color: token.colorTextTertiary }}>{application.jobProfile || internship?.title || 'Internship'}</Text>
             </div>
           </div>
 
           {/* Quick Stats */}
-          <div className="hidden sm:flex items-center gap-4">
+          <div className="hidden sm:flex items-center gap-6 shrink-0">
             <Tooltip title="Reports Submitted">
               <div className="text-center">
-                <Text className="text-lg font-bold block" style={{ color: token.colorPrimary }}>{monthlyReportsProgress?.approved || 0}/{monthlyReportsProgress?.total || 0}</Text>
-                <Text className="text-[10px]" style={{ color: token.colorTextTertiary }}>Reports</Text>
+                <Text className="text-xl font-bold block leading-none mb-1" style={{ color: token.colorPrimary }}>{monthlyReportsProgress?.approved || 0}/{monthlyReportsProgress?.total || 0}</Text>
+                <Text className="text-[10px] uppercase tracking-wide" style={{ color: token.colorTextTertiary }}>Reports</Text>
               </div>
             </Tooltip>
+            <div className="w-px h-8" style={{ backgroundColor: token.colorBorderSecondary }} />
             <Tooltip title="Faculty Visits">
               <div className="text-center">
-                <Text className="text-lg font-bold block" style={{ color: token.colorSuccess }}>{facultyVisitsProgress?.completed || 0}/{facultyVisitsProgress?.total || 0}</Text>
-                <Text className="text-[10px]" style={{ color: token.colorTextTertiary }}>Visits</Text>
+                <Text className="text-xl font-bold block leading-none mb-1" style={{ color: token.colorSuccess }}>{facultyVisitsProgress?.completed || 0}/{facultyVisitsProgress?.total || 0}</Text>
+                <Text className="text-[10px] uppercase tracking-wide" style={{ color: token.colorTextTertiary }}>Visits</Text>
               </div>
             </Tooltip>
           </div>
@@ -245,20 +247,20 @@ const ApplicationDetailsView = ({
 
         {/* Progress Bar */}
         {internshipStarted && (
-          <div className="mt-4 pt-4 border-t" style={{ borderColor: token.colorBorderSecondary }}>
-            <div className="flex justify-between items-center mb-1.5">
-              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Progress</Text>
-              <Text className="text-xs font-semibold" style={{ color: token.colorPrimary }}>{progressPercent}%</Text>
+          <div className="mt-5 pt-5 border-t" style={{ borderColor: token.colorBorderSecondary }}>
+            <div className="flex justify-between items-center mb-2">
+              <Text className="text-xs font-medium" style={{ color: token.colorTextSecondary }}>Internship Progress</Text>
+              <Text className="text-xs font-bold" style={{ color: token.colorPrimary }}>{progressPercent}%</Text>
             </div>
             <Progress
               percent={progressPercent}
               showInfo={false}
               strokeColor={{ '0%': token.colorPrimary, '100%': token.colorSuccess }}
-              size="small"
+              strokeWidth={6}
             />
-            <div className="flex justify-between text-[10px] mt-1" style={{ color: token.colorTextTertiary }}>
+            <div className="flex justify-between text-[10px] mt-2" style={{ color: token.colorTextTertiary }}>
               <span>{startDate ? dayjs(startDate).format('MMM D, YYYY') : 'N/A'}</span>
-              <span>{daysCompleted} days</span>
+              <span className="font-medium">{daysCompleted} days completed</span>
               <span>{endDate ? dayjs(endDate).format('MMM D, YYYY') : 'N/A'}</span>
             </div>
           </div>
@@ -267,36 +269,42 @@ const ApplicationDetailsView = ({
 
       {/* Joining Letter - Compact */}
       {isSelfIdentified && (
-        <Card 
-          className="rounded-xl shadow-sm border" 
+        <Card
+          className="rounded-xl shadow-sm border"
           style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
-          styles={{ body: { padding: '12px 16px' } }}
+          styles={{ body: { padding: '16px' } }}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div 
-                className="w-9 h-9 rounded-lg flex items-center justify-center"
+              <div
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: hasJoiningLetter ? token.colorSuccessBg : token.colorWarningBg }}
               >
                 <FileTextOutlined className="text-base" style={{ color: hasJoiningLetter ? token.colorSuccess : token.colorWarning }} />
               </div>
               <div>
-                <Text strong className="text-sm block" style={{ color: token.colorText }}>Joining Letter</Text>
-                <Text className="text-[10px]" style={{ color: hasJoiningLetter ? token.colorSuccess : token.colorWarning }}>
+                <Text strong className="text-sm block mb-0.5" style={{ color: token.colorText }}>Joining Letter</Text>
+                <Text className="text-[10px] font-medium" style={{ color: hasJoiningLetter ? token.colorSuccess : token.colorWarning }}>
                   {hasJoiningLetter ? 'Uploaded' : 'Required'}
                 </Text>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {hasJoiningLetter ? (
                 <>
-                  <Tooltip title="View"><Button type="text" size="small" icon={<EyeOutlined />} onClick={handleViewJoiningLetter} /></Tooltip>
-                  <Tooltip title="Replace"><Button type="text" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)} /></Tooltip>
-                  <Tooltip title="Delete"><Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => setDeleteConfirmVisible(true)} /></Tooltip>
+                  <Tooltip title="View">
+                    <Button type="text" size="small" icon={<EyeOutlined />} onClick={handleViewJoiningLetter} className="hover:bg-transparent" />
+                  </Tooltip>
+                  <Tooltip title="Replace">
+                    <Button type="text" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)} className="hover:bg-transparent" />
+                  </Tooltip>
+                  <Tooltip title="Delete">
+                    <Button type="text" size="small" danger icon={<DeleteOutlined />} onClick={() => setDeleteConfirmVisible(true)} className="hover:bg-transparent" />
+                  </Tooltip>
                 </>
               ) : (
-                <Button type="primary" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)}>
+                <Button type="primary" size="small" icon={<UploadOutlined />} onClick={() => setUploadModalVisible(true)} className="rounded-lg">
                   Upload
                 </Button>
               )}
@@ -306,59 +314,91 @@ const ApplicationDetailsView = ({
       )}
 
       {/* Tabs */}
-      <Card 
-        className="rounded-xl shadow-sm border" 
+      <Card
+        className="rounded-xl shadow-sm border"
         style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
         styles={{ body: { padding: '0' } }}
       >
         <Tabs
           defaultActiveKey="details"
           items={tabItems}
-          className="px-4"
+          className="!px-5"
           size="small"
         />
       </Card>
 
       {/* Upload Modal */}
       <Modal
-        title="Upload Joining Letter"
+        title={
+          <div className="flex items-center gap-2">
+            <UploadOutlined style={{ color: token.colorPrimary }} />
+            <span>Upload Joining Letter</span>
+          </div>
+        }
         open={uploadModalVisible}
         onCancel={() => { setUploadModalVisible(false); setSelectedFile(null); }}
         footer={[
-          <Button key="cancel" onClick={() => { setUploadModalVisible(false); setSelectedFile(null); }}>Cancel</Button>,
-          <Button key="upload" type="primary" loading={uploading} disabled={!selectedFile} onClick={handleUploadJoiningLetter}>
+          <Button key="cancel" onClick={() => { setUploadModalVisible(false); setSelectedFile(null); }} className="rounded-lg">
+            Cancel
+          </Button>,
+          <Button key="upload" type="primary" loading={uploading} disabled={!selectedFile} onClick={handleUploadJoiningLetter} className="rounded-lg">
             Upload
           </Button>,
         ]}
-        width={400}
+        width={440}
+        className="rounded-xl"
       >
-        <Upload.Dragger
-          accept=".pdf"
-          maxCount={1}
-          beforeUpload={handleFileSelect}
-          onRemove={() => setSelectedFile(null)}
-          fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
-          style={{ background: token.colorBgContainer, borderColor: token.colorBorder }}
-        >
-          <p className="ant-upload-drag-icon"><UploadOutlined className="text-3xl" style={{ color: token.colorPrimary }} /></p>
-          <p className="ant-upload-text text-sm" style={{ color: token.colorText }}>Click or drag PDF file</p>
-          <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>Max 5MB</p>
-        </Upload.Dragger>
+        <div className="pt-4">
+          <Upload.Dragger
+            accept=".pdf"
+            maxCount={1}
+            beforeUpload={handleFileSelect}
+            onRemove={() => setSelectedFile(null)}
+            fileList={selectedFile ? [{ uid: '-1', name: selectedFile.name, status: 'done' }] : []}
+            style={{ background: token.colorBgContainer, borderColor: token.colorBorder, borderRadius: '12px' }}
+          >
+            <p className="ant-upload-drag-icon mb-3">
+              <UploadOutlined className="text-4xl" style={{ color: token.colorPrimary }} />
+            </p>
+            <p className="ant-upload-text text-sm font-medium mb-1" style={{ color: token.colorText }}>
+              Click or drag PDF file to upload
+            </p>
+            <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
+              Maximum file size: 5MB
+            </p>
+          </Upload.Dragger>
+        </div>
       </Modal>
 
       {/* Delete Modal */}
       <Modal
-        title={<span style={{ color: token.colorError }}>Delete Joining Letter</span>}
+        title={
+          <div className="flex items-center gap-2">
+            <DeleteOutlined style={{ color: token.colorError }} />
+            <span style={{ color: token.colorError }}>Delete Joining Letter</span>
+          </div>
+        }
         open={deleteConfirmVisible}
         onCancel={() => setDeleteConfirmVisible(false)}
         footer={[
-          <Button key="cancel" onClick={() => setDeleteConfirmVisible(false)}>Cancel</Button>,
-          <Button key="delete" danger loading={uploading} onClick={handleDeleteJoiningLetter}>Delete</Button>,
+          <Button key="cancel" onClick={() => setDeleteConfirmVisible(false)} className="rounded-lg">
+            Cancel
+          </Button>,
+          <Button key="delete" danger loading={uploading} onClick={handleDeleteJoiningLetter} className="rounded-lg">
+            Delete
+          </Button>,
         ]}
-        width={360}
+        width={400}
+        className="rounded-xl"
       >
-        <p className="text-sm" style={{ color: token.colorText }}>Are you sure you want to delete the joining letter?</p>
-        <p className="text-xs" style={{ color: token.colorError }}>This action cannot be undone.</p>
+        <div className="py-2">
+          <p className="text-sm mb-2" style={{ color: token.colorText }}>
+            Are you sure you want to delete the joining letter?
+          </p>
+          <p className="text-xs mb-0" style={{ color: token.colorError }}>
+            This action cannot be undone.
+          </p>
+        </div>
       </Modal>
     </div>
   );

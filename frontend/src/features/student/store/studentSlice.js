@@ -576,7 +576,17 @@ const studentSlice = createSlice({
       .addCase(fetchMyReports.fulfilled, (state, action) => {
         state.reports.loading = false;
         if (!action.payload.cached) {
-          state.reports.list = action.payload.data || action.payload;
+          // Handle different response formats
+          const payload = action.payload;
+          if (Array.isArray(payload)) {
+            state.reports.list = payload;
+          } else if (payload.reports && Array.isArray(payload.reports)) {
+            state.reports.list = payload.reports;
+          } else if (payload.data && Array.isArray(payload.data)) {
+            state.reports.list = payload.data;
+          } else {
+            state.reports.list = [];
+          }
           state.lastFetched.reports = Date.now();
         }
       })
@@ -590,6 +600,10 @@ const studentSlice = createSlice({
       })
       .addCase(createReport.fulfilled, (state, action) => {
         state.reports.loading = false;
+        // Ensure state.reports.list is an array
+        if (!Array.isArray(state.reports.list)) {
+          state.reports.list = [];
+        }
         state.reports.list = [action.payload, ...state.reports.list];
         state.lastFetched.reports = null; // Invalidate cache after mutation
       })
@@ -603,6 +617,10 @@ const studentSlice = createSlice({
       })
       .addCase(updateReport.fulfilled, (state, action) => {
         state.reports.loading = false;
+        // Ensure state.reports.list is an array
+        if (!Array.isArray(state.reports.list)) {
+          state.reports.list = [];
+        }
         const index = state.reports.list.findIndex(r => r.id === action.payload.id);
         if (index !== -1) {
           state.reports.list[index] = action.payload;
@@ -778,6 +796,10 @@ const studentSlice = createSlice({
 
       // Delete monthly report
       .addCase(deleteMonthlyReport.fulfilled, (state, action) => {
+        // Ensure state.reports.list is an array
+        if (!Array.isArray(state.reports.list)) {
+          state.reports.list = [];
+        }
         state.reports.list = state.reports.list.filter(r => r.id !== action.payload.id);
         state.lastFetched.reports = null;
       })

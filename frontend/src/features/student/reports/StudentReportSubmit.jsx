@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   Card, Table, Button, Modal, Upload, message, Switch, Select, Alert,
-  Tag, Typography, Empty, Spin, Tooltip, Popconfirm
+  Tag, Typography, Empty, Spin, Tooltip, Popconfirm, theme
 } from 'antd';
 import {
   PlusOutlined, UploadOutlined, EyeOutlined,
@@ -37,6 +37,7 @@ const MONTH_NAMES = [
 
 const StudentReportSubmit = () => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
 
   // Redux state
   const dashboardStats = useSelector(selectDashboardStats);
@@ -306,17 +307,20 @@ const StudentReportSubmit = () => {
     {
       title: 'Period',
       key: 'period',
-      width: 140,
+      width: 160,
       render: (_, record) => (
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <CalendarOutlined className="text-primary text-sm" />
+        <div className="flex items-center gap-3 py-1">
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+            style={{ backgroundColor: token.colorPrimaryBg }}
+          >
+            <CalendarOutlined className="text-base" style={{ color: token.colorPrimary }} />
           </div>
           <div>
-            <Text className="text-sm font-medium block">
+            <Text className="text-sm font-medium block" style={{ color: token.colorText }}>
               {MONTH_NAMES[record.reportMonth - 1]?.slice(0, 3) || record.reportMonth}
             </Text>
-            <Text className="text-[10px] text-text-tertiary">{record.reportYear}</Text>
+            <Text className="text-xs" style={{ color: token.colorTextTertiary }}>{record.reportYear}</Text>
           </div>
         </div>
       ),
@@ -326,38 +330,71 @@ const StudentReportSubmit = () => {
       key: 'file',
       ellipsis: true,
       render: (_, record) => (
-        <Text className="text-xs">
-          {record.reportFileUrl ? 'Uploaded' : '-'}
-        </Text>
+        <div className="flex items-center gap-2">
+          {record.reportFileUrl && (
+            <div
+              className="w-1.5 h-1.5 rounded-full"
+              style={{ backgroundColor: token.colorSuccess }}
+            />
+          )}
+          <Text className="text-sm" style={{ color: record.reportFileUrl ? token.colorText : token.colorTextTertiary }}>
+            {record.reportFileUrl ? 'Report uploaded' : 'No file'}
+          </Text>
+        </div>
       ),
     },
     {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 110,
+      width: 130,
       render: (status) => getStatusTag(status),
     },
     {
       title: 'Actions',
       key: 'actions',
-      width: 100,
+      width: 120,
       align: 'center',
       render: (_, record) => (
-        <div className="flex items-center justify-center gap-1">
+        <div className="flex items-center justify-center gap-0.5">
           {record.reportFileUrl && (
             <Tooltip title="View">
-              <Button type="text" size="small" icon={<EyeOutlined />} onClick={() => handleView(record.reportFileUrl)} />
+              <Button
+                type="text"
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => handleView(record.reportFileUrl)}
+                className="hover:bg-transparent"
+              />
             </Tooltip>
           )}
           {record.status !== 'APPROVED' && (
             <>
               <Tooltip title="Replace">
-                <Button type="text" size="small" icon={<UploadOutlined />} onClick={() => handleReplace(record)} />
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<UploadOutlined />}
+                  onClick={() => handleReplace(record)}
+                  className="hover:bg-transparent"
+                />
               </Tooltip>
-              <Popconfirm title="Delete this report?" onConfirm={() => handleDelete(record.id)} okText="Yes" cancelText="No">
+              <Popconfirm
+                title="Delete this report?"
+                onConfirm={() => handleDelete(record.id)}
+                okText="Yes"
+                cancelText="No"
+                okButtonProps={{ danger: true, className: 'rounded-lg' }}
+                cancelButtonProps={{ className: 'rounded-lg' }}
+              >
                 <Tooltip title="Delete">
-                  <Button type="text" size="small" danger icon={<DeleteOutlined />} />
+                  <Button
+                    type="text"
+                    size="small"
+                    danger
+                    icon={<DeleteOutlined />}
+                    className="hover:bg-transparent"
+                  />
                 </Tooltip>
               </Popconfirm>
             </>
@@ -379,22 +416,26 @@ const StudentReportSubmit = () => {
   // No application state
   if (!isLoading && !selectedApplication && applications.length === 0) {
     return (
-      <div className="p-4 md:p-5 min-h-screen">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-1 h-6 rounded-full bg-primary" />
+      <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
           <div>
-            <h1 className="text-lg font-semibold text-text-primary m-0">Monthly Reports</h1>
-            <Text className="text-xs text-text-tertiary">Track your internship progress</Text>
+            <h1 className="text-xl font-bold m-0" style={{ color: token.colorText }}>Monthly Reports</h1>
+            <Text className="text-xs" style={{ color: token.colorTextTertiary }}>Track your internship progress</Text>
           </div>
         </div>
-        <Card className="rounded-xl border border-gray-100 shadow-sm">
+        <Card
+          className="rounded-2xl shadow-sm border"
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '48px 24px' } }}
+        >
           <Empty
-            image={<FileTextOutlined className="text-4xl text-gray-300" />}
-            imageStyle={{ height: 50 }}
+            image={<FileTextOutlined className="text-5xl" style={{ color: token.colorTextQuaternary }} />}
+            imageStyle={{ height: 60 }}
             description={
-              <div className="text-center py-4">
-                <Text className="text-sm text-text-secondary block mb-1">No Active Internship</Text>
-                <Text className="text-xs text-text-tertiary">You need an active internship to submit reports</Text>
+              <div className="text-center py-3">
+                <Text className="text-base font-medium block mb-1" style={{ color: token.colorTextSecondary }}>No Active Internship</Text>
+                <Text className="text-sm" style={{ color: token.colorTextTertiary }}>You need an active internship to submit reports</Text>
               </div>
             }
           />
@@ -404,23 +445,35 @@ const StudentReportSubmit = () => {
   }
 
   return (
-    <div className="p-4 md:p-5 min-h-screen">
+    <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <div className="w-1 h-6 rounded-full bg-primary" />
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-1 h-8 rounded-full" style={{ backgroundColor: token.colorPrimary }} />
           <div>
-            <h1 className="text-lg font-semibold text-text-primary m-0">Monthly Reports</h1>
-            <Text className="text-xs text-text-tertiary">
+            <h1 className="text-xl font-bold m-0" style={{ color: token.colorText }}>Monthly Reports</h1>
+            <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
               {selectedApplication?.companyName || 'Track your internship progress'}
             </Text>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Tooltip title="Refresh">
-            <Button type="text" icon={<ReloadOutlined spin={isLoading} />} onClick={fetchReports} />
+            <Button
+              type="text"
+              icon={<ReloadOutlined spin={isLoading} />}
+              onClick={fetchReports}
+              size="middle"
+              className="hover:bg-transparent"
+              style={{ color: token.colorTextSecondary }}
+            />
           </Tooltip>
-          <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd} size="small" className="rounded-lg">
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={handleAdd}
+            className="rounded-lg shadow-sm"
+          >
             Upload Report
           </Button>
         </div>
@@ -428,64 +481,103 @@ const StudentReportSubmit = () => {
 
       {/* Application Selector (if multiple) */}
       {applications.length > 1 && (
-        <div className="mb-4">
-          <Select
-            value={selectedApplication?.id}
-            onChange={(id) => setSelectedApplication(applications.find(a => a.id === id))}
-            options={applications.map(app => ({
-              value: app.id,
-              label: app.companyName || 'Internship',
-            }))}
-            className="w-full max-w-xs"
-            size="small"
-          />
-        </div>
+        <Card
+          className="rounded-xl shadow-sm border mb-4"
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '12px 16px' } }}
+        >
+          <div className="flex items-center justify-between">
+            <Text className="text-xs font-medium" style={{ color: token.colorTextSecondary }}>Select Internship</Text>
+            <Select
+              value={selectedApplication?.id}
+              onChange={(id) => setSelectedApplication(applications.find(a => a.id === id))}
+              options={applications.map(app => ({
+                value: app.id,
+                label: app.companyName || 'Internship',
+              }))}
+              className="w-56"
+              size="small"
+            />
+          </div>
+        </Card>
       )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-background-secondary rounded-lg p-3 text-center">
-          <Text className="text-lg font-bold text-primary block">{stats.total}</Text>
-          <Text className="text-[10px] text-text-tertiary">Total</Text>
-        </div>
-        <div className="bg-background-secondary rounded-lg p-3 text-center">
-          <Text className="text-lg font-bold text-green-500 block">{stats.approved}</Text>
-          <Text className="text-[10px] text-text-tertiary">Approved</Text>
-        </div>
-        <div className="bg-background-secondary rounded-lg p-3 text-center">
-          <Text className="text-lg font-bold text-orange-500 block">{stats.pending}</Text>
-          <Text className="text-[10px] text-text-tertiary">Pending</Text>
-        </div>
+        <Card
+          className="rounded-xl shadow-sm border text-center"
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '16px 12px' } }}
+        >
+          <Text className="text-2xl font-bold block leading-none mb-2" style={{ color: token.colorPrimary }}>{stats.total}</Text>
+          <Text className="text-[10px] uppercase tracking-wide font-medium" style={{ color: token.colorTextTertiary }}>Total Reports</Text>
+        </Card>
+        <Card
+          className="rounded-xl shadow-sm border text-center"
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '16px 12px' } }}
+        >
+          <Text className="text-2xl font-bold block leading-none mb-2" style={{ color: token.colorSuccess }}>{stats.approved}</Text>
+          <Text className="text-[10px] uppercase tracking-wide font-medium" style={{ color: token.colorTextTertiary }}>Approved</Text>
+        </Card>
+        <Card
+          className="rounded-xl shadow-sm border text-center"
+          style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+          styles={{ body: { padding: '16px 12px' } }}
+        >
+          <Text className="text-2xl font-bold block leading-none mb-2" style={{ color: token.colorWarning }}>{stats.pending}</Text>
+          <Text className="text-[10px] uppercase tracking-wide font-medium" style={{ color: token.colorTextTertiary }}>Pending</Text>
+        </Card>
       </div>
 
       {/* Reports Table */}
-      <Card className="rounded-xl border border-gray-100 shadow-sm" styles={{ body: { padding: 0 } }}>
+      <Card
+        className="rounded-2xl shadow-sm border"
+        style={{ borderColor: token.colorBorderSecondary, backgroundColor: token.colorBgContainer }}
+        styles={{ body: { padding: 0 } }}
+      >
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Spin />
+          <div className="flex items-center justify-center py-16">
+            <Spin size="large" />
           </div>
         ) : reports.length === 0 ? (
           <Empty
-            image={<FileTextOutlined className="text-4xl text-gray-300" />}
-            imageStyle={{ height: 50 }}
+            image={<FileTextOutlined className="text-5xl" style={{ color: token.colorTextQuaternary }} />}
+            imageStyle={{ height: 60 }}
             description={
               <div className="text-center">
-                <Text className="text-sm text-text-secondary block">No reports yet</Text>
-                <Text className="text-xs text-text-tertiary">Upload your first monthly report</Text>
+                <Text className="text-base font-medium block mb-1" style={{ color: token.colorTextSecondary }}>
+                  No reports yet
+                </Text>
+                <Text className="text-sm" style={{ color: token.colorTextTertiary }}>
+                  Upload your first monthly report to get started
+                </Text>
               </div>
             }
-            className="py-12"
+            className="py-16"
           >
-            <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>Upload Report</Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAdd}
+              size="large"
+              className="rounded-lg shadow-sm mt-4"
+            >
+              Upload Report
+            </Button>
           </Empty>
         ) : (
           <Table
             dataSource={reports}
             columns={columns}
             rowKey="id"
-            size="small"
-            pagination={{ pageSize: 10, size: 'small', showSizeChanger: false }}
-            className="[&_.ant-table-thead_th]:!bg-background-secondary [&_.ant-table-thead_th]:!text-xs [&_.ant-table-thead_th]:!font-medium"
+            size="middle"
+            pagination={{
+              pageSize: 10,
+              showSizeChanger: false,
+              className: 'px-4 pb-4',
+            }}
+            className="[&_.ant-table-thead>tr>th]:!bg-background-secondary [&_.ant-table-thead>tr>th]:!text-xs [&_.ant-table-thead>tr>th]:!font-semibold [&_.ant-table-thead>tr>th]:!py-3 [&_.ant-table-tbody>tr>td]:!py-3"
           />
         )}
       </Card>
@@ -494,14 +586,16 @@ const StudentReportSubmit = () => {
       <Modal
         title={
           <div className="flex items-center gap-2">
-            <FileTextOutlined className="text-primary" />
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
             <span>{editingReport ? 'Replace Report' : 'Upload Monthly Report'}</span>
           </div>
         }
         open={modalVisible}
         onCancel={handleCloseModal}
         footer={[
-          <Button key="cancel" onClick={handleCloseModal}>Cancel</Button>,
+          <Button key="cancel" onClick={handleCloseModal} className="rounded-lg">
+            Cancel
+          </Button>,
           <Button
             key="submit"
             type="primary"
@@ -509,19 +603,24 @@ const StudentReportSubmit = () => {
             onClick={handleSubmit}
             disabled={fileList.length === 0 || (!autoMonthSelection && (!selectedMonth || !selectedYear))}
             icon={<UploadOutlined />}
+            className="rounded-lg"
           >
             {editingReport ? 'Replace' : 'Upload'}
           </Button>
         ]}
-        width={480}
+        width={520}
         destroyOnClose
+        className="rounded-2xl"
       >
-        <div className="py-4 space-y-4">
+        <div className="pt-4 space-y-4">
           {/* Replacing info */}
           {editingReport && (
-            <div className="p-3 bg-background-secondary rounded-lg">
-              <Text className="text-xs text-text-tertiary block">Replacing report for</Text>
-              <Text className="text-sm font-medium">
+            <div
+              className="p-3 rounded-lg"
+              style={{ backgroundColor: token.colorInfoBg, borderColor: token.colorInfoBorder, border: '1px solid' }}
+            >
+              <Text className="text-xs block mb-1" style={{ color: token.colorTextTertiary }}>Replacing report for</Text>
+              <Text className="text-sm font-semibold" style={{ color: token.colorText }}>
                 {MONTH_NAMES[editingReport.reportMonth - 1]} {editingReport.reportYear}
               </Text>
             </div>
@@ -529,7 +628,9 @@ const StudentReportSubmit = () => {
 
           {/* File Upload */}
           <div>
-            <Text className="text-xs font-medium block mb-2">Select Report File (PDF)</Text>
+            <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+              Select Report File (PDF)
+            </Text>
             <Upload.Dragger
               accept=".pdf"
               maxCount={1}
@@ -537,22 +638,36 @@ const StudentReportSubmit = () => {
               onChange={handleFileChange}
               beforeUpload={() => false}
               onRemove={() => setFileList([])}
+              style={{
+                background: token.colorBgContainer,
+                borderColor: token.colorBorder,
+                borderRadius: '12px',
+              }}
             >
-              <p className="ant-upload-drag-icon">
-                <InboxOutlined className="text-3xl text-primary" />
+              <p className="ant-upload-drag-icon mb-3">
+                <InboxOutlined className="text-4xl" style={{ color: token.colorPrimary }} />
               </p>
-              <p className="ant-upload-text text-sm">Click or drag PDF file to upload</p>
-              <p className="ant-upload-hint text-xs text-text-tertiary">Max 5MB</p>
+              <p className="ant-upload-text text-sm font-medium mb-1" style={{ color: token.colorText }}>
+                Click or drag PDF file to upload
+              </p>
+              <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
+                Maximum file size: 5MB
+              </p>
             </Upload.Dragger>
           </div>
 
           {/* Auto Month Detection Toggle */}
           {!editingReport && (
             <>
-              <div className="bg-background-secondary rounded-lg p-3 flex items-center justify-between">
+              <div
+                className="rounded-lg p-3 flex items-center justify-between"
+                style={{ backgroundColor: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}
+              >
                 <div>
-                  <Text className="text-sm font-medium block">Auto-detect month</Text>
-                  <Text className="text-[10px] text-text-tertiary">
+                  <Text className="text-sm font-medium block mb-0.5" style={{ color: token.colorText }}>
+                    Auto-detect month
+                  </Text>
+                  <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
                     Turn off to select month manually
                   </Text>
                 </div>
@@ -565,7 +680,6 @@ const StudentReportSubmit = () => {
                       setSelectedYear(dayjs().year());
                     }
                   }}
-                  size="small"
                 />
               </div>
 
@@ -573,25 +687,27 @@ const StudentReportSubmit = () => {
               {!autoMonthSelection && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Text className="text-xs font-medium block mb-1.5">Month</Text>
+                    <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+                      Month
+                    </Text>
                     <Select
                       value={selectedMonth}
                       onChange={setSelectedMonth}
                       options={allowedMonthOptions}
                       placeholder="Select month"
                       className="w-full"
-                      size="small"
                     />
                   </div>
                   <div>
-                    <Text className="text-xs font-medium block mb-1.5">Year</Text>
+                    <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+                      Year
+                    </Text>
                     <Select
                       value={selectedYear}
                       onChange={setSelectedYear}
                       options={yearOptions}
                       placeholder="Select year"
                       className="w-full"
-                      size="small"
                     />
                   </div>
                 </div>
@@ -602,14 +718,15 @@ const StudentReportSubmit = () => {
                 type="info"
                 showIcon
                 message={
-                  <Text className="text-xs">
+                  <Text className="text-xs" style={{ color: token.colorInfo }}>
                     {autoMonthSelection
                       ? `Report will be uploaded for ${MONTH_NAMES[dayjs().month()]} ${dayjs().year()}`
                       : `Report will be uploaded for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`
                     }
                   </Text>
                 }
-                className="!py-2"
+                className="rounded-lg"
+                style={{ padding: '10px 12px' }}
               />
             </>
           )}

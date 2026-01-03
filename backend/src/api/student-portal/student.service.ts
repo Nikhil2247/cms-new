@@ -2213,7 +2213,7 @@ export class StudentService {
 
   /**
    * Get monthly reports with submission status for an application
-   * Returns all expected reports with their current status
+   * Returns only reports that have been uploaded by students (with files)
    */
   async getMonthlyReportsWithStatus(userId: string, applicationId: string) {
     const student = await this.prisma.student.findUnique({
@@ -2243,22 +2243,14 @@ export class StudentService {
       throw new NotFoundException('Application not found');
     }
 
-    // Get all reports for this application
+    // Get only reports that have files uploaded (exclude empty drafts)
     const reports = await this.prisma.monthlyReport.findMany({
-      where: { applicationId },
+      where: {
+        applicationId,
+        reportFileUrl: { not: null }, // Only show reports with uploaded files
+      },
       orderBy: [{ reportYear: 'asc' }, { reportMonth: 'asc' }],
     });
-
-    // If no reports exist and we have dates, generate them
-    if (reports.length === 0 && application.startDate && application.endDate) {
-      await this.generateExpectedReports(applicationId);
-      // Re-fetch after generation
-      const newReports = await this.prisma.monthlyReport.findMany({
-        where: { applicationId },
-        orderBy: [{ reportYear: 'asc' }, { reportMonth: 'asc' }],
-      });
-      return this.formatReportsWithStatus(newReports, application);
-    }
 
     return this.formatReportsWithStatus(reports, application);
   }

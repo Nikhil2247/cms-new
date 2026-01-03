@@ -97,9 +97,11 @@ const LayoutHeader = ({
             ...buttonStyle,
             width: 36,
             height: 36,
+            borderRadius: 10,
+            border: darkMode ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)', 
           }}
           className={`
-            hover:scale-105 transition-all duration-200 ease-in-out
+            hover:scale-105 transition-all duration-200 ease-in-out 
             ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-blue-50'}
           `}
         />

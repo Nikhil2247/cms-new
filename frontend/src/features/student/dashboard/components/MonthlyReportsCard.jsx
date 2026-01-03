@@ -26,8 +26,42 @@ const MonthlyReportsCard = ({
   canUpload,
   totalRequired,
   submitted,
+  activeInternship,
 }) => {
   const progressPercent = totalRequired > 0 ? Math.round((submitted / totalRequired) * 100) : 0;
+
+  // Check if internship starts in the future and get start date display
+  const getStartDateInfo = () => {
+    if (!activeInternship) return null;
+
+    const startDate = new Date(
+      activeInternship.isSelfIdentified
+        ? activeInternship.startDate
+        : activeInternship.joiningDate || activeInternship.internship?.startDate
+    );
+
+    if (!startDate || isNaN(startDate.getTime())) return null;
+
+    const now = new Date();
+    const threeMonthsLater = new Date(now.getFullYear(), now.getMonth() + 3, now.getDate());
+
+    // Show start date if internship hasn't started yet and starts within next 3 months
+    if (startDate >= now && startDate <= threeMonthsLater) {
+      const startMonth = startDate.toLocaleString('default', { month: 'short' });
+      const monthsUntilStart = Math.ceil((startDate - now) / (1000 * 60 * 60 * 24 * 30));
+
+      return {
+        dateStr: `${startMonth} ${startDate.getDate()}, ${startDate.getFullYear()}`,
+        message: monthsUntilStart <= 1
+          ? "Starting soon - Reports will be due monthly"
+          : `Starts in ~${monthsUntilStart} month${monthsUntilStart > 1 ? 's' : ''}`
+      };
+    }
+
+    return null;
+  };
+
+  const startDateInfo = getStartDateInfo();
 
   return (
     <Card
@@ -47,17 +81,19 @@ const MonthlyReportsCard = ({
       className="h-full border border-border rounded-xl"
     >
       {/* Progress Summary */}
-      <div className="mb-4 p-3 bg-secondary-50 rounded-lg">
-        <div className="flex justify-between items-center mb-2">
-          <Text className="text-sm">Report Submission Progress</Text>
-          <Text className="text-sm font-medium">{submitted}/{totalRequired}</Text>
+      {totalRequired > 0 && (
+        <div className="mb-4 p-3 bg-secondary-50 rounded-lg">
+          <div className="flex justify-between items-center mb-2">
+            <Text className="text-sm">Report Submission Progress</Text>
+            <Text className="text-sm font-medium">{submitted}/{totalRequired}</Text>
+          </div>
+          <Progress
+            percent={progressPercent}
+            size="small"
+            showInfo={false}
+          />
         </div>
-        <Progress
-          percent={progressPercent}
-          size="small"
-          showInfo={false}
-        />
-      </div>
+      )}
 
       {/* Reports List */}
       {reports.length > 0 ? (
@@ -93,6 +129,18 @@ const MonthlyReportsCard = ({
               </div>
             );
           })}
+        </div>
+      ) : totalRequired === 0 && startDateInfo ? (
+        // Show internship start date when no reports yet and internship starts soon
+        <div className="text-center py-6">
+          <div className="mb-3">
+            <Tag color="blue" className="!px-3 !py-1.5 text-sm">
+              Starts: {startDateInfo.dateStr}
+            </Tag>
+          </div>
+          <Text type="secondary" className="text-xs block">
+            {startDateInfo.message}
+          </Text>
         </div>
       ) : (
         <Empty

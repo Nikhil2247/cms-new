@@ -13,6 +13,7 @@ import {
   VisitLogsCard,
   MonthlyReportsCard,
   StudentDetailsModal,
+  JoiningLettersCard,
 } from './components';
 import QuickVisitModal from '../visits/QuickVisitModal';
 import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
