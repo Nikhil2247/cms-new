@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, Matches } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { IsString, IsEmail, IsOptional, IsEnum, IsDateString, IsBoolean, IsInt, Matches } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { AdmissionType, Category, ClearanceStatus } from '../../../generated/prisma/client';
 
 export class UpdateStudentDto {
   @ApiProperty({ description: 'Student full name', required: false })
@@ -16,7 +17,6 @@ export class UpdateStudentDto {
   @ApiProperty({ description: 'Student phone number', required: false })
   @IsString()
   @IsOptional()
-  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits' })
   phoneNo?: string;
 
   @ApiProperty({ description: 'Student contact number (alias)', required: false })
@@ -49,13 +49,18 @@ export class UpdateStudentDto {
   @IsOptional()
   semesterId?: string;
 
-  @ApiProperty({ description: 'Date of birth', required: false })
+  @ApiProperty({ description: 'Date of birth (dateOfBirth alias)', required: false })
   @IsDateString()
   @IsOptional()
   dateOfBirth?: string;
 
-  @ApiProperty({ description: 'Gender', enum: ['MALE', 'FEMALE', 'OTHER'], required: false })
-  @IsEnum(['MALE', 'FEMALE', 'OTHER'])
+  @ApiProperty({ description: 'Date of birth', required: false })
+  @IsDateString()
+  @IsOptional()
+  dob?: string;
+
+  @ApiProperty({ description: 'Gender', required: false })
+  @IsString()
   @IsOptional()
   gender?: string;
 
@@ -72,13 +77,74 @@ export class UpdateStudentDto {
   @ApiProperty({ description: 'Parent/Guardian phone', required: false })
   @IsString()
   @IsOptional()
-  @Matches(/^\+?[0-9]{10,15}$/, { message: 'Phone number must be 10-15 digits' })
   parentPhone?: string;
+
+  @ApiProperty({ description: 'Parent/Guardian contact', required: false })
+  @IsString()
+  @IsOptional()
+  parentContact?: string;
+
+  @ApiProperty({ description: 'Mother name', required: false })
+  @IsString()
+  @IsOptional()
+  motherName?: string;
 
   @ApiProperty({ description: 'Address', required: false })
   @IsString()
   @IsOptional()
   address?: string;
+
+  @ApiProperty({ description: 'City', required: false })
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @ApiProperty({ description: 'State', required: false })
+  @IsString()
+  @IsOptional()
+  state?: string;
+
+  @ApiProperty({ description: 'District', required: false })
+  @IsString()
+  @IsOptional()
+  district?: string;
+
+  @ApiProperty({ description: 'Tehsil', required: false })
+  @IsString()
+  @IsOptional()
+  tehsil?: string;
+
+  @ApiProperty({ description: 'Pin code', required: false })
+  @IsString()
+  @IsOptional()
+  pinCode?: string;
+
+  @ApiProperty({ description: 'Admission type', enum: AdmissionType, required: false })
+  @IsEnum(AdmissionType)
+  @IsOptional()
+  admissionType?: AdmissionType;
+
+  @ApiProperty({ description: 'Category', enum: Category, required: false })
+  @IsEnum(Category)
+  @IsOptional()
+  category?: Category;
+
+  @ApiProperty({ description: 'Current year', required: false })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  currentYear?: number;
+
+  @ApiProperty({ description: 'Current semester', required: false })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  currentSemester?: number;
+
+  @ApiProperty({ description: 'Clearance status', enum: ClearanceStatus, required: false })
+  @IsEnum(ClearanceStatus)
+  @IsOptional()
+  clearanceStatus?: ClearanceStatus;
 
   @ApiProperty({ description: 'Active status', required: false })
   @Transform(({ value }) => {

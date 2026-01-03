@@ -374,13 +374,13 @@ const AssignedStudentsList = ({
       },
       render: (_, student) => getReportStatus(student),
     },
-    {
-      title: 'Letter',
-      key: 'joiningLetter',
-      width: 60,
-      align: 'center',
-      render: (_, student) => getJoiningLetterStatusIcon(student),
-    },
+    // {
+    //   title: 'Letter',
+    //   key: 'joiningLetter',
+    //   width: 60,
+    //   align: 'center',
+    //   render: (_, student) => getJoiningLetterStatusIcon(student),
+    // },
     {
       title: '',
       key: 'actions',

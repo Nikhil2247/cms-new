@@ -15,6 +15,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
 import { PrincipalService } from './principal.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
@@ -389,5 +390,36 @@ export class PrincipalController {
     @Body() data: { applicationIds: string[]; status: string; remarks?: string },
   ) {
     return this.principalService.bulkUpdateInternshipStatus(req.user.userId, data);
+  }
+
+  // ==================== Student Documents ====================
+
+  @Get('students/:id/documents')
+  @ApiOperation({ summary: 'Get documents for a student' })
+  async getStudentDocuments(@Request() req, @Param('id') studentId: string) {
+    return this.principalService.getStudentDocuments(req.user.userId, studentId);
+  }
+
+  @Post('students/:id/documents')
+  @ApiOperation({ summary: 'Upload a document for a student' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  async uploadStudentDocument(
+    @Request() req,
+    @Param('id') studentId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('type') type: string,
+  ) {
+    return this.principalService.uploadStudentDocument(req.user.userId, studentId, file, type);
+  }
+
+  @Delete('students/:id/documents/:documentId')
+  @ApiOperation({ summary: 'Delete a student document' })
+  async deleteStudentDocument(
+    @Request() req,
+    @Param('id') studentId: string,
+    @Param('documentId') documentId: string,
+  ) {
+    return this.principalService.deleteStudentDocument(req.user.userId, studentId, documentId);
   }
 }

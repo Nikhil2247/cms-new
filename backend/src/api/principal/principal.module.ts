@@ -6,9 +6,10 @@ import { UserModule } from '../../domain/user/user.module';
 import { MentorModule } from '../../domain/mentor/mentor.module';
 import { AcademicModule } from '../../domain/academic/academic.module';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
+import { FileStorageModule } from '../../infrastructure/file-storage/file-storage.module';
 
 @Module({
-  imports: [PrismaModule, UserModule, MentorModule, AcademicModule, AuditModule],
+  imports: [PrismaModule, UserModule, MentorModule, AcademicModule, AuditModule, FileStorageModule],
   controllers: [PrincipalController],
   providers: [PrincipalService],
   exports: [PrincipalService],

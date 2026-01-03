@@ -45,10 +45,13 @@ const FacultyWorkloadCard = () => {
   }, [dispatch]);
 
   // Memoized summary stats - prevents recalculation on every render
-  const { totalFaculty, totalAssigned, totalVisits, overloadedCount } = useMemo(() => ({
+  const summaryStats = useMemo(() => ({
     totalFaculty: faculty.length,
     totalAssigned: faculty.reduce((sum, f) => sum + (f.assignedCount || 0), 0),
     totalVisits: faculty.reduce((sum, f) => sum + (f.totalVisits || 0), 0),
+    expectedVisits: faculty.reduce((sum, f) => sum + (f.expectedVisits || 0), 0),
+    totalReports: faculty.reduce((sum, f) => sum + (f.completedReports || 0), 0),
+    expectedReports: faculty.reduce((sum, f) => sum + (f.expectedReports || 0), 0),
     overloadedCount: faculty.filter((f) => (f.assignedCount || 0) > LOAD_THRESHOLDS.OPTIMAL_MAX).length,
   }), [faculty]);
 
@@ -93,46 +96,58 @@ const FacultyWorkloadCard = () => {
     },
     {
       title: 'Visits',
-      dataIndex: 'totalVisits',
-      key: 'totalVisits',
+      key: 'visits',
       width: 100,
       align: 'center',
-      render: (count) => (
-        <Tooltip title={`${count} total visits`}>
-          <div className="flex items-center justify-center gap-1">
-            <EyeOutlined className="text-success" />
-            <span className="font-semibold">{count || 0}</span>
-          </div>
-        </Tooltip>
-      ),
+      render: (_, record) => {
+        const completed = record.totalVisits || 0;
+        const expected = record.expectedVisits || 0;
+        const progress = expected > 0 ? Math.round((completed / expected) * 100) : 0;
+        const color = progress >= 100 ? 'text-success' : progress >= 50 ? 'text-warning' : 'text-error';
+
+        return (
+          <Tooltip title={`${completed} of ${expected} visits completed (${progress}%)`}>
+            <div className="flex items-center justify-center gap-1">
+              <EyeOutlined className={color} />
+              <span className="font-semibold">{completed}</span>
+              <span className="text-text-tertiary text-xs">/{expected}</span>
+            </div>
+          </Tooltip>
+        );
+      },
       sorter: (a, b) => (a.totalVisits || 0) - (b.totalVisits || 0),
     },
     {
       title: 'Reports',
       key: 'reports',
-      width: 120,
+      width: 130,
       align: 'center',
       render: (_, record) => {
-        const pending = record.pendingReports || 0;
         const completed = record.completedReports || 0;
-        const total = pending + completed;
+        const pending = record.pendingReports || 0;
+        const expected = record.expectedReports || 0;
+        const total = completed + pending;
+        const progress = expected > 0 ? Math.round((completed / expected) * 100) : 0;
+        const color = progress >= 100 ? 'text-success' : progress >= 50 ? 'text-warning' : completed > 0 ? 'text-primary' : 'text-text-tertiary';
+
         return (
-          <Tooltip title={`Total: ${total} | Pending: ${pending} | Completed: ${completed}`}>
-            <div className="flex items-center justify-center gap-2">
-              <div className="flex items-center gap-1">
-                <FileTextOutlined className="text-primary" />
-                <span className="font-semibold">{total}</span>
-              </div>
-              <div className="text-xs text-text-tertiary">
-                ({pending}<ClockCircleOutlined className="ml-0.5" /> / {completed}✓)
-              </div>
+          <Tooltip title={`Submitted: ${completed} of ${expected} expected | Draft: ${pending}`}>
+            <div className="flex items-center justify-center gap-1">
+              <FileTextOutlined className={color} />
+              <span className="font-semibold">{completed}</span>
+              <span className="text-text-tertiary text-xs">/{expected}</span>
+              {pending > 0 && (
+                <span className="text-warning text-xs ml-1">
+                  <ClockCircleOutlined className="mr-0.5" />{pending}
+                </span>
+              )}
             </div>
           </Tooltip>
         );
       },
       sorter: (a, b) => {
-        const totalA = (a.pendingReports || 0) + (a.completedReports || 0);
-        const totalB = (b.pendingReports || 0) + (b.completedReports || 0);
+        const totalA = (a.completedReports || 0);
+        const totalB = (b.completedReports || 0);
         return totalA - totalB;
       },
     },

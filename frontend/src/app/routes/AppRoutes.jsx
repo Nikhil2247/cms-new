@@ -63,6 +63,7 @@ import { HelpCenter, MyQueries, SupportDashboard } from '../../features/help-sup
 import PrincipalDashboard from '../../features/principal/dashboard/PrincipalDashboard';
 import PrincipalOverview from '../../features/principal/overview/PrincipalOverview';
 import StudentList from '../../features/principal/students/StudentList';
+import AllStudents from '../../features/principal/students/AllStudents';
 import StaffList from '../../features/principal/staff/StaffList';
 import MentorAssignment from '../../features/principal/mentors/MentorAssignment';
 import BulkUpload from '../../features/principal/bulk/BulkUpload';
@@ -311,6 +312,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
               <StudentList />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="all-students"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.PRINCIPAL]}>
+              <AllStudents />
             </ProtectedRoute>
           }
         />

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
-import { UploadOutlined, SaveOutlined } from '@ant-design/icons';
+import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
@@ -46,7 +46,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
         if (student.profileImage) {
           if (typeof student.profileImage === 'string') {
             let urlToDisplay = student.profileImage;
-            
+
             try {
               // Logic to resolve presigned URL, similar to ProfileAvatar
               if (urlToDisplay.startsWith('http')) {
@@ -79,7 +79,9 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
 
         form.setFieldsValue({
           ...student,
-          dateOfBirth: student.dateOfBirth ? dayjs(student.dateOfBirth) : null,
+          dob: student.dob ? dayjs(student.dob) : null,
+          dateOfBirth: student.dob ? dayjs(student.dob) : null,
+          contact: student.contact || student.phoneNo,
           profileImage: profileImageValue,
         });
       } else if (open && !isEditMode) {
@@ -100,8 +102,17 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
     try {
       const formattedValues = {
         ...values,
-        dateOfBirth: values.dateOfBirth ? values.dateOfBirth.format('YYYY-MM-DD') : null,
+        dob: values.dob ? values.dob.format('YYYY-MM-DD') : null,
+        dateOfBirth: values.dob ? values.dob.format('YYYY-MM-DD') : null,
       };
+
+      // Remove profileImage from values if it's not a new file
+      if (formattedValues.profileImage && Array.isArray(formattedValues.profileImage)) {
+        const hasNewFile = formattedValues.profileImage.some(f => f.originFileObj);
+        if (!hasNewFile) {
+          delete formattedValues.profileImage;
+        }
+      }
 
       if (isEditMode) {
         await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
@@ -113,7 +124,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || 'Operation failed');
+      message.error(error?.message || error || 'Operation failed');
     } finally {
       setLoading(false);
     }
@@ -126,40 +137,61 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
     return e?.fileList;
   };
 
+  // Category options matching schema
+  const categoryOptions = [
+    { value: 'GENERAL', label: 'General' },
+    { value: 'OBC', label: 'OBC' },
+    { value: 'SC', label: 'SC' },
+    { value: 'ST', label: 'ST' },
+  ];
+
+  // Admission type options matching schema
+  const admissionTypeOptions = [
+    { value: 'FIRST_YEAR', label: 'First Year' },
+    { value: 'LEET', label: 'LEET' },
+  ];
+
+  // Gender options
+  const genderOptions = [
+    { value: 'Male', label: 'Male' },
+    { value: 'Female', label: 'Female' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  // Clearance status options
+  const clearanceStatusOptions = [
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'CLEARED', label: 'Cleared' },
+    { value: 'HOLD', label: 'Hold' },
+    { value: 'REJECTED', label: 'Rejected' },
+  ];
+
   return (
     <Modal
       title={isEditMode ? 'Edit Student' : 'Add New Student'}
       open={open}
       onCancel={handleClose}
       footer={null}
-      width={800}
+      width={900}
       destroyOnHidden
+      className="student-modal"
     >
       {initialLoading || lookupLoading ? (
         <div className="flex justify-center items-center py-12">
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish}>
-          <Divider plain>Personal Information</Divider>
+        <Form form={form} layout="vertical" onFinish={onFinish} className="max-h-[70vh] overflow-y-auto px-2">
+          <Divider plain><span className="text-primary font-medium">Personal Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
                 name="name"
-                label="Full Name"
+                label="Name"
                 rules={[{ required: true, message: 'Please enter full name' }]}
               >
-                <Input placeholder="Enter full name" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="rollNumber"
-                label="Roll Number"
-                rules={[{ required: true, message: 'Please enter roll number' }]}
-              >
-                <Input placeholder="Enter roll number" />
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter full name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -171,55 +203,55 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                   { type: 'email', message: 'Please enter valid email' }
                 ]}
               >
-                <Input placeholder="Enter email" />
+                <Input prefix={<MailOutlined className="text-gray-400" />} placeholder="Enter email" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="phoneNo"
-                label="Phone Number"
+                name="contact"
+                label="Contact"
                 rules={[
-                  { required: true, message: 'Please enter phone number' },
+                  { required: true, message: 'Please enter contact number' },
                   { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input placeholder="Enter phone number" />
+                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter contact number" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="dateOfBirth"
-                label="Date of Birth"
+                name="rollNumber"
+                label="Roll Number"
+                rules={[{ required: true, message: 'Please enter roll number' }]}
               >
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format="DD/MM/YYYY"
-                  disabledDate={(current) => current && current > dayjs().endOf('day')}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item
-                name="gender"
-                label="Gender"
-              >
-                <Select placeholder="Select gender" allowClear>
-                  <Select.Option value="MALE">Male</Select.Option>
-                  <Select.Option value="FEMALE">Female</Select.Option>
-                  <Select.Option value="OTHER">Other</Select.Option>
-                </Select>
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter roll number" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain>Academic Information</Divider>
+          <Divider plain><span className="text-primary font-medium">Academic Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="batchId"
-                label="Batch"
+                name="admissionType"
+                label="Admission Type"
+                rules={[{ required: true, message: 'Please select admission type' }]}
               >
+                <Select placeholder="Select admission type" options={admissionTypeOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="category"
+                label="Category"
+                rules={[{ required: true, message: 'Please select category' }]}
+              >
+                <Select placeholder="Select category" options={categoryOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="batchId" label="Batch">
                 <Select placeholder="Select batch" allowClear>
                   {activeBatches?.map(batch => (
                     <Select.Option key={batch.id} value={batch.id}>
@@ -229,25 +261,8 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} sm={8}>
-              <Form.Item
-                name="batchYear"
-                label="Batch Year"
-              >
-                <Select placeholder="Select year" allowClear>
-                  {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                    <Select.Option key={year} value={year}>
-                      {year}
-                    </Select.Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
             <Col xs={24} sm={12}>
-              <Form.Item
-                name="branchId"
-                label="Branch"
-              >
+              <Form.Item name="branchId" label="Branch">
                 <Select placeholder="Select branch" allowClear>
                   {activeBranches?.map(branch => (
                     <Select.Option key={branch.id} value={branch.id}>
@@ -257,44 +272,155 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12}>
-              <Form.Item name="bloodGroup" label="Blood Group">
-                <Select placeholder="Select blood group" allowClear>
-                  <Select.Option value="A+">A+</Select.Option>
-                  <Select.Option value="A-">A-</Select.Option>
-                  <Select.Option value="B+">B+</Select.Option>
-                  <Select.Option value="B-">B-</Select.Option>
-                  <Select.Option value="AB+">AB+</Select.Option>
-                  <Select.Option value="AB-">AB-</Select.Option>
-                  <Select.Option value="O+">O+</Select.Option>
-                  <Select.Option value="O-">O-</Select.Option>
+            <Col xs={24} sm={8}>
+              <Form.Item name="currentYear" label="Current Year">
+                <Select placeholder="Select year" allowClear>
+                  {[1, 2, 3, 4].map(year => (
+                    <Select.Option key={year} value={year}>
+                      Year {year}
+                    </Select.Option>
+                  ))}
                 </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="currentSemester" label="Current Semester">
+                <Select placeholder="Select semester" allowClear>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                    <Select.Option key={sem} value={sem}>
+                      Semester {sem}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="clearanceStatus" label="Clearance Status">
+                <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain>Parent/Guardian Information</Divider>
+          <Divider plain><span className="text-primary font-medium">Parent/Guardian Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
-              <Form.Item name="parentName" label="Parent/Guardian Name">
-                <Input placeholder="Enter parent/guardian name" />
+              <Form.Item
+                name="parentName"
+                label="Parent Name"
+                rules={[{ required: true, message: 'Please enter parent name' }]}
+              >
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter parent name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item
-                name="parentPhone"
-                label="Parent/Guardian Phone"
-                rules={[{ pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }]}
+                name="parentContact"
+                label="Parent Contact"
+                rules={[
+                  { required: true, message: 'Please enter parent contact' },
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
+                ]}
               >
-                <Input placeholder="Enter parent/guardian phone" />
+                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter parent contact" />
               </Form.Item>
             </Col>
-            <Col xs={24}>
-              <Form.Item name="address" label="Address">
-                <Input.TextArea rows={2} placeholder="Enter address" />
+            <Col xs={24} sm={12}>
+              <Form.Item name="motherName" label="Mother Name">
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter mother name" />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Personal Details</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="gender"
+                label="Gender"
+                rules={[{ required: true, message: 'Please select gender' }]}
+              >
+                <Select placeholder="Select gender" options={genderOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format="DD/MM/YYYY"
+                  placeholder="Select date of birth"
+                  disabledDate={(current) => current && current > dayjs().endOf('day')}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Address Information</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="pinCode"
+                label="Pin Code"
+                rules={[
+                  { required: true, message: 'Please enter pin code' },
+                  { pattern: /^[0-9]{6}$/, message: 'Please enter valid 6-digit pin code' }
+                ]}
+              >
+                <Input placeholder="Enter pin code" maxLength={6} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="address"
+                label="Address"
+                rules={[{ required: true, message: 'Please enter address' }]}
+              >
+                <Input prefix={<HomeOutlined className="text-gray-400" />} placeholder="Enter address" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="city"
+                label="City/Village"
+                rules={[{ required: true, message: 'Please enter city/village' }]}
+              >
+                <Input placeholder="Enter city/village" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="state"
+                label="State"
+                rules={[{ required: true, message: 'Please enter state' }]}
+              >
+                <Input placeholder="Enter state" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="tehsil"
+                label="Tehsil"
+                rules={[{ required: true, message: 'Please enter tehsil' }]}
+              >
+                <Input placeholder="Enter tehsil" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="district"
+                label="District"
+                rules={[{ required: true, message: 'Please enter district' }]}
+              >
+                <Input placeholder="Enter district" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Profile Image</span></Divider>
+
+          <Row gutter={16}>
             <Col xs={24}>
               <Form.Item
                 name="profileImage"
@@ -302,14 +428,14 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 valuePropName="fileList"
                 getValueFromEvent={normFile}
               >
-                <Upload beforeUpload={() => false} maxCount={1} accept="image/*">
+                <Upload beforeUpload={() => false} maxCount={1} accept="image/*" listType="picture">
                   <Button icon={<UploadOutlined />} className="rounded-lg">Click to Upload</Button>
                 </Upload>
               </Form.Item>
             </Col>
           </Row>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4">
+          <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-white pb-2">
             <Button onClick={handleClose} className="rounded-lg">
               Cancel
             </Button>
@@ -324,4 +450,3 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
 };
 
 export default StudentModal;
-

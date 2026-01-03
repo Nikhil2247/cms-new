@@ -274,6 +274,27 @@ export const principalService = {
 
   // Note: resetUserPassword moved to credentialsService
   // Use credentialsService.resetUserPassword(userId) instead
+
+  // Student Documents
+  async getStudentDocuments(studentId) {
+    const response = await API.get(`/principal/students/${studentId}/documents`);
+    return response.data;
+  },
+
+  async uploadStudentDocument(studentId, file, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+    const response = await API.post(`/principal/students/${studentId}/documents`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  async deleteStudentDocument(studentId, documentId) {
+    const response = await API.delete(`/principal/students/${studentId}/documents/${documentId}`);
+    return response.data;
+  },
 };
 
 export default principalService;

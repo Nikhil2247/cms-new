@@ -186,30 +186,30 @@ const FacultyDashboard = () => {
               />
 
               {/* Secondary Content Grid */}
-              <Row gutter={[24, 24]}>
+              {/* <Row gutter={[24, 24]}> */}
                 {/* Visit Logs */}
-                <Col xs={24} xl={12}>
+                {/* <Col xs={24} xl={12}>
                   <VisitLogsCard
                     visitLogs={visitLogs}
                     loading={isLoading}
                     onCreateNew={() => handleNewVisit()}
                     onViewAll={() => navigate('/app/visit-logs')}
                   />
-                </Col>
+                </Col> */}
 
                 {/* Monthly Reports */}
-                <Col xs={24} xl={12}>
+                {/* <Col xs={24} xl={12}>
                   <MonthlyReportsCard
                     reports={monthlyReports}
                     loading={isLoading}
                     onRefresh={refresh}
                     onViewAll={() => navigate('/app/monthly-reports')}
                   />
-                </Col>
-              </Row>
+                </Col> */}
+              {/* </Row> */}
 
               {/* Joining Letters - Full Width */}
-              <Row gutter={[24, 24]}>
+              {/* <Row gutter={[24, 24]}>
                 <Col xs={24}>
                   <JoiningLettersCard
                     letters={dashboard?.joiningLetters || []}
@@ -218,7 +218,7 @@ const FacultyDashboard = () => {
                     onViewAll={() => navigate('/app/joining-letters')}
                   />
                 </Col>
-              </Row>
+              </Row> */}
             </div>
           </div>
         </div>

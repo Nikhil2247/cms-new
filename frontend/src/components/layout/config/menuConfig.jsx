@@ -109,7 +109,8 @@ export const menuConfig = {
     title: 'People',
     icon: <TeamOutlined />,
     items: [
-      { key: 'students-list', label: 'Students', icon: <TeamOutlined />, path: '/app/students' },
+      // { key: 'students-list', label: 'Students', icon: <TeamOutlined />, path: '/app/students' },
+      { key: 'all-students', label: 'All Students', icon: <UsergroupAddOutlined />, path: '/app/all-students' },
       { key: 'staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/app/staff' },
       { key: 'mentor-assignment', label: 'Mentor Assignment', icon: <SolutionOutlined />, path: '/app/mentors' },
     ],

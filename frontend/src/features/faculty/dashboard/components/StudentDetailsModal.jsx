@@ -192,7 +192,7 @@ const StudentDetailsModal = ({
       companyAddress: app?.companyAddress || app?.location,
       companyContact: app?.companyContact,
       companyEmail: app?.companyEmail,
-      // HR Info
+      // HR/Supervisor Info
       hrName: app?.hrName,
       hrDesignation: app?.hrDesignation,
       hrContact: app?.hrContact,
@@ -201,6 +201,7 @@ const StudentDetailsModal = ({
       startDate: app?.startDate ? dayjs(app.startDate) : null,
       endDate: app?.endDate ? dayjs(app.endDate) : null,
       stipend: app?.stipend ? Number(app.stipend) : null,
+      internshipDuration: app?.internshipDuration,
       jobProfile: app?.jobProfile,
       // Notes
       notes: app?.notes,
@@ -215,18 +216,23 @@ const StudentDetailsModal = ({
       setSaving(true);
 
       const updateData = {
+        // Company Information
         companyName: values.companyName,
         companyAddress: values.companyAddress,
         companyContact: values.companyContact,
         companyEmail: values.companyEmail,
+        // HR/Supervisor Information
         hrName: values.hrName,
         hrDesignation: values.hrDesignation,
         hrContact: values.hrContact,
         hrEmail: values.hrEmail,
+        // Internship Duration & Compensation
         startDate: values.startDate?.toISOString(),
         endDate: values.endDate?.toISOString(),
         stipend: values.stipend,
+        internshipDuration: values.internshipDuration,
         jobProfile: values.jobProfile,
+        // Notes
         notes: values.notes,
         location: values.companyAddress, // Alias for backend compatibility
       };
@@ -374,7 +380,7 @@ const StudentDetailsModal = ({
 
           <Row gutter={[16, 16]}>
             {/* Student Info - Left Column */}
-            <Col xs={24} md={10}>
+            <Col xs={24} md={8}>
               <Card 
                 size="small" 
                 title={<span className="font-semibold text-sm">Contact Info</span>}
@@ -410,7 +416,7 @@ const StudentDetailsModal = ({
             </Col>
 
             {/* Internship Info - Right Column */}
-            <Col xs={24} md={14}>
+            <Col xs={24} md={16}>
               <Card
                 size="small"
                 title={
@@ -425,37 +431,80 @@ const StudentDetailsModal = ({
                 style={{ borderColor: token.colorBorder }}
               >
                 {isEditingInternship ? (
-                  <Form form={editForm} layout="vertical" size="small">
+                  <Form form={editForm} layout="vertical" size="small" className="max-h-[60vh] overflow-y-auto pr-2">
+                    {/* Company Information */}
+                    <Text strong className="text-xs block mb-2" style={{ color: token.colorPrimary }}>Company Information</Text>
                     <div className="grid grid-cols-2 gap-3">
-                      <Form.Item name="companyName" label="Company" rules={[{ required: true }]} className="mb-2">
-                        <Input />
+                      <Form.Item name="companyName" label="Company Name" rules={[{ required: true }]} className="mb-2">
+                        <Input placeholder="Enter company name" />
                       </Form.Item>
-                      <Form.Item name="jobProfile" label="Role" className="mb-2">
-                        <Input />
+                      <Form.Item name="jobProfile" label="Job Profile / Role" className="mb-2">
+                        <Input placeholder="e.g., Software Developer Intern" />
                       </Form.Item>
-                      <Form.Item name="startDate" label="Start" rules={[{ required: true }]} className="mb-2">
-                        <DatePicker className="w-full" />
+                      <Form.Item name="companyAddress" label="Company Address" className="mb-2 col-span-2">
+                        <Input placeholder="Enter company address" />
                       </Form.Item>
-                      <Form.Item name="endDate" label="End" rules={[{ required: true }]} className="mb-2">
-                        <DatePicker className="w-full" />
+                      <Form.Item name="companyContact" label="Company Phone" className="mb-2">
+                        <Input placeholder="e.g., +91 9876543210" />
                       </Form.Item>
-                      <Form.Item name="stipend" label="Stipend" className="mb-2">
-                        <InputNumber className="w-full" />
-                      </Form.Item>
-                      <Form.Item name="companyAddress" label="Location" className="mb-2">
-                        <Input />
+                      <Form.Item name="companyEmail" label="Company Email" className="mb-2">
+                        <Input placeholder="e.g., hr@company.com" type="email" />
                       </Form.Item>
                     </div>
-                    <Form.Item name="hrName" label="HR Name" className="mb-2">
-                      <Input />
-                    </Form.Item>
-                    <div className="flex justify-end gap-2 mt-2">
+
+                    <Divider className="my-3" />
+
+                    {/* HR/Supervisor Information */}
+                    <Text strong className="text-xs block mb-2" style={{ color: token.colorPrimary }}>HR / Supervisor Details</Text>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Form.Item name="hrName" label="HR/Supervisor Name" className="mb-2">
+                        <Input placeholder="Enter HR name" />
+                      </Form.Item>
+                      <Form.Item name="hrDesignation" label="Designation" className="mb-2">
+                        <Input placeholder="e.g., HR Manager" />
+                      </Form.Item>
+                      <Form.Item name="hrContact" label="Contact Number" className="mb-2">
+                        <Input placeholder="e.g., +91 9876543210" />
+                      </Form.Item>
+                      <Form.Item name="hrEmail" label="Email Address" className="mb-2">
+                        <Input placeholder="e.g., hr@company.com" type="email" />
+                      </Form.Item>
+                    </div>
+
+                    <Divider className="my-3" />
+
+                    {/* Internship Duration & Stipend */}
+                    <Text strong className="text-xs block mb-2" style={{ color: token.colorPrimary }}>Internship Duration & Compensation</Text>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Form.Item name="startDate" label="Start Date" rules={[{ required: true }]} className="mb-2">
+                        <DatePicker className="w-full" format="DD MMM YYYY" />
+                      </Form.Item>
+                      <Form.Item name="endDate" label="End Date" rules={[{ required: true }]} className="mb-2">
+                        <DatePicker className="w-full" format="DD MMM YYYY" />
+                      </Form.Item>
+                      <Form.Item name="stipend" label="Stipend (₹/month)" className="mb-2">
+                        <InputNumber className="w-full" placeholder="e.g., 15000" min={0} />
+                      </Form.Item>
+                      <Form.Item name="internshipDuration" label="Duration Text" className="mb-2">
+                        <Input placeholder="e.g., 6 months" />
+                      </Form.Item>
+                    </div>
+
+                    <Divider className="my-3" />
+
+                    {/* Notes */}
+                    {/* <Form.Item name="notes" label="Notes / Additional Information" className="mb-2">
+                      <TextArea rows={2} placeholder="Any additional notes about the internship..." />
+                    </Form.Item> */}
+
+                    <div className="flex justify-end gap-2 mt-3 pt-2 border-t" style={{ borderColor: token.colorBorderSecondary }}>
                       <Button size="small" onClick={() => setIsEditingInternship(false)}>Cancel</Button>
-                      <Button type="primary" size="small" onClick={handleSaveInternship} loading={saving}>Save</Button>
+                      <Button type="primary" size="small" onClick={handleSaveInternship} loading={saving}>Save Changes</Button>
                     </div>
                   </Form>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    {/* Company Name & Status */}
                     <div className="flex justify-between">
                       <div>
                         <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Company</Text>
@@ -468,38 +517,108 @@ const StudentDetailsModal = ({
                         </Tag>
                       </div>
                     </div>
-                    
+
+                    {/* Job Profile & Stipend */}
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Role</Text>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Job Profile / Role</Text>
                         <Text className="text-sm">{effectiveInternship?.jobProfile || 'N/A'}</Text>
                       </div>
                       <div>
-                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Stipend</Text>
-                        <Text className="text-sm">{effectiveInternship?.stipend ? `₹${effectiveInternship.stipend}` : 'N/A'}</Text>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Stipend (₹/month)</Text>
+                        <Text className="text-sm">{effectiveInternship?.stipend ? `₹${Number(effectiveInternship.stipend).toLocaleString('en-IN')}` : 'N/A'}</Text>
+                      </div>
+                    </div>
+
+                    {/* Duration Details */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Start Date</Text>
+                        <Text className="text-sm">{effectiveInternship?.startDate ? dayjs(effectiveInternship.startDate).format('DD MMM YYYY') : 'N/A'}</Text>
+                      </div>
+                      <div>
+                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>End Date</Text>
+                        <Text className="text-sm">{effectiveInternship?.endDate ? dayjs(effectiveInternship.endDate).format('DD MMM YYYY') : 'N/A'}</Text>
                       </div>
                       <div>
                         <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Duration</Text>
                         <Text className="text-sm">{getDuration()}</Text>
                       </div>
-                      <div>
-                        <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Location</Text>
-                        <Text className="text-sm truncate" title={effectiveInternship?.companyAddress || effectiveInternship?.location}>
-                          {effectiveInternship?.companyAddress || effectiveInternship?.location || 'N/A'}
-                        </Text>
-                      </div>
                     </div>
 
-                    {(effectiveInternship?.hrName || effectiveInternship?.hrContact) && (
+                    {/* Company Contact Details */}
+                    {(effectiveInternship?.companyAddress || effectiveInternship?.companyContact || effectiveInternship?.companyEmail) && (
                       <div className="pt-2 border-t border-dashed" style={{ borderColor: token.colorBorder }}>
-                        <Text className="text-xs block mb-1" style={{ color: token.colorTextTertiary }}>Supervisor</Text>
-                        <div className="flex items-center gap-2">
-                          <UserOutlined className="text-xs" />
-                          <Text className="text-sm">{effectiveInternship?.hrName || 'N/A'}</Text>
-                          {effectiveInternship?.hrContact && <Tag className="ml-auto text-xs">{effectiveInternship.hrContact}</Tag>}
+                        <Text className="text-xs font-medium block mb-2" style={{ color: token.colorPrimary }}>Company Contact</Text>
+                        <div className="grid grid-cols-1 gap-1">
+                          {(effectiveInternship?.companyAddress || effectiveInternship?.location) && (
+                            <div className="flex items-start gap-2">
+                              <EnvironmentOutlined className="text-xs mt-0.5" style={{ color: token.colorTextTertiary }} />
+                              <Text className="text-xs" style={{ color: token.colorTextSecondary }}>
+                                {effectiveInternship?.companyAddress || effectiveInternship?.location}
+                              </Text>
+                            </div>
+                          )}
+                          {effectiveInternship?.companyContact && (
+                            <div className="flex items-center gap-2">
+                              <PhoneOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
+                              <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{effectiveInternship.companyContact}</Text>
+                            </div>
+                          )}
+                          {effectiveInternship?.companyEmail && (
+                            <div className="flex items-center gap-2">
+                              <MailOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
+                              <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{effectiveInternship.companyEmail}</Text>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
+
+                    {/* HR/Supervisor Details */}
+                    {(effectiveInternship?.hrName || effectiveInternship?.hrContact || effectiveInternship?.hrEmail || effectiveInternship?.hrDesignation) && (
+                      <div className="pt-2 border-t border-dashed" style={{ borderColor: token.colorBorder }}>
+                        <Text className="text-xs font-medium block mb-2" style={{ color: token.colorPrimary }}>HR / Supervisor</Text>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Name</Text>
+                            <Text className="text-sm">{effectiveInternship?.hrName || 'N/A'}</Text>
+                          </div>
+                          {effectiveInternship?.hrDesignation && (
+                            <div>
+                              <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Designation</Text>
+                              <Text className="text-sm">{effectiveInternship.hrDesignation}</Text>
+                            </div>
+                          )}
+                          {effectiveInternship?.hrContact && (
+                            <div>
+                              <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Contact</Text>
+                              <div className="flex items-center gap-1">
+                                <PhoneOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
+                                <Text className="text-sm">{effectiveInternship.hrContact}</Text>
+                              </div>
+                            </div>
+                          )}
+                          {effectiveInternship?.hrEmail && (
+                            <div>
+                              <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Email</Text>
+                              <div className="flex items-center gap-1">
+                                <MailOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
+                                <Text className="text-sm truncate" title={effectiveInternship.hrEmail}>{effectiveInternship.hrEmail}</Text>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {/* {effectiveInternship?.notes && (
+                      <div className="pt-2 border-t border-dashed" style={{ borderColor: token.colorBorder }}>
+                        <Text className="text-xs font-medium block mb-1" style={{ color: token.colorPrimary }}>Notes</Text>
+                        <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{effectiveInternship.notes}</Text>
+                      </div>
+                    )} */}
                   </div>
                 )}
               </Card>
@@ -719,7 +838,7 @@ const StudentDetailsModal = ({
         }
         open={visible}
         onCancel={onClose}
-        width={700}
+        width={800}
         footer={[
           <Button key="close" onClick={onClose}>
             Close

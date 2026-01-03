@@ -7,11 +7,9 @@ import {
   Space,
   Typography,
   Input,
-  Avatar,
   Empty,
   Row,
   Col,
-  Statistic,
   Tabs,
   Badge,
   Skeleton,
@@ -25,8 +23,8 @@ import {
   Divider,
   Tooltip,
   Calendar,
-  Popconfirm,
-  Progress,
+  Spin,
+  List,
 } from 'antd';
 import {
   UserOutlined,
@@ -41,19 +39,17 @@ import {
   CarOutlined,
   VideoCameraOutlined,
   ScheduleOutlined,
-  ExclamationCircleOutlined,
   FileTextOutlined,
   EditOutlined,
   SaveOutlined,
-  CloseOutlined,
-  StarOutlined,
   EyeOutlined,
-  DownloadOutlined,
   TableOutlined,
   RiseOutlined,
   ClockCircleOutlined,
   WarningOutlined,
-  TrophyOutlined,
+  IdcardOutlined,
+  BookOutlined,
+  BankOutlined,
 } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
 import { debounce } from 'lodash';
@@ -62,7 +58,6 @@ import principalService from '../../../services/principal.service';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 const { Text, Title } = Typography;
-
 const { RangePicker } = DatePicker;
 
 const FacultyProgress = () => {
@@ -99,7 +94,6 @@ const FacultyProgress = () => {
   const fetchFacultyList = async () => {
     try {
       setLoading(true);
-      // Response is already unwrapped: { faculty: [...] }
       const response = await principalService.getFacultyProgress();
       setFacultyList(response?.faculty || []);
 
@@ -120,7 +114,6 @@ const FacultyProgress = () => {
   const fetchFacultyDetails = async (facultyId) => {
     try {
       setDetailsLoading(true);
-      // Response is already unwrapped
       const response = await principalService.getFacultyProgressDetails(facultyId);
       setFacultyDetails(response);
     } catch (error) {
@@ -134,6 +127,7 @@ const FacultyProgress = () => {
   // Handle faculty selection
   const handleFacultySelect = (faculty) => {
     setSelectedFaculty(faculty);
+    setFacultyDetails(null);
     fetchFacultyDetails(faculty.id);
   };
 
@@ -161,12 +155,10 @@ const FacultyProgress = () => {
   const filteredVisits = useMemo(() => {
     let visits = facultyDetails?.visits || [];
 
-    // Filter by status
     if (visitStatusFilter !== 'all') {
       visits = visits.filter((v) => v.status === visitStatusFilter);
     }
 
-    // Filter by date range
     if (visitDateRange && visitDateRange.length === 2 && visitDateRange[0] && visitDateRange[1]) {
       visits = visits.filter((v) => {
         const visitDate = dayjs(v.visitDate);
@@ -196,13 +188,13 @@ const FacultyProgress = () => {
   const getVisitTypeIcon = (type) => {
     switch (type) {
       case 'PHYSICAL':
-        return <CarOutlined className="text-primary" />;
+        return <CarOutlined className="text-blue-500" />;
       case 'VIRTUAL':
-        return <VideoCameraOutlined className="text-secondary" />;
+        return <VideoCameraOutlined className="text-purple-500" />;
       case 'SCHEDULED':
-        return <ScheduleOutlined className="text-warning" />;
+        return <ScheduleOutlined className="text-orange-500" />;
       default:
-        return <EnvironmentOutlined className="text-text-tertiary" />;
+        return <EnvironmentOutlined className="text-gray-500" />;
     }
   };
 
@@ -225,11 +217,8 @@ const FacultyProgress = () => {
   // Handle edit internship
   const handleEditInternship = (student) => {
     setEditStudent(student);
-    // Normalize phase to the new schema
     const phase = student.internshipPhase || 'NOT_STARTED';
-    // Reset form first, then set new values
     editForm.resetFields();
-    // Use setTimeout to ensure form is ready after reset
     setTimeout(() => {
       editForm.setFieldsValue({
         companyName: student.companyName || '',
@@ -254,7 +243,6 @@ const FacultyProgress = () => {
       toast.success('Internship updated successfully');
       setEditVisible(false);
       editForm.resetFields();
-      // Refresh faculty details to get updated data
       if (selectedFaculty) {
         fetchFacultyDetails(selectedFaculty.id);
       }
@@ -266,6 +254,23 @@ const FacultyProgress = () => {
     }
   };
 
+  const handleRefresh = () => {
+    fetchFacultyList();
+    if (selectedFaculty) {
+      fetchFacultyDetails(selectedFaculty.id);
+    }
+  };
+
+  // Format date helper
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    return dayjs(dateString).format('DD MMM YYYY');
+  };
+
+  // Get display faculty - use nested faculty object from details, or fallback to list item
+  const displayFaculty = facultyDetails?.faculty || selectedFaculty;
+  const stats = facultyDetails?.stats || {};
+
   // Student columns for the table
   const studentColumns = [
     {
@@ -273,10 +278,10 @@ const FacultyProgress = () => {
       key: 'student',
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <ProfileAvatar size={32} profileImage={record.profileImage} className="bg-primary/10 text-primary" />
+          <ProfileAvatar size={32} profileImage={record.profileImage} />
           <div>
-            <Text className="block font-medium text-text-primary">{record.name}</Text>
-            <Text className="text-xs text-text-tertiary">{record.rollNumber}</Text>
+            <Text className="block font-medium">{record.name}</Text>
+            <Text className="text-xs text-gray-500">{record.rollNumber}</Text>
           </div>
         </div>
       ),
@@ -287,7 +292,7 @@ const FacultyProgress = () => {
       render: (_, record) => (
         <div>
           <Tag color="blue" className="rounded-md m-0">{record.batch}</Tag>
-          <Text className="block text-xs text-text-tertiary mt-1">{record.department}</Text>
+          <Text className="block text-xs text-gray-500 mt-1">{record.department}</Text>
         </div>
       ),
     },
@@ -298,7 +303,7 @@ const FacultyProgress = () => {
       render: (_, record) => (
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Text className="block text-text-primary text-sm font-medium">
+            <Text className="block text-sm font-medium">
               {record.companyName || record.internshipTitle || 'N/A'}
             </Text>
             <Tag color="purple" className="rounded-full text-[9px] uppercase font-bold m-0 px-1.5">
@@ -306,15 +311,13 @@ const FacultyProgress = () => {
             </Tag>
           </div>
           {record.jobProfile && (
-            <Text className="text-xs text-text-secondary block">{record.jobProfile}</Text>
+            <Text className="text-xs text-gray-500 block">{record.jobProfile}</Text>
           )}
-          <div className="flex items-center gap-2 mt-1 text-[10px] text-text-tertiary">
-            {record.internshipDuration && (
-              <span>{record.internshipDuration}</span>
-            )}
+          <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+            {record.internshipDuration && <span>{record.internshipDuration}</span>}
             {record.stipend && (
               <Tag color="green" className="rounded-full text-[9px] m-0 px-1.5">
-                {record.stipend}/mo
+                ₹{record.stipend}/mo
               </Tag>
             )}
           </div>
@@ -352,7 +355,7 @@ const FacultyProgress = () => {
       key: 'visits',
       align: 'center',
       render: (visits) => (
-        <Badge count={visits || 0} showZero color={visits > 0 ? 'var(--ant-primary-color)' : 'var(--ant-error-color)'} />
+        <Badge count={visits || 0} showZero color={visits > 0 ? '#1890ff' : '#ff4d4f'} />
       ),
     },
     {
@@ -360,9 +363,9 @@ const FacultyProgress = () => {
       dataIndex: 'lastVisitDate',
       key: 'lastVisit',
       render: (date) => date ? (
-        <Text className="text-sm text-text-secondary">{dayjs(date).format('DD MMM YYYY')}</Text>
+        <Text className="text-sm text-gray-600">{formatDate(date)}</Text>
       ) : (
-        <Text className="text-xs text-text-tertiary italic">No visits</Text>
+        <Text className="text-xs text-gray-400 italic">No visits</Text>
       ),
     },
     {
@@ -375,7 +378,7 @@ const FacultyProgress = () => {
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEditInternship(record)}
-            className="text-warning hover:bg-warning/10"
+            className="text-orange-500 hover:bg-orange-50"
           />
         </Tooltip>
       ),
@@ -391,8 +394,8 @@ const FacultyProgress = () => {
       width: 140,
       render: (date) => (
         <div className="flex items-center gap-2">
-          <CalendarOutlined className="text-text-tertiary" />
-          <Text className="font-medium text-text-primary">{dayjs(date).format('DD MMM YYYY')}</Text>
+          <CalendarOutlined className="text-gray-400" />
+          <Text className="font-medium">{formatDate(date)}</Text>
         </div>
       ),
     },
@@ -413,10 +416,10 @@ const FacultyProgress = () => {
       key: 'student',
       render: (_, record) => (
         <div className="flex items-center gap-2">
-          <ProfileAvatar size={28} profileImage={record.studentProfileImage} className="bg-background-tertiary" />
+          <ProfileAvatar size={28} profileImage={record.studentProfileImage} />
           <div>
-            <Text className="block text-sm text-text-primary">{record.studentName}</Text>
-            <Text className="text-xs text-text-tertiary">{record.studentRollNumber}</Text>
+            <Text className="block text-sm">{record.studentName}</Text>
+            <Text className="text-xs text-gray-500">{record.studentRollNumber}</Text>
           </div>
         </div>
       ),
@@ -427,9 +430,9 @@ const FacultyProgress = () => {
       key: 'company',
       render: (name, record) => (
         <div>
-          <Text className="block text-sm text-text-primary">{name || 'N/A'}</Text>
+          <Text className="block text-sm">{name || 'N/A'}</Text>
           {record.visitLocation && (
-            <Text className="text-xs text-text-tertiary flex items-center gap-1">
+            <Text className="text-xs text-gray-500 flex items-center gap-1">
               <EnvironmentOutlined /> {record.visitLocation}
             </Text>
           )}
@@ -444,7 +447,7 @@ const FacultyProgress = () => {
       render: (rating) => rating ? (
         <Rate disabled value={rating} count={5} className="text-sm" />
       ) : (
-        <Text className="text-xs text-text-tertiary">Not rated</Text>
+        <Text className="text-xs text-gray-400">Not rated</Text>
       ),
     },
     {
@@ -468,190 +471,12 @@ const FacultyProgress = () => {
             type="text"
             icon={<EyeOutlined />}
             onClick={() => handleViewReportDetails(record)}
-            className="text-primary hover:bg-primary/10"
+            className="text-blue-500 hover:bg-blue-50"
           />
         </Tooltip>
       ),
     },
   ];
-
-  // Render faculty sidebar
-  const renderFacultySidebar = () => (
-    <Card
-      className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
-      styles={{ body: { padding: 0, height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column' } }}
-    >
-      {/* Sidebar Header */}
-      <div className="px-4 py-3 bg-primary/5 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TeamOutlined className="text-primary" />
-            <Text className="font-semibold text-primary">Faculty Members</Text>
-          </div>
-          <Text className="text-text-tertiary text-sm">{facultyList.length} faculty</Text>
-        </div>
-      </div>
-
-      {/* Search */}
-      <div className="p-3 border-b border-border space-y-2">
-        <Input
-          placeholder="Search Faculty..."
-          prefix={<UserOutlined className="text-text-tertiary" />}
-          onChange={(e) => debouncedSearch(e.target.value)}
-          className="rounded-lg"
-          allowClear
-        />
-      </div>
-
-      {/* Faculty List */}
-      <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="p-3 space-y-2">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="flex items-center gap-3 p-2">
-                <Skeleton.Avatar active size={40} />
-                <div className="flex-1">
-                  <Skeleton.Input active size="small" block />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredFaculty.length === 0 ? (
-          <Empty description="No faculty found" className="py-10" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : (
-          <div>
-            {filteredFaculty.map((faculty, index) => (
-              <div
-                key={faculty.id || index}
-                onClick={() => handleFacultySelect(faculty)}
-                className={`cursor-pointer px-4 py-3 transition-all flex items-center gap-3 border-b border-border/50 hover:bg-primary/5 ${
-                  selectedFaculty?.id === faculty.id
-                    ? 'bg-primary/8 border-l-[3px] border-l-primary'
-                    : 'border-l-[3px] border-l-transparent'
-                }`}
-              >
-                <ProfileAvatar
-                  size={40}
-                  profileImage={faculty.profileImage}
-                  className={`shrink-0 ${
-                    selectedFaculty?.id === faculty.id
-                      ? 'bg-primary/20 text-primary'
-                      : 'bg-background-tertiary text-text-tertiary'
-                  }`}
-                />
-                <div className="flex-1 min-w-0">
-                  <Text className={`block font-medium truncate text-sm ${
-                    selectedFaculty?.id === faculty.id ? 'text-text-primary' : 'text-text-primary'
-                  }`}>
-                    {faculty.name}
-                  </Text>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <Tag color="blue" className="rounded-full text-[10px] px-1.5 py-0 m-0 leading-4">
-                      {faculty.assignedCount || 0}
-                    </Tag>
-                    <Text className="text-xs text-text-tertiary truncate">
-                      {faculty.designation || 'Faculty'}
-                    </Text>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </Card>
-  );
-
-  // Render faculty details header
-  const renderFacultyDetailsHeader = () => {
-    if (!selectedFaculty) return null;
-
-    const stats = facultyDetails?.stats || {};
-
-    return (
-      <Card className="rounded-xl border-border shadow-sm mb-4" styles={{ body: { padding: '14px 16px' } }}>
-        <div className="flex items-center gap-3">
-          <ProfileAvatar
-            size={44}
-            profileImage={selectedFaculty.profileImage}
-            className="bg-primary/10 text-primary shrink-0"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Text strong className="text-text-primary truncate">{selectedFaculty.name}</Text>
-              <Text className="text-xs text-text-tertiary">
-                • {selectedFaculty.designation || 'Faculty'} • {selectedFaculty.employeeId || selectedFaculty.email}
-              </Text>
-            </div>
-            {/* Stats Tags below name */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <Tag color="blue" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                <TeamOutlined className="mr-1" />{stats.totalStudents || 0} Students
-              </Tag>
-              <Tag color="green" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                <CheckCircleOutlined className="mr-1" />{stats.totalVisits || 0} Visits
-              </Tag>
-              <Tag color="purple" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                <RiseOutlined className="mr-1" />{stats.visitsThisMonth || 0} This Month
-              </Tag>
-              <Tag color="cyan" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                <ClockCircleOutlined className="mr-1" />{stats.visitsLastMonth || 0} Last Month
-              </Tag>
-              <Tag color="orange" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                <ScheduleOutlined className="mr-1" />{stats.scheduledNextMonth || 0} Scheduled
-              </Tag>
-              {stats.missedVisits > 0 && (
-                <Tag color="red" className="rounded-full m-0 px-2 py-0 text-[11px]">
-                  <WarningOutlined className="mr-1" />{stats.missedVisits} Missed
-                </Tag>
-              )}
-            </div>
-          </div>
-        </div>
-      </Card>
-    );
-  };
-
-  // Render students tab
-  const renderStudentsTab = () => (
-    <Card
-      className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
-      styles={{ body: { padding: 0 } }}
-    >
-      <div className="px-4 py-3 border-b border-border flex justify-between items-center">
-        <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-          <TeamOutlined className="mr-1.5" />Assigned Students
-        </Text>
-        <Tag className="rounded-full text-xs px-2">{facultyDetails?.students?.length || 0}</Tag>
-      </div>
-      <Table
-        columns={studentColumns}
-        dataSource={facultyDetails?.students || []}
-        rowKey="id"
-        loading={detailsLoading}
-        pagination={{
-          pageSize: 10,
-          showSizeChanger: true,
-          showTotal: (total, range) => (
-            <span className="text-text-tertiary">
-              Showing <strong>{range[0]}-{range[1]}</strong> of <strong>{total}</strong> students
-            </span>
-          ),
-        }}
-        scroll={{ x: 900 }}
-        className="[&_.ant-table-thead>tr>th]:bg-background-tertiary/30 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-text-secondary [&_.ant-table-thead>tr>th]:text-xs [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-row:hover>td]:bg-primary/[0.02]"
-        locale={{
-          emptyText: (
-            <Empty
-              description="No students assigned to this faculty"
-              image={Empty.PRESENTED_IMAGE_SIMPLE}
-              className="py-12"
-            />
-          ),
-        }}
-      />
-    </Card>
-  );
 
   // Calendar cell renderer for visits
   const dateCellRender = (value) => {
@@ -678,276 +503,398 @@ const FacultyProgress = () => {
     );
   };
 
-  // Render visits tab
-  const renderVisitsTab = () => (
-    <div className="!space-y-4">
-      {/* Filters Card */}
-      <Card className="rounded-xl border-border shadow-soft bg-surface" styles={{ body: { padding: '12px 16px' } }}>
-        <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap gap-2 items-center">
-            <Select
-              value={visitStatusFilter}
-              onChange={setVisitStatusFilter}
-              className="w-32"
-              size="small"
-              placeholder="Status"
-            >
-              <Select.Option value="all">All Status</Select.Option>
-              <Select.Option value="COMPLETED">Completed</Select.Option>
-              <Select.Option value="SCHEDULED">Scheduled</Select.Option>
-              <Select.Option value="CANCELLED">Cancelled</Select.Option>
-              <Select.Option value="MISSED">Missed</Select.Option>
-            </Select>
-            <RangePicker
-              value={visitDateRange}
-              onChange={setVisitDateRange}
-              format="DD/MM/YYYY"
-              className="w-56"
-              size="small"
-              placeholder={['Start', 'End']}
-            />
-            {(visitStatusFilter !== 'all' || visitDateRange) && (
-              <Button
-                type="text"
-                size="small"
-                onClick={() => {
-                  setVisitStatusFilter('all');
-                  setVisitDateRange(null);
-                }}
-                className="text-text-tertiary hover:text-error"
-              >
-                Clear
-              </Button>
-            )}
-          </div>
-          <Button
-            icon={visitViewMode === 'table' ? <CalendarOutlined /> : <TableOutlined />}
-            onClick={() => setVisitViewMode(visitViewMode === 'table' ? 'calendar' : 'table')}
-            size="small"
-            className="rounded-lg"
-          >
-            {visitViewMode === 'table' ? 'Calendar' : 'Table'}
-          </Button>
-        </div>
-      </Card>
-
-      {/* Visit Summary */}
-      {facultyDetails?.visitSummary && facultyDetails.visitSummary.length > 0 && (
-        <Card className="rounded-xl border-border shadow-soft bg-surface" styles={{ body: { padding: '12px' } }}>
-          <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide mb-3 block">
-            <CalendarOutlined className="mr-1.5" />Monthly Summary
-          </Text>
-          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
-            {facultyDetails.visitSummary.map((month, index) => (
-              <div key={index} className={`p-2 rounded-lg border text-center ${
-                month.isPast && month.visits === 0
-                  ? 'border-error/30 bg-error/5'
-                  : month.visits > 0
-                  ? 'border-success/30 bg-success/5'
-                  : 'border-border bg-background-tertiary/30'
-              }`}>
-                <Text className="block text-[10px] font-medium text-text-primary">
-                  {month.monthName?.substring(0, 3)}
-                </Text>
-                <span className={`text-sm font-bold ${
-                  month.isPast && month.visits === 0 ? 'text-error' : month.visits > 0 ? 'text-success' : 'text-text-tertiary'
-                }`}>
-                  {month.visits}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Detailed Visits - Table or Calendar View */}
-      {visitViewMode === 'table' ? (
-        <Card
-          className="rounded-xl border-border shadow-soft bg-surface overflow-hidden"
-          styles={{ body: { padding: 0 } }}
-        >
-          <div className="px-4 py-3 border-b border-border flex justify-between items-center">
-            <Text className="text-xs font-semibold text-text-tertiary uppercase tracking-wide">
-              <FileTextOutlined className="mr-1.5" />Visit Details
-            </Text>
-            <Tag className="rounded-full text-xs px-2">{filteredVisits.length}</Tag>
-          </div>
+  // Tab items
+  const tabItems = [
+    {
+      key: 'students',
+      label: <span><TeamOutlined /> Assigned Students</span>,
+      children: (
+        <div className="p-4">
           <Table
-            columns={visitColumns}
-            dataSource={filteredVisits}
+            columns={studentColumns}
+            dataSource={facultyDetails?.students || []}
             rowKey="id"
             loading={detailsLoading}
             pagination={{
               pageSize: 10,
               showSizeChanger: true,
-              showTotal: (total, range) => (
-                <span className="text-text-tertiary">
-                  Showing <strong>{range[0]}-{range[1]}</strong> of <strong>{total}</strong> visits
-                </span>
-              ),
+              showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} students`,
             }}
-            scroll={{ x: 1000 }}
-            className="[&_.ant-table-thead>tr>th]:bg-background-tertiary/30 [&_.ant-table-thead>tr>th]:font-semibold [&_.ant-table-thead>tr>th]:text-text-secondary [&_.ant-table-thead>tr>th]:text-xs [&_.ant-table-thead>tr>th]:uppercase [&_.ant-table-row:hover>td]:bg-primary/[0.02]"
-            expandable={{
-              expandedRowRender: (record) => (
-                <div className="p-4 bg-gradient-to-br from-background-tertiary/50 to-transparent rounded-xl mx-2 my-2 border border-border/50">
-                  <Row gutter={[20, 16]}>
-                    <Col xs={24} md={12}>
-                      <Descriptions
-                        column={1}
-                        size="small"
-                        className="[&_.ant-descriptions-item-label]:text-text-tertiary [&_.ant-descriptions-item-label]:font-medium"
-                      >
-                        <Descriptions.Item label="Title of Project/Work">
-                          {record.titleOfProjectWork || 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Assistance Required from Institute">
-                          {record.assistanceRequiredFromInstitute || 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Response from Organisation">
-                          {record.responseFromOrganisation || 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Remarks of Organisation Supervisor">
-                          {record.remarksOfOrganisationSupervisor || 'N/A'}
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Col>
-                    <Col xs={24} md={12}>
-                      <Descriptions
-                        column={1}
-                        size="small"
-                        className="[&_.ant-descriptions-item-label]:text-text-tertiary [&_.ant-descriptions-item-label]:font-medium"
-                      >
-                        <Descriptions.Item label="Significant Change in Plan">
-                          {record.significantChangeInPlan || 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Observations about Student">
-                          {record.observationsAboutStudent || 'N/A'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Feedback Shared with Student">
-                          {record.feedbackSharedWithStudent || 'N/A'}
-                        </Descriptions.Item>
-                      </Descriptions>
-                    </Col>
-                  </Row>
-                </div>
-              ),
-              rowExpandable: () => true,
-            }}
+            scroll={{ x: 900 }}
             locale={{
-              emptyText: (
-                <Empty
-                  description="No visits recorded"
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                  className="py-12"
-                />
-              ),
+              emptyText: <Empty description="No students assigned to this faculty" className="py-8" />,
             }}
           />
-        </Card>
-      ) : (
-        <Card className="rounded-xl border-border shadow-soft bg-surface">
-          <Calendar
-            cellRender={(current, info) => {
-              if (info.type === 'date') {
-                return dateCellRender(current);
-              }
-              return info.originNode;
-            }}
-          />
-        </Card>
-      )}
-    </div>
-  );
-
-  // Tab items
-  const tabItems = [
-    {
-      key: 'students',
-      label: (
-        <span className="flex items-center gap-2 px-1">
-          <TeamOutlined />
-          <span>Assigned Students</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold">
-            {facultyDetails?.students?.length || 0}
-          </span>
-        </span>
+        </div>
       ),
-      children: renderStudentsTab(),
     },
     {
       key: 'visits',
       label: (
-        <span className="flex items-center gap-2 px-1">
-          <CarOutlined />
-          <span>Faculty Visits</span>
-          <span className="ml-1 px-2 py-0.5 rounded-full bg-success/10 text-success text-xs font-bold">
-            {facultyDetails?.visits?.length || 0}
-          </span>
+        <span>
+          <CarOutlined /> Faculty Visits
+          {facultyDetails?.visits?.length > 0 && (
+            <Tag color="green" className="ml-2">{facultyDetails.visits.length}</Tag>
+          )}
         </span>
       ),
-      children: renderVisitsTab(),
+      children: (
+        <div className="p-4 space-y-4">
+          {/* Filters */}
+          <Card size="small" className="shadow-sm border-0">
+            <div className="flex flex-wrap gap-3 items-center justify-between">
+              <div className="flex flex-wrap gap-2 items-center">
+                <Select
+                  value={visitStatusFilter}
+                  onChange={setVisitStatusFilter}
+                  className="w-32"
+                  size="small"
+                  placeholder="Status"
+                >
+                  <Select.Option value="all">All Status</Select.Option>
+                  <Select.Option value="COMPLETED">Completed</Select.Option>
+                  <Select.Option value="SCHEDULED">Scheduled</Select.Option>
+                  <Select.Option value="CANCELLED">Cancelled</Select.Option>
+                  <Select.Option value="MISSED">Missed</Select.Option>
+                </Select>
+                <RangePicker
+                  value={visitDateRange}
+                  onChange={setVisitDateRange}
+                  format="DD/MM/YYYY"
+                  className="w-56"
+                  size="small"
+                  placeholder={['Start', 'End']}
+                />
+                {(visitStatusFilter !== 'all' || visitDateRange) && (
+                  <Button
+                    type="text"
+                    size="small"
+                    onClick={() => {
+                      setVisitStatusFilter('all');
+                      setVisitDateRange(null);
+                    }}
+                    className="text-gray-500 hover:text-red-500"
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+              <Button
+                icon={visitViewMode === 'table' ? <CalendarOutlined /> : <TableOutlined />}
+                onClick={() => setVisitViewMode(visitViewMode === 'table' ? 'calendar' : 'table')}
+                size="small"
+              >
+                {visitViewMode === 'table' ? 'Calendar' : 'Table'}
+              </Button>
+            </div>
+          </Card>
+
+          {/* Monthly Summary */}
+          {facultyDetails?.visitSummary && facultyDetails.visitSummary.length > 0 && (
+            <Card size="small" className="shadow-sm border-0">
+              <Text className="text-xs font-semibold text-gray-500 uppercase mb-3 block">
+                <CalendarOutlined className="mr-1.5" />Monthly Summary
+              </Text>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+                {facultyDetails.visitSummary.map((month, index) => (
+                  <div key={index} className={`p-2 rounded-lg border text-center ${
+                    month.isPast && month.visits === 0
+                      ? 'border-red-200 bg-red-50'
+                      : month.visits > 0
+                      ? 'border-green-200 bg-green-50'
+                      : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <Text className="block text-[10px] font-medium">
+                      {month.monthName?.substring(0, 3)}
+                    </Text>
+                    <span className={`text-sm font-bold ${
+                      month.isPast && month.visits === 0 ? 'text-red-500' : month.visits > 0 ? 'text-green-500' : 'text-gray-400'
+                    }`}>
+                      {month.visits}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Visits Table or Calendar */}
+          {visitViewMode === 'table' ? (
+            <Table
+              columns={visitColumns}
+              dataSource={filteredVisits}
+              rowKey="id"
+              loading={detailsLoading}
+              pagination={{
+                pageSize: 10,
+                showSizeChanger: true,
+                showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} visits`,
+              }}
+              scroll={{ x: 1000 }}
+              expandable={{
+                expandedRowRender: (record) => (
+                  <div className="p-4 bg-gray-50 rounded-lg mx-2 my-2">
+                    <Row gutter={[20, 16]}>
+                      <Col xs={24} md={12}>
+                        <Descriptions column={1} size="small">
+                          <Descriptions.Item label="Title of Project/Work">
+                            {record.titleOfProjectWork || 'N/A'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Assistance Required">
+                            {record.assistanceRequiredFromInstitute || 'N/A'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                      <Col xs={24} md={12}>
+                        <Descriptions column={1} size="small">
+                          <Descriptions.Item label="Observations">
+                            {record.observationsAboutStudent || 'N/A'}
+                          </Descriptions.Item>
+                          <Descriptions.Item label="Feedback">
+                            {record.feedbackSharedWithStudent || 'N/A'}
+                          </Descriptions.Item>
+                        </Descriptions>
+                      </Col>
+                    </Row>
+                  </div>
+                ),
+                rowExpandable: () => true,
+              }}
+              locale={{
+                emptyText: <Empty description="No visits recorded" className="py-8" />,
+              }}
+            />
+          ) : (
+            <Card className="shadow-sm border-0">
+              <Calendar
+                cellRender={(current, info) => {
+                  if (info.type === 'date') {
+                    return dateCellRender(current);
+                  }
+                  return info.originNode;
+                }}
+              />
+            </Card>
+          )}
+        </div>
+      ),
     },
   ];
 
   return (
-    <div className="p-4 md:p-6 min-h-screen bg-background-secondary">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-        <div>
-          <h1 className="text-lg font-bold text-text-primary tracking-tight">Faculty Progress Tracking</h1>
-          <Text className="text-text-tertiary text-sm">Monitor faculty visits and student assignments</Text>
+    <div className="p-4">
+      {/* Header */}
+      <div className="flex flex-wrap justify-between items-center mb-4">
+        <div className="flex items-center gap-3">
+          <Title level={3} className="text-blue-800 !mb-0">
+            Faculty Progress Tracking
+          </Title>
         </div>
         <Button
           icon={<ReloadOutlined />}
-          onClick={() => {
-            fetchFacultyList();
-            if (selectedFaculty) {
-              fetchFacultyDetails(selectedFaculty.id);
-            }
-          }}
+          onClick={handleRefresh}
           loading={loading || detailsLoading}
-          className="rounded-lg"
+          className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
         >
           Refresh
         </Button>
       </div>
 
-      {/* Main Content */}
-      <Row gutter={[24, 24]}>
-        {/* Faculty Sidebar */}
-        <Col xs={24} lg={6}>
-          <div className="lg:sticky lg:top-6" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-            {renderFacultySidebar()}
-          </div>
+      <Row gutter={[16, 16]}>
+        {/* Faculty List - Left Column */}
+        <Col xs={24} sm={24} md={8} lg={6} xl={6}>
+          <Card
+            title={
+              <div className="flex items-center text-blue-800">
+                <TeamOutlined className="mr-2" /> Faculty Directory
+                <Text type="secondary" className="ml-auto text-xs">
+                  {filteredFaculty.length} faculty
+                </Text>
+              </div>
+            }
+            className="rounded-lg border-0"
+            styles={{
+              body: { padding: 0, maxHeight: 'calc(80vh - 80px)', overflowY: 'hidden' },
+              header: { borderBottom: '2px solid #e6f7ff', backgroundColor: '#f0f7ff' },
+            }}
+          >
+            <div style={{ maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', padding: '0.5rem' }} className="hide-scrollbar">
+              <Input
+                placeholder="Search Faculty..."
+                className="mb-3 rounded-lg"
+                value={searchText}
+                onChange={(e) => debouncedSearch(e.target.value)}
+                prefix={<UserOutlined className="text-gray-400" />}
+                allowClear
+              />
+
+              {loading ? (
+                <div className="flex justify-center items-center h-40">
+                  <Spin size="small" tip="Loading faculty..." />
+                </div>
+              ) : filteredFaculty.length === 0 ? (
+                <Empty description="No faculty found" className="py-8" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+              ) : (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={filteredFaculty}
+                  renderItem={(faculty) => (
+                    <List.Item
+                      onClick={() => handleFacultySelect(faculty)}
+                      className={`cursor-pointer my-2 rounded-xl transition-all duration-300 ease-in-out ${
+                        selectedFaculty?.id === faculty.id
+                          ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-indigo-100 border-l-4 border-l-blue-500 shadow-sm'
+                          : 'hover:bg-gray-100 hover:shadow-md hover:translate-x-1'
+                      }`}
+                    >
+                      <List.Item.Meta
+                        className="px-3 py-1"
+                        avatar={
+                          <ProfileAvatar
+                            profileImage={faculty.profileImage}
+                            size={50}
+                            className={selectedFaculty?.id === faculty.id
+                              ? 'border-2 border-blue-400'
+                              : 'border border-gray-200 hover:border-gray-300'
+                            }
+                          />
+                        }
+                        title={
+                          <Text className="font-semibold !text-sm !text-gray-600">
+                            {faculty.name}
+                          </Text>
+                        }
+                        description={
+                          <div>
+                            <Tag color="blue" className="text-xs">
+                              {faculty.assignedCount || 0} Students
+                            </Tag>
+                            <div className="mt-1 text-xs text-gray-500">
+                              <IdcardOutlined className="mr-1" />
+                              {faculty.designation || 'Faculty'}
+                            </div>
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+            </div>
+          </Card>
         </Col>
 
-        {/* Faculty Details */}
-        <Col xs={24} lg={18}>
-          {selectedFaculty ? (
-            detailsLoading && !facultyDetails ? (
-              <Card className="rounded-2xl border-border shadow-soft bg-surface">
-                <Skeleton active paragraph={{ rows: 8 }} />
+        {/* Faculty Details - Right Column */}
+        <Col xs={24} sm={24} md={16} lg={18} xl={18} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+          {displayFaculty ? (
+            <div className="space-y-4">
+              {/* Profile Header */}
+              <Card className="border-0 rounded-lg shadow-sm">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <ProfileAvatar
+                    profileImage={displayFaculty.profileImage}
+                    size={90}
+                    className="border-4 border-white shadow-lg"
+                  />
+                  <div className="flex-grow text-center md:text-left">
+                    <Title level={3} className="mb-0 text-blue-800">
+                      {displayFaculty.name}
+                    </Title>
+                    <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
+                      <IdcardOutlined className="mr-2" />
+                      {displayFaculty.designation || 'Faculty'} • {displayFaculty.employeeId || displayFaculty.email}
+                    </div>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
+                      <Tag color="blue" className="px-3 py-1 rounded-full">
+                        <TeamOutlined className="mr-1" />
+                        {stats.totalStudents || displayFaculty.assignedCount || 0} Students
+                      </Tag>
+                      <Tag color="green" className="px-3 py-1 rounded-full">
+                        <CheckCircleOutlined className="mr-1" />
+                        {stats.totalVisits || 0} Total Visits
+                      </Tag>
+                      <Tag color="purple" className="px-3 py-1 rounded-full">
+                        <RiseOutlined className="mr-1" />
+                        {stats.visitsThisMonth || 0} This Month
+                      </Tag>
+                      <Tag color="cyan" className="px-3 py-1 rounded-full">
+                        <ClockCircleOutlined className="mr-1" />
+                        {stats.visitsLastMonth || 0} Last Month
+                      </Tag>
+                      <Tag color="orange" className="px-3 py-1 rounded-full">
+                        <ScheduleOutlined className="mr-1" />
+                        {stats.scheduledNextMonth || 0} Scheduled
+                      </Tag>
+                      {stats.missedVisits > 0 && (
+                        <Tag color="red" className="px-3 py-1 rounded-full">
+                          <WarningOutlined className="mr-1" />
+                          {stats.missedVisits} Missed
+                        </Tag>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Contact Quick Info */}
+                <div className="grid lg:grid-cols-3 gap-4 mt-6 p-3 rounded-lg shadow-sm bg-gray-50">
+                  <div className="flex items-center">
+                    <MailOutlined className="text-blue-500 text-xl mr-3" />
+                    <div>
+                      <div className="text-xs text-gray-500">Email</div>
+                      <div className="text-sm font-medium">{displayFaculty.email || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <PhoneOutlined className="text-green-500 text-xl mr-3" />
+                    <div>
+                      <div className="text-xs text-gray-500">Contact</div>
+                      <div className="text-sm font-medium">{displayFaculty.phoneNo || displayFaculty.contact || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <BankOutlined className="text-orange-500 text-xl mr-3" />
+                    <div>
+                      <div className="text-xs text-gray-500">Department</div>
+                      <div className="text-sm font-medium">{displayFaculty.branch?.name || displayFaculty.branchName || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
               </Card>
-            ) : (
-              <div>
-                {renderFacultyDetailsHeader()}
+
+              {/* Detailed Information in Tabs */}
+              <Card className="rounded-lg !mt-3 shadow-sm" styles={{ body: { padding: 0 } }}>
                 <Tabs
                   activeKey={activeTab}
                   onChange={setActiveTab}
                   items={tabItems}
-                  size="large"
-                  className="[&_.ant-tabs-tab]:rounded-lg [&_.ant-tabs-tab]:px-4 [&_.ant-tabs-tab-active]:bg-primary/5 [&_.ant-tabs-ink-bar]:bg-primary [&_.ant-tabs-ink-bar]:h-[3px] [&_.ant-tabs-ink-bar]:rounded-full"
+                  tabBarStyle={{ padding: '10px 16px 0', marginBottom: 0 }}
+                  className="faculty-tabs"
                 />
-              </div>
-            )
+              </Card>
+            </div>
           ) : (
-            <Card className="rounded-2xl border-border shadow-soft bg-surface">
-              <Empty
-                description="Select a faculty member to view details"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                className="py-20"
-              />
+            <Card className="min-h-[75vh] shadow-xl rounded-3xl bg-white/90 backdrop-blur-lg border-0 flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto py-16">
+                <div className="relative mb-8">
+                  <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mb-4 mx-auto">
+                    <UserOutlined className="text-gray-600 text-4xl" />
+                  </div>
+                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                    <SearchOutlined className="text-indigo-500 text-sm" />
+                  </div>
+                </div>
+                <Title level={4} className="text-gray-600 mb-4">
+                  Select a Faculty Member
+                </Title>
+                <Text className="text-gray-500 text-base block mb-6">
+                  Choose a faculty from the directory on the left to view detailed progress and student assignments.
+                </Text>
+                <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-4 border-0">
+                  <Text className="text-indigo-700 text-sm">
+                    Tip: Use the search to quickly find specific faculty members
+                  </Text>
+                </Card>
+              </div>
             </Card>
           )}
         </Col>
@@ -955,17 +902,7 @@ const FacultyProgress = () => {
 
       {/* Edit Internship Modal */}
       <Modal
-        title={
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-warning/10 flex items-center justify-center">
-              <EditOutlined className="text-warning" />
-            </div>
-            <div>
-              <span className="text-text-primary font-semibold">Edit Internship Details</span>
-              <p className="text-xs text-text-tertiary font-normal mb-0">Update student internship information</p>
-            </div>
-          </div>
-        }
+        title="Edit Internship Details"
         open={editVisible}
         onCancel={() => {
           setEditVisible(false);
@@ -975,25 +912,15 @@ const FacultyProgress = () => {
         footer={null}
         forceRender
         destroyOnClose={false}
-        className="[&_.ant-modal-header]:pb-4 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-border"
       >
-        <Form
-          form={editForm}
-          layout="vertical"
-          onFinish={handleEditSubmit}
-          className="mt-5"
-        >
+        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} className="mt-4">
           {editStudent && (
-            <div className="p-4 rounded-xl bg-gradient-to-r from-primary/5 to-transparent border border-primary/10 mb-5">
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 mb-5">
               <div className="flex items-center gap-3">
-                <ProfileAvatar
-                  size={48}
-                  profileImage={editStudent.profileImage}
-                  className="bg-gradient-to-br from-primary/20 to-primary/5 text-primary border-2 border-primary/10"
-                />
+                <ProfileAvatar size={48} profileImage={editStudent.profileImage} />
                 <div>
-                  <Text className="font-bold text-text-primary block text-base">{editStudent.name}</Text>
-                  <Text className="text-text-secondary text-sm">{editStudent.rollNumber}</Text>
+                  <Text className="font-bold block text-base">{editStudent.name}</Text>
+                  <Text className="text-gray-600 text-sm">{editStudent.rollNumber}</Text>
                 </div>
               </div>
             </div>
@@ -1003,31 +930,25 @@ const FacultyProgress = () => {
             <Col xs={24} md={12}>
               <Form.Item
                 name="companyName"
-                label={<span className="font-medium">Company Name</span>}
+                label="Company Name"
                 rules={[{ required: true, message: 'Company name is required' }]}
               >
-                <Input placeholder="Enter company name" className="rounded-lg" />
+                <Input placeholder="Enter company name" />
               </Form.Item>
             </Col>
             <Col xs={24} md={12}>
-              <Form.Item
-                name="jobProfile"
-                label={<span className="font-medium">Job Profile / Role</span>}
-              >
-                <Input placeholder="Enter job profile" className="rounded-lg" />
+              <Form.Item name="jobProfile" label="Job Profile / Role">
+                <Input placeholder="Enter job profile" />
               </Form.Item>
             </Col>
           </Row>
 
           <Row gutter={16}>
             <Col xs={24} md={8}>
-              <Form.Item
-                name="stipend"
-                label={<span className="font-medium">Monthly Stipend (₹)</span>}
-              >
+              <Form.Item name="stipend" label="Monthly Stipend (₹)">
                 <InputNumber
                   placeholder="Enter stipend"
-                  className="w-full rounded-lg"
+                  className="w-full"
                   min={0}
                   formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                   parser={value => value.replace(/\$\s?|(,*)/g, '')}
@@ -1035,19 +956,13 @@ const FacultyProgress = () => {
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item
-                name="internshipDuration"
-                label={<span className="font-medium">Duration</span>}
-              >
-                <Input placeholder="e.g., 6 months" className="rounded-lg" />
+              <Form.Item name="internshipDuration" label="Duration">
+                <Input placeholder="e.g., 6 months" />
               </Form.Item>
             </Col>
             <Col xs={24} md={8}>
-              <Form.Item
-                name="internshipPhase"
-                label={<span className="font-medium">Phase</span>}
-              >
-                <Select placeholder="Select phase" className="rounded-lg">
+              <Form.Item name="internshipPhase" label="Phase">
+                <Select placeholder="Select phase">
                   <Select.Option value="NOT_STARTED">Not Started</Select.Option>
                   <Select.Option value="ACTIVE">Active</Select.Option>
                   <Select.Option value="COMPLETED">Completed</Select.Option>
@@ -1057,24 +972,12 @@ const FacultyProgress = () => {
             </Col>
           </Row>
 
-          <Divider className="my-5" />
+          <Divider className="my-4" />
           <div className="flex justify-end gap-3">
-            <Button
-              onClick={() => {
-                setEditVisible(false);
-                editForm.resetFields();
-              }}
-              className="rounded-lg px-5"
-            >
+            <Button onClick={() => { setEditVisible(false); editForm.resetFields(); }}>
               Cancel
             </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={editLoading}
-              icon={<SaveOutlined />}
-              className="rounded-lg px-5 shadow-md shadow-primary/20"
-            >
+            <Button type="primary" htmlType="submit" loading={editLoading} icon={<SaveOutlined />}>
               Save Changes
             </Button>
           </div>
@@ -1083,81 +986,50 @@ const FacultyProgress = () => {
 
       {/* Visit Report Details Modal */}
       <Modal
-        title={
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-              <EyeOutlined className="text-primary" />
-            </div>
-            <div>
-              <span className="text-text-primary font-semibold">Visit Report Details</span>
-              <p className="text-xs text-text-tertiary font-normal mb-0">Complete visit information and feedback</p>
-            </div>
-          </div>
-        }
+        title="Visit Report Details"
         open={reportDetailsVisible}
         onCancel={() => {
           setReportDetailsVisible(false);
           setSelectedReport(null);
         }}
-        footer={
-          <Button
-            onClick={() => setReportDetailsVisible(false)}
-            className="rounded-lg"
-          >
-            Close
-          </Button>
-        }
+        footer={<Button onClick={() => setReportDetailsVisible(false)}>Close</Button>}
         width={720}
-        className="[&_.ant-modal-header]:pb-4 [&_.ant-modal-header]:border-b [&_.ant-modal-header]:border-border"
       >
         {selectedReport && (
-          <div className="space-y-5 mt-5">
+          <div className="space-y-5 mt-4">
             {/* Visit Header Card */}
-            <div className="p-5 rounded-xl bg-gradient-to-br from-primary/8 via-primary/5 to-transparent border border-primary/10">
+            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
               <Row gutter={[20, 16]}>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Faculty</Text>
-                  <Text className="font-semibold text-text-primary">{selectedFaculty?.name}</Text>
+                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Faculty</Text>
+                  <Text className="font-semibold">{selectedFaculty?.name}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Visit Date</Text>
-                  <Text className="font-semibold text-text-primary">
-                    {dayjs(selectedReport.visitDate).format('DD MMM YYYY')}
-                  </Text>
+                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Visit Date</Text>
+                  <Text className="font-semibold">{formatDate(selectedReport.visitDate)}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Student</Text>
-                  <Text className="font-semibold text-text-primary block">{selectedReport.studentName}</Text>
-                  <Text className="text-xs text-text-secondary font-mono">{selectedReport.studentRollNumber}</Text>
+                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Student</Text>
+                  <Text className="font-semibold block">{selectedReport.studentName}</Text>
+                  <Text className="text-xs text-gray-500">{selectedReport.studentRollNumber}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-text-tertiary block mb-1">Visit Type</Text>
+                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Visit Type</Text>
                   <div className="flex items-center gap-2">
                     {getVisitTypeIcon(selectedReport.visitType)}
-                    <Text className="font-semibold text-text-primary">{selectedReport.visitType}</Text>
+                    <Text className="font-semibold">{selectedReport.visitType}</Text>
                   </div>
                 </Col>
               </Row>
             </div>
 
             {/* Visit Details */}
-            <Descriptions
-              bordered
-              column={{ xs: 1, sm: 2 }}
-              size="small"
-              className="[&_.ant-descriptions-item-label]:bg-background-tertiary/50 [&_.ant-descriptions-item-label]:font-semibold [&_.ant-descriptions-item-label]:text-text-secondary"
-            >
-              <Descriptions.Item label="Company">
-                {selectedReport.companyName || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Location">
-                {selectedReport.visitLocation || 'N/A'}
-              </Descriptions.Item>
-              <Descriptions.Item label="Duration">
-                {selectedReport.visitDuration || 'N/A'}
-              </Descriptions.Item>
+            <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
+              <Descriptions.Item label="Company">{selectedReport.companyName || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Location">{selectedReport.visitLocation || 'N/A'}</Descriptions.Item>
+              <Descriptions.Item label="Duration">{selectedReport.visitDuration || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Status">
-                <Tag color={getVisitStatusColor(selectedReport.status)} className="rounded-full font-medium">
+                <Tag color={getVisitStatusColor(selectedReport.status)} className="rounded-full">
                   {selectedReport.status || 'Completed'}
                 </Tag>
               </Descriptions.Item>
@@ -1165,31 +1037,28 @@ const FacultyProgress = () => {
                 {selectedReport.overallRating ? (
                   <div className="flex items-center gap-3">
                     <Rate disabled value={selectedReport.overallRating} />
-                    <span className="text-sm text-text-secondary">({selectedReport.overallRating}/5)</span>
+                    <span className="text-sm text-gray-500">({selectedReport.overallRating}/5)</span>
                   </div>
                 ) : (
-                  <Text className="text-text-tertiary italic">Not rated</Text>
+                  <Text className="text-gray-400 italic">Not rated</Text>
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Title of Project/Work" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.titleOfProjectWork || 'N/A'}</div>
               </Descriptions.Item>
-              <Descriptions.Item label="Assistance Required from Institute" span={2}>
+              <Descriptions.Item label="Assistance Required" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.assistanceRequiredFromInstitute || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Response from Organisation" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.responseFromOrganisation || 'N/A'}</div>
               </Descriptions.Item>
-              <Descriptions.Item label="Remarks of Organisation Supervisor" span={2}>
+              <Descriptions.Item label="Supervisor Remarks" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.remarksOfOrganisationSupervisor || 'N/A'}</div>
               </Descriptions.Item>
-              <Descriptions.Item label="Significant Change in Plan" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.significantChangeInPlan || 'N/A'}</div>
-              </Descriptions.Item>
-              <Descriptions.Item label="Observations about Student" span={2}>
+              <Descriptions.Item label="Observations" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.observationsAboutStudent || 'N/A'}</div>
               </Descriptions.Item>
-              <Descriptions.Item label="Feedback Shared with Student" span={2}>
+              <Descriptions.Item label="Feedback Shared" span={2}>
                 <div className="whitespace-pre-wrap text-sm">{selectedReport.feedbackSharedWithStudent || 'N/A'}</div>
               </Descriptions.Item>
             </Descriptions>
@@ -1201,4 +1070,3 @@ const FacultyProgress = () => {
 };
 
 export default FacultyProgress;
-

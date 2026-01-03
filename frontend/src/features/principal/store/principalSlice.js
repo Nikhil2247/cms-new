@@ -881,6 +881,72 @@ export const fetchFacultyWorkload = createAsyncThunk(
   }
 );
 
+// Fetch Student By ID for full details
+export const fetchStudentById = createAsyncThunk(
+  'principal/fetchStudentById',
+  async (studentId, { rejectWithValue }) => {
+    try {
+      const response = await principalService.getStudentById(studentId);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to fetch student details. Please try again.';
+      console.error('Fetch student by ID error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Student Documents Thunks
+export const fetchStudentDocuments = createAsyncThunk(
+  'principal/fetchStudentDocuments',
+  async (studentId, { rejectWithValue }) => {
+    try {
+      const response = await principalService.getStudentDocuments(studentId);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to fetch student documents. Please try again.';
+      console.error('Fetch student documents error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const uploadStudentDocument = createAsyncThunk(
+  'principal/uploadStudentDocument',
+  async ({ studentId, file, type }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.uploadStudentDocument(studentId, file, type);
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to upload document. Please try again.';
+      console.error('Upload student document error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const deleteStudentDocument = createAsyncThunk(
+  'principal/deleteStudentDocument',
+  async ({ studentId, documentId }, { rejectWithValue }) => {
+    try {
+      const response = await principalService.deleteStudentDocument(studentId, documentId);
+      return { documentId, ...response };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to delete document. Please try again.';
+      console.error('Delete student document error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const principalSlice = createSlice({
   name: 'principal',
   initialState,

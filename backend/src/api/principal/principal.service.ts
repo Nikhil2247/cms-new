@@ -8,6 +8,7 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
 import {
   calculateExpectedMonths,
   getTotalExpectedCount,
@@ -31,6 +32,7 @@ export class PrincipalService {
     private readonly cache: LruCacheService,
     private readonly userService: UserService,
     private readonly auditService: AuditService,
+    private readonly fileStorageService: FileStorageService,
   ) {}
 
   /**
@@ -1224,7 +1226,6 @@ export class PrincipalService {
     // Remove fields not in Prisma schema
     delete updateData.bloodGroup;
     delete updateData.semesterId; // Not used, semester is managed through batch
-    delete updateData.gender; // Gender is not directly on student model
 
     // Build user update data for synced fields
     const userUpdateData: any = {};
@@ -3433,7 +3434,7 @@ export class PrincipalService {
       ];
     }
 
-    const [faculty, mentorAssignmentsList, visitCounts, reportCounts] = await Promise.all([
+    const [faculty, mentorAssignmentsList, visitCounts, reportCounts, internshipApps] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: {
@@ -3441,6 +3442,12 @@ export class PrincipalService {
           name: true,
           email: true,
           phoneNo: true,
+          employeeId: true,
+          designation: true,
+          profileImage: true,
+          branch: {
+            select: { id: true, name: true },
+          },
         },
         orderBy: { name: 'asc' },
       }),
@@ -3460,7 +3467,7 @@ export class PrincipalService {
         },
         _count: { id: true },
       }),
-      // Get report counts per faculty (pending and completed)
+      // Get report counts per student (to map to mentor)
       this.prisma.monthlyReport.findMany({
         where: {
           application: {
@@ -3468,8 +3475,21 @@ export class PrincipalService {
           },
         },
         select: {
-          reviewedBy: true,
+          studentId: true,
           status: true,
+        },
+      }),
+      // Get internship applications for expected counts
+      this.prisma.internshipApplication.findMany({
+        where: {
+          student: { institutionId: principal.institutionId },
+          status: 'APPROVED',
+          isActive: true,
+        },
+        select: {
+          studentId: true,
+          totalExpectedReports: true,
+          totalExpectedVisits: true,
         },
       }),
     ]);
@@ -3483,19 +3503,28 @@ export class PrincipalService {
       mentorStudentMap.get(mentorId)!.add(studentId);
     }
 
+    // Build student -> mentor map for report lookup
+    const studentToMentorMap = new Map<string, string>();
+    for (const { mentorId, studentId } of mentorAssignmentsList) {
+      studentToMentorMap.set(studentId, mentorId);
+    }
+
     // Build visit count map
     const visitCountMap = new Map(visitCounts.map(v => [v.facultyId, v._count.id]));
 
-    // Build report count map (pending and completed per faculty)
+    // Build report count map per mentor (based on assigned students' reports)
     const reportCountMap = new Map<string, { pending: number; completed: number }>();
     for (const report of reportCounts) {
-      if (!report.reviewedBy) continue; // Skip reports not yet assigned to faculty
+      const mentorId = studentToMentorMap.get(report.studentId);
+      if (!mentorId) continue; // Skip reports from students without mentors
 
-      if (!reportCountMap.has(report.reviewedBy)) {
-        reportCountMap.set(report.reviewedBy, { pending: 0, completed: 0 });
+      if (!reportCountMap.has(mentorId)) {
+        reportCountMap.set(mentorId, { pending: 0, completed: 0 });
       }
 
-      const counts = reportCountMap.get(report.reviewedBy)!;
+      const counts = reportCountMap.get(mentorId)!;
+      // APPROVED is considered completed (auto-approved on submission)
+      // DRAFT is still pending submission
       if (report.status === MonthlyReportStatus.APPROVED || report.status === MonthlyReportStatus.REJECTED) {
         counts.completed++;
       } else {
@@ -3503,18 +3532,48 @@ export class PrincipalService {
       }
     }
 
+    // Build expected counts map per mentor
+    const expectedCountsMap = new Map<string, { expectedReports: number; expectedVisits: number }>();
+    for (const app of internshipApps) {
+      const mentorId = studentToMentorMap.get(app.studentId);
+      if (!mentorId) continue;
+
+      if (!expectedCountsMap.has(mentorId)) {
+        expectedCountsMap.set(mentorId, { expectedReports: 0, expectedVisits: 0 });
+      }
+
+      const counts = expectedCountsMap.get(mentorId)!;
+      counts.expectedReports += app.totalExpectedReports || 0;
+      counts.expectedVisits += app.totalExpectedVisits || 0;
+    }
+
     return {
-      faculty: faculty.map((f) => ({
-        id: f.id,
-        name: f.name,
-        email: f.email,
-        phone: f.phoneNo,
-        employeeId: null,
-        assignedCount: mentorStudentMap.get(f.id)?.size || 0,
-        totalVisits: visitCountMap.get(f.id) || 0,
-        pendingReports: reportCountMap.get(f.id)?.pending || 0,
-        completedReports: reportCountMap.get(f.id)?.completed || 0,
-      })),
+      faculty: faculty.map((f) => {
+        const reportCounts = reportCountMap.get(f.id) || { pending: 0, completed: 0 };
+        const expectedCounts = expectedCountsMap.get(f.id) || { expectedReports: 0, expectedVisits: 0 };
+        const totalVisits = visitCountMap.get(f.id) || 0;
+
+        return {
+          id: f.id,
+          name: f.name,
+          email: f.email,
+          phoneNo: f.phoneNo,
+          employeeId: f.employeeId,
+          designation: f.designation,
+          profileImage: f.profileImage,
+          branchId: f.branch?.id,
+          branchName: f.branch?.name,
+          assignedCount: mentorStudentMap.get(f.id)?.size || 0,
+          // Visits
+          totalVisits,
+          expectedVisits: expectedCounts.expectedVisits,
+          // Reports - completed means submitted/approved
+          pendingReports: reportCounts.pending,
+          completedReports: reportCounts.completed,
+          totalReports: reportCounts.pending + reportCounts.completed,
+          expectedReports: expectedCounts.expectedReports,
+        };
+      }),
     };
   }
 
@@ -3542,7 +3601,13 @@ export class PrincipalService {
         name: true,
         email: true,
         phoneNo: true,
+        employeeId: true,
+        designation: true,
+        profileImage: true,
         institutionId: true,
+        branch: {
+          select: { id: true, name: true },
+        },
         Institution: {
           select: { id: true, name: true, code: true },
         },
@@ -4973,5 +5038,220 @@ export class PrincipalService {
     }
 
     return application;
+  }
+
+  // ==================== Student Document Management ====================
+
+  /**
+   * Get documents for a specific student
+   */
+  async getStudentDocuments(principalId: string, studentId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Principal or institution not found');
+    }
+
+    // Verify student belongs to principal's institution
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        institutionId: principal.institutionId,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your institution');
+    }
+
+    const documents = await this.prisma.document.findMany({
+      where: { studentId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        fileName: true,
+        fileUrl: true,
+        type: true,
+        createdAt: true,
+      },
+    });
+
+    return documents;
+  }
+
+  /**
+   * Upload a document for a student
+   */
+  async uploadStudentDocument(
+    principalId: string,
+    studentId: string,
+    file: Express.Multer.File,
+    type: string,
+  ) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+      include: { Institution: true },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Principal or institution not found');
+    }
+
+    // Verify student belongs to principal's institution
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        institutionId: principal.institutionId,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your institution');
+    }
+
+    // Upload to MinIO
+    const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionName: principal.Institution?.name || 'default',
+      rollNumber: student.rollNumber || student.id,
+      documentType: 'document',
+      customName: type,
+    });
+
+    // Save document record to database
+    const document = await this.prisma.document.create({
+      data: {
+        studentId: student.id,
+        type: type as any,
+        fileName: file.originalname,
+        fileUrl: uploadResult.url,
+      },
+    });
+
+    // Log audit
+    this.auditService.log({
+      action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
+      entityType: 'Document',
+      entityId: document.id,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Principal uploaded document for student ${student.rollNumber}: ${file.originalname} (${type})`,
+      category: AuditCategory.PROFILE_MANAGEMENT,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      newValues: {
+        documentId: document.id,
+        fileName: document.fileName,
+        type: document.type,
+        studentId: student.id,
+        studentRollNumber: student.rollNumber,
+      },
+    }).catch(() => {}); // Non-blocking
+
+    this.logger.log(`Document uploaded by principal for student ${student.rollNumber}: ${document.id}`);
+
+    return {
+      id: document.id,
+      url: document.fileUrl,
+      filename: document.fileName,
+      type: document.type,
+      uploadedAt: document.createdAt,
+    };
+  }
+
+  /**
+   * Delete a student document
+   */
+  async deleteStudentDocument(principalId: string, studentId: string, documentId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Principal or institution not found');
+    }
+
+    // Verify student belongs to principal's institution
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        institutionId: principal.institutionId,
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found in your institution');
+    }
+
+    // Find the document
+    const document = await this.prisma.document.findFirst({
+      where: {
+        id: documentId,
+        studentId: studentId,
+      },
+    });
+
+    if (!document) {
+      throw new NotFoundException('Document not found');
+    }
+
+    // Delete from MinIO
+    if (document.fileUrl) {
+      try {
+        const key = this.extractKeyFromMinioUrl(document.fileUrl);
+        if (key) {
+          await this.fileStorageService.deleteFile(key);
+        }
+      } catch (error) {
+        this.logger.warn(`Failed to delete file from MinIO: ${error.message}`);
+      }
+    }
+
+    // Delete from database
+    await this.prisma.document.delete({
+      where: { id: documentId },
+    });
+
+    // Log audit
+    this.auditService.log({
+      action: AuditAction.STUDENT_DOCUMENT_DELETE,
+      entityType: 'Document',
+      entityId: documentId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Principal deleted document for student ${student.rollNumber}: ${document.fileName}`,
+      category: AuditCategory.PROFILE_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: principal.institutionId,
+      oldValues: {
+        documentId: document.id,
+        fileName: document.fileName,
+        type: document.type,
+        studentId: student.id,
+      },
+    }).catch(() => {}); // Non-blocking
+
+    this.logger.log(`Document deleted by principal for student ${student.rollNumber}: ${documentId}`);
+
+    return { success: true, message: 'Document deleted successfully' };
+  }
+
+  /**
+   * Extract MinIO key from URL
+   */
+  private extractKeyFromMinioUrl(url: string): string | null {
+    try {
+      if (!url) return null;
+      const urlObj = new URL(url);
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
+      if (pathParts.length < 2) return null;
+      return pathParts.slice(1).join('/');
+    } catch (error) {
+      this.logger.warn('Failed to extract key from MinIO URL', error);
+      return null;
+    }
   }
 }
