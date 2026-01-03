@@ -208,12 +208,6 @@ export class StateStaffService {
     const staffRoles: Role[] = [
       Role.TEACHER,
       Role.TEACHER,
-      
-      
-      Role.ADMISSION_OFFICER,
-      Role.EXAMINATION_OFFICER,
-      Role.PMS_OFFICER,
-      Role.EXTRACURRICULAR_HEAD,
     ];
 
     const existingStaff = await this.prisma.user.findUnique({
@@ -276,12 +270,7 @@ export class StateStaffService {
     const staffRoles: Role[] = [
       Role.TEACHER,
       Role.TEACHER,
-      
-      
-      Role.ADMISSION_OFFICER,
-      Role.EXAMINATION_OFFICER,
-      Role.PMS_OFFICER,
-      Role.EXTRACURRICULAR_HEAD,
+
     ];
 
     const existingStaff = await this.prisma.user.findUnique({

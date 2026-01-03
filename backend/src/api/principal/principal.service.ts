@@ -3590,7 +3590,7 @@ export class PrincipalService {
     const faculty = await this.prisma.user.findFirst({
       where: {
         id: facultyId,
-        role: { in: ['FACULTY_SUPERVISOR', 'TEACHER'] },
+        role: { in: ['TEACHER'] },
       },
       select: {
         id: true,
