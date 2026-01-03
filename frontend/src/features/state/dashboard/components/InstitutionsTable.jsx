@@ -262,7 +262,7 @@ const InstitutionsTable = ({ institutions, loading, onViewAll, onViewDetails, mo
             type="text"
             icon={<EyeOutlined className="text-text-tertiary hover:text-primary" />}
             size="small"
-            onClick={() => onViewDetails?.(record) || navigate(`/institutions-overview?id=${record.id}`)}
+            onClick={() => onViewDetails?.(record) || navigate(`/app/institutions-overview?id=${record.id}`)}
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-background-tertiary"
           />
         </Tooltip>

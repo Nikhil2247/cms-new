@@ -50,7 +50,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
       return;
     }
     onClose();
-    navigate(`/institutions-overview?id=${institutionId}`);
+    navigate(`/app/institutions-overview?id=${institutionId}`);
   }, [navigate, onClose]);
 
   const handleViewStudentInstitution = useCallback((record) => {
@@ -60,7 +60,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
       return;
     }
     onClose();
-    navigate(`/institutions-overview?id=${institutionId}&tab=students`);
+    navigate(`/app/institutions-overview?id=${institutionId}&tab=students`);
   }, [navigate, onClose]);
 
   // Filter data based on search
