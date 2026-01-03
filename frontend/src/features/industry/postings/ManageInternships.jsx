@@ -51,8 +51,10 @@ import {
   MailOutlined,
   PhoneOutlined,
   ReloadOutlined,
+  EnvironmentOutlined,
 } from "@ant-design/icons";
 import { Link, useNavigate } from "react-router-dom";
+import dayjs from "dayjs";
 import API from "../../../services/api";
 import Layouts from "../../../components/Layout";
 import Paragraph from "antd/es/skeleton/Paragraph";
@@ -90,6 +92,7 @@ const ManageInternships = () => {
   const [activeTab, setActiveTab] = useState("1");
   const navigate = useNavigate();
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
   // Get internships from Redux profile
   const internships = profile?.internships || [];
   useEffect(() => {
@@ -142,6 +145,7 @@ const ManageInternships = () => {
   };
 
   const handleStatusChange = async (id, newStatus) => {
+    setActionLoading(id);
     try {
       await API.patch(`/internships/${id}/status`, { status: newStatus });
       // Update Redux store
@@ -161,27 +165,42 @@ const ManageInternships = () => {
       toast.success(`Internship ${newStatus.toLowerCase()} successfully`);
     } catch (error) {
       toast.error("Failed to update internship status");
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  const handleDelete = async (id, title) => {
-    try {
-      const industryId = profile.id;
-      await API.delete(`/internships/${id}`, { data: { industryId } });
-      const updatedProfile = {
-        ...profile,
-        internships: profile.internships.filter((item) => item.id !== id),
-      };
-      dispatch(setIndustryProfile(updatedProfile));
+  const handleDelete = (id, title) => {
+    confirm({
+      title: 'Delete Internship',
+      content: `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      okText: 'Delete',
+      okType: 'danger',
+      confirmLoading: actionLoading === id,
+      onOk: async () => {
+        setActionLoading(id);
+        try {
+          const industryId = profile.id;
+          await API.delete(`/internships/${id}`, { data: { industryId } });
+          const updatedProfile = {
+            ...profile,
+            internships: profile.internships.filter((item) => item.id !== id),
+          };
+          dispatch(setIndustryProfile(updatedProfile));
 
-      if (selectedInternship && selectedInternship.id === id) {
-        const remaining = filteredData.filter((item) => item.id !== id);
-        setSelectedInternship(remaining.length > 0 ? remaining[0] : null);
+          if (selectedInternship && selectedInternship.id === id) {
+            const remaining = filteredData.filter((item) => item.id !== id);
+            setSelectedInternship(remaining.length > 0 ? remaining[0] : null);
+          }
+          toast.success(`"${title}" deleted successfully`);
+        } catch (error) {
+          toast.error("Failed to delete internship");
+          throw error;
+        } finally {
+          setActionLoading(null);
+        }
       }
-      toast.success(`"${title}" deleted successfully`);
-    } catch (error) {
-      toast.error("Failed to delete internship");
-    }
+    });
   };
 
   const getStatusColor = (status) => {
@@ -235,13 +254,14 @@ const ManageInternships = () => {
           navigate(
             `/applications&internshipId=${record.id}`
           ),
+        disabled: actionLoading === record.id,
       },
       {
         key: "edit",
         label: "Edit",
         icon: <EditOutlined />,
         onClick: () => handleEdit(record),
-        disabled: record.status === "COMPLETED",
+        disabled: record.status === "COMPLETED" || actionLoading === record.id,
       },
       {
         key: "divider1",
@@ -261,7 +281,7 @@ const ManageInternships = () => {
             record.id,
             record.status === "ACTIVE" ? "INACTIVE" : "ACTIVE"
           ),
-        disabled: record.status === "COMPLETED",
+        disabled: record.status === "COMPLETED" || actionLoading === record.id,
       },
       {
         key: "divider2",
@@ -273,7 +293,7 @@ const ManageInternships = () => {
         icon: <DeleteOutlined />,
         danger: true,
         onClick: () => handleDelete(record.id, record.title),
-        disabled: record.applications > 0,
+        disabled: record.applications > 0 || actionLoading === record.id,
       },
     ],
   });
@@ -545,11 +565,13 @@ const ManageInternships = () => {
                         menu={getActionsMenu(selectedInternship)}
                         trigger={["click"]}
                         placement="bottomRight"
+                        disabled={actionLoading === selectedInternship?.id}
                       >
                         <Button
                           type="text"
                           icon={<MoreOutlined className="text-xl" />}
                           className="hover:bg-background-tertiary rounded-xl w-10 h-10 flex items-center justify-center border border-transparent hover:border-border"
+                          disabled={actionLoading === selectedInternship?.id}
                         />
                       </Dropdown>
                     </div>

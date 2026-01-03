@@ -29,6 +29,8 @@ const StaffList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [resettingId, setResettingId] = useState(null);
 
   const loadStaff = useCallback((params = {}) => {
     dispatch(fetchStaff({
@@ -66,7 +68,9 @@ const StaffList = () => {
       content: `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`,
       okText: 'Deactivate',
       okType: 'danger',
+      confirmLoading: deletingId === id,
       onOk: async () => {
+        setDeletingId(id);
         try {
           await dispatch(deleteStaff(id)).unwrap();
           message.success('Staff member deactivated successfully');
@@ -74,6 +78,8 @@ const StaffList = () => {
         } catch (error) {
           message.error(error?.message || 'Failed to deactivate staff member');
           throw error;
+        } finally {
+          setDeletingId(null);
         }
       },
     });
@@ -90,7 +96,9 @@ const StaffList = () => {
       ),
       okText: 'Reset Password',
       okType: 'primary',
+      confirmLoading: resettingId === id,
       onOk: async () => {
+        setResettingId(id);
         try {
           const result = await dispatch(resetStaffPassword(id)).unwrap();
           message.success('Password reset successfully');
@@ -108,6 +116,8 @@ const StaffList = () => {
         } catch (error) {
           message.error(error?.message || 'Failed to reset password');
           throw error;
+        } finally {
+          setResettingId(null);
         }
       },
     });
@@ -263,16 +273,20 @@ const StaffList = () => {
           }
         };
 
+        const isLoading = deletingId === record.id || resettingId === record.id;
+
         const menuItems = [
           {
             key: 'edit',
             icon: <EditOutlined />,
             label: 'Edit',
+            disabled: isLoading,
           },
           {
             key: 'reset-password',
             icon: <KeyOutlined />,
             label: 'Reset Password',
+            disabled: isLoading,
           },
           {
             type: 'divider',
@@ -282,6 +296,7 @@ const StaffList = () => {
             icon: <StopOutlined />,
             label: 'Deactivate',
             danger: true,
+            disabled: isLoading,
           },
         ];
 
@@ -290,11 +305,13 @@ const StaffList = () => {
             menu={{ items: menuItems, onClick: handleMenuClick }}
             trigger={['click']}
             placement="bottomRight"
+            disabled={isLoading}
           >
             <Button
               type="text"
               icon={<MoreOutlined />}
               size="small"
+              disabled={isLoading}
             />
           </Dropdown>
         );

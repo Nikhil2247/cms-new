@@ -364,9 +364,10 @@ const PostInternship = () => {
             </Card>
 
             <div className="flex justify-end gap-4 py-8 border-t border-border">
-              <Button 
-                size="large" 
+              <Button
+                size="large"
                 onClick={() => navigate("/dashboard")}
+                disabled={loading}
                 className="rounded-xl px-10 h-14 border-border text-text-secondary font-bold hover:text-text-primary"
               >
                 Cancel
