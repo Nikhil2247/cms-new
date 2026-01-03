@@ -24,7 +24,7 @@ PlaceIntern centralizes internship program workflows: student registration and p
 
 3.2 Project Scope
 Included:
-- User authentication (JWT + Passport, optional Google sign-in)
+- User authentication (JWT + Passport)
 - Role-based access control (System Admin, State Directorate, Institution, Student, Mentor)
 - Institution and user management
 - Internship listings and applications workflow

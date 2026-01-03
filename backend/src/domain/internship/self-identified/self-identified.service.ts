@@ -170,7 +170,6 @@ export class SelfIdentifiedService {
         data: {
           status: ApplicationStatus.APPROVED,
           mentorId,
-          reviewedBy: mentorId,
           reviewedAt: new Date(),
           reviewRemarks: remarks,
         },
@@ -228,7 +227,6 @@ export class SelfIdentifiedService {
         where: { id },
         data: {
           status: ApplicationStatus.REJECTED,
-          reviewedBy: mentorId,
           reviewedAt: new Date(),
           reviewRemarks: reason,
         },

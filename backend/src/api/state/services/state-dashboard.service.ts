@@ -137,10 +137,11 @@ export class StateDashboardService {
           // Mentor assignments - count records (for reference)
           this.prisma.mentorAssignment.count(),
           this.prisma.mentorAssignment.count({ where: { isActive: true } }),
-          // Unique students with active mentor assignments (all students with mentors)
+          // Unique ACTIVE students with active mentor assignments
           this.prisma.mentorAssignment.findMany({
             where: {
               isActive: true,
+              student: { isActive: true },
             },
             select: { studentId: true },
             distinct: ['studentId'],
@@ -246,12 +247,16 @@ export class StateDashboardService {
         ]);
 
         // Get count from the distinct studentIds arrays
-        const studentsWithActiveMentors = studentsWithActiveMentorsData.length;
+        const activeStudentsWithMentors = studentsWithActiveMentorsData.length;
         const internshipsWithMentors = internshipsWithMentorsData.length;
 
-        // Calculate students without mentor assignments
-        // Students with no mentor (total students - students with active mentors)
-        const studentsWithNoMentor = Math.max(0, totalStudents - studentsWithActiveMentors);
+        // Calculate active students without mentor assignments
+        // Based on ACTIVE students only (not total students)
+        const activeStudentsWithoutMentors = Math.max(0, activeStudents - activeStudentsWithMentors);
+
+        // Calculate active students without internships
+        const activeStudentsWithInternships = activeSelfIdentifiedInternships;
+        const activeStudentsWithoutInternships = Math.max(0, activeStudents - activeStudentsWithInternships);
 
         // Fetch internships in their training period during the target month
         // Requires startDate to be set and before end of target month, with endDate after start of target month or not set
@@ -341,16 +346,24 @@ export class StateDashboardService {
             total: totalIndustries,
             approved: approvedIndustries,
           },
-          // Mentor Assignments Card - uses unique students with mentors, not assignment records
+          // Student & Mentor Assignment breakdown - all based on ACTIVE students
           assignments: {
-            total: totalAssignments, // Total assignment records (for reference)
-            active: activeAssignments, // Active assignment records (for reference)
-            assigned: studentsWithActiveMentors, // Unique students who have active mentors
-            unassigned: studentsWithNoMentor, // Students with no mentor
-            totalStudents, // Total students for reference
-            studentsWithInternships: activeSelfIdentifiedInternships, // Total approved internships
-            internshipsWithMentors, // Internships with mentors assigned
-            internshipsWithoutMentors: activeSelfIdentifiedInternships - internshipsWithMentors, // Internships without mentors
+            // Raw assignment record counts (for reference only)
+            totalAssignmentRecords: totalAssignments,
+            activeAssignmentRecords: activeAssignments,
+
+            // Active students breakdown
+            activeStudents, // Total active students (base for all calculations)
+            activeStudentsWithMentors, // Active students who have a mentor assigned
+            activeStudentsWithoutMentors, // Active students without a mentor
+
+            // Internship breakdown (for active students)
+            activeStudentsWithInternships, // Active students with approved internships
+            activeStudentsWithoutInternships, // Active students without internships
+
+            // Internship-mentor breakdown
+            internshipsWithMentors, // Internships that have mentors assigned
+            internshipsWithoutMentors: activeStudentsWithInternships - internshipsWithMentors,
           },
           // Faculty Visits Card with details
           facultyVisits: {

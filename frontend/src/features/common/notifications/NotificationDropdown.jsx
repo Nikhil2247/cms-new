@@ -356,10 +356,10 @@ const NotificationDropdown = ({ maxItems = 10 }) => {
           </div>
         }
         placement="right"
-        styles={{ wrapper: { width: 420 } }}
         onClose={() => setDrawerOpen(false)}
         open={drawerOpen}
         styles={{
+          wrapper: { width: 420 },
           body: { padding: 0, background: darkMode ? '#1f2937' : '#ffffff' },
           header: {
             background: darkMode ? '#111827' : '#f9fafb',

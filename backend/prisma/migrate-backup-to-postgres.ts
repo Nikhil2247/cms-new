@@ -236,6 +236,14 @@ function getMappedId(objectId: any, collection: string): string | null {
   return map?.get(idStr) || null;
 }
 
+function objectIdToString(objectId: any): string | null {
+  if (!objectId) return null;
+  if (typeof objectId === 'string') return objectId;
+  if (objectId.$oid) return String(objectId.$oid);
+  if (typeof objectId.toString === 'function') return objectId.toString();
+  return null;
+}
+
 // =============================================================================
 // Data Type Helpers
 // =============================================================================
@@ -296,6 +304,57 @@ function processJson(value: any): any {
   } catch {
     return null;
   }
+}
+
+function normalizeEnumValue(value: any): string | null {
+  if (value === null || value === undefined) return null;
+  const asString = String(value).trim();
+  if (!asString) return null;
+  return asString
+    .toUpperCase()
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '_');
+}
+
+function mapApplicationStatus(value: any): string {
+  const normalized = normalizeEnumValue(value);
+  if (!normalized) return 'APPLIED';
+
+  const allowed = new Set([
+    'APPROVED',
+    'APPLIED',
+    'UNDER_REVIEW',
+    'SHORTLISTED',
+    'SELECTED',
+    'REJECTED',
+    'JOINED',
+    'COMPLETED',
+    'WITHDRAWN',
+  ]);
+
+  if (allowed.has(normalized)) return normalized;
+
+  // Common legacy/variant mappings
+  if (normalized === 'PENDING') return 'APPLIED';
+  if (normalized === 'ACCEPTED') return 'SELECTED';
+  if (normalized === 'APPROVE' || normalized === 'APPROVEED') return 'APPROVED';
+  if (normalized === 'IN_REVIEW' || normalized === 'REVIEW') return 'UNDER_REVIEW';
+  if (normalized === 'JOIN') return 'JOINED';
+  if (normalized === 'FINISHED' || normalized === 'DONE') return 'COMPLETED';
+  if (normalized === 'CANCELLED' || normalized === 'CANCELED') return 'WITHDRAWN';
+
+  return 'APPLIED';
+}
+
+function mapInternshipPhase(app: any, applicationStatus: string): string {
+  const phaseCandidate = app?.internshipPhase ?? app?.internshipStatus;
+  const normalized = normalizeEnumValue(phaseCandidate);
+  const allowed = new Set(['NOT_STARTED', 'ACTIVE', 'COMPLETED', 'TERMINATED']);
+  if (normalized && allowed.has(normalized)) return normalized;
+
+  if (applicationStatus === 'COMPLETED' || app?.completionDate) return 'COMPLETED';
+  if (applicationStatus === 'JOINED' || app?.hasJoined || app?.joiningDate || app?.startDate) return 'ACTIVE';
+  return 'NOT_STARTED';
 }
 
 // =============================================================================
@@ -1154,6 +1213,7 @@ async function migrateStudents(data: any[], prisma: PrismaClient, config: Migrat
   logInfo('Migrating Students...');
   const stats = startCollectionMigration('students', data.length);
   const processedUserIds = new Set<string>();
+  const studentIdByUserId = new Map<string, string>();
 
   if (config.dryRun) {
     logWarning(`Dry run: Would migrate ${data.length} students`);
@@ -1165,22 +1225,31 @@ async function migrateStudents(data: any[], prisma: PrismaClient, config: Migrat
 
     if (!userId) {
       stats.skipped++;
-      if (config.verbose) logWarning(`Skipped student (MongoDB ID: ${student._id}, userId: ${student.userId}, rollNumber: ${student.rollNumber}) - no user mapping found`);
+      if (config.verbose) {
+        logWarning(
+          `Skipped student (MongoDB ID: ${student._id}, userId: ${student.userId}, rollNumber: ${student.rollNumber}) - no user mapping found`,
+        );
+      }
       continue;
     }
 
     if (processedUserIds.has(userId)) {
-      // Map duplicate to existing
-      const existingId = idMaps['students'].get(student._id?.toString() || '');
-      if (!existingId) {
-        idMaps['students'].set(student._id?.toString() || '', uuidv4());
+      // Ensure dependent records pointing at the duplicate student document resolve to the already-created Student row.
+      const existingStudentId = studentIdByUserId.get(userId);
+      const mongoId = objectIdToString(student._id);
+      if (existingStudentId && mongoId) {
+        idMaps['students'].set(mongoId, existingStudentId);
       }
+
       stats.skipped++;
-      if (config.verbose) logWarning(`Skipped duplicate student (MongoDB ID: ${student._id}, rollNumber: ${student.rollNumber}) - userId already processed`);
+      if (config.verbose) {
+        logWarning(
+          `Skipped duplicate student (MongoDB ID: ${student._id}, rollNumber: ${student.rollNumber}) - userId already processed`,
+        );
+      }
       continue;
     }
 
-    processedUserIds.add(userId);
     const newId = convertId(student._id, 'students');
     const institutionId = getMappedId(student.institutionId, 'institutions');
     const branchId = getMappedId(student.branchId, 'branches');
@@ -1231,11 +1300,14 @@ async function migrateStudents(data: any[], prisma: PrismaClient, config: Migrat
         },
       });
       stats.migrated++;
+      processedUserIds.add(userId);
+      studentIdByUserId.set(userId, newId);
     } catch (error: any) {
       stats.errors++;
       if (config.verbose) logError(`Error migrating student ${student.rollNumber}: ${error.message}`);
     }
   }
+
   finishCollectionMigration(stats);
 }
 
@@ -1387,6 +1459,7 @@ async function migrateInternshipApplications(data: any[], prisma: PrismaClient, 
     }
 
     try {
+      const status = mapApplicationStatus(app.status);
       await prisma.internshipApplication.create({
         data: {
           id: newId,
@@ -1396,13 +1469,13 @@ async function migrateInternshipApplications(data: any[], prisma: PrismaClient, 
           coverLetter: app.coverLetter,
           resume: app.resumeUrl || app.resume,
           additionalInfo: app.additionalInfo,
-          status: app.status || 'APPLIED',
+          status: status as any,
           appliedDate: processDate(app.appliedDate) || new Date(),
           reviewedDate: processDate(app.reviewedDate),
+          internshipPhase: mapInternshipPhase(app, status) as any,
           isSelected: processBoolean(app.isSelected),
           selectionDate: processDate(app.selectionDate),
           rejectionReason: app.rejectionReason,
-          hasJoined: processBoolean(app.hasJoined),
           joiningDate: processDate(app.joiningDate),
           completionDate: processDate(app.completionDate),
           mentorId: mentorId,
@@ -1417,7 +1490,6 @@ async function migrateInternshipApplications(data: any[], prisma: PrismaClient, 
           hrDesignation: app.hrDesignation,
           hrContact: app.hrContact,
           hrEmail: app.hrEmail,
-          internshipStatus: app.internshipStatus,
           joiningLetterUrl: app.offerLetterUrl || app.offerLetter || app.joiningLetterUrl,
           joiningLetterUploadedAt: processDate(app.joiningLetterUploadedAt),
           facultyMentorName: app.facultyMentorName,
@@ -1429,7 +1501,6 @@ async function migrateInternshipApplications(data: any[], prisma: PrismaClient, 
           startDate: processDate(app.startDate),
           endDate: processDate(app.endDate),
           jobProfile: app.jobProfile,
-          reviewedBy: app.reviewedBy,
           reviewedAt: processDate(app.reviewedAt),
           reviewRemarks: app.reviewRemarks,
           notes: app.noc || app.remarks || app.notes,

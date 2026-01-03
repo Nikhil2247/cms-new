@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware, BadRequestException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
-import { InternshipPhase } from '@prisma/client';
+import { InternshipPhase } from '../../generated/prisma/client';
 
 @Injectable()
 export class InternshipValidationMiddleware implements NestMiddleware {

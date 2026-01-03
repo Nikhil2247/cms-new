@@ -490,18 +490,48 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
+    // IMPORTANT: Do not allow Student Portal to toggle activation/deactivation or perform nested updates.
+    // This endpoint is intended only for basic profile fields.
+    const dto: any = updateProfileDto as any;
+    const allowedKeys = new Set([
+      'name',
+      'email',
+      'contact',
+      'address',
+      'pinCode',
+      'tehsil',
+      'district',
+      'city',
+      'state',
+      'dob',
+      'parentName',
+      'parentContact',
+      'motherName',
+      'gender',
+    ]);
+
+    const safeUpdateData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(dto ?? {})) {
+      if (!allowedKeys.has(key)) continue;
+      if (value === undefined) continue;
+      safeUpdateData[key] = value;
+    }
+
     // Build user update data for synced fields
     const userUpdateData: any = {};
-    const dto = updateProfileDto as any;
-    if (dto.name) userUpdateData.name = dto.name;
-    if (dto.email) userUpdateData.email = dto.email;
-    if (dto.contact) userUpdateData.phoneNo = dto.contact; // Student.contact -> User.phoneNo
+    if (safeUpdateData.name) userUpdateData.name = safeUpdateData.name;
+    if (safeUpdateData.email) userUpdateData.email = safeUpdateData.email;
+    if (safeUpdateData.contact) userUpdateData.phoneNo = safeUpdateData.contact; // Student.contact -> User.phoneNo
+
+    if (Object.keys(safeUpdateData).length === 0 && Object.keys(userUpdateData).length === 0) {
+      return student;
+    }
 
     // Use transaction to sync Student and User records
     const [updated] = await this.prisma.$transaction([
       this.prisma.student.update({
         where: { userId },
-        data: updateProfileDto,
+        data: safeUpdateData,
         include: {
           user: true,
           batch: true,
@@ -529,7 +559,7 @@ export class StudentService {
       category: AuditCategory.PROFILE_MANAGEMENT,
       severity: AuditSeverity.LOW,
       institutionId: student.institutionId || undefined,
-      newValues: updateProfileDto as any,
+      newValues: safeUpdateData as any,
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['student', `student:${updated.id}`, `user:${userId}`]);
@@ -1213,9 +1243,8 @@ export class StudentService {
         status: ApplicationStatus.APPROVED,
         internshipPhase: InternshipPhase.ACTIVE,
         reviewedAt: new Date(),
-        reviewedBy: hasJoiningLetter ? 'SYSTEM' : null, // Auto-approve joining letter
-        hasJoined: hasJoiningLetter, // Auto-set hasJoined when joining letter is provided
         joiningLetterUploadedAt: hasJoiningLetter ? new Date() : null,
+        joiningDate: hasJoiningLetter ? new Date() : null,
         ...selfIdentifiedDto,
       },
     });

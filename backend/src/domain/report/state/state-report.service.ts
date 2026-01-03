@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ApplicationStatus, InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
+import { ApplicationStatus, InternshipPhase, InternshipStatus, MonthlyReportStatus, Role } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 
@@ -345,8 +345,9 @@ export class StateReportService {
             },
             select: {
               joiningLetterUrl: true,
-              hasJoined: true,
-              reviewedBy: true,
+              joiningDate: true,
+              reviewedAt: true,
+              internshipPhase: true,
               student: {
                 select: {
                   institutionId: true,
@@ -396,9 +397,13 @@ export class StateReportService {
             const hasNoLetter = !app.joiningLetterUrl || app.joiningLetterUrl === '';
             if (hasNoLetter) {
               stats.noLetter++;
-            } else if (app.hasJoined) {
+            } else if (
+              app.joiningDate ||
+              app.internshipPhase === InternshipPhase.ACTIVE ||
+              app.internshipPhase === InternshipPhase.COMPLETED
+            ) {
               stats.verified++;
-            } else if (app.reviewedBy) {
+            } else if (app.reviewedAt) {
               stats.rejected++;
             } else {
               stats.pendingReview++;
@@ -428,9 +433,9 @@ export class StateReportService {
             },
             select: {
               id: true,
-              hasJoined: true,
+              joiningDate: true,
+              internshipPhase: true,
               reviewedAt: true,
-              reviewedBy: true,
               reviewRemarks: true,
               student: {
                 select: {
@@ -469,13 +474,18 @@ export class StateReportService {
             byInstitution: institutionBreakdown,
             recentActivity: recentActivity.map(a => ({
               id: a.id,
-              action: a.hasJoined ? 'VERIFIED' : 'REJECTED',
+              action:
+                (a.joiningDate ||
+                  a.internshipPhase === InternshipPhase.ACTIVE ||
+                  a.internshipPhase === InternshipPhase.COMPLETED)
+                  ? 'VERIFIED'
+                  : 'REJECTED',
               studentName: a.student!.name,
               rollNumber: a.student!.rollNumber,
               institutionName: a.student!.Institution?.name,
               companyName: a.companyName,
               reviewedAt: a.reviewedAt,
-              reviewedBy: a.reviewedBy,
+              reviewedBy: null,
               remarks: a.reviewRemarks,
             })),
           };

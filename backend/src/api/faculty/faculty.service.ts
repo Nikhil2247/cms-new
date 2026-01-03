@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
   calculateExpectedMonths,
@@ -1353,7 +1353,6 @@ export class FacultyService {
       where: { id },
       data: {
         status: newStatus,
-        reviewedBy: approvalDto.facultyId,
         reviewedAt: new Date(),
         reviewRemarks: approvalDto.reviewRemarks,
         ...(approvalDto.status === 'REJECTED' && {
@@ -1592,7 +1591,7 @@ export class FacultyService {
 
     const oldValues = {
       status: application.status,
-      hasJoined: application.hasJoined,
+      hasJoined: !!(application.joiningDate || application.joiningLetterUrl),
       isSelected: application.isSelected,
       companyName: application.companyName,
       startDate: application.startDate,
@@ -1603,12 +1602,13 @@ export class FacultyService {
     // Build update data - only include fields that are provided
     const updateData: any = {
       reviewedAt: new Date(),
-      reviewedBy: facultyId,
     };
 
     // Status fields
     if (updateDto.status !== undefined) updateData.status = updateDto.status;
-    if (updateDto.hasJoined !== undefined) updateData.hasJoined = updateDto.hasJoined;
+    if (updateDto.hasJoined !== undefined) {
+      updateData.joiningDate = updateDto.hasJoined ? (application.joiningDate ?? new Date()) : null;
+    }
     if (updateDto.isSelected !== undefined) updateData.isSelected = updateDto.isSelected;
     if (updateDto.remarks !== undefined) updateData.reviewRemarks = updateDto.remarks;
     if (updateDto.joiningDate) updateData.joiningDate = new Date(updateDto.joiningDate);
@@ -1987,7 +1987,6 @@ export class FacultyService {
           isSelfIdentified: true,
           status: true,
           reviewedAt: true,
-          reviewedBy: true,
           reviewRemarks: true,
           studentId: true,
           mentorId: true,
@@ -2055,9 +2054,10 @@ export class FacultyService {
     const updated = await this.prisma.internshipApplication.update({
       where: { id },
       data: {
-        reviewedBy: facultyId,
         reviewedAt: new Date(),
         reviewRemarks: remarks,
+        joiningDate: new Date(),
+        internshipPhase: InternshipPhase.ACTIVE,
       },
     });
 
@@ -2124,9 +2124,10 @@ export class FacultyService {
     const updated = await this.prisma.internshipApplication.update({
       where: { id },
       data: {
-        reviewedBy: facultyId,
         reviewedAt: new Date(),
         reviewRemarks: reason,
+        joiningDate: null,
+        internshipPhase: InternshipPhase.NOT_STARTED,
       },
     });
 
@@ -2202,10 +2203,9 @@ export class FacultyService {
       data: {
         joiningLetterUrl: null,
         joiningLetterUploadedAt: null,
-        hasJoined: false, // Reset hasJoined when joining letter is deleted
-        reviewedBy: null,
         reviewedAt: null,
         reviewRemarks: null,
+        joiningDate: null,
       },
     });
 
@@ -2494,10 +2494,10 @@ export class FacultyService {
       data: {
         joiningLetterUrl,
         joiningLetterUploadedAt: new Date(),
-        hasJoined: true, // Auto-approve: joining letter upload confirms joining
-        reviewedBy: facultyId, // Track who uploaded (auto-approved by uploader)
         reviewedAt: new Date(),
         reviewRemarks: null,
+        joiningDate: new Date(),
+        internshipPhase: InternshipPhase.ACTIVE,
       },
       include: {
         student: {

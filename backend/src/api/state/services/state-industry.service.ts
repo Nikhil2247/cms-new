@@ -322,7 +322,7 @@ export class StateIndustryService {
                   status: true,
                   isSelfIdentified: true,
                   joiningLetterUrl: true,
-                  hasJoined: true,
+                  joiningDate: true,
                   jobProfile: true,
                   student: {
                     select: {
@@ -360,7 +360,7 @@ export class StateIndustryService {
           status: true,
           isSelfIdentified: true,
           joiningLetterUrl: true,
-          hasJoined: true,
+          joiningDate: true,
           student: {
             select: {
               id: true,
@@ -639,7 +639,7 @@ export class StateIndustryService {
           startDate: true,
           endDate: true,
           joiningLetterUrl: true,
-          hasJoined: true,
+          joiningDate: true,
           student: {
             select: {
               id: true,
@@ -706,7 +706,7 @@ export class StateIndustryService {
             endDate: app.endDate,
             status: app.status,
             hasJoiningLetter: !!app.joiningLetterUrl,
-            hasJoined: app.hasJoined,
+            hasJoined: !!app.joiningDate,
           });
 
           const branch = student.branchName || 'Unknown';
@@ -768,7 +768,7 @@ export class StateIndustryService {
                 status: true,
                 jobProfile: true,
                 joiningLetterUrl: true,
-                hasJoined: true,
+                joiningDate: true,
                 student: {
                   select: {
                     id: true,
@@ -808,7 +808,7 @@ export class StateIndustryService {
           status: string;
           jobProfile: string;
           joiningLetterUrl: string | null;
-          hasJoined: boolean;
+          joiningDate: Date | null;
           student: {
             id: string;
             name: string;
@@ -853,7 +853,7 @@ export class StateIndustryService {
             internshipTitle: internship.title,
             status: app.status,
             hasJoiningLetter: !!app.joiningLetterUrl,
-            hasJoined: app.hasJoined,
+            hasJoined: !!app.joiningDate,
           });
 
           const branch = student.branchName || 'Unknown';

@@ -12,8 +12,12 @@ CREATE TYPE "InternshipPhase" AS ENUM ('NOT_STARTED', 'ACTIVE', 'COMPLETED', 'TE
 -- Step 2: Add new internshipPhase field with default value
 -- =============================================
 -- Add the new column with a default value to ensure all existing records have a valid phase
-ALTER TABLE "InternshipApplication"
+ALTER TABLE "internship_applications"
 ADD COLUMN "internshipPhase" "InternshipPhase" NOT NULL DEFAULT 'NOT_STARTED';
+
+-- Ensure isActive exists (older schemas may not have it)
+ALTER TABLE "internship_applications"
+ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT true;
 
 -- Step 3: Data Migration - Map old internshipStatus to new internshipPhase
 -- =============================================
@@ -21,7 +25,7 @@ ADD COLUMN "internshipPhase" "InternshipPhase" NOT NULL DEFAULT 'NOT_STARTED';
 -- This ensures no data is lost during the transition
 
 -- Update based on internshipStatus field
-UPDATE "InternshipApplication"
+UPDATE "internship_applications"
 SET "internshipPhase" = CASE
   -- Map ONGOING and IN_PROGRESS to ACTIVE
   WHEN "internshipStatus" IN ('ONGOING', 'IN_PROGRESS') THEN 'ACTIVE'::"InternshipPhase"
@@ -46,7 +50,7 @@ WHERE "internshipStatus" IS NOT NULL;
 -- Step 4: Handle JOINED status applications
 -- =============================================
 -- For applications with status JOINED but no clear internshipPhase, set to ACTIVE
-UPDATE "InternshipApplication"
+UPDATE "internship_applications"
 SET "internshipPhase" = 'ACTIVE'::"InternshipPhase"
 WHERE "status" = 'JOINED'
   AND "internshipPhase" = 'NOT_STARTED'
@@ -55,7 +59,7 @@ WHERE "status" = 'JOINED'
 -- Step 5: Handle applications with joiningDate but no clear phase
 -- =============================================
 -- If student has joined (joiningDate exists) but phase is still NOT_STARTED, set to ACTIVE
-UPDATE "InternshipApplication"
+UPDATE "internship_applications"
 SET "internshipPhase" = 'ACTIVE'::"InternshipPhase"
 WHERE "joiningDate" IS NOT NULL
   AND "internshipPhase" = 'NOT_STARTED';
@@ -63,7 +67,7 @@ WHERE "joiningDate" IS NOT NULL
 -- Step 6: Handle completed applications
 -- =============================================
 -- If completionDate exists, set phase to COMPLETED
-UPDATE "InternshipApplication"
+UPDATE "internship_applications"
 SET "internshipPhase" = 'COMPLETED'::"InternshipPhase"
 WHERE "completionDate" IS NOT NULL;
 
@@ -79,35 +83,35 @@ WHERE "completionDate" IS NOT NULL;
 -- =============================================
 -- Remove hasJoined field if it exists
 -- Using IF EXISTS to prevent errors if the column was already removed
-ALTER TABLE "InternshipApplication"
+ALTER TABLE "internship_applications"
 DROP COLUMN IF EXISTS "hasJoined";
 
 -- Remove reviewedBy field from InternshipApplication
 -- Note: reviewedBy might be used in other tables, we only remove from InternshipApplication
-ALTER TABLE "InternshipApplication"
+ALTER TABLE "internship_applications"
 DROP COLUMN IF EXISTS "reviewedBy";
 
 -- Remove internshipStatus field (replaced by internshipPhase)
-ALTER TABLE "InternshipApplication"
+ALTER TABLE "internship_applications"
 DROP COLUMN IF EXISTS "internshipStatus";
 
 -- Step 9: Create performance indexes
 -- =============================================
 -- Add composite index for common query patterns
 CREATE INDEX IF NOT EXISTS "InternshipApplication_internshipPhase_idx"
-ON "InternshipApplication"("internshipPhase");
+ON "internship_applications"("internshipPhase");
 
 -- Add composite index for filtering active applications
 CREATE INDEX IF NOT EXISTS "InternshipApplication_internshipPhase_isActive_idx"
-ON "InternshipApplication"("internshipPhase", "isActive");
+ON "internship_applications"("internshipPhase", "isActive");
 
 -- Add composite index for student-phase queries
 CREATE INDEX IF NOT EXISTS "InternshipApplication_studentId_internshipPhase_idx"
-ON "InternshipApplication"("studentId", "internshipPhase");
+ON "internship_applications"("studentId", "internshipPhase");
 
 -- Add composite index for status-phase queries (common filtering pattern)
 CREATE INDEX IF NOT EXISTS "InternshipApplication_status_internshipPhase_idx"
-ON "InternshipApplication"("status", "internshipPhase");
+ON "internship_applications"("status", "internshipPhase");
 
 -- =============================================
 -- MIGRATION COMPLETE

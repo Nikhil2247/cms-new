@@ -51,9 +51,9 @@ export class StateInstitutionService {
       where.type = type as any;
     }
 
-    if (isActive !== undefined) {
-      where.isActive = isActive;
-    }
+    // Default to active institutions only (consistent with lookupService.getInstitutions)
+    // Pass isActive=false explicitly to include inactive institutions
+    where.isActive = isActive ?? true;
 
     const query: Prisma.InstitutionFindManyArgs = {
       where,
@@ -722,7 +722,7 @@ export class StateInstitutionService {
           student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null },
-          hasJoined: true,
+          joiningDate: { not: null },
         },
       }),
 
@@ -732,8 +732,8 @@ export class StateInstitutionService {
           student: { institutionId: id, isActive: true },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null },
-          hasJoined: false,
-          reviewedBy: { not: null },
+          joiningDate: null,
+          reviewedAt: { not: null },
         },
       }),
 
@@ -1251,8 +1251,9 @@ export class StateInstitutionService {
             startDate: true,
             endDate: true,
             joiningLetterUrl: true,
-            hasJoined: true,
-            reviewedBy: true,
+            joiningDate: true,
+            reviewedAt: true,
+            internshipPhase: true,
             internship: {
               select: {
                 id: true,
@@ -1318,10 +1319,10 @@ export class StateInstitutionService {
       if (!app?.joiningLetterUrl) {
         return null;
       }
-      if (app.hasJoined) {
+      if (app.joiningDate || [InternshipPhase.ACTIVE, InternshipPhase.COMPLETED].includes(app.internshipPhase)) {
         return 'APPROVED';
       }
-      if (app.reviewedBy) {
+      if (app.reviewedAt) {
         return 'REJECTED';
       }
       return 'PENDING';
@@ -1418,8 +1419,8 @@ export class StateInstitutionService {
     // Helper to resolve joining letter status
     const resolveJoiningLetterStatus = (app: any) => {
       if (!app?.joiningLetterUrl) return null;
-      if (app.hasJoined) return 'APPROVED';
-      if (app.reviewedBy) return 'REJECTED';
+      if (app.joiningDate || [InternshipPhase.ACTIVE, InternshipPhase.COMPLETED].includes(app.internshipPhase)) return 'APPROVED';
+      if (app.reviewedAt) return 'REJECTED';
       return 'PENDING';
     };
 
@@ -1468,8 +1469,9 @@ export class StateInstitutionService {
                   isSelfIdentified: true,
                   status: true,
                   joiningLetterUrl: true,
-                  hasJoined: true,
-                  reviewedBy: true,
+                  joiningDate: true,
+                  reviewedAt: true,
+                  internshipPhase: true,
                   student: {
                     select: { id: true, name: true, rollNumber: true, branchName: true, email: true },
                   },
@@ -1485,7 +1487,7 @@ export class StateInstitutionService {
         select: {
           id: true,
           isSelfIdentified: true,
-          internshipStatus: true,
+          internshipPhase: true,
           companyName: true,
           companyAddress: true,
           companyContact: true,
@@ -1494,8 +1496,8 @@ export class StateInstitutionService {
           stipend: true,
           status: true,
           joiningLetterUrl: true,
-          hasJoined: true,
-          reviewedBy: true,
+          joiningDate: true,
+          reviewedAt: true,
           student: {
             select: { id: true, name: true, rollNumber: true, branchName: true, email: true, institutionId: true },
           },

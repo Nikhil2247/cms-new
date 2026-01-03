@@ -405,7 +405,11 @@ export class BulkSelfInternshipService {
             studentId: student.id,
             isSelfIdentified: true,
             status: ApplicationStatus.APPLIED,
-            internshipPhase: InternshipPhase.PENDING,
+            internshipPhase: internship.joiningLetterUrl
+              ? InternshipPhase.ACTIVE
+              : internship.startDate
+                ? InternshipPhase.ACTIVE
+                : InternshipPhase.NOT_STARTED,
 
             // Company information
             companyName: internship.companyName,
@@ -435,8 +439,7 @@ export class BulkSelfInternshipService {
             // Joining letter - auto-approve joining when letter is provided
             joiningLetterUrl: internship.joiningLetterUrl || null,
             joiningLetterUploadedAt: internship.joiningLetterUrl ? now : null,
-            hasJoined: !!internship.joiningLetterUrl,
-            reviewedBy: internship.joiningLetterUrl ? 'SYSTEM' : null,
+            joiningDate: internship.joiningLetterUrl ? now : null,
 
             applicationDate: now,
             appliedDate: now,
