@@ -214,12 +214,10 @@ export const stateService = {
     return response.data;
   },
 
-  // Analytics - Top Industries
+  // Analytics - Top Industries (stubbed - industry oversight removed)
   async getTopIndustries(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `/state/analytics/industries?${queryParams}` : '/state/analytics/industries';
-    const response = await API.get(url);
-    return response.data;
+    // Stubbed: Industry analytics removed from state oversight
+    return { data: [], total: 0 };
   },
 
   // Analytics - Monthly Stats
@@ -283,22 +281,20 @@ export const stateService = {
     return response.data;
   },
 
-  // Industry Approvals
+  // Industry Approvals (stubbed - industry oversight removed)
   async getPendingIndustries(params = {}) {
-    const queryParams = new URLSearchParams(params).toString();
-    const url = queryParams ? `/state/industries/pending?${queryParams}` : '/state/industries/pending';
-    const response = await API.get(url);
-    return response.data;
+    // Stubbed: Industry approval oversight removed from state level
+    return { data: [], total: 0, pending: 0 };
   },
 
   async approveIndustry(id, approvedBy) {
-    const response = await API.post(`/state/industries/${id}/approve`, { approvedBy });
-    return response.data;
+    // Stubbed: Industry approval removed from state level
+    throw new Error('Industry approval is no longer managed at state level');
   },
 
   async rejectIndustry(id, reason) {
-    const response = await API.post(`/state/industries/${id}/reject`, { reason });
-    return response.data;
+    // Stubbed: Industry rejection removed from state level
+    throw new Error('Industry rejection is no longer managed at state level');
   },
 
   // Export Dashboard Report

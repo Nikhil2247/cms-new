@@ -217,8 +217,14 @@ export const principalService = {
 
   // Internship Stats with Company Details
   async getInternshipStats() {
-    const response = await API.get('/principal/internships/stats');
-    return response.data;
+    // STUBBED: Industry/internship functionality removed
+    return {
+      total: 0,
+      pending: 0,
+      approved: 0,
+      rejected: 0,
+      companies: []
+    };
   },
 
   // Faculty Workload
@@ -236,22 +242,18 @@ export const principalService = {
 
   // Internship Management
   async getInternshipById(applicationId) {
-    const response = await API.get(`/principal/internships/${applicationId}`);
-    return response.data;
+    // STUBBED: Industry/internship functionality removed
+    return null;
   },
 
   async updateInternship(applicationId, data) {
-    const response = await API.put(`/principal/internships/${applicationId}`, data);
-    return response.data;
+    // STUBBED: Industry/internship functionality removed
+    return { success: false, message: 'Internship management is currently unavailable' };
   },
 
   async bulkUpdateInternshipStatus(applicationIds, status, remarks = '') {
-    const response = await API.post('/principal/internships/bulk-status', {
-      applicationIds,
-      status,
-      remarks,
-    });
-    return response.data;
+    // STUBBED: Industry/internship functionality removed
+    return { success: false, message: 'Internship bulk operations are currently unavailable', updated: 0 };
   },
 
   // Remove mentor from student

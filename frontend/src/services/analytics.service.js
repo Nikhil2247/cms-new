@@ -29,13 +29,6 @@ export const analyticsService = {
     return response.data;
   },
 
-  // Note: getInternshipStats moved to principal.service.js
-
-  async getPlacementStats(institutionId) {
-    const response = await API.get(`/principal/placements/stats?institutionId=${institutionId}`);
-    return response.data;
-  },
-
   // Note: getFacultyProgressList and getFacultyProgressDetails moved to principal.service.js
   // Use principalService.getFacultyProgress() and principalService.getFacultyProgressDetails()
 };

@@ -113,6 +113,9 @@ import {
 } from '../../features/admin';
 import LandingPage from '../home/LandingPage';
 
+// Common Components
+import ComingSoon from '../../components/common/ComingSoon';
+
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { isAuthenticated, user } = useSelector((state) => state.auth);
@@ -467,7 +470,10 @@ const AppRoutes = () => {
           path="internships"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <InternshipList />
+              <ComingSoon
+                title="Internship Browsing"
+                description="Browse and search for available internships. This feature is currently under development and will be available soon."
+              />
             </ProtectedRoute>
           }
         />
@@ -475,7 +481,10 @@ const AppRoutes = () => {
           path="internships/:id"
           element={
             <ProtectedRoute allowedRoles={[ROLES.STUDENT]}>
-              <InternshipDetails />
+              <ComingSoon
+                title="Internship Details"
+                description="View detailed information about internships. This feature is currently under development and will be available soon."
+              />
             </ProtectedRoute>
           }
         />
@@ -501,7 +510,10 @@ const AppRoutes = () => {
           path="postings"
           element={
             <ProtectedRoute allowedRoles={ROLES.INDUSTRY}>
-              <InternshipPostingList />
+              <ComingSoon
+                title="Internship Postings"
+                description="Create and manage your internship postings. This feature is currently under development and will be available soon."
+              />
             </ProtectedRoute>
           }
         />
@@ -509,7 +521,10 @@ const AppRoutes = () => {
           path="applications"
           element={
             <ProtectedRoute allowedRoles={ROLES.INDUSTRY}>
-              <ApplicationsList />
+              <ComingSoon
+                title="Applications Management"
+                description="Review and manage student applications for your internships. This feature is currently under development and will be available soon."
+              />
             </ProtectedRoute>
           }
         />
@@ -517,7 +532,10 @@ const AppRoutes = () => {
           path="company/profile"
           element={
             <ProtectedRoute allowedRoles={ROLES.INDUSTRY}>
-              <IndustryProfile />
+              <ComingSoon
+                title="Company Profile"
+                description="Manage your company profile and information. This feature is currently under development and will be available soon."
+              />
             </ProtectedRoute>
           }
         />
@@ -708,7 +726,12 @@ const DashboardRouter = () => {
   }
   // Industry (includes INDUSTRY_PARTNER, INDUSTRY_SUPERVISOR)
   if (ROLES.INDUSTRY.includes(role)) {
-    return <IndustryDashboard />;
+    return (
+      <ComingSoon
+        title="Industry Dashboard"
+        description="View your company's dashboard with analytics and insights. This feature is currently under development and will be available soon."
+      />
+    );
   }
 
   return <Navigate to="/login" replace />;

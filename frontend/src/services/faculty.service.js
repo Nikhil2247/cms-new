@@ -141,20 +141,17 @@ export const facultyService = {
     return response.data;
   },
 
-  // Internship Management
+  // Internship Management - DEPRECATED: Industry/internship feature removed
   async getStudentInternships(studentId) {
-    const response = await API.get(`/faculty/students/${studentId}/internships`);
-    return response.data;
+    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
   },
 
   async updateInternship(internshipId, data) {
-    const response = await API.put(`/faculty/internships/${internshipId}`, data);
-    return response.data;
+    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
   },
 
   async deleteInternship(internshipId) {
-    const response = await API.delete(`/faculty/internships/${internshipId}`);
-    return response.data;
+    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
   },
 
   // Joining Letter Management

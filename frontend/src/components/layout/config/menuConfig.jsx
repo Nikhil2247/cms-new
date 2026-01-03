@@ -194,17 +194,17 @@ export const menuConfig = {
   // ==========================================
   // INDUSTRY MENUS
   // ==========================================
-  INDUSTRY_PORTAL: {
-    key: 'industry-portal',
-    title: 'Industry Portal',
-    icon: <ShopOutlined />,
-    items: [
-      { key: 'industry-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
-      { key: 'postings', label: 'Internship Postings', icon: <PushpinOutlined />, path: '/app/postings' },
-      { key: 'applications', label: 'Applications', icon: <FileSyncOutlined />, path: '/app/applications' },
-      { key: 'industry-profile', label: 'Company Profile', icon: <IdcardOutlined />, path: '/app/company/profile' },
-    ],
-  },
+  // INDUSTRY_PORTAL: {
+  //   key: 'industry-portal',
+  //   title: 'Industry Portal',
+  //   icon: <ShopOutlined />,
+  //   items: [
+  //     { key: 'industry-dashboard', label: 'Dashboard', icon: <DashboardOutlined />, path: '/app/dashboard' },
+  //     { key: 'postings', label: 'Internship Postings', icon: <PushpinOutlined />, path: '/app/postings' },
+  //     { key: 'applications', label: 'Applications', icon: <FileSyncOutlined />, path: '/app/applications' },
+  //     { key: 'industry-profile', label: 'Company Profile', icon: <IdcardOutlined />, path: '/app/company/profile' },
+  //   ],
+  // },
 
   // ==========================================
   // SYSTEM ADMIN MENUS
@@ -319,11 +319,11 @@ export const getMenuSectionsForRole = (role) => {
       sections.push(menuConfig.STUDENT_INTERNSHIP);
       break;
 
-    case 'INDUSTRY':
-    case 'INDUSTRY_PARTNER':
-    case 'INDUSTRY_SUPERVISOR':
-      sections.push(menuConfig.INDUSTRY_PORTAL);
-      break;
+    // case 'INDUSTRY':
+    // case 'INDUSTRY_PARTNER':
+    // case 'INDUSTRY_SUPERVISOR':
+    //   sections.push(menuConfig.INDUSTRY_PORTAL);
+    //   break;
 
     case 'SYSTEM_ADMIN':
       sections.push(menuConfig.SYSTEM_ADMIN_HOME);
