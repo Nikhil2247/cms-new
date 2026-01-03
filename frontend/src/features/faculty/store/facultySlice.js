@@ -750,6 +750,7 @@ export const updateGrievanceStatus = createAsyncThunk(
 // Backward compatibility aliases
 export const fetchGrievances = fetchFeedbackHistory;
 export const resolveGrievance = submitFeedback;
+export const submitMonthlyFeedback = submitFeedback;
 
 const facultySlice = createSlice({
   name: 'faculty',

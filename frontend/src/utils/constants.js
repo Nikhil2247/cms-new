@@ -55,7 +55,6 @@ export const API_ENDPOINTS = {
 
   // Industry
   INDUSTRY_DASHBOARD: '/industry/dashboard',
-  INTERNSHIPS: '/industry/internships',
 
   // Shared
   NOTIFICATIONS: '/shared/notifications',
