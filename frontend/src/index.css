@@ -72,6 +72,10 @@ body {
   font-family: 'Inter', system-ui, sans-serif;
   background-color: rgb(var(--color-background-secondary));
   color: rgb(var(--color-text-primary));
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 /* ============================================
@@ -774,9 +778,67 @@ body {
   scroll-behavior: smooth;
 }
 
-/* Text selection */
+/* Text selection - Enable text selection globally */
+* {
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
+}
+
+/* Disable selection for UI elements that shouldn't be selectable */
+button,
+.ant-btn,
+.ant-menu,
+.ant-menu-item,
+.ant-tabs-tab,
+[role="button"],
+[role="tab"],
+svg,
+img {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Selection highlight styling */
 ::selection {
-  background: rgba(var(--color-primary), 0.2);
+  background: rgba(var(--color-primary), 0.3);
   color: rgb(var(--color-text-primary));
+}
+
+::-moz-selection {
+  background: rgba(var(--color-primary), 0.3);
+  color: rgb(var(--color-text-primary));
+}
+
+/* Utility classes for controlling text selection */
+.select-none {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.select-text {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+}
+
+.select-all {
+  user-select: all !important;
+  -webkit-user-select: all !important;
+  -moz-user-select: all !important;
+  -ms-user-select: all !important;
+}
+
+.select-auto {
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
 }
 
