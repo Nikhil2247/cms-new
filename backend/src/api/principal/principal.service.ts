@@ -450,17 +450,6 @@ export class PrincipalService {
               facultyMentorEmail: true,
               facultyMentorContact: true,
               facultyMentorDesignation: true,
-              internship: {
-                select: {
-                  id: true,
-                  title: true,
-                  startDate: true,
-                  endDate: true,
-                  duration: true,
-                  workLocation: true,
-                  stipendAmount: true,
-                },
-              },
               monthlyReports: {
                 select: {
                   id: true,

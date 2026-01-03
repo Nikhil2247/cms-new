@@ -3,7 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
-import { Prisma, ApplicationStatus, InternshipStatus, InternshipPhase, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
+import { Prisma, ApplicationStatus, InternshipPhase, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
   calculateExpectedMonths,
@@ -394,7 +394,6 @@ export class StudentService {
             },
           },
         },
-        internshipPreferences: true,
         // OPTIMIZED: Include only necessary fields for Career Track section
         internshipApplications: {
           select: {
@@ -579,6 +578,7 @@ export class StudentService {
 
   /**
    * Get available internships for student
+   * DEPRECATED: Internship model has been removed - only self-identified internships are supported
    */
   async getAvailableInternships(userId: string, params: {
     page?: number;
@@ -587,91 +587,12 @@ export class StudentService {
     industryType?: string;
     location?: string;
   }) {
-    const { page = 1, limit = 10, search, industryType, location } = params;
-    const skip = (page - 1) * limit;
-
-    const student = await this.prisma.student.findUnique({
-      where: { userId },
-      select: {
-        id: true,
-        branchName: true,
-        currentSemester: true,
-      },
-    });
-
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    const where: Prisma.InternshipWhereInput = {
-      status: InternshipStatus.ACTIVE,
-      isActive: true,
-      applicationDeadline: {
-        gte: new Date(),
-      },
-    };
-
-    // Filter by eligible branches if student branch is set
-    if (student.branchName) {
-      where.eligibleBranches = {
-        has: student.branchName,
-      };
-    }
-
-    // Filter by eligible semesters if student semester is set
-    if (student.currentSemester) {
-      where.eligibleSemesters = {
-        has: student.currentSemester.toString(),
-      };
-    }
-
-    if (search) {
-      where.OR = [
-        { title: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { fieldOfWork: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    if (location) {
-      where.workLocation = { contains: location, mode: 'insensitive' };
-    }
-
-    if (industryType) {
-      // Industry type filter removed - Industry model no longer exists
-    }
-
-    const [internships, total] = await Promise.all([
-      this.prisma.internship.findMany({
-        where,
-        skip,
-        take: limit,
-        // Industry model removed - Internship model removed
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.internship.count({ where }),
-    ]);
-
-    // Internship model removed - no need to check applications
-    const applicationsMap = new Map();
-
-    const internshipsWithStatus = internships.map(internship => ({
-      ...internship,
-      hasApplied: applicationsMap.has(internship.id),
-      applicationStatus: applicationsMap.get(internship.id) || null,
-    }));
-
-    return {
-      internships: internshipsWithStatus,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
+    throw new NotFoundException('Internship browsing is no longer available - the Internship model has been removed. Only self-identified internships are supported.');
   }
 
   /**
    * Apply for internship
+   * DEPRECATED: Internship model has been removed - only self-identified internships are supported
    */
   async applyToInternship(userId: string, internshipId: string, applicationDto: {
     coverLetter?: string;
@@ -687,67 +608,8 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const studentId = student.id;
-
     // Internship model removed - throw error
     throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
-
-    // Check if student has already applied
-    const existingApplication = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId,
-        internshipId,
-      },
-    });
-
-    if (existingApplication) {
-      throw new BadRequestException('You have already applied to this internship');
-    }
-
-    // Check if student already has an active internship
-    const activeApplication = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId,
-        status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
-      },
-    });
-
-    if (activeApplication) {
-      throw new BadRequestException('You already have an active internship');
-    }
-
-    const application = await this.prisma.internshipApplication.create({
-      data: {
-        studentId,
-        status: ApplicationStatus.APPLIED,
-        isSelfIdentified: false,
-        ...applicationDto,
-      },
-    });
-
-    // Audit internship application
-    this.auditService.log({
-      action: AuditAction.APPLICATION_SUBMIT,
-      entityType: 'InternshipApplication',
-      entityId: application.id,
-      userId,
-      userName: student.user?.name || student.name,
-      userRole: student.user?.role || Role.STUDENT,
-      description: `Applied to internship: ${internship.title} at ${application.companyName || 'Unknown Company'}`,
-      category: AuditCategory.APPLICATION_PROCESS,
-      severity: AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        applicationId: application.id,
-        internshipId,
-        internshipTitle: internship.title,
-        status: ApplicationStatus.APPLIED,
-      },
-    }).catch(() => {});
-
-    await this.cache.invalidateByTags(['applications', `student:${studentId}`]);
-
-    return application;
   }
 
   /**

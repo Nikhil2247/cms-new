@@ -493,13 +493,9 @@ export class FacultyService {
             monthlyReports: {
               orderBy: { reportMonth: 'asc' },
             },
-            monthlyFeedbacks: {
-              orderBy: { feedbackMonth: 'asc' },
-            },
             facultyVisitLogs: {
               orderBy: { visitDate: 'desc' },
             },
-            completionFeedback: true,
           },
           orderBy: { createdAt: 'desc' },
         },
@@ -561,7 +557,6 @@ export class FacultyService {
       currentInternship: currentApplication,
       monthlyReports: currentApplication?.monthlyReports || [],
       visitLogs: currentApplication?.facultyVisitLogs || [],
-      feedback: currentApplication?.monthlyFeedbacks || [],
       completionStatus,
     };
   }
@@ -1277,6 +1272,9 @@ export class FacultyService {
   }) {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
+      include: {
+        student: true,
+      },
     });
 
     if (!application) {
@@ -1832,27 +1830,14 @@ export class FacultyService {
               email: true,
             },
           },
-          internship: {
-            include: {
-              industry: {
-                select: {
-                  id: true,
-                  companyName: true,
-                },
-              },
-            },
-          },
         },
         orderBy: { joiningLetterUploadedAt: 'desc' },
       }),
       this.prisma.internshipApplication.count({ where }),
     ]);
 
-    // Remove internship/industry includes from the select
-    const lettersWithoutInternship = letters.map(({ internship, ...letter }) => letter);
-
     return {
-      letters: lettersWithoutInternship,
+      letters,
       total,
       page,
       limit,

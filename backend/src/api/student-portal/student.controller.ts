@@ -81,7 +81,7 @@ export class StudentController {
     const profile = await this.studentService.getProfile(req.user.userId);
 
     // Get institution name for folder structure (Student has direct Institution relation)
-    const institutionName = profile.Institution?.name || 'default';
+    const institutionName = (profile as any).Institution?.name || 'default';
 
     // Upload to MinIO with automatic optimization (resizes, converts to WebP)
     const result = await this.fileStorageService.uploadProfileImage(
@@ -165,7 +165,7 @@ export class StudentController {
     const profile = await this.studentService.getProfile(req.user.userId);
 
     // Get institution name for folder structure (Student has direct Institution relation)
-    const institutionName = profile.Institution?.name || 'default';
+    const institutionName = (profile as any).Institution?.name || 'default';
 
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
@@ -303,7 +303,7 @@ export class StudentController {
     const reportYear = parseInt(reportDto.reportYear, 10);
 
     // Get institution name for folder structure (Student has direct Institution relation)
-    const institutionName = profile.Institution?.name || 'default';
+    const institutionName = (profile as any).Institution?.name || 'default';
 
     // Get month name
     const monthNames = ['january', 'february', 'march', 'april', 'may', 'june',
@@ -370,7 +370,7 @@ export class StudentController {
     const profile = await this.studentService.getProfile(req.user.userId);
 
     // Get institution name for folder structure (Student has direct Institution relation)
-    const institutionName = profile.Institution?.name || 'default';
+    const institutionName = (profile as any).Institution?.name || 'default';
 
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
