@@ -143,7 +143,7 @@ const FacultyWorkloadCard = () => {
       styles={{ body: { padding: '16px' } }}
     >
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+      {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <div className="text-center p-2 bg-warning-light rounded-lg">
           <div className="text-xl font-bold text-warning">{totalFaculty}</div>
           <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Faculty</div>
@@ -160,7 +160,7 @@ const FacultyWorkloadCard = () => {
           <div className="text-xl font-bold text-error">{overloadedCount}</div>
           <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-wider">Overloaded</div>
         </div>
-      </div>
+      </div> */}
 
       {/* Faculty Table */}
       {faculty.length > 0 ? (

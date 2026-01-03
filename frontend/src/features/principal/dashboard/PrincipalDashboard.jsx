@@ -15,6 +15,7 @@ import {
   Modal,
   Table,
   Empty,
+  Tabs,
 } from 'antd';
 import {
   ExclamationCircleOutlined,
@@ -447,11 +448,6 @@ const PrincipalDashboard = () => {
           />
         </div>
 
-        {/* Internship List Table */}
-        <div>
-           <DashboardInternshipTable />
-        </div>
-
         {/* Submission & Status Overview Section */}
         <div>
           <SectionTitle title="Submission & Status Overview" />
@@ -470,12 +466,34 @@ const PrincipalDashboard = () => {
           />
         </div>
 
-        {/* Faculty Workload Row */}
-        <Row gutter={[16, 16]} className="mt-6">
-          <Col xs={24}>
-            <FacultyWorkloadCard />
-          </Col>
-        </Row>
+        {/* Tabs for Internship Details and Faculty Workload */}
+        <div className="mt-6">
+          <Tabs
+            defaultActiveKey="internships"
+            items={[
+              {
+                key: 'internships',
+                label: (
+                  <span className="flex items-center gap-2">
+                    <BankOutlined />
+                    Internship Details
+                  </span>
+                ),
+                children: <DashboardInternshipTable />,
+              },
+              {
+                key: 'facultyWorkload',
+                label: (
+                  <span className="flex items-center gap-2">
+                    <TeamOutlined />
+                    Faculty Workload
+                  </span>
+                ),
+                children: <FacultyWorkloadCard />,
+              },
+            ]}
+          />
+        </div>
 
         {/* Alert Details Modal */}
         <Modal

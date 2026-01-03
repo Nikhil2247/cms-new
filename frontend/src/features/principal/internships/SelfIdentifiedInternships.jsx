@@ -110,6 +110,7 @@ const SelfIdentifiedInternships = () => {
   const fetchInternships = useCallback(async () => {
     try {
       setLoading(true);
+
       // Use getStudentProgress which returns comprehensive data including reports, visits, etc.
       const response = await analyticsService.getStudentProgress({
         page: 1,
@@ -122,7 +123,7 @@ const SelfIdentifiedInternships = () => {
       // Transform student progress data to internship format
       // Filter for students who have internship applications
       const internshipData = students
-        .filter(s => s.application && (s.application.isSelfIdentified || s.application.company))
+        .filter(s => s.application !== null && s.application !== undefined)
         .map(student => {
           const application = student.application;
           const company = application?.company;

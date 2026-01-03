@@ -110,6 +110,7 @@ const DashboardInternshipTable = () => {
   const fetchInternships = useCallback(async () => {
     try {
       setLoading(true);
+
       // Use getStudentProgress which returns comprehensive data including reports, visits, etc.
       const response = await analyticsService.getStudentProgress({
         page: 1,
@@ -122,7 +123,7 @@ const DashboardInternshipTable = () => {
       // Transform student progress data to internship format
       // Filter for students who have internship applications
       const internshipData = students
-        .filter(s => s.application && (s.application.isSelfIdentified || s.application.company))
+        .filter(s => s.application !== null && s.application !== undefined)
         .map(student => {
           const application = student.application;
           const company = application?.company;
@@ -184,7 +185,7 @@ const DashboardInternshipTable = () => {
       }));
     } catch (error) {
       console.error('Failed to fetch internships:', error);
-      toast.error('Failed to load internships');
+      toast.error(error.message || 'Failed to load internships');
     } finally {
       setLoading(false);
     }
@@ -258,7 +259,8 @@ const DashboardInternshipTable = () => {
       APPROVED: { color: 'success', icon: <CheckCircleOutlined />, text: 'Active' },
       JOINED: { color: 'processing', icon: <RiseOutlined />, text: 'Ongoing' },
       COMPLETED: { color: 'default', icon: <CheckCircleOutlined />, text: 'Completed' },
-      APPLIED: { color: 'warning', icon: <ClockCircleOutlined />, text: 'Processing' }, // Legacy - auto-approved now
+      APPLIED: { color: 'warning', icon: <ClockCircleOutlined />, text: 'Processing' },
+      NOT_STARTED: { color: 'default', icon: <ClockCircleOutlined />, text: 'Not Started' },
     };
     return configs[status] || { color: 'default', icon: <ClockCircleOutlined />, text: status };
   };
@@ -774,92 +776,26 @@ const DashboardInternshipTable = () => {
 
   return (
     <div className="space-y-4">
-      {/* Header with Filters */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-4 rounded-xl border border-border shadow-sm">
+      {/* Simple Header */}
+      {/* <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-border shadow-sm">
         <div className="flex items-center gap-2">
-            <ShopOutlined className="text-lg text-primary" />
-            <h2 className="text-lg font-semibold text-text-primary m-0">All Internships</h2>
+          <ShopOutlined className="text-lg text-primary" />
+          <h2 className="text-lg font-semibold text-text-primary m-0">All Internships</h2>
         </div>
-        <div className="flex flex-wrap gap-2 items-center">
-            {selectedRowKeys.length > 0 && (
-                <Dropdown
-                    menu={{
-                        items: bulkActionItems.map(item => {
-                            if (item.type === 'group') return { type: 'group', label: item.label, key: item.label };
-                            if (item.type === 'divider') return { type: 'divider', key: 'divider' };
-                            if (item.key === 'ASSIGN_MENTOR') {
-                                return {
-                                    key: item.key,
-                                    label: <div onClick={() => setAssignMentorVisible(true)} className="flex items-center gap-2 py-1">{item.icon}<span>{item.label}</span></div>
-                                };
-                            }
-                            if (item.key === 'UNASSIGN_MENTOR') {
-                                return {
-                                    key: item.key,
-                                    label: (
-                                        <Popconfirm
-                                            title="Unassign mentors?"
-                                            onConfirm={handleBulkUnassignMentor}
-                                        >
-                                            <div className="flex items-center gap-2 py-1">{item.icon}<span>{item.label}</span></div>
-                                        </Popconfirm>
-                                    )
-                                };
-                            }
-                            return {
-                                key: item.key,
-                                label: (
-                                    <Popconfirm
-                                        title={`Mark as ${item.label}?`}
-                                        onConfirm={() => handleBulkStatusUpdate(item.key)}
-                                    >
-                                        <div className="flex items-center gap-2 py-1">{item.icon}<span>{item.label}</span></div>
-                                    </Popconfirm>
-                                )
-                            };
-                        })
-                    }}
-                >
-                    <Button type="primary" className="bg-primary">Bulk Actions ({selectedRowKeys.length})</Button>
-                </Dropdown>
-            )}
-          <Input
-            placeholder="Search..."
-            prefix={<SearchOutlined className="text-text-tertiary" />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            className="w-full md:w-48 rounded-lg"
-            allowClear
-          />
-          <Select
-            value={filters.status}
-            onChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
-            className="w-full md:w-32"
-            placeholder="Status"
-          >
-            <Select.Option value="all">All Status</Select.Option>
-            <Select.Option value="APPROVED">Active</Select.Option>
-            <Select.Option value="JOINED">Ongoing</Select.Option>
-            <Select.Option value="COMPLETED">Completed</Select.Option>
-          </Select>
-          <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading} />
-        </div>
-      </div>
+        <Tooltip title="Refresh data">
+          <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
+            Refresh
+          </Button>
+        </Tooltip>
+      </div> */}
 
       {/* Table */}
       <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
-        <Tabs
-          activeKey={activeTab}
-          onChange={setActiveTab}
-          items={tabItems}
-          className="!px-4 pt-4"
-        />
         <Table
           columns={columns}
-          dataSource={filteredInternships}
+          dataSource={internships}
           rowKey="id"
           loading={loading}
-          rowSelection={rowSelection}
           scroll={{ x: 1600 }}
           expandable={{
             expandedRowRender: (record) => (
@@ -963,7 +899,7 @@ const DashboardInternshipTable = () => {
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
-            total: filteredInternships.length,
+            total: internships.length,
             showSizeChanger: true,
             showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} internships`,
             onChange: (page, pageSize) => setPagination({ ...pagination, current: page, pageSize }),

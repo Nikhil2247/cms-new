@@ -233,11 +233,21 @@ export const fetchMentors = createAsyncThunk(
 // Student CRUD
 export const createStudent = createAsyncThunk(
   'principal/createStudent',
-  async (studentData, { rejectWithValue }) => {
+  async (studentData, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.students.list];
+
     try {
+      // Optimistic update - add student immediately
+      dispatch(principalSlice.actions.optimisticallyAddStudent(studentData));
+
+      // Make API call
       const response = await principalService.createStudent(studentData);
       return response;
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStudentOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to create student. Please check the form and try again.';
@@ -249,11 +259,21 @@ export const createStudent = createAsyncThunk(
 
 export const updateStudent = createAsyncThunk(
   'principal/updateStudent',
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ id, data }, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.students.list];
+
     try {
+      // Optimistic update - update student immediately
+      dispatch(principalSlice.actions.optimisticallyUpdateStudent({ id, data }));
+
+      // Make API call
       const response = await principalService.updateStudent(id, data);
       return response;
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStudentOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to update student. Please try again.';
@@ -265,11 +285,21 @@ export const updateStudent = createAsyncThunk(
 
 export const deleteStudent = createAsyncThunk(
   'principal/deleteStudent',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.students.list];
+
     try {
+      // Optimistic update - remove student immediately
+      dispatch(principalSlice.actions.optimisticallyDeleteStudent(id));
+
+      // Make API call
       const response = await principalService.deleteStudent(id);
       return { id, ...response };
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStudentOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to delete student. Please try again.';
@@ -330,11 +360,21 @@ export const downloadTemplate = createAsyncThunk(
 // Staff CRUD
 export const createStaff = createAsyncThunk(
   'principal/createStaff',
-  async (staffData, { rejectWithValue }) => {
+  async (staffData, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.staff.list];
+
     try {
+      // Optimistic update - add staff immediately
+      dispatch(principalSlice.actions.optimisticallyAddStaff(staffData));
+
+      // Make API call
       const response = await principalService.createStaff(staffData);
       return response;
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStaffOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to create staff. Please check the form and try again.';
@@ -346,11 +386,21 @@ export const createStaff = createAsyncThunk(
 
 export const updateStaff = createAsyncThunk(
   'principal/updateStaff',
-  async ({ id, data }, { rejectWithValue }) => {
+  async ({ id, data }, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.staff.list];
+
     try {
+      // Optimistic update - update staff immediately
+      dispatch(principalSlice.actions.optimisticallyUpdateStaff({ id, data }));
+
+      // Make API call
       const response = await principalService.updateStaff(id, data);
       return response;
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStaffOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to update staff. Please try again.';
@@ -362,11 +412,21 @@ export const updateStaff = createAsyncThunk(
 
 export const deleteStaff = createAsyncThunk(
   'principal/deleteStaff',
-  async (id, { rejectWithValue }) => {
+  async (id, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.staff.list];
+
     try {
+      // Optimistic update - remove staff immediately
+      dispatch(principalSlice.actions.optimisticallyDeleteStaff(id));
+
+      // Make API call
       const response = await principalService.deleteStaff(id);
       return { id, ...response };
     } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStaffOperation({ list: previousList }));
+
       const errorMessage = error.response?.data?.message ||
                           error.message ||
                           'Failed to delete staff. Please try again.';
@@ -972,16 +1032,19 @@ const principalSlice = createSlice({
       })
       .addCase(createStudent.fulfilled, (state, action) => {
         state.students.loading = false;
-        // Remove optimistic entry if exists
+        // Replace optimistic entry with real data
         state.students.list = state.students.list.filter(s => !s._isOptimistic);
-        state.students.list.unshift(action.payload);
+        // Only add if not already in list (avoid duplicates)
+        const exists = state.students.list.some(s => s.id === action.payload.id);
+        if (!exists) {
+          state.students.list.unshift(action.payload);
+        }
         state.lastFetched.students = Date.now();
       })
       .addCase(createStudent.rejected, (state, action) => {
         state.students.loading = false;
         state.students.error = action.payload;
-        // Remove optimistic entry on failure
-        state.students.list = state.students.list.filter(s => !s._isOptimistic);
+        // Rollback is handled in the thunk
       })
       .addCase(updateStudent.pending, (state) => {
         state.students.loading = true;
@@ -991,9 +1054,9 @@ const principalSlice = createSlice({
         state.students.loading = false;
         const updatedStudent = action.payload;
         if (updatedStudent?.id) {
-          // Use .map() to create new array for proper React re-renders
+          // Replace optimistic entry with real data
           state.students.list = state.students.list.map(s =>
-            s.id === updatedStudent.id ? { ...s, ...updatedStudent } : s
+            s.id === updatedStudent.id ? { ...updatedStudent, _isOptimistic: undefined } : s
           );
         }
         state.lastFetched.students = null; // Invalidate cache to trigger refresh
@@ -1002,6 +1065,7 @@ const principalSlice = createSlice({
       .addCase(updateStudent.rejected, (state, action) => {
         state.students.loading = false;
         state.students.error = action.payload;
+        // Rollback is handled in the thunk
       })
       .addCase(deleteStudent.pending, (state) => {
         state.students.loading = true;
@@ -1009,18 +1073,14 @@ const principalSlice = createSlice({
       })
       .addCase(deleteStudent.fulfilled, (state, action) => {
         state.students.loading = false;
-        // Hard delete - remove from list entirely
-        // The action.meta.arg contains the studentId passed to the thunk
-        const studentId = action.meta?.arg;
-        if (studentId) {
-          state.students.list = state.students.list.filter(s => s.id !== studentId);
-        }
+        // Optimistic delete already removed it, just update metadata
         state.lastFetched.students = null; // Invalidate cache to trigger refresh
         state.lastFetched.studentsKey = null;
       })
       .addCase(deleteStudent.rejected, (state, action) => {
         state.students.loading = false;
         state.students.error = action.payload;
+        // Rollback is handled in the thunk
       })
       .addCase(bulkUploadStudents.pending, (state) => {
         state.students.loading = true;
@@ -1081,16 +1141,19 @@ const principalSlice = createSlice({
       })
       .addCase(createStaff.fulfilled, (state, action) => {
         state.staff.loading = false;
-        // Remove optimistic entry if exists
+        // Replace optimistic entry with real data
         state.staff.list = state.staff.list.filter(s => !s._isOptimistic);
-        state.staff.list.unshift(action.payload);
+        // Only add if not already in list (avoid duplicates)
+        const exists = state.staff.list.some(s => s.id === action.payload.id);
+        if (!exists) {
+          state.staff.list.unshift(action.payload);
+        }
         state.lastFetched.staff = Date.now();
       })
       .addCase(createStaff.rejected, (state, action) => {
         state.staff.loading = false;
         state.staff.error = action.payload;
-        // Remove optimistic entry on failure
-        state.staff.list = state.staff.list.filter(s => !s._isOptimistic);
+        // Rollback is handled in the thunk
       })
       .addCase(updateStaff.pending, (state) => {
         state.staff.loading = true;
@@ -1100,9 +1163,9 @@ const principalSlice = createSlice({
         state.staff.loading = false;
         const updatedStaff = action.payload;
         if (updatedStaff?.id) {
-          // Use .map() to create new array for proper React re-renders
+          // Replace optimistic entry with real data
           state.staff.list = state.staff.list.map(s =>
-            s.id === updatedStaff.id ? { ...s, ...updatedStaff } : s
+            s.id === updatedStaff.id ? { ...updatedStaff, _isOptimistic: undefined } : s
           );
         }
         state.lastFetched.staff = null; // Invalidate cache to trigger refresh
@@ -1111,6 +1174,7 @@ const principalSlice = createSlice({
       .addCase(updateStaff.rejected, (state, action) => {
         state.staff.loading = false;
         state.staff.error = action.payload;
+        // Rollback is handled in the thunk
       })
       .addCase(deleteStaff.pending, (state) => {
         state.staff.loading = true;
@@ -1118,18 +1182,14 @@ const principalSlice = createSlice({
       })
       .addCase(deleteStaff.fulfilled, (state, action) => {
         state.staff.loading = false;
-        // Hard delete - remove from list entirely
-        // The action.meta.arg contains the staffId passed to the thunk
-        const staffId = action.meta?.arg;
-        if (staffId) {
-          state.staff.list = state.staff.list.filter(s => s.id !== staffId);
-        }
+        // Optimistic delete already removed it, just update metadata
         state.lastFetched.staff = null; // Invalidate cache to trigger refresh
         state.lastFetched.staffKey = null;
       })
       .addCase(deleteStaff.rejected, (state, action) => {
         state.staff.loading = false;
         state.staff.error = action.payload;
+        // Rollback is handled in the thunk
       })
 
       // Mentors

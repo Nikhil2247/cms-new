@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown, Table, Typography, Space, Tooltip } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStaff,
@@ -16,7 +16,6 @@ import {
   selectStaffPagination,
   selectLastFetched,
 } from '../store/principalSelectors';
-import DataTable from '../../../components/tables/DataTable';
 import {
   EyeOutlined,
   EditOutlined,
@@ -29,12 +28,18 @@ import {
   StopOutlined,
   KeyOutlined,
   ReloadOutlined,
+  PhoneOutlined,
+  MailOutlined,
+  TeamOutlined,
+  IdcardOutlined,
 } from '@ant-design/icons';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import StaffModal from './StaffModal';
+import { useLookup } from '../../shared/hooks/useLookup';
 
 const { Search } = Input;
 const { Option } = Select;
+const { Text } = Typography;
 
 const StaffList = () => {
   const dispatch = useDispatch();
@@ -54,6 +59,9 @@ const StaffList = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Use global lookup data for branches
+  const { activeBranches } = useLookup({ include: ['branches'] });
 
   const handleOpenModal = (staffId = null) => {
     setEditingStaffId(staffId);
@@ -243,48 +251,83 @@ const StaffList = () => {
       title: 'Staff Member',
       dataIndex: 'name',
       key: 'name',
-      render: (name, record) => (
-        <div className="flex items-center gap-2">
-          <ProfileAvatar profileImage={record.profileImage} />
-          <span>{name || 'N/A'}</span>
+      width: 280,
+      render: (_, record) => (
+        <div className="flex items-center gap-3">
+          <ProfileAvatar profileImage={record.profileImage} size={40} className="bg-primary/10 text-primary" />
+          <div className="min-w-0">
+            <Text className="block font-medium text-text-primary truncate">{record.name || 'N/A'}</Text>
+            <div className="flex items-center gap-1 text-xs text-text-tertiary">
+              <MailOutlined />
+              <span className="truncate">{record.email || 'No email'}</span>
+            </div>
+          </div>
         </div>
       ),
     },
     {
-      title: 'Role',
-      dataIndex: 'role',
+      title: 'Role & Department',
       key: 'role',
-      render: (role) => (
-        <Tag color="blue">
-          {role?.replace(/_/g, ' ') || 'N/A'}
-        </Tag>
+      width: 200,
+      render: (_, record) => (
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Text className="font-medium text-text-primary">
+              {record.designation || 'Staff'}
+            </Text>
+          </div>
+          <Tag color="blue" className="rounded-full border-none bg-blue-50 text-blue-600 px-3">
+            {record.role?.replace(/_/g, ' ') || 'N/A'}
+          </Tag>
+        </div>
       ),
     },
     {
-      title: 'Designation',
-      dataIndex: 'designation',
-      key: 'designation',
-      render: (designation) => designation || '-',
+      title: 'Branch',
+      key: 'branch',
+      width: 180,
+      render: (_, record) => {
+        // Try to find branch name from lookup if we have branchId
+        let branchName = record.branchName;
+        if (!branchName && record.branchId && activeBranches) {
+          const branch = activeBranches.find(b => b.id === record.branchId);
+          if (branch) branchName = branch.name;
+        }
+        return (
+          <Text className="text-text-secondary">
+            {branchName || record.department || '-'}
+          </Text>
+        );
+      },
     },
     {
-      title: 'Email',
-      dataIndex: 'email',
-      key: 'email',
-      render: (email) => email || '-',
-    },
-    {
-      title: 'Phone',
-      dataIndex: 'phoneNo',
-      key: 'phoneNo',
-      render: (phone) => phone || '-',
+      title: 'Contact',
+      key: 'contact',
+      width: 180,
+      render: (_, record) => (
+        <div className="flex flex-col gap-1">
+           {record.phoneNo ? (
+            <div className="flex items-center gap-2 text-sm text-text-secondary">
+              <PhoneOutlined className="text-text-tertiary" />
+              <span>{record.phoneNo}</span>
+            </div>
+           ) : (
+             <Text className="text-text-tertiary text-sm">-</Text>
+           )}
+        </div>
+      ),
     },
     {
       title: 'Status',
       dataIndex: 'active',
       key: 'active',
-      width: 100,
+      width: 120,
       render: (active) => (
-        <Tag color={active ? 'success' : 'default'}>
+        <Tag
+          icon={active ? <CheckCircleOutlined /> : <StopOutlined />}
+          color={active ? 'success' : 'default'}
+          className="rounded-full px-3 py-0.5"
+        >
           {active ? 'Active' : 'Inactive'}
         </Tag>
       ),
@@ -293,6 +336,7 @@ const StaffList = () => {
       title: '',
       key: 'actions',
       width: 50,
+      align: 'right',
       render: (_, record) => (
         <Dropdown
           menu={{ items: getActionMenuItems(record) }}
@@ -302,7 +346,7 @@ const StaffList = () => {
           <Button
             type="text"
             icon={<MoreOutlined style={{ fontSize: '18px' }} />}
-            className="flex items-center justify-center"
+            className="flex items-center justify-center text-text-tertiary hover:text-primary hover:bg-primary/5"
           />
         </Dropdown>
       ),
@@ -322,70 +366,76 @@ const StaffList = () => {
   }, []);
 
   return (
-    <div className="p-4 md:p-6 !space-y-4 md:space-y-6 bg-background-secondary min-h-screen">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Staff Members</h1>
-          {lastFetched && (
-            <span className="text-xs text-text-tertiary">
-              Updated {new Date(lastFetched).toLocaleTimeString()}
-            </span>
-          )}
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6 bg-background-secondary min-h-screen">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-xl font-semibold text-text-primary m-0">Staff Members</h1>
+            <Tag color="blue" className="rounded-full px-2 bg-blue-50 text-blue-600 border-blue-100">
+              {pagination?.total || 0} Total
+            </Tag>
+          </div>
+          <Text className="text-text-tertiary text-sm">Manage faculty, coordinators, and administrators</Text>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            icon={<ReloadOutlined spin={isRefreshing} />}
-            onClick={handleRefresh}
-            loading={isRefreshing}
-            disabled={loading}
-          >
-            Refresh
-          </Button>
+        <div className="flex items-center gap-3">
+          <Tooltip title="Refresh List">
+            <Button
+              icon={<ReloadOutlined spin={isRefreshing} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+              disabled={loading}
+              className="border-border text-text-secondary hover:text-primary hover:border-primary"
+            />
+          </Tooltip>
           <Button
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
-            className="rounded-lg shadow-md shadow-primary/20 hover:shadow-lg transition-all"
+            className="rounded-lg shadow-sm shadow-primary/20 hover:shadow-md transition-all bg-primary"
           >
             Add Staff
           </Button>
         </div>
       </div>
 
-      <Card className="rounded-xl border-border shadow-soft bg-surface p-4">
-        <div className="flex gap-4 flex-wrap">
-          <Search
-            placeholder="Search by name or employee ID"
-            allowClear
-            onSearch={handleSearch}
-            className="w-full md:w-[300px]"
+      {/* Filters & Table Card */}
+      <Card className="rounded-2xl border-border shadow-sm" styles={{ body: { padding: 0 } }}>
+        {/* Filters Toolbar */}
+        <div className="p-4 border-b border-border/50 flex flex-col md:flex-row gap-4 items-center justify-between bg-white/50">
+          <Input
+            placeholder="Search by name, email or ID..."
             prefix={<SearchOutlined className="text-text-tertiary" />}
+            allowClear
+            onChange={(e) => handleSearch(e.target.value)}
+            className="w-full md:w-72 rounded-lg"
           />
-          <Select
-            placeholder="Role"
-            allowClear
-            className="w-full md:w-[200px]"
-            onChange={(value) => handleFilterChange('role', value)}
-          >
-            <Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Option>
-            <Option value="TEACHER">Teacher</Option>
-            <Option value="HOD">HOD</Option>
-            <Option value="COORDINATOR">Coordinator</Option>
-          </Select>
-          <Select
-            placeholder="Status"
-            allowClear
-            className="w-full md:w-[150px]"
-            onChange={(value) => handleFilterChange('active', value)}
-          >
-            <Option value="true">Active</Option>
-            <Option value="false">Inactive</Option>
-          </Select>
+          <div className="flex items-center gap-3 w-full md:w-auto">
+            <Select
+              placeholder="All Roles"
+              allowClear
+              className="w-full md:w-48"
+              onChange={(value) => handleFilterChange('role', value)}
+            >
+              <Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Option>
+              <Option value="TEACHER">Teacher</Option>
+              <Option value="HOD">HOD</Option>
+              <Option value="COORDINATOR">Coordinator</Option>
+            </Select>
+            <Select
+              placeholder="Status"
+              allowClear
+              className="w-full md:w-32"
+              onChange={(value) => handleFilterChange('active', value)}
+            >
+              <Option value="true">Active</Option>
+              <Option value="false">Inactive</Option>
+            </Select>
+          </div>
         </div>
-      </Card>
 
-      <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
-        <DataTable
+        {/* Table */}
+        <Table
           columns={columns}
           dataSource={list}
           loading={loading}
@@ -396,10 +446,12 @@ const StaffList = () => {
             total: pagination?.total || 0,
             onChange: handlePageChange,
             showSizeChanger: true,
-            showTotal: (total) => `Total ${total} staff members`,
+            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total}`,
+            className: "p-4",
           }}
+          className="no-border-table"
         />
-      </div>
+      </Card>
 
       <StaffModal
         open={modalOpen}

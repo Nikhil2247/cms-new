@@ -425,21 +425,11 @@ export class PrincipalService {
             take: 1,
           },
           internshipApplications: {
-            where: {
-              // Prioritize self-identified approved/ongoing internships
-              OR: [
-                {
-                  isSelfIdentified: true,
-                  status: ApplicationStatus.JOINED,
-                  internshipPhase: InternshipPhase.ACTIVE,
-                },
-                // Fallback to any application
-                {},
-              ],
-            },
+            // Get the most recent application for each student (prioritize self-identified and active)
             orderBy: [
               { isSelfIdentified: 'desc' }, // Self-identified first
-              { createdAt: 'desc' },
+              { internshipPhase: 'desc' }, // ACTIVE > NOT_STARTED > COMPLETED
+              { createdAt: 'desc' }, // Most recent first
             ],
             take: 1,
             select: {
