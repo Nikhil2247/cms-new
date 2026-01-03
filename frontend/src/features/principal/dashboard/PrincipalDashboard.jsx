@@ -52,6 +52,7 @@ import { BasicStatisticsGrid, SubmissionStatusGrid } from './components/Dashboar
 import MonthlyReportsModal from './components/MonthlyReportsModal';
 import FacultyVisitsModal from './components/FacultyVisitsModal';
 import JoiningLettersModal from './components/JoiningLettersModal';
+import DashboardInternshipTable from './components/DashboardInternshipTable';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -444,6 +445,11 @@ const PrincipalDashboard = () => {
             })}
             onViewCompanies={() => setCompaniesModal({ visible: true })}
           />
+        </div>
+
+        {/* Internship List Table */}
+        <div>
+           <DashboardInternshipTable />
         </div>
 
         {/* Submission & Status Overview Section */}
