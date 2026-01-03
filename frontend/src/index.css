@@ -1,17 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
-/* ============================================
-   Global Selection Fix - Override Tailwind preflight
-   ============================================ */
-*, *::before, *::after {
-  /* Ensure user-select is not set to none by default */
-  -webkit-user-select: auto;
-  -moz-user-select: auto;
-  -ms-user-select: auto;
-  user-select: auto;
-}
-
 :root {
   --color-primary: 59 130 246;
   --color-primary-100: 219 234 254; /* blue-100 */
@@ -1014,8 +1003,24 @@ body {
 
 /* Text selection - highly visible */
 ::selection {
-  background: rgba(var(--color-primary), 0.2);
-  color: rgb(var(--color-text-primary));
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+::-moz-selection {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+/* Dark mode text selection */
+.dark ::selection {
+  background-color: #60a5fa !important;
+  color: #0f172a !important;
+}
+
+.dark ::-moz-selection {
+  background-color: #60a5fa !important;
+  color: #0f172a !important;
 }
 
 /* Utility classes for controlling text selection */
