@@ -844,7 +844,7 @@ export class GrievanceService {
           institutionId,
           active: true,
           role: {
-            in: [Role.TEACHER, Role.FACULTY_SUPERVISOR, Role.PRINCIPAL, Role.PLACEMENT_OFFICER],
+            in: [Role.TEACHER, Role.PRINCIPAL],
           },
         },
         select: {

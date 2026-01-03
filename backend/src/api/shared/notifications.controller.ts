@@ -125,7 +125,7 @@ export class NotificationsController {
     Role.STATE_DIRECTORATE,
     Role.SYSTEM_ADMIN,
     Role.TEACHER,
-    Role.FACULTY_SUPERVISOR,
+    Role.TEACHER,
   )
   async sendNotification(@Request() req, @Body() dto: SendNotificationDto) {
     return this.notificationsService.sendNotification(
@@ -143,7 +143,7 @@ export class NotificationsController {
    */
   @Post('send/student-reminder')
   @UseGuards(RolesGuard)
-  @Roles(Role.TEACHER, Role.FACULTY_SUPERVISOR)
+  @Roles(Role.TEACHER, Role.TEACHER)
   async sendStudentReminder(@Request() req, @Body() dto: SendStudentReminderDto) {
     return this.notificationsService.sendStudentReminder(
       {

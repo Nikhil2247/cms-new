@@ -379,8 +379,6 @@ export class AnalyticsService {
         totalInstitutions,
         activeInstitutions,
         totalStudents,
-        totalInternships,
-        activeInternships,
         pendingApplications,
       ] = await Promise.all([
         this.prisma.user.count(),
@@ -390,10 +388,12 @@ export class AnalyticsService {
         this.prisma.institution.count(),
         this.prisma.institution.count({ where: { isActive: true } }),
         this.prisma.student.count(),
-        this.prisma.internship.count(),
-        this.prisma.internship.count({ where: { status: 'ACTIVE' } }),
         this.prisma.internshipApplication.count({ where: { status: 'UNDER_REVIEW' } }).catch(() => 0),
       ]);
+
+      // Industry-posted internships removed - only self-identified internships supported
+      const totalInternships = 0;
+      const activeInternships = 0;
 
       // Activity statistics
       const [loginsToday, actionsToday, errorsToday] = await Promise.all([

@@ -3,15 +3,9 @@ import { IsString, IsEmail, IsNotEmpty, IsOptional, IsEnum } from 'class-validat
 import { Role } from '../../../generated/prisma/enums';
 
 // Staff-specific roles that can be created by principal
+// Only TEACHER role is available for staff
 const StaffRoles = [
   Role.TEACHER,
-  Role.FACULTY_SUPERVISOR,
-  Role.PLACEMENT_OFFICER,
-  Role.ACCOUNTANT,
-  Role.ADMISSION_OFFICER,
-  Role.EXAMINATION_OFFICER,
-  Role.PMS_OFFICER,
-  Role.EXTRACURRICULAR_HEAD,
 ] as const;
 
 export class CreateStaffDto {

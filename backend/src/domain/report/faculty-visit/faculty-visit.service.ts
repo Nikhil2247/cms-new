@@ -190,7 +190,7 @@ export class FacultyVisitService {
         this.prisma.user.findFirst({
           where: {
             id: facultyId,
-            role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+            role: { in: [Role.TEACHER] },
           },
         }),
         this.prisma.internshipApplication.findFirst({

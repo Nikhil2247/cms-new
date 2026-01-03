@@ -7,9 +7,20 @@ import * as bcrypt from 'bcrypt';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { BCRYPT_SALT_ROUNDS } from '../../core/auth/services/auth.service';
 
+// Valid roles that can be used in the bulk upload template.
+// Keep this list intentionally small/safe.
+const ROLE_MAPPING: Record<string, Role> = {
+  TEACHER: Role.TEACHER,
+  FACULTY_SUPERVISOR: Role.TEACHER,
+};
+const validRoles = Object.keys(ROLE_MAPPING);
+
 @Injectable()
 export class BulkUserService {
   private readonly logger = new Logger(BulkUserService.name);
+
+  // Valid roles that can be used in bulk upload
+  private readonly validRoles = ['TEACHER', 'FACULTY_SUPERVISOR'];
 
   constructor(
     private readonly prisma: PrismaService,
@@ -50,7 +61,6 @@ export class BulkUserService {
    */
   async validateUsers(users: BulkUserRowDto[], institutionId: string): Promise<BulkUserValidationResultDto> {
     const errors: Array<{ row: number; field?: string; value?: string; error: string }> = [];
-    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
 
     // OPTIMIZATION: Extract all emails for batch query
     const allEmails = users
@@ -166,7 +176,6 @@ export class BulkUserService {
     const startTime = Date.now();
     const successRecords: any[] = [];
     const failedRecords: any[] = [];
-    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
 
     // Audit: Bulk user upload initiated
     this.auditService.log({
@@ -312,14 +321,7 @@ export class BulkUserService {
    * Create a single user
    */
   private async createUser(userDto: BulkUserRowDto, institutionId: string) {
-    // Map role to Prisma Role enum
-    const roleMapping: Record<string, Role> = {
-      TEACHER: Role.TEACHER,
-      FACULTY_SUPERVISOR: Role.FACULTY_SUPERVISOR,
-      PLACEMENT_OFFICER: Role.PLACEMENT_OFFICER,
-    };
-
-    const role = roleMapping[userDto.role] || Role.TEACHER;
+    const role = ROLE_MAPPING[userDto.role] || Role.TEACHER;
 
     // Generate default password
     const defaultPassword = 'Welcome@123';
@@ -372,7 +374,6 @@ export class BulkUserService {
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the user', Example: 'John Doe' },
       { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique)', Example: 'john.doe@example.com' },
       { Field: 'Phone', Required: 'No', Description: 'Contact phone number', Example: '9876543210' },
-      { Field: 'Role', Required: 'Yes', Description: 'User role: TEACHER, FACULTY_SUPERVISOR, or PLACEMENT_OFFICER', Example: 'TEACHER' },
       { Field: 'Designation', Required: 'No', Description: 'Job designation', Example: 'Professor' },
       { Field: 'Department', Required: 'No', Description: 'Department name', Example: 'Computer Science' },
       { Field: 'Employee ID', Required: 'No', Description: 'Employee identification number', Example: 'EMP001' },

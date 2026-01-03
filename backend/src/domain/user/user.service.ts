@@ -105,11 +105,11 @@ export class UserService {
   }
 
   /**
-   * Check if enrollment/admission number already exists
+   * Check if enrollment/admission number already exists (only active students)
    */
   async enrollmentExists(enrollmentNumber: string): Promise<boolean> {
     const student = await this.prisma.student.findFirst({
-      where: { admissionNumber: enrollmentNumber },
+      where: { admissionNumber: enrollmentNumber, isActive: true },
       select: { id: true },
     });
     return !!student;
@@ -375,7 +375,7 @@ export class UserService {
     data: Partial<CreateStudentData>,
   ) {
     const student = await this.prisma.student.findFirst({
-      where: { id: studentId, institutionId },
+      where: { id: studentId, institutionId, isActive: true },
     });
 
     if (!student) {
@@ -431,11 +431,11 @@ export class UserService {
    */
   async deleteStudent(studentId: string, institutionId: string) {
     const student = await this.prisma.student.findFirst({
-      where: { id: studentId, institutionId },
+      where: { id: studentId, institutionId, isActive: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException('Student not found or already deleted');
     }
 
     await this.prisma.$transaction([

@@ -459,36 +459,6 @@ export class StateController {
     });
   }
 
-  @Get('industries/pending')
-  @ApiOperation({ summary: 'Get pending industry approvals' })
-  async getPendingIndustries(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
-    return this.stateService.getPendingIndustries({
-      page: page ? Number(page) : undefined,
-      limit: limit ? Number(limit) : undefined,
-    });
-  }
-
-  @Post('industries/:id/approve')
-  @ApiOperation({ summary: 'Approve industry registration' })
-  async approveIndustry(
-    @Param('id') id: string,
-    @Body('approvedBy') approvedBy: string,
-  ) {
-    return this.stateService.approveIndustry(id, approvedBy);
-  }
-
-  @Post('industries/:id/reject')
-  @ApiOperation({ summary: 'Reject industry registration' })
-  async rejectIndustry(
-    @Param('id') id: string,
-    @Body('reason') reason?: string,
-  ) {
-    return this.stateService.rejectIndustry(id, reason);
-  }
-
   @Get('placements/stats')
   @ApiOperation({ summary: 'Get state-wide placement statistics' })
   async getPlacementStats() {

@@ -39,9 +39,9 @@ export class StateStaffService {
     // Staff roles - TEACHER, FACULTY_SUPERVISOR, PLACEMENT_OFFICER, etc. (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, INDUSTRY roles)
     const staffRoles: Role[] = [
       Role.TEACHER,
-      Role.FACULTY_SUPERVISOR,
-      Role.PLACEMENT_OFFICER,
-      Role.ACCOUNTANT,
+      Role.TEACHER,
+      
+      
       Role.ADMISSION_OFFICER,
       Role.EXAMINATION_OFFICER,
       Role.PMS_OFFICER,
@@ -167,9 +167,9 @@ export class StateStaffService {
   async getStaffById(id: string) {
     const staffRoles: Role[] = [
       Role.TEACHER,
-      Role.FACULTY_SUPERVISOR,
-      Role.PLACEMENT_OFFICER,
-      Role.ACCOUNTANT,
+      Role.TEACHER,
+      
+      
       Role.ADMISSION_OFFICER,
       Role.EXAMINATION_OFFICER,
       Role.PMS_OFFICER,
@@ -219,9 +219,9 @@ export class StateStaffService {
   }) {
     const staffRoles: Role[] = [
       Role.TEACHER,
-      Role.FACULTY_SUPERVISOR,
-      Role.PLACEMENT_OFFICER,
-      Role.ACCOUNTANT,
+      Role.TEACHER,
+      
+      
       Role.ADMISSION_OFFICER,
       Role.EXAMINATION_OFFICER,
       Role.PMS_OFFICER,
@@ -287,9 +287,9 @@ export class StateStaffService {
   async deleteStaff(id: string) {
     const staffRoles: Role[] = [
       Role.TEACHER,
-      Role.FACULTY_SUPERVISOR,
-      Role.PLACEMENT_OFFICER,
-      Role.ACCOUNTANT,
+      Role.TEACHER,
+      
+      
       Role.ADMISSION_OFFICER,
       Role.EXAMINATION_OFFICER,
       Role.PMS_OFFICER,
@@ -331,7 +331,7 @@ export class StateStaffService {
    * Uses soft delete to preserve mentor assignment history and audit trail
    */
   async deleteFaculty(id: string) {
-    const facultyRoles: Role[] = [Role.TEACHER, Role.FACULTY_SUPERVISOR];
+    const facultyRoles: Role[] = [Role.TEACHER];
 
     const existingFaculty = await this.prisma.user.findUnique({
       where: { id, role: { in: facultyRoles } },
@@ -370,9 +370,9 @@ export class StateStaffService {
   async resetStaffPassword(id: string) {
     const staffRoles: Role[] = [
       Role.TEACHER,
-      Role.FACULTY_SUPERVISOR,
-      Role.PLACEMENT_OFFICER,
-      Role.ACCOUNTANT,
+      Role.TEACHER,
+      
+      
       Role.ADMISSION_OFFICER,
       Role.EXAMINATION_OFFICER,
       Role.PMS_OFFICER,

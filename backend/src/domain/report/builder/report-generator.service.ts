@@ -226,14 +226,10 @@ export class ReportGeneratorService {
           select: {
             id: true,
             status: true,
+            internshipPhase: true,
+            companyName: true,
+            jobProfile: true,
             mentor: { select: { id: true, name: true } },
-            internship: {
-              select: {
-                id: true,
-                title: true,
-                status: true,
-              }
-            },
           },
           orderBy: { createdAt: 'desc' },
           take: 1, // Get most recent application
@@ -246,10 +242,6 @@ export class ReportGeneratorService {
           },
           orderBy: { assignmentDate: 'desc' },
           take: 1, // Get current mentor
-        },
-        placements: {
-          select: { id: true, status: true },
-          take: 1,
         },
       },
       take,
@@ -327,8 +319,8 @@ export class ReportGeneratorService {
         internshipsCount: student.internshipApplications.length,
 
         // Placement info
-        placementsCount: student.placements.length,
-        isPlaced: student.placements.length > 0,
+        placementsCount: 0,
+        isPlaced: false,
 
         // Status info
         clearanceStatus: student.clearanceStatus,
@@ -656,7 +648,7 @@ export class ReportGeneratorService {
     return reports.map((report) => ({
       studentName: report.student.name,
       rollNumber: report.student.rollNumber,
-      companyName: report.application.internship?.industry.companyName,
+      companyName: report.application.companyName ?? '',
       month: report.reportMonth,
       year: report.reportYear,
       status: report.status,
@@ -676,80 +668,8 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = {};
-    const { take, skip } = this.getPaginationParams(pagination);
-
-    // Build student filter with active checks
-    const studentActiveFilter: Record<string, unknown> = {};
-
-    // Default to active students only, unless explicitly filtering for inactive
-    const isActiveValue = this.parseBooleanLike(filters?.isActive);
-    if (isActiveValue !== undefined) {
-      studentActiveFilter.isActive = isActiveValue;
-    } else {
-      // By default, only show placements for active students with active accounts
-      studentActiveFilter.isActive = true;
-      studentActiveFilter.user = { active: true };
-    }
-
-    if (filters?.institutionId) {
-      where.OR = [
-        { institutionId: filters.institutionId },
-        {
-          student: {
-            institutionId: filters.institutionId,
-            ...studentActiveFilter,
-          },
-        },
-      ];
-    } else {
-      // Apply student active filter directly when no institutionId
-      where.student = studentActiveFilter;
-    }
-
-    if (filters?.minSalary || filters?.maxSalary) {
-      where.salary = {};
-      if (filters.minSalary) {
-        (where.salary as Record<string, unknown>).gte = Number(filters.minSalary);
-      }
-      if (filters.maxSalary) {
-        (where.salary as Record<string, unknown>).lte = Number(filters.maxSalary);
-      }
-    }
-
-    const placements = await this.prisma.placement.findMany({
-      where,
-      include: {
-        student: {
-          select: {
-            id: true,
-            name: true,
-            rollNumber: true,
-            email: true,
-            isActive: true,
-            user: { select: { active: true } },
-          },
-        },
-      },
-      take,
-      skip,
-      orderBy: { offerDate: 'desc' },
-    });
-
-    this.warnOnLargeResultSet(placements.length, 'PlacementReport');
-
-    return placements.map((placement) => ({
-      studentName: placement.student.name,
-      rollNumber: placement.student.rollNumber,
-      email: placement.student.email,
-      companyName: placement.companyName,
-      jobRole: placement.jobRole,
-      salary: placement.salary,
-      offerDate: placement.offerDate,
-      status: placement.status,
-      isActive: placement.student.isActive,
-      userActive: (placement.student as any).user?.active ?? true,
-    }));
+    // Placement feature removed from schema
+    return [];
   }
 
   /**
@@ -784,32 +704,28 @@ export class ReportGeneratorService {
       this.prisma.user.count({
         where: {
           institutionId,
-          role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
       }),
-      this.prisma.internship.count({
+      // Internship portal removed; derive from self-identified applications
+      this.prisma.internshipApplication.count({
         where: {
-          institutionId,
-          status: InternshipStatus.ACTIVE,
           isActive: true,
+          isSelfIdentified: true,
+          internshipPhase: 'ACTIVE' as any,
+          student: { institutionId, isActive: true, user: { active: true } },
         },
       }),
-      this.prisma.internship.count({
+      this.prisma.internshipApplication.count({
         where: {
-          institutionId,
-          status: InternshipStatus.COMPLETED,
+          isActive: true,
+          isSelfIdentified: true,
+          internshipPhase: 'COMPLETED' as any,
+          student: { institutionId, isActive: true, user: { active: true } },
         },
       }),
-      // Only count placements for active students
-      this.prisma.placement.count({
-        where: {
-          OR: [
-            { institutionId },
-            { student: { institutionId, isActive: true, user: { active: true } } },
-          ],
-        },
-      }),
+      Promise.resolve(0),
       // Only count applications from active students with active applications
       this.prisma.internshipApplication.count({
         where: {
@@ -829,16 +745,7 @@ export class ReportGeneratorService {
           },
         },
       }),
-      // Only aggregate placement salary for active students
-      this.prisma.placement.aggregate({
-        where: {
-          OR: [
-            { institutionId },
-            { student: { institutionId, isActive: true, user: { active: true } } },
-          ],
-        },
-        _avg: { salary: true },
-      }),
+      Promise.resolve({ _avg: { salary: 0 } }),
     ]);
 
     return [
@@ -874,7 +781,7 @@ export class ReportGeneratorService {
       },
       {
         metric: 'Average Placement Salary',
-        value: avgPlacementSalary._avg.salary || 0,
+        value: (avgPlacementSalary as any)._avg?.salary || 0,
         category: 'Placements',
       },
       {

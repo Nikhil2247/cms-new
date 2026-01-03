@@ -31,28 +31,17 @@ model User {
   resetPasswordToken  String?
   resetPasswordExpiry DateTime?
   Student             Student?
-  ClassAssignment     ClassAssignment[]
   Institution         Institution?            @relation(fields: [institutionId], references: [id])
   institutionId       String?
-  // New internship relations
-  Industry            Industry?
+  // Internship relations
   menteeApplications  InternshipApplication[] @relation("StudentMentor")
   mentorAssignments   MentorAssignment[]      @relation("AssignedMentor")
   assignedBy          MentorAssignment[]      @relation("AssignedBy")
   facultyVisitLogs    FacultyVisitLog[]       @relation("FacultyVisits")
-  industryRequests    IndustryRequest[]       @relation("RequestSender")
   auditLogs           AuditLog[]              @relation("AuditUser")
-  // NEW: Back-relation for industry referrals
-  referredIndustries  Industry[]              @relation("IndustryReferredBy")
-  referredRequests    IndustryRequest[]       @relation("IndustryRequestReferredBy")
-  // New referral relations
-  reviewedReferrals   ReferralApplication[]   @relation("ReferralReviewer")
-  approvedReferrals   ReferralApplication[]   @relation("ReferralApprover")
-  rejectedReferrals   ReferralApplication[]   @relation("ReferralRejector")
 
   // Notification relations
-  notificationSettings NotificationSettings?
-  Notification         Notification[]
+  Notification Notification[]
 
   // Grievance relations
   supervisedGrievances   Grievance[]              @relation("GrievanceFacultySupervisor")
@@ -112,20 +101,10 @@ model User {
 }
 
 enum Role {
-  PRINCIPAL
-  ACCOUNTANT
-  ADMISSION_OFFICER
-  EXAMINATION_OFFICER
-  TEACHER
-  PLACEMENT_OFFICER
-  PMS_OFFICER
-  EXTRACURRICULAR_HEAD
   STUDENT
-  // New roles for internship portal
-  INDUSTRY
-  INDUSTRY_SUPERVISOR
+  PRINCIPAL
+  TEACHER
   STATE_DIRECTORATE
-  FACULTY_SUPERVISOR
   SYSTEM_ADMIN
 }
 
@@ -135,7 +114,7 @@ model Student {
   id                     String                  @id @default(uuid())
   profileImage           String?
   userId                 String                  @unique
-  user                   User                    @relation(fields: [userId], references: [id])
+  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   rollNumber             String?
   branchId               String?
   branch                 Branch?                 @relation(fields: [branchId], references: [id])
@@ -165,26 +144,16 @@ model Student {
   clearanceStatus        ClearanceStatus         @default(PENDING)
   isActive               Boolean                 @default(true)
   // Preferences
-  internshipPreferences  InternshipPreference?
   batchId                String?
   batch                  Batch?                  @relation(fields: [batchId], references: [id])
   admissionType          AdmissionType?
   category               Category?
   document               Document[]
-  fees                   Fee[]
-  results                ExamResult[]
-  scholarshipId          String?
-  scholarship            Scholarship?            @relation(fields: [scholarshipId], references: [id])
-  feeStructureId         String?
-  feeStructure           FeeStructure?           @relation(fields: [feeStructureId], references: [id])
   institutionId          String?
   Institution            Institution?            @relation(fields: [institutionId], references: [id])
   createdAt              DateTime                @default(now())
-  placements             Placement[]
   internshipApplications InternshipApplication[]
   mentorAssignments      MentorAssignment[]
-  complianceRecords      ComplianceRecord[]
-  monthlyFeedbacks       MonthlyFeedback[]
   monthlyReports         MonthlyReport[]
   grievances             Grievance[]
 
@@ -196,24 +165,6 @@ model Student {
   @@index([institutionId, branchId])
   @@index([clearanceStatus])
   @@index([isActive])
-}
-
-model InternshipPreference {
-  id        String  @id @default(uuid())
-  studentId String  @unique
-  student   Student @relation(fields: [studentId], references: [id])
-
-  preferredFields        String[] // Array of preferred industry fields
-  preferredLocations     String[] // Array of preferred work locations
-  preferredDurations     String[] // e.g., ["8 weeks", "12 weeks", "26 weeks"]
-  minimumStipend         Float?
-  isRemotePreferred      Boolean  @default(false)
-  additionalRequirements String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("internship_preferences")
 }
 
 enum ClearanceStatus {
@@ -237,14 +188,13 @@ enum Category {
 
 // Batch Management (Simplified)
 model Batch {
-  id               String            @id @default(uuid())
-  name             String            @unique // e.g., "2023-26"
-  isActive         Boolean           @default(true)
-  students         Student[]
-  classAssignments ClassAssignment[]
-  createdAt        DateTime          @default(now())
-  Institution      Institution?      @relation(fields: [institutionId], references: [id])
-  institutionId    String?
+  id            String       @id @default(uuid())
+  name          String       @unique // e.g., "2023-26"
+  isActive      Boolean      @default(true)
+  students      Student[]
+  createdAt     DateTime     @default(now())
+  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  institutionId String?
 
   // Performance Indexes
   @@index([institutionId])
@@ -258,12 +208,16 @@ model Document {
   type      DocumentType
   fileName  String
   fileUrl   String
+  isDeleted Boolean      @default(false)
+  deletedAt DateTime?
   createdAt DateTime     @default(now())
-  Student   Student      @relation(fields: [studentId], references: [id])
+  Student   Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   // Performance Indexes
   @@index([studentId])
   @@index([type])
+  @@index([isDeleted])
+  @@index([studentId, isDeleted])
 }
 
 enum DocumentType {
@@ -274,65 +228,7 @@ enum DocumentType {
   OTHER
 }
 
-model FeeStructure {
-  id                String          @id @default(uuid())
-  admissionType     AdmissionType // FIRST_YEAR or LEET
-  scholarshipScheme ScholarshipType
-  semesterNumber    Int // 1-6
-  df                Float // Development Fee
-  sf                Float // Student Fee
-  security          Float // Security Deposit
-  tf                Float // Tuition Fee
-  total             String // Total Fee
-  isActive          Boolean         @default(true)
-  createdAt         DateTime        @default(now())
-  fees              Fee[]
-  students          Student[]
-  Institution       Institution?    @relation(fields: [institutionId], references: [id])
-  institutionId     String?
-
-  // Unique constraint to prevent duplicates
-  @@unique([admissionType, scholarshipScheme, semesterNumber])
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([isActive])
-  @@index([institutionId, isActive])
-}
-
 // Fee Management (Simplified)
-
-model Fee {
-  id             String        @id @default(uuid())
-  studentId      String
-  semesterId     String
-  feeStructureId String?
-  amountDue      Float
-  amountPaid     Float         @default(0)
-  dueDate        DateTime
-  status         FeeStatus
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime?     @updatedAt
-  Student        Student       @relation(fields: [studentId], references: [id])
-  Semester       Semester      @relation(fields: [semesterId], references: [id])
-  FeeStructure   FeeStructure? @relation(fields: [feeStructureId], references: [id])
-  Institution    Institution?  @relation(fields: [institutionId], references: [id])
-  institutionId  String?
-
-  // Performance Indexes
-  @@index([studentId])
-  @@index([semesterId])
-  @@index([institutionId])
-  @@index([status])
-  @@index([studentId, semesterId])
-  @@index([institutionId, status])
-}
-
-enum FeeStatus {
-  PAID
-  PARTIAL
-  PENDING
-  WAIVED
-}
 
 model Notification {
   id        String   @id @default(uuid())
@@ -351,184 +247,6 @@ model Notification {
   @@index([read])
   @@index([createdAt])
   @@index([userId, read])
-}
-
-model NotificationSettings {
-  id            String  @id @default(uuid())
-  userId        String  @unique
-  assignments   Boolean @default(true)
-  attendance    Boolean @default(true)
-  examSchedules Boolean @default(true)
-  announcements Boolean @default(true)
-  grades        Boolean @default(true)
-  internships   Boolean @default(true)
-  placements    Boolean @default(true)
-  feeReminders  Boolean @default(true)
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notification_settings")
-}
-
-// Authentication (Token Management)
-
-model BlacklistedToken {
-  id                 String   @id @default(uuid())
-  token              String   @unique
-  userId             String?
-  reason             String?
-  isFullInvalidation Boolean  @default(false)
-  expiresAt          DateTime
-  createdAt          DateTime @default(now())
-
-  @@index([userId])
-  @@index([expiresAt])
-}
-
-// Scholarship (Simplified)
-model Scholarship {
-  id            String             @id @default(uuid())
-  type          ScholarshipType
-  amount        Float
-  status        ScholarshipStatus?
-  createdAt     DateTime           @default(now())
-  students      Student[] // 1 scholarship has many students
-  Institution   Institution?       @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([type])
-  @@index([status])
-}
-
-enum ScholarshipType {
-  CMS50
-  CMS60
-  CMS70
-  CMS80
-  CMS90
-  PMS
-  FWS
-}
-
-enum ScholarshipStatus {
-  APPROVED
-  REJECTED
-  DISBURSED
-}
-
-// Examination Management (Simplified)
-
-model Semester {
-  id            String       @id @default(uuid())
-  //name     String // e.g., "Semester 1"
-  number        Int // e.g., 1, 2, 3, etc.
-  results       ExamResult[]
-  isActive      Boolean      @default(true)
-  fees          Fee[]
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([number])
-  @@index([isActive])
-}
-
-model Subject {
-  id             String       @id @default(uuid())
-  syllabusYear   Int
-  semesterNumber String?
-  branchName     String
-  subjectName    String
-  subjectCode    String
-  maxMarks       Float
-  subjectType    String
-  createdAt      DateTime     @default(now())
-  // ← add back‐relation so you can do subject.examResults
-  examResults    ExamResult[]
-  Institution    Institution? @relation(fields: [institutionId], references: [id])
-  institutionId  String?
-  Branch         Branch?      @relation(fields: [branchId], references: [id])
-  branchId       String?
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([branchId])
-  @@index([subjectCode])
-  @@index([institutionId, branchId])
-}
-
-model ExamResult {
-  id         String   @id @default(uuid())
-  studentId  String
-  semesterId String
-  subjectId  String
-  marks      Float
-  maxMarks   Float    @default(100)
-  createdAt  DateTime @default(now())
-  Student    Student  @relation(fields: [studentId], references: [id])
-  Semester   Semester @relation(fields: [semesterId], references: [id])
-  Subject    Subject  @relation(fields: [subjectId], references: [id])
-
-  // Performance Indexes
-  @@index([studentId])
-  @@index([semesterId])
-  @@index([subjectId])
-  @@index([studentId, semesterId])
-}
-
-// Placement Management (Simplified)
-
-model Placement {
-  id            String          @id @default(uuid())
-  studentId     String // This is your foreign key
-  student       Student         @relation(fields: [studentId], references: [id]) // Add this relation field
-  companyName   String
-  jobRole       String
-  salary        Float?
-  offerDate     DateTime
-  status        PlacementStatus @default(OFFERED)
-  createdAt     DateTime        @default(now())
-  Institution   Institution?    @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([studentId])
-  @@index([institutionId])
-  @@index([status])
-  @@index([studentId, status])
-  @@index([institutionId, status])
-}
-
-enum PlacementStatus {
-  OFFERED
-  ACCEPTED
-  REJECTED
-  JOINED
-}
-
-// Teacher Assignment (Simplified)
-
-model ClassAssignment {
-  id            String       @id @default(uuid())
-  teacherId     String
-  batchId       String
-  section       String?
-  academicYear  String?
-  isActive      Boolean      @default(true)
-  Batch         Batch        @relation(fields: [batchId], references: [id])
-  teacher       User         @relation(fields: [teacherId], references: [id])
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([teacherId])
-  @@index([batchId])
-  @@index([institutionId])
-  @@index([teacherId, isActive])
-  @@index([institutionId, isActive])
 }
 
 // Institution Model
@@ -563,72 +281,27 @@ model Institution {
   totalStaffSeats   Int? // Total allocated seats for staff
 
   // Configuration
-  isActive  Boolean              @default(true)
-  settings  InstitutionSettings?
+  isActive  Boolean  @default(true)
   // Timestamps
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // --- Relations to other models ---
   // Add relations for models that DIRECTLY belong to an institution
-  users            User[]
-  batches          Batch[]
-  feeStructures    FeeStructure[]
-  scholarships     Scholarship[] // Assuming scholarship definitions are per-institution
-  semesters        Semester[] // Semesters belong to an institution's academic structure
-  subjects         Subject[] // Subjects are defined within an institution/program
-  classAssignments ClassAssignment[] // Assignments happen within an institution
-  auditLogs        AuditLog[] // Audit logs should track the institution context
-  calendars        Calendar[] // Calendars are institution-specific
-  notices          Notice[] // Notices are issued by an institution
+  users     User[]
+  batches   Batch[]
+  auditLogs AuditLog[] // Audit logs should track the institution context
 
-  Student    Student[]
-  Fee        Fee[]
-  placements Placement[]
+  Student Student[]
 
-  // New internship relations
-  industries           Industry[]
-  internships          Internship[]
-  industryRequests     IndustryRequest[]
+  // Internship (self-identified only)
   Branch               Branch[]
   Department           Department[]
-  referralApplications ReferralApplication[]
   //technical query
   technicalQueries     TechnicalQuery[]
 
   // Help & Support
   supportTickets SupportTicket[]
-}
-
-model InstitutionSettings {
-  id            String      @id @default(uuid())
-  institutionId String      @unique
-  institution   Institution @relation(fields: [institutionId], references: [id])
-
-  // Academic Settings
-  academicYearStart   String // Format: "YYYY-MM-DD"
-  academicYearEnd     String // Format: "YYYY-MM-DD"
-  currentAcademicYear String // Format: "2024-25"
-  totalSemesters      Int    @default(6)
-
-  // Internship Settings
-  minInternshipDuration Int    @default(8) // weeks
-  maxInternshipDuration Int    @default(26) // weeks
-  mandatoryVisitsCount  Int    @default(4)
-  feedbackFrequency     String @default("MONTHLY") // WEEKLY, MONTHLY, QUARTERLY
-
-  // Notification Settings
-  emailNotificationsEnabled Boolean @default(true)
-  smsNotificationsEnabled   Boolean @default(false)
-
-  // System Settings
-  allowSelfRegistration Boolean @default(false)
-  maintenanceMode       Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("institution_settings")
 }
 
 enum InstitutionType {
@@ -656,7 +329,6 @@ model Branch {
   institution   Institution? @relation(fields: [institutionId], references: [id])
 
   students Student[]
-  subjects Subject[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -680,8 +352,6 @@ model Department {
 
   @@map("departments")
 }
-
-// Audit Log (Basic)
 
 model AuditLog {
   id         String      @id @default(uuid())
@@ -860,37 +530,6 @@ enum AuditSeverity {
   CRITICAL // Security events, system changes, compliance
 }
 
-model Calendar {
-  id            String       @id @default(uuid())
-  title         String
-  startDate     DateTime?
-  endDate       DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([startDate])
-  @@index([institutionId, startDate])
-}
-
-model Notice {
-  id            String       @id @default(uuid())
-  title         String
-  message       String
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-  institutionId String?
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([createdAt])
-  @@index([institutionId, createdAt])
-}
-
 // =============================================
 // MENTOR & COMPLIANCE MANAGEMENT
 // =============================================
@@ -900,7 +539,7 @@ model MentorAssignment {
 
   // Relations
   studentId String
-  student   Student @relation(fields: [studentId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
   mentorId  String
   mentor    User    @relation("AssignedMentor", fields: [mentorId], references: [id])
 
@@ -936,198 +575,6 @@ model MentorAssignment {
   @@map("mentor_assignments")
 }
 
-model ComplianceRecord {
-  id String @id @default(uuid())
-
-  // Relations
-  studentId String
-  student   Student @relation(fields: [studentId], references: [id])
-
-  // Compliance tracking
-  complianceType ComplianceType
-  status         ComplianceStatus @default(PENDING_REVIEW)
-
-  // Visit compliance
-  requiredVisits  Int?      @default(0)
-  completedVisits Int?      @default(0)
-  lastVisitDate   DateTime?
-  nextVisitDue    DateTime?
-
-  // Feedback compliance
-  requiredFeedbacks  Int?      @default(0)
-  completedFeedbacks Int?      @default(0)
-  lastFeedbackDate   DateTime?
-  nextFeedbackDue    DateTime?
-
-  // Overall metrics
-  complianceScore Float? // Percentage score
-  complianceGrade ComplianceGrade?
-  remarks         String?
-  actionRequired  String?
-
-  // Review tracking
-  reviewedBy     String?
-  reviewedAt     DateTime?
-  nextReviewDate DateTime?
-
-  // Context
-  academicYear String
-  semester     String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("compliance_records")
-}
-
-// =============================================
-// INTERNSHIP PORTAL MODELS
-// =============================================
-
-// Industry/Company Profile
-model Industry {
-  id     String @id @default(uuid())
-  userId String @unique
-  user   User   @relation(fields: [userId], references: [id])
-
-  // Company Information
-  companyName        String
-  companyDescription String?
-  industryType       IndustryType
-  establishedYear    Int?
-  companySize        CompanySize
-  employeeCount      Int?
-
-  // Contact Information
-  contactPersonName  String
-  contactPersonTitle String
-  primaryEmail       String
-  alternateEmail     String?
-  primaryPhone       String
-  alternatePhone     String?
-  website            String?
-
-  // Address Information
-  address String
-  city    String
-  state   String
-  pinCode String
-  country String @default("India")
-
-  // Legal Information
-  registrationNumber String
-  panNumber          String
-  gstNumber          String?
-
-  // Approval Status
-  isVerified Boolean   @default(false)
-  verifiedAt DateTime?
-  verifiedBy String?
-  isApproved Boolean   @default(false)
-  approvedAt DateTime?
-  approvedBy String?
-
-  referralApplications ReferralApplication[] @relation("IndustryReferralApplications")
-  approvedReferrals    ApprovedReferral[]    @relation("IndustryApprovedReferrals")
-
-  referredById  String?
-  referredBy    User?     @relation("IndustryReferredBy", fields: [referredById], references: [id])
-  referralDate  DateTime? // When the referral was made
-  referralNotes String? // Optional notes about the referral
-
-  // Relations
-  internships         Internship[]
-  monthlyFeedbacks    MonthlyFeedback[]
-  completionFeedbacks CompletionFeedback[]
-  industryRequests    IndustryRequest[]
-  grievances          Grievance[]
-  // Institution context
-  institutionId       String?
-  Institution         Institution?         @relation(fields: [institutionId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Performance Indexes
-  @@index([institutionId])
-  @@index([isVerified])
-  @@index([isApproved])
-  @@index([isVerified, isApproved])
-  @@index([referredById])
-  @@index([companyName])
-  @@index([city, state])
-  @@index([institutionId, isApproved])
-  @@map("industries")
-}
-
-// Core Internship Model
-model Internship {
-  id String @id @default(uuid())
-
-  // Basic Information
-  title               String
-  description         String
-  detailedDescription String?
-  fieldOfWork         String
-
-  // Position Details
-  numberOfPositions   Int
-  duration            String // e.g., "3 months", "6 months"
-  startDate           DateTime?
-  endDate             DateTime?
-  applicationDeadline DateTime
-
-  // Location Information
-  workLocation    String
-  isRemoteAllowed Boolean @default(false)
-
-  // Eligibility Criteria
-  eligibleBranches  String[] // Can apply to multiple branches
-  minimumPercentage Float?
-  eligibleSemesters String[] // e.g., ["5", "6"]
-
-  // Stipend Information
-  isStipendProvided Boolean @default(false)
-  stipendAmount     Float?
-  stipendDetails    String?
-
-  // Requirements
-  requiredSkills  String[]
-  preferredSkills String[]
-
-  //faculty logs required
-  totalFacultyVisits Int?             @default(4)
-  // Status
-  status             InternshipStatus @default(ACTIVE)
-  isActive           Boolean          @default(true)
-
-  // Relations
-  industryId String
-  industry   Industry @relation(fields: [industryId], references: [id])
-
-  applications     InternshipApplication[]
-  monthlyFeedbacks MonthlyFeedback[]
-  facultyVisitLogs FacultyVisitLog[]
-  grievances       Grievance[]
-
-  // Institution context
-  institutionId String?
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Performance Indexes
-  @@index([industryId])
-  @@index([institutionId])
-  @@index([status])
-  @@index([isActive])
-  @@index([applicationDeadline])
-  @@index([industryId, status])
-  @@index([institutionId, status])
-  @@index([institutionId, status, isActive])
-  @@map("internships")
-}
 
 // Student Internship Application
 model InternshipApplication {
@@ -1135,10 +582,7 @@ model InternshipApplication {
 
   // Relations
   studentId String
-  student   Student @relation(fields: [studentId], references: [id])
-
-  internshipId String?
-  internship   Internship? @relation(fields: [internshipId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   // Application Details
   applicationDate DateTime @default(now())
@@ -1203,10 +647,8 @@ model InternshipApplication {
   // Notes
   notes String?
 
-  // Relations to feedback
-  monthlyFeedbacks   MonthlyFeedback[]
+  // Relations
   monthlyReports     MonthlyReport[]
-  completionFeedback CompletionFeedback?
   proposedFirstVisit DateTime?
   secondVisit        DateTime?
   facultyVisitLogs   FacultyVisitLog[]
@@ -1221,17 +663,13 @@ model InternshipApplication {
 
   // Performance Indexes
   @@index([studentId])
-  @@index([internshipId])
   @@index([status])
   @@index([studentId, status])
-  @@index([internshipId, status])
   @@index([mentorId])
   @@index([isSelfIdentified])
   @@index([applicationDate])
   @@index([mentorId, appliedDate])
   @@index([isSelfIdentified, status, applicationDate])
-  @@index([studentId, internshipId])
-  @@index([internshipId, status, isSelfIdentified])
   @@index([mentorId, isSelfIdentified, status])
   @@index([applicationDate, status])
   @@index([studentId, status, isSelfIdentified])
@@ -1240,69 +678,6 @@ model InternshipApplication {
   @@index([studentId, internshipPhase])
   @@index([status, internshipPhase])
   @@map("internship_applications")
-}
-
-// Monthly Feedback from Industry
-model MonthlyFeedback {
-  id String @id @default(uuid())
-
-  // Relations
-  applicationId String
-  application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-
-  industryId String?
-  industry   Industry? @relation(fields: [industryId], references: [id])
-
-  studentId String?
-  student   Student? @relation(fields: [studentId], references: [id])
-
-  internshipId String?
-  internship   Internship? @relation(fields: [internshipId], references: [id])
-
-  //student monthly feedback
-  imageUrl String?
-
-  // Feedback Details
-  feedbackMonth         DateTime // Which month this feedback is for
-  attendanceRating      Int? // 1-5 scale
-  performanceRating     Int? // 1-5 scale
-  punctualityRating     Int? // 1-5 scale
-  technicalSkillsRating Int? // 1-5 scale
-
-  // Detailed Feedback
-  strengths           String?
-  areasForImprovement String?
-  tasksAssigned       String?
-  tasksCompleted      String?
-  overallComments     String?
-
-  // Ratings
-  overallRating Int? // 1-5 scale
-
-  // Self-Identified Internship Fields
-  reportUrl          String? // Monthly report file URL
-  workDescription    String? // Description of work done this month
-  skillsLearned      String? // Skills learned during the month
-  challenges         String? // Challenges faced
-  supervisorFeedback String? // Feedback from company supervisor
-
-  // Submission Details
-  submittedAt DateTime @default(now())
-  submittedBy String // Industry user who submitted
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Performance Indexes
-  @@index([applicationId])
-  @@index([studentId])
-  @@index([industryId])
-  @@index([internshipId])
-  @@index([feedbackMonth])
-  @@index([applicationId, feedbackMonth])
-  @@index([studentId, feedbackMonth])
-  @@index([studentId, internshipId, feedbackMonth])
-  @@map("monthly_feedbacks")
 }
 
 // Student Monthly Report Model
@@ -1314,7 +689,7 @@ model MonthlyReport {
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
 
   studentId String
-  student   Student @relation(fields: [studentId], references: [id])
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   // Report Period
   reportMonth Int // Month number (1-12)
@@ -1323,6 +698,10 @@ model MonthlyReport {
 
   // Report File
   reportFileUrl String? // PDF/Document file of the report
+
+  // Soft Delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
 
   // Submission Details
   status      MonthlyReportStatus @default(DRAFT)
@@ -1364,49 +743,14 @@ model MonthlyReport {
   @@index([status])
   @@index([reportMonth, reportYear])
   @@index([dueDate])
+  @@index([isDeleted])
   @@index([applicationId, status])
   @@index([studentId, status])
   @@index([status, dueDate])
   @@index([studentId, reportMonth, reportYear])
+  @@index([studentId, isDeleted])
+  @@index([applicationId, isDeleted])
   @@map("monthly_reports")
-}
-
-// Completion Feedback (from both Student and Industry)
-model CompletionFeedback {
-  id String @id @default(uuid())
-
-  // Relations
-  applicationId String                @unique
-  application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-
-  // Feedback from Student
-  studentFeedback    String?
-  studentRating      Int? // 1-5 scale for internship experience
-  skillsLearned      String?
-  careerImpact       String?
-  wouldRecommend     Boolean?
-  studentSubmittedAt DateTime?
-
-  // Feedback from Industry
-  industryFeedback    String?
-  industryRating      Int? // 1-5 scale for student performance
-  finalPerformance    String?
-  recommendForHire    Boolean?
-  industrySubmittedAt DateTime?
-
-  // Overall Assessment
-  isCompleted           Boolean @default(false)
-  completionCertificate String? // File path if certificate provided
-
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  Industry   Industry? @relation(fields: [industryId], references: [id])
-  industryId String?
-
-  // Performance Indexes
-  @@index([industryId])
-  @@index([isCompleted])
-  @@map("completion_feedbacks")
 }
 
 // Faculty Visit Log
@@ -1416,10 +760,6 @@ model FacultyVisitLog {
   // Relations
   applicationId String
   application   InternshipApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
-
-  // internshipId is optional for self-identified internships
-  internshipId String?
-  internship   Internship? @relation(fields: [internshipId], references: [id])
 
   facultyId String?
   faculty   User?   @relation("FacultyVisits", fields: [facultyId], references: [id])
@@ -1496,7 +836,6 @@ model FacultyVisitLog {
 
   // Performance Indexes
   @@index([applicationId])
-  @@index([internshipId])
   @@index([facultyId])
   @@index([visitDate])
   @@index([applicationId, visitDate])
@@ -1514,7 +853,6 @@ model StateReport {
   id String @id @default(uuid())
 
   reportType        ReportType
-  reportCategory    StateReportCategory?
   reportPeriod      String // e.g., "Q1 2024", "Annual 2024"
   reportTitle       String?
   reportDescription String?
@@ -1561,309 +899,6 @@ model StateReport {
   @@map("state_reports")
 }
 
-// Fee Reports Model
-model FeeReport {
-  id String @id @default(uuid())
-
-  reportType        FeeReportType
-  reportPeriod      String // e.g., "Q1 2024", "Annual 2024", "Monthly March 2024"
-  reportTitle       String?
-  reportDescription String?
-
-  // Coverage
-  institutionIds String[] // Institutions covered in report
-  branchIds      String[] // Branches covered in report
-  semesterIds    String[] // Semesters covered in report
-  fromDate       DateTime?
-  toDate         DateTime?
-
-  // Aggregated Financial Data
-  totalFeesDue       Float
-  totalFeesCollected Float
-  totalOutstanding   Float
-  collectionRate     Float // Percentage
-  totalStudents      Int
-  totalFeeRecords    Int
-
-  // Breakdown by Status
-  paidCount    Int
-  partialCount Int
-  pendingCount Int
-  waivedCount  Int
-
-  // Financial Analytics
-  averageFeePerStudent     Float?
-  medianFeePerStudent      Float?
-  highestFeeCollected      Float?
-  lowestFeeCollected       Float?
-  scholarshipBeneficiaries Int?
-  totalScholarshipAmount   Float?
-
-  // Detailed Analytics
-  institutionWiseData   Json? // Institution-wise fee statistics
-  branchWiseData        Json? // Branch-wise fee statistics
-  semesterWiseData      Json? // Semester-wise fee statistics
-  scholarshipWiseData   Json? // Scholarship scheme wise data
-  categoryWiseData      Json? // Student category wise data
-  admissionTypeWiseData Json? // Admission type wise data
-  trendData             Json? // Historical trends
-  performanceMetrics    Json? // Various KPIs and performance indicators
-
-  // File References
-  reportFileUrl String?
-  generatedAt   DateTime @default(now())
-  generatedBy   String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("fee_reports")
-}
-
-// =============================================
-// COMMUNICATION & REQUESTS
-// =============================================
-
-model IndustryRequest {
-  id String @id @default(uuid())
-
-  // Request details
-  requestType     IndustryRequestType
-  priority        RequestPriority     @default(MEDIUM)
-  title           String
-  description     String
-  requirements    String?
-  expectedOutcome String?
-
-  // Target industry
-  industryId String?
-  industry   Industry? @relation(fields: [industryId], references: [id])
-
-  // Industry criteria (if no specific industry targeted)
-  targetIndustryType   IndustryType?
-  preferredLocation    String?
-  preferredCompanySize CompanySize?
-
-  // NEW: Referred By fields
-  referredById          String?
-  referredByType        ReferredByType?
-  referredBy            User?                @relation("IndustryRequestReferredBy", fields: [referredById], references: [id])
-  referralDate          DateTime?
-  referralNotes         String?
-  referralApplicationId String?
-  referralApplication   ReferralApplication? @relation("RequestReferral", fields: [referralApplicationId], references: [id])
-
-  // Request context
-  requestedBy     String
-  requestedByUser User        @relation("RequestSender", fields: [requestedBy], references: [id])
-  institutionId   String
-  institution     Institution @relation(fields: [institutionId], references: [id])
-
-  // Timeline
-  requestDeadline    DateTime?
-  expectedResponseBy DateTime?
-
-  // Status tracking
-  status              RequestStatus @default(SENT)
-  statusHistory       Json[] // Track status changes
-  responseMessage     String?
-  respondedAt         DateTime?
-  responseAttachments String[] // URLs to response documents
-
-  // Internal processing
-  assignedTo       String? // Staff member handling this request
-  internalNotes    String?
-  followUpRequired Boolean @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("industry_requests")
-}
-
-// Add the new enum for referral types
-enum ReferredByType {
-  STATE_DIRECTORATE
-  FACULTY_SUPERVISOR
-  PRINCIPAL
-  PLACEMENT_OFFICER
-  SYSTEM_ADMIN
-  INDUSTRY_PARTNER
-  ALUMNI
-  OTHER
-}
-
-// New model for referral applications
-model ReferralApplication {
-  id String @id @default(uuid())
-
-  // Application Details
-  title          String
-  description    String
-  referralType   ReferralType
-  targetAudience String[] // e.g., ["STUDENTS", "FACULTY", "INSTITUTIONS"]
-
-  // Applicant Information
-  industryId String
-  industry   Industry @relation("IndustryReferralApplications", fields: [industryId], references: [id])
-
-  // Application Content
-  qualifications    String // Why they qualify for referral
-  experienceDetails String // Their experience/track record
-  references        Json? // Previous referrals, testimonials
-  proposedBenefits  String // What they offer in return
-
-  // Approval Workflow
-  status          ReferralApplicationStatus @default(PENDING)
-  applicationDate DateTime                  @default(now())
-
-  // Review Process
-  reviewedBy     String?
-  reviewer       User?     @relation("ReferralReviewer", fields: [reviewedBy], references: [id])
-  reviewedAt     DateTime?
-  reviewComments String?
-
-  // Approval Details
-  approvedBy    String?
-  approver      User?     @relation("ReferralApprover", fields: [approvedBy], references: [id])
-  approvedAt    DateTime?
-  approvalNotes String?
-
-  // Rejection Details
-  rejectedBy      String?
-  rejector        User?     @relation("ReferralRejector", fields: [rejectedBy], references: [id])
-  rejectedAt      DateTime?
-  rejectionReason String?
-
-  // Validity Period
-  validFrom  DateTime?
-  validUntil DateTime?
-
-  // Usage Tracking
-  usageCount    Int  @default(0)
-  maxUsageLimit Int? // Optional limit on how many times it can be used
-
-  // Institution Context
-  institutionId String
-  institution   Institution @relation(fields: [institutionId], references: [id])
-
-  // Relations
-  industryRequests IndustryRequest[] @relation("RequestReferral")
-
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  ApprovedReferral ApprovedReferral?
-
-  @@map("referral_applications")
-}
-
-// New model for approved referrals that can be used
-model ApprovedReferral {
-  id String @id @default(uuid())
-
-  // Source Application
-  applicationId String              @unique
-  application   ReferralApplication @relation(fields: [applicationId], references: [id])
-
-  // Referral Details
-  referralCode String       @unique // Unique code for this referral
-  displayName  String // How it appears in dropdowns
-  description  String?
-  referralType ReferralType
-
-  // Industry Information
-  industryId String
-  industry   Industry @relation("IndustryApprovedReferrals", fields: [industryId], references: [id])
-
-  // Usage Controls
-  isActive      Boolean @default(true)
-  usageCount    Int     @default(0)
-  maxUsageLimit Int?
-
-  // Validity
-  validFrom  DateTime  @default(now())
-  validUntil DateTime?
-
-  // Metadata
-  tags     String[] // For filtering/categorization
-  category String? // e.g., "Premium", "Standard", "Trial"
-  priority Int      @default(0) // For sorting in dropdowns
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("approved_referrals")
-}
-
-enum ReferralType {
-  INDUSTRY_PARTNERSHIP
-  PLACEMENT_ASSISTANCE
-  INTERNSHIP_PROVIDER
-  GUEST_LECTURER
-  MENTOR
-  SKILL_TRAINER
-  EQUIPMENT_SPONSOR
-  SCHOLARSHIP_PROVIDER
-  RESEARCH_COLLABORATOR
-  CURRICULUM_ADVISOR
-  ALUMNI_NETWORK
-  STARTUP_INCUBATOR
-  OTHER
-}
-
-enum ReferralApplicationStatus {
-  DRAFT
-  PENDING
-  UNDER_REVIEW
-  APPROVED
-  REJECTED
-  EXPIRED
-  SUSPENDED
-}
-
-// =============================================
-// ENUMS FOR INTERNSHIP PORTAL
-// =============================================
-
-enum IndustryType {
-  INFORMATION_TECHNOLOGY
-  SOFTWARE_DEVELOPMENT
-  MANUFACTURING
-  AUTOMOTIVE
-  ELECTRONICS
-  TELECOMMUNICATIONS
-  CONSTRUCTION
-  CIVIL_ENGINEERING
-  MECHANICAL_ENGINEERING
-  ELECTRICAL_ENGINEERING
-  ENERGY_UTILITIES
-  HEALTHCARE
-  PHARMACEUTICALS
-  FINANCE_BANKING
-  EDUCATION
-  RESEARCH_DEVELOPMENT
-  GOVERNMENT
-  STARTUP
-  CONSULTING
-  MEDIA_ADVERTISING
-  RETAIL
-  HOSPITALITY
-  LOGISTICS_SUPPLY_CHAIN
-  AGRICULTURE
-  TEXTILES
-  CHEMICALS
-  AEROSPACE
-  DEFENSE
-  OTHER
-}
-
-enum CompanySize {
-  STARTUP // 1-10 employees
-  SMALL // 11-50 employees
-  MEDIUM // 51-200 employees
-  LARGE // 201-1000 employees
-  ENTERPRISE // 1000+ employees
-}
 
 enum InternshipStatus {
   ACTIVE
@@ -1912,112 +947,20 @@ enum ReportType {
   CUSTOM
 }
 
-enum FeeReportType {
-  MONTHLY
-  QUARTERLY
-  YEARLY
-  SEMESTER_WISE
-  INSTITUTION_WISE
-  BRANCH_WISE
-  SCHOLARSHIP_WISE
-  CATEGORY_WISE
-  CUSTOM
-}
 
-enum IndustryRequestType {
-  INTERNSHIP_PARTNERSHIP
-  BULK_INTERNSHIP_REQUEST
-  GUEST_LECTURE
-  INDUSTRY_VISIT
-  PLACEMENT_DRIVE
-  SKILL_DEVELOPMENT_PROGRAM
-  CURRICULUM_COLLABORATION
-  RESEARCH_COLLABORATION
-  EQUIPMENT_DONATION
-  SCHOLARSHIP_SPONSORSHIP
-  FACULTY_TRAINING
-  STUDENT_MENTORSHIP
-  PROJECT_COLLABORATION
-  OTHER
-}
 
-enum ComplianceType {
-  FACULTY_VISIT
-  MONTHLY_FEEDBACK
-  COMPLETION_FEEDBACK
-  DOCUMENTATION
-  ATTENDANCE
-  OVERALL_INTERNSHIP
-}
-
-enum ComplianceStatus {
-  COMPLIANT
-  NON_COMPLIANT
-  PARTIALLY_COMPLIANT
-  PENDING_REVIEW
-  OVERDUE
-  EXEMPTED
-}
-
-enum ComplianceGrade {
-  EXCELLENT // 90-100%
-  GOOD // 75-89%
-  AVERAGE // 60-74%
-  POOR // 40-59%
-  CRITICAL // Below 40%
-}
-
-enum RequestStatus {
-  DRAFT
-  SENT
-  DELIVERED
-  ACKNOWLEDGED
-  UNDER_REVIEW
-  IN_PROGRESS
-  ACCEPTED
-  PARTIALLY_ACCEPTED
-  REJECTED
-  EXPIRED
-  CANCELLED
-  COMPLETED
-}
-
-enum RequestPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-enum StateReportCategory {
-  EXECUTIVE_SUMMARY
-  PERFORMANCE_ANALYTICS
-  COMPLIANCE_REPORT
-  INDUSTRY_ENGAGEMENT
-  STUDENT_PLACEMENT_ANALYSIS
-  INSTITUTIONAL_COMPARISON
-  TREND_ANALYSIS
-  QUALITY_METRICS
-  FEEDBACK_ANALYSIS
-  GEOGRAPHIC_ANALYSIS
-  MONTHLY_SUMMARY
-  ANNUAL_REVIEW
-}
 
 // Student Grievance Model
 model Grievance {
   id                     String            @id @default(uuid())
   studentId              String
-  student                Student           @relation(fields: [studentId], references: [id])
+  student                Student           @relation(fields: [studentId], references: [id], onDelete: Cascade)
   title                  String // Changed from 'subject' to match frontend
   category               GrievanceCategory
   description            String
   severity               GrievancePriority @default(MEDIUM) // Changed from 'priority' to match frontend
   status                 GrievanceStatus   @default(PENDING)
-  internshipId           String?
-  internship             Internship?       @relation(fields: [internshipId], references: [id])
-  industryId             String?
-  industry               Industry?         @relation(fields: [industryId], references: [id])
+  // Internship/Industry removed (self-identified only)
   facultySupervisorId    String?
   facultySupervisor      User?             @relation("GrievanceFacultySupervisor", fields: [facultySupervisorId], references: [id])
   assignedToId           String?
@@ -2048,7 +991,6 @@ model Grievance {
   // Performance Indexes
   @@index([studentId])
   @@index([status])
-  @@index([internshipId])
   @@index([assignedToId])
   @@index([studentId, status])
   @@index([escalationLevel])

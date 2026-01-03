@@ -249,6 +249,7 @@ export class StudentService {
         const currentInternship = await this.prisma.internshipApplication.findFirst({
           where: {
             studentId,
+            isActive: true,
             isSelfIdentified: true,
             status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
             internshipPhase: InternshipPhase.ACTIVE,
@@ -326,6 +327,7 @@ export class StudentService {
         const upcomingDeadlines = await this.prisma.monthlyReport.findMany({
           where: {
             studentId,
+            isDeleted: false,
             status: { in: [MonthlyReportStatus.DRAFT, MonthlyReportStatus.REVISION_REQUIRED] },
           },
           take: 3,
@@ -337,7 +339,7 @@ export class StudentService {
 
         // OPTIMIZED: Get recent activities with only necessary fields
         const recentActivities = await this.prisma.internshipApplication.findMany({
-          where: { studentId, isSelfIdentified: true },
+          where: { studentId, isActive: true, isSelfIdentified: true },
           take: 5,
           orderBy: { updatedAt: 'desc' },
           select: {
@@ -858,6 +860,7 @@ export class StudentService {
 
     const where: Prisma.InternshipApplicationWhereInput = {
       studentId: student.id,
+      isActive: true,
     };
 
     if (status) {
@@ -1225,6 +1228,8 @@ export class StudentService {
     const activeApplication = await this.prisma.internshipApplication.findFirst({
       where: {
         studentId,
+        isActive: true,
+
         status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.APPLIED] },
       },
     });
@@ -1237,6 +1242,7 @@ export class StudentService {
     const existingSelfIdentified = await this.prisma.internshipApplication.findFirst({
       where: {
         studentId,
+        isActive: true,
         isSelfIdentified: true,
         status: ApplicationStatus.APPROVED,
         internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
@@ -1250,15 +1256,17 @@ export class StudentService {
     // Self-identified internships are auto-approved
     // If joiningLetterUrl is provided, auto-approve joining as well
     const hasJoiningLetter = !!selfIdentifiedDto.joiningLetterUrl;
+    const now = new Date();
     const application = await this.prisma.internshipApplication.create({
       data: {
         studentId,
         isSelfIdentified: true,
+        isActive: true,
         status: ApplicationStatus.APPROVED,
         internshipPhase: InternshipPhase.ACTIVE,
-        reviewedAt: new Date(),
-        joiningLetterUploadedAt: hasJoiningLetter ? new Date() : null,
-        joiningDate: hasJoiningLetter ? new Date() : null,
+        reviewedAt: now,
+        joiningLetterUploadedAt: hasJoiningLetter ? now : null,
+        joiningDate: hasJoiningLetter ? now : null,
         ...selfIdentifiedDto,
       },
     });
@@ -1308,6 +1316,7 @@ export class StudentService {
 
     const where: Prisma.InternshipApplicationWhereInput = {
       studentId: student.id,
+      isActive: true,
       isSelfIdentified: true,
     };
 
@@ -1443,6 +1452,7 @@ export class StudentService {
         applicationId: reportDto.applicationId,
         reportMonth: reportDto.reportMonth,
         reportYear: reportDto.reportYear,
+        isDeleted: false,
       },
     });
 
@@ -1593,7 +1603,7 @@ export class StudentService {
     const studentId = student.id;
 
     const existing = await this.prisma.monthlyReport.findFirst({
-      where: { id, studentId },
+      where: { id, studentId, isDeleted: false },
     });
 
     if (!existing) {
@@ -1653,7 +1663,7 @@ export class StudentService {
     const studentId = student.id;
 
     const existing = await this.prisma.monthlyReport.findFirst({
-      where: { id, studentId },
+      where: { id, studentId, isDeleted: false },
     });
 
     if (!existing) {
@@ -1665,8 +1675,13 @@ export class StudentService {
       throw new BadRequestException('Approved reports cannot be deleted');
     }
 
-    await this.prisma.monthlyReport.delete({
+    // Soft delete instead of hard delete
+    await this.prisma.monthlyReport.update({
       where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
     });
 
     // Audit monthly report deletion
@@ -1686,6 +1701,11 @@ export class StudentService {
         reportMonth: existing.reportMonth,
         reportYear: existing.reportYear,
         status: existing.status,
+        isDeleted: false,
+      },
+      newValues: {
+        isDeleted: true,
+        deletedAt: new Date(),
       },
     }).catch(() => {});
 
@@ -1698,7 +1718,7 @@ export class StudentService {
   }
 
   /**
-   * Get student documents
+   * Get student documents (only non-deleted)
    */
   async getDocuments(userId: string, params: { page?: number; limit?: number; type?: string }) {
     const { page = 1, limit = 10, type } = params;
@@ -1715,6 +1735,7 @@ export class StudentService {
 
     const where: Prisma.DocumentWhereInput = {
       studentId: student.id,
+      isDeleted: false, // Only return non-deleted documents
       ...(type ? { type: type as DocumentType } : {}),
     };
 
@@ -1787,7 +1808,7 @@ export class StudentService {
   }
 
   /**
-   * Delete a document
+   * Soft delete a document
    */
   async deleteDocument(userId: string, id: string) {
     const student = await this.prisma.student.findUnique({
@@ -1799,15 +1820,22 @@ export class StudentService {
       throw new NotFoundException('Student not found');
     }
 
-    const document = await this.prisma.document.findUnique({
-      where: { id },
+    const document = await this.prisma.document.findFirst({
+      where: { id, isDeleted: false },
     });
 
     if (!document) {
       throw new NotFoundException('Document not found');
     }
 
-    await this.prisma.document.delete({ where: { id } });
+    // Soft delete instead of hard delete
+    await this.prisma.document.update({
+      where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
+    });
 
     // Audit document deletion
     this.auditService.log({
@@ -1825,6 +1853,11 @@ export class StudentService {
         documentId: id,
         fileName: document.fileName,
         type: document.type,
+        isDeleted: false,
+      },
+      newValues: {
+        isDeleted: true,
+        deletedAt: new Date(),
       },
     }).catch(() => {});
 
@@ -1852,7 +1885,7 @@ export class StudentService {
     const studentId = student.id;
 
     // Build where clause with optional applicationId filter
-    const where: any = { studentId };
+    const where: any = { studentId, isDeleted: false };
     if (applicationId) {
       where.applicationId = applicationId;
     }
@@ -2181,6 +2214,7 @@ export class StudentService {
           applicationId,
           reportMonth: period.month,
           reportYear: period.year,
+          isDeleted: false,
         },
       });
 
@@ -2257,12 +2291,9 @@ export class StudentService {
       throw new NotFoundException('Application not found');
     }
 
-    // Get only reports that have files uploaded (exclude empty drafts)
+    // Get all reports for this application
     const reports = await this.prisma.monthlyReport.findMany({
-      where: {
-        applicationId,
-        reportFileUrl: { not: null }, // Only show reports with uploaded files
-      },
+      where: { applicationId },
       orderBy: [{ reportYear: 'asc' }, { reportMonth: 'asc' }],
     });
 
@@ -2349,7 +2380,7 @@ export class StudentService {
     }
 
     const report = await this.prisma.monthlyReport.findFirst({
-      where: { id: reportId, studentId: student.id },
+      where: { id: reportId, studentId: student.id, isDeleted: false },
       include: {
         application: {
           select: {
@@ -2453,6 +2484,7 @@ export class StudentService {
         applicationId: reportDto.applicationId,
         reportMonth: reportDto.reportMonth,
         reportYear: reportDto.reportYear,
+        isDeleted: false,
       },
     });
 

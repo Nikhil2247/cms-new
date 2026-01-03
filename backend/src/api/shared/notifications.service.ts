@@ -349,95 +349,43 @@ export class NotificationsService {
 
   /**
    * Get notification settings for a user
+   * STUB: NotificationSettings feature removed - returns default enabled state
    */
   async getNotificationSettings(userId: string) {
-    try {
-      let settings = await this.prisma.notificationSettings.findUnique({
-        where: { userId },
-        select: {
-          id: true,
-          assignments: true,
-          attendance: true,
-          examSchedules: true,
-          announcements: true,
-          grades: true,
-          internships: true,
-          placements: true,
-          feeReminders: true,
-        },
-      });
-
-      // Create default settings if none exist
-      if (!settings) {
-        settings = await this.prisma.notificationSettings.create({
-          data: {
-            userId,
-            assignments: true,
-            attendance: true,
-            examSchedules: true,
-            announcements: true,
-            grades: true,
-            internships: true,
-            placements: true,
-            feeReminders: true,
-          },
-        });
-      }
-
-      return settings;
-    } catch (error) {
-      this.logger.error(`Failed to get notification settings for user ${userId}`, error.stack);
-      throw error;
-    }
+    // Return default settings (all enabled)
+    return {
+      assignments: true,
+      attendance: true,
+      examSchedules: true,
+      announcements: true,
+      grades: true,
+      internships: true,
+      placements: true,
+      feeReminders: true,
+    };
   }
 
   /**
    * Update notification settings for a user
+   * STUB: NotificationSettings feature removed - returns success without persisting
    */
   async updateNotificationSettings(userId: string, settingsDto: NotificationSettingsDto) {
-    try {
-      // Check if settings exist
-      const existingSettings = await this.prisma.notificationSettings.findUnique({
-        where: { userId },
-      });
+    this.logger.log(`Notification settings update requested for user ${userId} (feature disabled)`);
 
-      let settings;
-      if (existingSettings) {
-        // Update existing settings
-        settings = await this.prisma.notificationSettings.update({
-          where: { userId },
-          data: settingsDto,
-        });
-      } else {
-        // Create new settings
-        settings = await this.prisma.notificationSettings.create({
-          data: {
-            userId,
-            ...settingsDto,
-          },
-        });
-      }
-
-      this.logger.log(`Notification settings updated for user ${userId}`);
-
-      return {
-        success: true,
-        message: 'Notification settings updated successfully',
-        settings: {
-          assignments: settings.assignments,
-          attendance: settings.attendance,
-          examSchedules: settings.examSchedules,
-          announcements: settings.announcements,
-          grades: settings.grades,
-          internships: settings.internships,
-          placements: settings.placements,
-          feeReminders: settings.feeReminders,
-        },
-      };
-    } catch (error) {
-      this.logger.error(`Failed to update notification settings for user ${userId}`, error.stack);
-      throw error;
-    }
+    return {
+      success: true,
+      message: 'Notification settings feature is currently disabled. All notifications are enabled by default.',
+      settings: {
+        assignments: true,
+        attendance: true,
+        examSchedules: true,
+        announcements: true,
+        grades: true,
+        internships: true,
+        placements: true,
+        feeReminders: true,
+      },
+    };
   }
 
   // ============ NOTIFICATION SENDING METHODS ============
@@ -552,7 +500,7 @@ export class NotificationsService {
 
         case NotificationTarget.MY_STUDENTS:
           // Faculty only - redirect to sendStudentReminder
-          if (!([Role.TEACHER, Role.FACULTY_SUPERVISOR] as Role[]).includes(user.role)) {
+          if (!([Role.TEACHER] as Role[]).includes(user.role)) {
             throw new ForbiddenException('Only faculty can send to their students');
           }
           return this.sendStudentReminder(user, {
@@ -627,7 +575,7 @@ export class NotificationsService {
    * Faculty: Send reminder to assigned students
    */
   async sendStudentReminder(user: UserContext, dto: SendStudentReminderDto) {
-    if (!([Role.TEACHER, Role.FACULTY_SUPERVISOR] as Role[]).includes(user.role)) {
+    if (!([Role.TEACHER] as Role[]).includes(user.role)) {
       throw new ForbiddenException('Only faculty can send student reminders');
     }
 

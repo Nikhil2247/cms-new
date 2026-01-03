@@ -12,8 +12,6 @@ import { StateIndustryService } from './services/state-industry.service';
 import { StateMentorService } from './services/state-mentor.service';
 
 // Import domain modules for business logic reuse
-import { InternshipModule } from '../../domain/internship/internship.module';
-import { PlacementModule } from '../../domain/placement/placement.module';
 import { ReportModule } from '../../domain/report/report.module';
 import { MentorModule } from '../../domain/mentor/mentor.module';
 import { AcademicModule } from '../../domain/academic/academic.module';
@@ -25,8 +23,6 @@ import { SharedModule } from '../shared/shared.module';
 @Module({
   imports: [
     // Domain modules with business logic services
-    InternshipModule,
-    PlacementModule,
     ReportModule,
     MentorModule,
     AcademicModule,

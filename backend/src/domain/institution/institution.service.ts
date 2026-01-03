@@ -352,7 +352,6 @@ export class InstitutionService {
     const institution = await this.prisma.institution.findUnique({
       where: { id },
       include: {
-        settings: true,
         _count: {
           select: {
             users: true,

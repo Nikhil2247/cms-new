@@ -17,9 +17,6 @@ export class PrismaCacheService extends PrismaService {
       async () => {
         return this.institution.findUnique({
           where: { id },
-          include: {
-            settings: true,
-          },
         });
       },
       { ttl: 300, tags: ['institution', `institution:${id}`] },
@@ -109,13 +106,8 @@ export class PrismaCacheService extends PrismaService {
       `internships:student:${studentId}`,
       async () => {
         return this.internshipApplication.findMany({
-          where: { studentId, isSelfIdentified: true },
+          where: { studentId, isSelfIdentified: true, isActive: true },
           include: {
-            internship: {
-              include: {
-                industry: true,
-              },
-            },
             mentor: true,
           },
           orderBy: { createdAt: 'desc' },
@@ -126,33 +118,11 @@ export class PrismaCacheService extends PrismaService {
   }
 
   /**
-   * Cached version of placement lookup
+   * STUB: Placement feature removed
    */
   async findPlacementsCached(institutionId: string, academicYear?: string) {
-    const cacheKey = `placements:${institutionId}:${academicYear || 'all'}`;
-    return this.cache.getOrSet(
-      cacheKey,
-      async () => {
-        const where: any = { institutionId };
-        return this.placement.findMany({
-          where,
-          include: {
-            student: {
-              include: {
-                user: {
-                  select: {
-                    name: true,
-                    email: true,
-                  },
-                },
-              },
-            },
-          },
-          orderBy: { offerDate: 'desc' },
-        });
-      },
-      { ttl: 300, tags: ['placements', `institution:${institutionId}`] },
-    );
+    // Placement feature removed - return empty array
+    return [];
   }
 
   /**
@@ -248,8 +218,6 @@ export class PrismaCacheService extends PrismaService {
       'students',
       'faculty',
       'departments',
-      'courses',
-      'placements',
     ]);
   }
 }

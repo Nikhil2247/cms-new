@@ -41,7 +41,7 @@ export class StateReportService {
             }),
             this.prisma.user.count({
               where: {
-                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                role: { in: [Role.TEACHER] },
                 active: true,
               },
             }),
@@ -91,7 +91,7 @@ export class StateReportService {
             this.prisma.user.groupBy({
               by: ['institutionId'],
               where: {
-                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                role: { in: [Role.TEACHER] },
                 active: true,
                 institutionId: { not: null },
               },

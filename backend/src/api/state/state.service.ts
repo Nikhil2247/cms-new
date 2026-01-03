@@ -347,18 +347,6 @@ export class StateService {
   // INDUSTRY & COMPANY METHODS
   // ==========================================
 
-  async approveIndustry(industryId: string, approvedBy: string) {
-    return this.industryService.approveIndustry(industryId, approvedBy);
-  }
-
-  async rejectIndustry(industryId: string, reason?: string, rejectedBy?: string) {
-    return this.industryService.rejectIndustry(industryId, reason, rejectedBy);
-  }
-
-  async getPendingIndustries(params: { page?: number; limit?: number }) {
-    return this.industryService.getPendingIndustries(params);
-  }
-
   async getTopIndustries(params: { limit?: number }) {
     return this.industryService.getTopIndustries(params);
   }

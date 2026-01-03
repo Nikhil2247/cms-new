@@ -401,16 +401,45 @@ export class BulkSelfInternshipService {
       // Try to create the internship record
       try {
         const now = new Date();
+
+        // Robustness: avoid creating duplicate approved active self-identified internships
+        // for a student (these are auto-approved in the new workflow).
+        const existingApprovedSelfIdentified = await this.prisma.internshipApplication.findFirst({
+          where: {
+            studentId: student.id,
+            isActive: true,
+            isSelfIdentified: true,
+            status: ApplicationStatus.APPROVED,
+            internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
+          },
+          select: { id: true },
+        });
+
+        if (existingApprovedSelfIdentified) {
+          failedRecords.push({
+            row: rowNumber,
+            studentEmail: internship.studentEmail || internship.studentRollNumber || internship.enrollmentNumber,
+            companyName: internship.companyName,
+            error: 'Student already has an approved self-identified internship',
+          });
+          continue;
+        }
+
         await this.prisma.internshipApplication.create({
           data: {
             studentId: student.id,
             isSelfIdentified: true,
-            status: ApplicationStatus.APPLIED,
+            // Self-identified internships are auto-approved
+            status: ApplicationStatus.APPROVED,
             internshipPhase: internship.joiningLetterUrl
               ? InternshipPhase.ACTIVE
               : internship.startDate
                 ? InternshipPhase.ACTIVE
                 : InternshipPhase.NOT_STARTED,
+
+            // Mark as reviewed/approved at import time
+            reviewedAt: now,
+            isActive: true,
 
             // Company information
             companyName: internship.companyName,

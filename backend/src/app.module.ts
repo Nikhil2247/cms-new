@@ -21,7 +21,6 @@ import { StateModule } from './api/state/state.module';
 import { PrincipalModule } from './api/principal/principal.module';
 import { FacultyModule } from './api/faculty/faculty.module';
 import { StudentPortalModule } from './api/student-portal/student-portal.module';
-import { IndustryPortalModule } from './api/industry-portal/industry.module';
 import { SharedModule } from './api/shared/shared.module';
 import { SystemAdminModule } from './api/system-admin/system-admin.module';
 
@@ -34,14 +33,10 @@ import { AuditModule } from './infrastructure/audit/audit.module';
 import { HealthModule } from './infrastructure/health/health.module';
 
 // Domain modules
-import { InternshipModule } from './domain/internship/internship.module';
 import { ReportModule } from './domain/report/report.module';
-import { FeedbackModule } from './domain/feedback/feedback.module';
 import { AcademicModule } from './domain/academic/academic.module';
-import { FinanceModule } from './domain/finance/finance.module';
 import { SupportModule } from './domain/support/support.module';
 import { MentorModule } from './domain/mentor/mentor.module';
-import { PlacementModule } from './domain/placement/placement.module';
 
 // Bulk Operations
 import { BulkModule } from './bulk/bulk.module';
@@ -82,19 +77,14 @@ import { BulkModule } from './bulk/bulk.module';
     PrincipalModule,
     FacultyModule,
     StudentPortalModule,
-    IndustryPortalModule,
     SharedModule,
     SystemAdminModule,
 
     // ===== DOMAIN MODULES =====
-    InternshipModule,
     ReportModule,
-    FeedbackModule,
     AcademicModule,
-    FinanceModule,
     SupportModule,
     MentorModule,
-    PlacementModule,
 
     // ===== BULK OPERATIONS =====
     BulkModule,

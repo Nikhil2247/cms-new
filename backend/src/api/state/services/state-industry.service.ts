@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
-import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, ApplicationStatus, InternshipPhase, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
+import { ApplicationStatus } from '../../../generated/prisma/client';
 
 @Injectable()
 export class StateIndustryService {
@@ -11,134 +10,7 @@ export class StateIndustryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
-    private readonly auditService: AuditService,
   ) {}
-
-  /**
-   * Approve industry registration
-   */
-  async approveIndustry(industryId: string, approvedBy: string) {
-    const industry = await this.prisma.industry.findUnique({
-      where: { id: industryId },
-    });
-
-    if (!industry) {
-      throw new NotFoundException(`Industry with ID ${industryId} not found`);
-    }
-
-    if (industry.isApproved) {
-      throw new BadRequestException('Industry is already approved');
-    }
-
-    const updated = await this.prisma.industry.update({
-      where: { id: industryId },
-      data: {
-        isApproved: true,
-        approvedAt: new Date(),
-        approvedBy,
-      },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      },
-    });
-
-    // Audit industry approval
-    this.auditService.log({
-      action: AuditAction.INDUSTRY_APPROVAL,
-      entityType: 'Industry',
-      entityId: industryId,
-      userId: approvedBy,
-      userRole: Role.STATE_DIRECTORATE,
-      description: `Industry approved: ${industry.companyName}`,
-      category: AuditCategory.SYSTEM_ADMIN,
-      severity: AuditSeverity.HIGH,
-      newValues: {
-        industryId,
-        companyName: industry.companyName,
-        isApproved: true,
-        approvedBy,
-        approvedAt: new Date(),
-      },
-    }).catch(() => {});
-
-    await this.cache.invalidateByTags(['state', 'industries', `industry:${industryId}`]);
-    return updated;
-  }
-
-  /**
-   * Reject industry registration
-   */
-  async rejectIndustry(industryId: string, reason?: string, rejectedBy?: string) {
-    const industry = await this.prisma.industry.findUnique({
-      where: { id: industryId },
-    });
-
-    if (!industry) {
-      throw new NotFoundException(`Industry with ID ${industryId} not found`);
-    }
-
-    if (industry.isApproved) {
-      throw new BadRequestException('Cannot reject an already approved industry');
-    }
-
-    const updated = await this.prisma.industry.update({
-      where: { id: industryId },
-      data: { isApproved: false, isVerified: false },
-    });
-
-    // Audit industry rejection
-    this.auditService.log({
-      action: AuditAction.INDUSTRY_REJECTION,
-      entityType: 'Industry',
-      entityId: industryId,
-      userId: rejectedBy || 'SYSTEM',
-      userRole: Role.STATE_DIRECTORATE,
-      description: `Industry rejected: ${industry.companyName}${reason ? ` - ${reason}` : ''}`,
-      category: AuditCategory.SYSTEM_ADMIN,
-      severity: AuditSeverity.HIGH,
-      newValues: {
-        industryId,
-        companyName: industry.companyName,
-        isApproved: false,
-        rejectionReason: reason,
-      },
-    }).catch(() => {});
-
-    await this.cache.invalidateByTags(['state', 'industries', `industry:${industryId}`]);
-    return { ...updated, rejectionReason: reason };
-  }
-
-  /**
-   * Get pending industry approvals
-   */
-  async getPendingIndustries(params: { page?: number; limit?: number }) {
-    const { page = 1, limit = 10 } = params;
-    const skip = (page - 1) * limit;
-
-    const where: Prisma.IndustryWhereInput = { isApproved: false };
-
-    const [industries, total] = await Promise.all([
-      this.prisma.industry.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          user: { select: { id: true, name: true, email: true, createdAt: true } },
-          _count: { select: { internships: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.industry.count({ where }),
-    ]);
-
-    return {
-      data: industries,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
-    };
-  }
 
   /**
    * Get top industries by interns hired
@@ -234,7 +106,7 @@ export class StateIndustryService {
     // Use map key for ID to ensure uniqueness (key is already normalized)
     const companies = Array.from(companyMap.entries())
       .map(([key, company]) => ({
-        id: key.replace(/\s+/g, '-'),
+        id: `self-${key.replace(/\s+/g, '-')}`,
         name: company.name,
         address: company.address,
         email: company.email,
@@ -277,184 +149,50 @@ export class StateIndustryService {
     const { page = 1, limit = 20, search, industryType, sortBy = 'studentCount', sortOrder = 'desc' } = params;
     const skip = (page - 1) * limit;
 
-    // Query 1: Get all industries with applications
-    const industryWhere: Prisma.IndustryWhereInput = {};
-    if (search) {
-      industryWhere.companyName = { contains: search, mode: 'insensitive' };
-    }
-    if (industryType) {
-      industryWhere.industryType = industryType as any;
+    // Industry portal removed: only self-identified companies remain
+    if (industryType && industryType !== 'Self-Identified') {
+      this.logger.debug(`Ignoring industryType filter (industry portal removed): ${industryType}`);
     }
 
-    // Query 2: Get self-identified applications
-    const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
+    const selfIdWhere: any = {
       isSelfIdentified: true,
+      student: { isActive: true, user: { active: true } },
     };
     if (search) {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
     }
 
-    // Execute queries in parallel
-    const [industries, selfIdentifiedApps, industryTypes, totalIndustries] = await Promise.all([
-      // Get industries with all their applications
-      this.prisma.industry.findMany({
-        where: industryWhere,
-        select: {
-          id: true,
-          companyName: true,
-          industryType: true,
-          city: true,
-          state: true,
-          isApproved: true,
-          isVerified: true,
-          primaryEmail: true,
-          primaryPhone: true,
-          address: true,
-          internships: {
-            select: {
-              institutionId: true,
-              applications: {
-                where: {
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-                  student: { isActive: true, user: { active: true } },
-                },
-                select: {
-                  id: true,
-                  status: true,
-                  isSelfIdentified: true,
-                  joiningLetterUrl: true,
-                  joiningDate: true,
-                  jobProfile: true,
-                  student: {
-                    select: {
-                      id: true,
-                      name: true,
-                      rollNumber: true,
-                      branchName: true,
-                      email: true,
-                      institutionId: true,
-                      Institution: {
-                        select: { id: true, name: true, code: true, city: true },
-                      },
-                    },
-                  },
-                },
-              },
+    const selfIdentifiedApps = await this.prisma.internshipApplication.findMany({
+      where: selfIdWhere,
+      select: {
+        id: true,
+        companyName: true,
+        companyAddress: true,
+        companyContact: true,
+        companyEmail: true,
+        jobProfile: true,
+        stipend: true,
+        status: true,
+        isSelfIdentified: true,
+        joiningLetterUrl: true,
+        joiningDate: true,
+        student: {
+          select: {
+            id: true,
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            email: true,
+            institutionId: true,
+            Institution: {
+              select: { id: true, name: true, code: true, city: true },
             },
           },
         },
-      }),
-      // Get all self-identified applications (active students with active users only)
-      this.prisma.internshipApplication.findMany({
-        where: {
-          ...selfIdWhere,
-          student: { isActive: true, user: { active: true } },
-        },
-        select: {
-          id: true,
-          companyName: true,
-          companyAddress: true,
-          companyContact: true,
-          companyEmail: true,
-          jobProfile: true,
-          stipend: true,
-          status: true,
-          isSelfIdentified: true,
-          joiningLetterUrl: true,
-          joiningDate: true,
-          student: {
-            select: {
-              id: true,
-              name: true,
-              rollNumber: true,
-              branchName: true,
-              email: true,
-              institutionId: true,
-              Institution: {
-                select: { id: true, name: true, code: true, city: true },
-              },
-            },
-          },
-        },
-      }),
-      // Get unique industry types for filter
-      this.prisma.industry.findMany({
-        select: { industryType: true },
-        distinct: ['industryType'],
-      }),
-      // Get total count
-      this.prisma.industry.count({ where: industryWhere }),
-    ]);
-
-    // Transform Industry data
-    const companyMap = new Map<string, any>();
-
-    // Process regular industries
-    industries.forEach((industry) => {
-      const allApplications = industry.internships.flatMap(i => i.applications);
-      if (allApplications.length === 0) return;
-
-      const institutionMap = new Map<string, any>();
-      const studentSet = new Set<string>();
-
-      allApplications.forEach((app) => {
-        const student = app.student;
-        if (!student?.institutionId) return;
-
-        studentSet.add(student.id);
-
-        if (!institutionMap.has(student.institutionId)) {
-          institutionMap.set(student.institutionId, {
-            id: student.institutionId,
-            name: student.Institution?.name || 'Unknown',
-            code: student.Institution?.code || '',
-            city: student.Institution?.city || '',
-            students: [],
-            branchWise: {},
-          });
-        }
-
-        const inst = institutionMap.get(student.institutionId);
-        if (!inst.students.find((s: any) => s.id === student.id)) {
-          inst.students.push({
-            id: student.id,
-            name: student.name,
-            rollNumber: student.rollNumber,
-            branch: student.branchName,
-            email: student.email,
-            jobProfile: app.jobProfile,
-            status: app.status,
-            hasJoiningLetter: !!app.joiningLetterUrl,
-          });
-
-          const branch = student.branchName || 'Unknown';
-          inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
-        }
-      });
-
-      const institutions = Array.from(institutionMap.values()).map((inst) => ({
-        ...inst,
-        studentCount: inst.students.length,
-        branchWiseData: Object.entries(inst.branchWise).map(([branch, count]) => ({ branch, count })),
-      }));
-
-      companyMap.set(industry.id, {
-        id: industry.id,
-        companyName: industry.companyName,
-        industryType: industry.industryType || 'General',
-        city: industry.city,
-        state: industry.state,
-        address: industry.address,
-        email: industry.primaryEmail,
-        phone: industry.primaryPhone,
-        isApproved: industry.isApproved,
-        isVerified: industry.isVerified,
-        isSelfIdentifiedCompany: false,
-        totalStudents: studentSet.size,
-        institutionCount: institutions.length,
-        institutions,
-      });
+      },
     });
+
+    const companyMap = new Map<string, any>();
 
     // Process self-identified applications - group by company name
     // Normalize key to ensure consistent grouping (lowercase, trim, replace hyphens/spaces)
@@ -590,7 +328,7 @@ export class StateIndustryService {
     const totalSelfIdentified = companies
       .filter(c => c.isSelfIdentifiedCompany)
       .reduce((sum, c) => sum + c.totalStudents, 0);
-    const uniqueIndustryTypes = [...new Set(industryTypes.map(t => t.industryType).filter(Boolean)), 'Self-Identified'];
+    const uniqueIndustryTypes = ['Self-Identified'];
 
     return {
       companies: paginatedCompanies,
@@ -612,255 +350,106 @@ export class StateIndustryService {
 
   /**
    * Get company details with all institutions and students
+   * NOTE: Industry portal removed; self-identified companies only.
    */
   async getCompanyDetails(companyId: string) {
-    // Check if it's a self-identified company
-    if (companyId.startsWith('self-')) {
-      // Extract the normalized key part (e.g., "self-tech-hub" → "tech-hub")
-      const normalizedKey = companyId.replace('self-', '');
-
-      // First fetch all self-identified applications (active students with active users only)
-      const allSelfIdApps = await this.prisma.internshipApplication.findMany({
-        where: {
-          isSelfIdentified: true,
-          companyName: { not: '' },
-          student: { isActive: true, user: { active: true } },
-        },
-        select: {
-          id: true,
-          companyName: true,
-          companyAddress: true,
-          companyContact: true,
-          companyEmail: true,
-          hrName: true,
-          jobProfile: true,
-          stipend: true,
-          status: true,
-          internshipDuration: true,
-          startDate: true,
-          endDate: true,
-          joiningLetterUrl: true,
-          joiningDate: true,
-          student: {
-            select: {
-              id: true,
-              name: true,
-              rollNumber: true,
-              branchName: true,
-              email: true,
-              contact: true,
-              institutionId: true,
-              Institution: {
-                select: { id: true, name: true, code: true, city: true, district: true },
-              },
-            },
-          },
-        },
-      });
-
-      // Filter applications using the same normalization logic as getAllCompanies
-      // This ensures exact match with the company key
-      const applications = allSelfIdApps.filter((app) => {
-        const appCompanyName = app.companyName || 'Unknown Company';
-        // Use same normalization: lowercase, trim, replace hyphens with spaces, then collapse to dashes
-        const appNormalizedKey = appCompanyName.toLowerCase().trim().replace(/-/g, ' ').replace(/\s+/g, '-');
-        return appNormalizedKey === normalizedKey;
-      });
-
-      if (applications.length === 0) {
-        throw new NotFoundException('Company not found');
-      }
-
-      // Group by institution
-      const institutionMap = new Map<string, any>();
-      const firstApp = applications[0];
-
-      applications.forEach((app) => {
-        const student = app.student;
-        if (!student?.institutionId) return;
-
-        if (!institutionMap.has(student.institutionId)) {
-          institutionMap.set(student.institutionId, {
-            id: student.institutionId,
-            name: student.Institution?.name || 'Unknown',
-            code: student.Institution?.code || '',
-            city: student.Institution?.city || '',
-            district: student.Institution?.district || '',
-            students: [],
-            branchWise: {},
-          });
-        }
-
-        const inst = institutionMap.get(student.institutionId);
-        if (!inst.students.find((s: any) => s.id === student.id)) {
-          inst.students.push({
-            id: student.id,
-            name: student.name,
-            rollNumber: student.rollNumber,
-            branch: student.branchName,
-            email: student.email,
-            contact: student.contact,
-            jobProfile: app.jobProfile,
-            stipend: app.stipend,
-            duration: app.internshipDuration,
-            startDate: app.startDate,
-            endDate: app.endDate,
-            status: app.status,
-            hasJoiningLetter: !!app.joiningLetterUrl,
-            hasJoined: !!app.joiningDate,
-          });
-
-          const branch = student.branchName || 'Unknown';
-          inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
-        }
-      });
-
-      const institutions = Array.from(institutionMap.values()).map((inst) => ({
-        ...inst,
-        studentCount: inst.students.length,
-        branchWiseData: Object.entries(inst.branchWise).map(([branch, count]) => ({ branch, count })),
-      }));
-
-      return {
-        id: companyId,
-        companyName: firstApp.companyName,
-        industryType: 'Self-Identified',
-        address: firstApp.companyAddress,
-        email: firstApp.companyEmail,
-        phone: firstApp.companyContact,
-        hrName: firstApp.hrName,
-        isSelfIdentifiedCompany: true,
-        isApproved: true,
-        isVerified: false,
-        totalStudents: applications.length,
-        institutionCount: institutions.length,
-        institutions,
-      };
+    if (!companyId.startsWith('self-')) {
+      throw new NotFoundException('Company not found');
     }
 
-    // Regular industry company
-    const industry = await this.prisma.industry.findUnique({
-      where: { id: companyId },
+    const normalizedKey = companyId.replace('self-', '');
+    const normalize = (name: string) => name.toLowerCase().trim().replace(/-/g, ' ').replace(/\s+/g, '-');
+
+    const allSelfIdApps = await this.prisma.internshipApplication.findMany({
+      where: {
+        isSelfIdentified: true,
+        companyName: { not: '' },
+        student: { isActive: true, user: { active: true } },
+      },
       select: {
         id: true,
         companyName: true,
-        industryType: true,
-        city: true,
-        state: true,
-        address: true,
-        primaryEmail: true,
-        primaryPhone: true,
-        isApproved: true,
-        isVerified: true,
-        website: true,
-        companyDescription: true,
-        internships: {
+        companyAddress: true,
+        companyContact: true,
+        companyEmail: true,
+        hrName: true,
+        jobProfile: true,
+        stipend: true,
+        status: true,
+        internshipDuration: true,
+        startDate: true,
+        endDate: true,
+        joiningLetterUrl: true,
+        joiningDate: true,
+        student: {
           select: {
             id: true,
-            title: true,
+            name: true,
+            rollNumber: true,
+            branchName: true,
+            email: true,
+            contact: true,
             institutionId: true,
-            applications: {
-              where: {
-                status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-                student: { isActive: true },
-              },
-              select: {
-                id: true,
-                status: true,
-                jobProfile: true,
-                joiningLetterUrl: true,
-                joiningDate: true,
-                student: {
-                  select: {
-                    id: true,
-                    name: true,
-                    rollNumber: true,
-                    branchName: true,
-                    email: true,
-                    contact: true,
-                    institutionId: true,
-                    Institution: {
-                      select: { id: true, name: true, code: true, city: true, district: true },
-                    },
-                  },
-                },
-              },
+            Institution: {
+              select: { id: true, name: true, code: true, city: true, district: true },
             },
           },
         },
       },
     });
 
-    if (!industry) {
+    const applications = allSelfIdApps.filter((app) => {
+      const companyName = app.companyName || 'Unknown Company';
+      return normalize(companyName) === normalizedKey;
+    });
+
+    if (applications.length === 0) {
       throw new NotFoundException('Company not found');
     }
 
-    // Group by institution
+    const firstApp = applications[0];
     const institutionMap = new Map<string, any>();
+    const globalStudentSet = new Set<string>();
 
-    // Type assertion for the nested select result
-    const industryWithInternships = industry as typeof industry & {
-      internships: Array<{
-        id: string;
-        title: string;
-        institutionId: string;
-        applications: Array<{
-          id: string;
-          status: string;
-          jobProfile: string;
-          joiningLetterUrl: string | null;
-          joiningDate: Date | null;
-          student: {
-            id: string;
-            name: string;
-            rollNumber: string;
-            branchName: string;
-            email: string;
-            contact: string;
-            institutionId: string;
-            Institution: { id: string; name: string; code: string; city: string; district: string } | null;
-          };
-        }>;
-      }>;
-    };
+    applications.forEach((app) => {
+      const student = app.student;
+      if (!student?.institutionId) return;
 
-    industryWithInternships.internships.forEach((internship) => {
-      internship.applications.forEach((app) => {
-        const student = app.student;
-        if (!student?.institutionId) return;
+      if (!institutionMap.has(student.institutionId)) {
+        institutionMap.set(student.institutionId, {
+          id: student.institutionId,
+          name: student.Institution?.name || 'Unknown',
+          code: student.Institution?.code || '',
+          city: student.Institution?.city || '',
+          district: student.Institution?.district || '',
+          students: [],
+          branchWise: {},
+        });
+      }
 
-        if (!institutionMap.has(student.institutionId)) {
-          institutionMap.set(student.institutionId, {
-            id: student.institutionId,
-            name: student.Institution?.name || 'Unknown',
-            code: student.Institution?.code || '',
-            city: student.Institution?.city || '',
-            district: student.Institution?.district || '',
-            students: [],
-            branchWise: {},
-          });
-        }
+      const inst = institutionMap.get(student.institutionId);
+      if (!globalStudentSet.has(student.id)) {
+        globalStudentSet.add(student.id);
+        inst.students.push({
+          id: student.id,
+          name: student.name,
+          rollNumber: student.rollNumber,
+          branch: student.branchName,
+          email: student.email,
+          contact: student.contact,
+          jobProfile: app.jobProfile,
+          stipend: app.stipend,
+          duration: app.internshipDuration,
+          startDate: app.startDate,
+          endDate: app.endDate,
+          status: app.status,
+          hasJoiningLetter: !!app.joiningLetterUrl,
+          hasJoined: !!app.joiningDate,
+        });
 
-        const inst = institutionMap.get(student.institutionId);
-        if (!inst.students.find((s: any) => s.id === student.id)) {
-          inst.students.push({
-            id: student.id,
-            name: student.name,
-            rollNumber: student.rollNumber,
-            branch: student.branchName,
-            email: student.email,
-            contact: student.contact,
-            jobProfile: app.jobProfile,
-            internshipTitle: internship.title,
-            status: app.status,
-            hasJoiningLetter: !!app.joiningLetterUrl,
-            hasJoined: !!app.joiningDate,
-          });
-
-          const branch = student.branchName || 'Unknown';
-          inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
-        }
-      });
+        const branch = student.branchName || 'Unknown';
+        inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
+      }
     });
 
     const institutions = Array.from(institutionMap.values()).map((inst) => ({
@@ -869,23 +458,18 @@ export class StateIndustryService {
       branchWiseData: Object.entries(inst.branchWise).map(([branch, count]) => ({ branch, count })),
     }));
 
-    const totalStudents = institutions.reduce((sum, i) => sum + i.studentCount, 0);
-
     return {
-      id: industry.id,
-      companyName: industry.companyName,
-      industryType: industry.industryType || 'General',
-      city: industry.city,
-      state: industry.state,
-      address: industry.address,
-      email: industry.primaryEmail,
-      phone: industry.primaryPhone,
-      website: industry.website,
-      description: industry.companyDescription,
-      isSelfIdentifiedCompany: false,
-      isApproved: industry.isApproved,
-      isVerified: industry.isVerified,
-      totalStudents,
+      id: companyId,
+      companyName: firstApp.companyName,
+      industryType: 'Self-Identified',
+      address: firstApp.companyAddress,
+      email: firstApp.companyEmail,
+      phone: firstApp.companyContact,
+      hrName: firstApp.hrName,
+      isSelfIdentifiedCompany: true,
+      isApproved: true,
+      isVerified: false,
+      totalStudents: globalStudentSet.size,
       institutionCount: institutions.length,
       institutions,
     };

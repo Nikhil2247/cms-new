@@ -75,9 +75,9 @@ export class PrincipalService {
         ] = await Promise.all([
           this.prisma.student.count({ where: { institutionId } }),
           this.prisma.student.count({ where: { institutionId, isActive: true } }),
-          this.prisma.user.count({ where: { institutionId, role: { not: Role.STUDENT } } }),
+          this.prisma.user.count({ where: { institutionId, role: { in: [Role.TEACHER, Role.PRINCIPAL] } } }),
           this.prisma.user.count({
-            where: { institutionId, role: { not: Role.STUDENT }, active: true }
+            where: { institutionId, role: { in: [Role.TEACHER, Role.PRINCIPAL] }, active: true }
           }),
           // Count all self-identified internships
           this.prisma.internshipApplication.count({
@@ -282,13 +282,11 @@ export class PrincipalService {
       include: {
         Institution: {
           include: {
-            settings: true,
             _count: {
               select: {
                 users: true,
                 Student: true,
                 batches: true,
-                internships: true,
               },
             },
           },
@@ -1485,7 +1483,7 @@ export class PrincipalService {
 
     const where: Prisma.UserWhereInput = {
       institutionId: principal.institutionId,
-      role: { not: Role.STUDENT },
+      role: { in: [Role.TEACHER, Role.PRINCIPAL] },
     };
 
     if (search) {
@@ -1742,7 +1740,7 @@ export class PrincipalService {
       const mentors = await this.prisma.user.findMany({
         where: {
           institutionId: principal.institutionId,
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
         include: {
@@ -1873,7 +1871,7 @@ export class PrincipalService {
         where: {
           mentor: {
             institutionId: principal.institutionId,
-            role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+            role: { in: [Role.TEACHER] },
             active: true,
           },
           student: {
@@ -1976,7 +1974,7 @@ export class PrincipalService {
       where: {
         id: assignMentorDto.mentorId,
         institutionId: principal.institutionId,
-        role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+        role: { in: [Role.TEACHER] },
       },
     });
 
@@ -2434,7 +2432,7 @@ export class PrincipalService {
     const facultyList = await this.prisma.user.findMany({
       where: {
         institutionId,
-        role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+        role: { in: [Role.TEACHER] },
         active: true,
       },
       select: { id: true, name: true },
@@ -2631,14 +2629,8 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
-    const semesters = await this.prisma.semester.findMany({
-      where: {
-        institutionId: principal.institutionId,
-      },
-      orderBy: { number: 'asc' },
-    });
-
-    return semesters;
+    // Semester feature removed from schema
+    return [];
   }
 
   /**
@@ -2653,17 +2645,8 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
-    const subjects = await this.prisma.subject.findMany({
-      where: {
-        institutionId: principal.institutionId,
-      },
-      include: {
-        Branch: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return subjects;
+    // Subject feature removed from schema
+    return [];
   }
 
   /**
@@ -3021,7 +3004,7 @@ export class PrincipalService {
       this.prisma.user.count({
         where: {
           institutionId,
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
       }),
@@ -3051,7 +3034,7 @@ export class PrincipalService {
     const localMentors = await this.prisma.user.findMany({
       where: {
         institutionId,
-        role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+        role: { in: [Role.TEACHER] },
         active: true,
       },
       select: { id: true },
@@ -3313,7 +3296,7 @@ export class PrincipalService {
       this.prisma.user.findMany({
         where: {
           institutionId,
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
         select: {
@@ -3851,7 +3834,7 @@ export class PrincipalService {
       this.prisma.user.findMany({
         where: {
           institutionId,
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
         select: {

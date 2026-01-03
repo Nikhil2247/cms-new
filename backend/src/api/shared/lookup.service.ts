@@ -183,27 +183,8 @@ export class LookupService {
       cacheKey,
       async () => {
         try {
-          const where: any = { isActive: true };
-
-          if (institutionId) {
-            where.institutionId = institutionId;
-          }
-
-          const semesters = await this.prisma.semester.findMany({
-            where,
-            select: {
-              id: true,
-              number: true,
-              isActive: true,
-              institutionId: true,
-            },
-            orderBy: { number: 'asc' },
-          });
-
-          return {
-            semesters,
-            total: semesters.length,
-          };
+          // Semester feature removed from schema
+          return { semesters: [], total: 0 };
         } catch (error) {
           this.logger.error('Failed to get semesters', error.stack);
           throw error;

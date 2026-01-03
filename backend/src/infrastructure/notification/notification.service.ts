@@ -1,5 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Notification as PrismaNotification, Prisma, NotificationSettings } from '../../generated/prisma/client';
+import { Notification as PrismaNotification, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { WebSocketService } from '../websocket/websocket.service';
 import { WebSocketEvent, NotificationPayload } from '../websocket/dto';
@@ -10,50 +10,6 @@ interface NotificationOptions {
   isRead?: boolean;
   type?: string;
 }
-
-// Map notification types to settings keys
-const TYPE_TO_SETTING_MAP: Record<string, keyof Omit<NotificationSettings, 'id' | 'userId'>> = {
-  // Internship related
-  'INTERNSHIP_DEADLINE': 'internships',
-  'INTERNSHIP_APPLICATION': 'internships',
-  'INTERNSHIP_ACCEPTED': 'internships',
-  'INTERNSHIP_REJECTED': 'internships',
-  'ELIGIBLE_INTERNSHIPS': 'internships',
-
-  // Placement related
-  'PLACEMENT_UPDATE': 'placements',
-  'PLACEMENT_OFFER': 'placements',
-
-  // Assignment/Report related
-  'MONTHLY_REPORT_REMINDER': 'assignments',
-  'MONTHLY_REPORT_URGENT': 'assignments',
-  'ASSIGNMENT_NEW': 'assignments',
-  'ASSIGNMENT_DUE': 'assignments',
-
-  // Attendance related
-  'ATTENDANCE_MARKED': 'attendance',
-  'ATTENDANCE_WARNING': 'attendance',
-
-  // Exam related
-  'EXAM_SCHEDULED': 'examSchedules',
-  'EXAM_REMINDER': 'examSchedules',
-
-  // Announcements/General
-  'ANNOUNCEMENT': 'announcements',
-  'GRIEVANCE_ASSIGNED': 'announcements',
-  'GRIEVANCE_UPDATE': 'announcements',
-  'GRIEVANCE_STATUS_CHANGED': 'announcements',
-  'SUPPORT_TICKET_NEW': 'announcements',
-  'WEEKLY_SUMMARY': 'announcements',
-
-  // Fee related
-  'FEE_DUE': 'feeReminders',
-  'FEE_REMINDER': 'feeReminders',
-
-  // Grades
-  'GRADE_PUBLISHED': 'grades',
-  'GRADE_UPDATE': 'grades',
-};
 
 @Injectable()
 export class NotificationService {
@@ -66,30 +22,11 @@ export class NotificationService {
 
   /**
    * Check if user has enabled notifications for a specific type
+   * NOTE: NotificationSettings feature removed - all notifications enabled by default
    */
   private async isNotificationEnabled(userId: string, type: string): Promise<boolean> {
-    try {
-      const settingKey = TYPE_TO_SETTING_MAP[type];
-
-      // If notification type is not mapped, allow it (system notifications)
-      if (!settingKey) {
-        return true;
-      }
-
-      const settings = await this.prisma.notificationSettings.findUnique({
-        where: { userId },
-      });
-
-      // If no settings exist, default to enabled
-      if (!settings) {
-        return true;
-      }
-
-      return settings[settingKey] === true;
-    } catch (error) {
-      this.logger.warn(`Failed to check notification settings for user ${userId}, defaulting to enabled`);
-      return true;
-    }
+    // All notifications are enabled by default since NotificationSettings was removed
+    return true;
   }
 
   /**

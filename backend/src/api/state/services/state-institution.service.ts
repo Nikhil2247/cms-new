@@ -64,7 +64,7 @@ export class StateInstitutionService {
           select: {
             users: {
               where: {
-                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                role: { in: [Role.TEACHER] },
               },
             },
             // Count only active students for consistency with all other calculations
@@ -347,7 +347,7 @@ export class StateInstitutionService {
         by: ['institutionId'],
         where: {
           institutionId: { in: institutionIds },
-          role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
         _count: true,
@@ -639,17 +639,11 @@ export class StateInstitutionService {
         distinct: ['studentId'],
       }).then(results => results.length),
 
-      // Internships added by institution
-      this.prisma.internship.count({ where: { institutionId: id } }),
+      // Internships added by institution (industry portal removed)
+      Promise.resolve(0),
 
-      // Active internships
-      this.prisma.internship.count({
-        where: {
-          institutionId: id,
-          status: 'ACTIVE',
-          isActive: true,
-        },
-      }),
+      // Active internships (industry portal removed)
+      Promise.resolve(0),
 
       // Self-identified internship total (active students with active users, active applications only)
       this.prisma.internshipApplication.count({
@@ -979,20 +973,24 @@ export class StateInstitutionService {
         _count: { id: true },
       }),
 
-      // Companies linked to institution
-      this.prisma.industry.count({
+      // Companies linked to institution (self-identified only)
+      this.prisma.internshipApplication.findMany({
         where: {
-          internships: {
-            some: { institutionId: id },
-          },
+          student: { institutionId: id, isActive: true, user: { active: true } },
+          isSelfIdentified: true,
+          isActive: true,
+          status: ApplicationStatus.APPROVED,
+          companyName: { not: null },
         },
-      }),
+        select: { companyName: true },
+        distinct: ['companyName'],
+      }).then(results => results.filter(r => r.companyName).length),
 
       // Faculty count
       this.prisma.user.count({
         where: {
           institutionId: id,
-          role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
       }),
@@ -1178,16 +1176,7 @@ export class StateInstitutionService {
     }
 
     // Apply company filter
-    if (companyId && companyId !== 'all') {
-      where.internshipApplications = {
-        some: {
-          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED] },
-          internship: {
-            industryId: companyId,
-          },
-        },
-      };
-    }
+    // Industry/company portal removed: ignore legacy companyId filter
 
     // Apply self-identified filter
     if (selfIdentified === 'yes') {
@@ -1291,20 +1280,6 @@ export class StateInstitutionService {
             joiningDate: true,
             reviewedAt: true,
             internshipPhase: true,
-            internship: {
-              select: {
-                id: true,
-                title: true,
-                industry: {
-                  select: {
-                    id: true,
-                    companyName: true,
-                    industryType: true,
-                    city: true,
-                  },
-                },
-              },
-            },
             facultyVisitLogs: {
               orderBy: { visitDate: 'desc' as const },
               take: 1,
@@ -1388,11 +1363,6 @@ export class StateInstitutionService {
           duration: selfIdentifiedApp.internshipDuration,
           isSelfIdentified: true,
         };
-      } else if (latestApp?.internship?.industry) {
-        company = {
-          ...latestApp.internship.industry,
-          isSelfIdentified: false,
-        };
       }
 
       return {
@@ -1448,7 +1418,7 @@ export class StateInstitutionService {
 
   /**
    * Get institution companies with student counts, branch-wise data, and self-identified info
-   * OPTIMIZED: Includes both Industry records AND self-identified companies
+   * OPTIMIZED: Self-identified companies only (industry portal removed)
    */
   async getInstitutionCompanies(id: string, params: { limit: number; search?: string }) {
     const { limit, search } = params;
@@ -1461,15 +1431,7 @@ export class StateInstitutionService {
       return 'PENDING';
     };
 
-    // Query 1: Get industries with applications
-    const industryWhere: Prisma.IndustryWhereInput = {
-      internships: { some: { institutionId: id } },
-    };
-    if (search) {
-      industryWhere.companyName = { contains: search, mode: 'insensitive' };
-    }
-
-    // Query 2: Get self-identified applications (active applications only)
+    // Get self-identified applications (active applications only)
     const selfIdWhere: Prisma.InternshipApplicationWhereInput = {
       isSelfIdentified: true,
       isActive: true,
@@ -1480,116 +1442,28 @@ export class StateInstitutionService {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
     }
 
-    // Execute both queries in parallel
-    const [industries, selfIdentifiedApps] = await Promise.all([
-      this.prisma.industry.findMany({
-        where: industryWhere,
-        take: limit,
-        select: {
-          id: true,
-          companyName: true,
-          industryType: true,
-          city: true,
-          state: true,
-          isApproved: true,
-          isVerified: true,
-          primaryEmail: true,
-          primaryPhone: true,
-          internships: {
-            where: { institutionId: id },
-            select: {
-              applications: {
-                where: {
-                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
-                  student: { institutionId: id, isActive: true },
-                },
-                select: {
-                  id: true,
-                  isSelfIdentified: true,
-                  status: true,
-                  joiningLetterUrl: true,
-                  joiningDate: true,
-                  reviewedAt: true,
-                  internshipPhase: true,
-                  student: {
-                    select: { id: true, name: true, rollNumber: true, branchName: true, email: true },
-                  },
-                },
-              },
-            },
-          },
+    const selfIdentifiedApps = await this.prisma.internshipApplication.findMany({
+      where: selfIdWhere,
+      take: limit,
+      select: {
+        id: true,
+        isSelfIdentified: true,
+        internshipPhase: true,
+        companyName: true,
+        companyAddress: true,
+        companyContact: true,
+        companyEmail: true,
+        jobProfile: true,
+        stipend: true,
+        status: true,
+        joiningLetterUrl: true,
+        joiningDate: true,
+        reviewedAt: true,
+        student: {
+          select: { id: true, name: true, rollNumber: true, branchName: true, email: true, institutionId: true },
         },
-        orderBy: { createdAt: 'desc' },
-      }),
-      this.prisma.internshipApplication.findMany({
-        where: selfIdWhere,
-        select: {
-          id: true,
-          isSelfIdentified: true,
-          internshipPhase: true,
-          companyName: true,
-          companyAddress: true,
-          companyContact: true,
-          companyEmail: true,
-          jobProfile: true,
-          stipend: true,
-          status: true,
-          joiningLetterUrl: true,
-          joiningDate: true,
-          reviewedAt: true,
-          student: {
-            select: { id: true, name: true, rollNumber: true, branchName: true, email: true, institutionId: true },
-          },
-        },
-      }),
-    ]);
-
-    // Transform Industry data
-    const companiesWithData = industries.map((industry) => {
-      const allApplications = industry.internships.flatMap(i => i.applications);
-      const studentMap = new Map<string, any>();
-      let selfIdentifiedCount = 0;
-
-      allApplications.forEach((app) => {
-        const student = app.student;
-        if (!studentMap.has(student.id)) {
-          studentMap.set(student.id, {
-            id: student.id,
-            name: student.name,
-            rollNumber: student.rollNumber,
-            branch: student.branchName,
-            email: student.email,
-            isSelfIdentified: app.isSelfIdentified || false,
-            joiningLetterStatus: resolveJoiningLetterStatus(app),
-          });
-          if (app.isSelfIdentified) selfIdentifiedCount++;
-        }
-      });
-
-      const students = Array.from(studentMap.values());
-      const branchWise: Record<string, { total: number; selfIdentified: number }> = {};
-      students.forEach((student) => {
-        const branch = student.branch || 'Unknown';
-        if (!branchWise[branch]) branchWise[branch] = { total: 0, selfIdentified: 0 };
-        branchWise[branch].total++;
-        if (student.isSelfIdentified) branchWise[branch].selfIdentified++;
-      });
-
-      const { internships, primaryEmail, primaryPhone, ...industryData } = industry;
-      return {
-        ...industryData,
-        email: primaryEmail,
-        phoneNo: primaryPhone,
-        studentCount: students.length,
-        selfIdentifiedCount,
-        isSelfIdentifiedCompany: false,
-        branchWiseData: Object.entries(branchWise).map(([branch, data]) => ({
-          branch,
-          total: data.total,
-          selfIdentified: data.selfIdentified,
-        })),
-        students,
-      };
+      },
+      orderBy: { createdAt: 'desc' },
     });
 
     // Group self-identified applications by company name
@@ -1656,12 +1530,9 @@ export class StateInstitutionService {
       company.selfIdentifiedCount = company.applicationCount || company.students.length;
     });
 
-    // Merge Industry companies and self-identified companies
+    // Self-identified companies only
     const selfIdCompanies = Array.from(selfIdCompanyMap.values());
-    const allCompanies = [...companiesWithData, ...selfIdCompanies];
-
-    // Filter and sort
-    const filteredCompanies = allCompanies
+    const filteredCompanies = selfIdCompanies
       .filter(c => c.studentCount > 0)
       .sort((a, b) => b.studentCount - a.studentCount);
 
@@ -1710,7 +1581,7 @@ export class StateInstitutionService {
       this.prisma.user.findMany({
         where: {
           institutionId: id,
-          role: { in: [Role.PRINCIPAL, Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+          role: { in: [Role.PRINCIPAL, Role.TEACHER, Role.TEACHER] },
           active: true,
         },
         select: {
@@ -1770,7 +1641,7 @@ export class StateInstitutionService {
       Promise.all([
         this.prisma.student.count({ where: { institutionId: id, isActive: true } }),
         this.prisma.user.count({
-          where: { institutionId: id, role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] }, active: true },
+          where: { institutionId: id, role: { in: [Role.TEACHER] }, active: true },
         }),
         this.prisma.internshipApplication.count({
           where: { student: { institutionId: id, isActive: true }, isActive: true, status: ApplicationStatus.APPLIED },

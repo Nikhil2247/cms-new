@@ -53,7 +53,7 @@ export class MentorService {
         throw new NotFoundException('Mentor not found');
       }
 
-      if (mentor.role !== Role.FACULTY_SUPERVISOR) {
+      if (mentor.role !== Role.TEACHER) {
         throw new BadRequestException('Mentor must be a faculty supervisor');
       }
 

@@ -21,71 +21,15 @@ export class SemesterService {
   ) {}
 
   async getSemesters() {
-    try {
-      const cacheKey = 'semesters:all';
-
-      return await this.cache.getOrSet(
-        cacheKey,
-        async () => {
-          return await this.prisma.semester.findMany({
-            orderBy: { number: 'asc' },
-          });
-        },
-        this.CACHE_TTL,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to get semesters: ${error.message}`, error.stack);
-      throw error;
-    }
+    // Semester feature removed from schema
+    return [];
   }
 
   async createSemester(data: CreateSemesterDto) {
-    try {
-      this.logger.log(`Creating semester ${data.name}`);
-
-      // Check for duplicate semester number
-      const existingSemester = await this.prisma.semester.findFirst({
-        where: { number: data.number },
-      });
-
-      if (existingSemester) {
-        throw new BadRequestException('Semester with this number already exists');
-      }
-
-      const semester = await this.prisma.semester.create({
-        data: {
-          ...data,
-          isActive: data.isActive !== undefined ? data.isActive : true,
-        },
-      });
-
-      // Invalidate cache
-      await this.cache.del('semesters:all');
-
-      return semester;
-    } catch (error) {
-      this.logger.error(`Failed to create semester: ${error.message}`, error.stack);
-      throw error;
-    }
+    throw new BadRequestException('Semester feature has been removed');
   }
 
   async getActiveSemester() {
-    try {
-      const cacheKey = 'semester:active';
-
-      return await this.cache.getOrSet(
-        cacheKey,
-        async () => {
-          return await this.prisma.semester.findFirst({
-            where: { isActive: true },
-            orderBy: { number: 'desc' },
-          });
-        },
-        this.CACHE_TTL,
-      );
-    } catch (error) {
-      this.logger.error(`Failed to get active semester: ${error.message}`, error.stack);
-      throw error;
-    }
+    return null;
   }
 }

@@ -68,8 +68,6 @@ export class StateDashboardService {
           activeSelfIdentifiedInternships,
           totalApplications,
           acceptedApplications,
-          totalIndustries,
-          approvedIndustries,
           // Mentor assignments
           totalAssignments,
           activeAssignments,
@@ -87,7 +85,6 @@ export class StateDashboardService {
           totalReportsSubmitted,
           // Recent activity
           recentApplications,
-          recentIndustryRegistrations,
         ] = await this.prisma.$transaction([
           this.prisma.institution.count(),
           this.prisma.institution.count({ where: { isActive: true } }),
@@ -96,11 +93,11 @@ export class StateDashboardService {
           // Active students (only from ACTIVE institutions for consistency with institution table)
           this.prisma.student.count({ where: { isActive: true, Institution: { isActive: true } } }),
           this.prisma.user.count({
-            where: { role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] } },
+            where: { role: { in: [Role.TEACHER] } },
           }),
           this.prisma.user.count({
             where: {
-              role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+              role: { in: [Role.TEACHER] },
               active: true,
             },
           }),
@@ -135,10 +132,6 @@ export class StateDashboardService {
               status: ApplicationStatus.APPROVED,
               student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
             },
-          }),
-          this.prisma.industry.count(),
-          this.prisma.industry.count({
-            where: { isApproved: true, isVerified: true },
           }),
           // Mentor assignments - count records (for reference)
           this.prisma.mentorAssignment.count(),
@@ -251,10 +244,12 @@ export class StateDashboardService {
               student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
             },
           }),
-          this.prisma.industry.count({
-            where: { createdAt: { gte: lastMonthDate } },
-          }),
         ]);
+
+        // Industry portal removed - no industry registrations to track
+        const totalIndustries = 0;
+        const approvedIndustries = 0;
+        const recentIndustryRegistrations = 0;
 
         // Get count from the distinct studentIds arrays
         const activeStudentsWithMentors = studentsWithActiveMentorsData.length;
@@ -634,27 +629,11 @@ export class StateDashboardService {
         const fifteenDaysAgo = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
 
         // Run all independent queries in parallel
-        const [pendingApprovals, institutionsWithStats, overdueItems] = await Promise.all([
-          // 1. Pending principal approvals (industry registrations)
-          this.prisma.industry.findMany({
-            where: { isApproved: false },
-            select: {
-              id: true,
-              companyName: true,
-              industryType: true,
-              city: true,
-              state: true,
-              createdAt: true,
-              user: { select: { id: true, name: true, email: true } },
-            },
-            orderBy: { createdAt: 'asc' },
-            take: 20,
-          }),
-
-          // 2. Get institutions with stats
+        const [institutionsWithStats, overdueItems] = await Promise.all([
+          // 1. Get institutions with stats
           getInstitutionsWithStats({ page: 1, limit: 100 }),
 
-          // 3. Overdue compliance items (from active institutions, active applications only)
+          // 2. Overdue compliance items (from active institutions, active applications only)
           // With auto-approval, all submitted reports are APPROVED
           this.prisma.student.findMany({
             where: {
@@ -685,6 +664,9 @@ export class StateDashboardService {
             take: 15,
           }),
         ]);
+
+        // Industry portal removed - no pending industry approvals
+        const pendingApprovals: any[] = [];
 
         // Institutions requiring intervention (compliance < 30%)
         // Use activeStudents as denominator per approved specification
@@ -1075,7 +1057,7 @@ export class StateDashboardService {
             const mentorCounts = await this.prisma.user.groupBy({
               by: ['institutionId'],
               where: {
-                role: { in: [Role.TEACHER, Role.FACULTY_SUPERVISOR] },
+                role: { in: [Role.TEACHER] },
                 active: true,
                 institutionId: { not: null },
                 Institution: { isActive: true },

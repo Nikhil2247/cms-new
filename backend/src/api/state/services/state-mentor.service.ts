@@ -31,7 +31,7 @@ export class StateMentorService {
         const [mentors, allAssignments, lookupData] = await Promise.all([
           this.prisma.user.findMany({
             where: {
-              role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+              role: { in: [Role.TEACHER] },
               active: true,
               ...(params?.institutionId ? { institutionId: params.institutionId } : {}),
               ...(params?.search
@@ -100,7 +100,7 @@ export class StateMentorService {
       this.prisma.user.findMany({
         where: {
           institutionId,
-          role: { in: [Role.FACULTY_SUPERVISOR, Role.TEACHER] },
+          role: { in: [Role.TEACHER] },
           active: true,
         },
         select: {
@@ -176,7 +176,10 @@ export class StateMentorService {
     // Note: Cross-institution mentoring is allowed - state admin can assign faculty from one institution
     // to mentor students from another institution (this happens physically in the field)
 
-    if (mentor.role !== Role.FACULTY_SUPERVISOR && mentor.role !== Role.TEACHER) {
+    // Robust role check: some deployments use different Role enum variants.
+    // Accept TEACHER/FACULTY_SUPERVISOR as mentor roles.
+    const validMentorRoles = new Set(['TEACHER', 'FACULTY_SUPERVISOR']);
+    if (!validMentorRoles.has(String(mentor.role))) {
       throw new BadRequestException('Selected user is not a valid mentor');
     }
 
