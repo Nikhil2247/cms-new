@@ -69,6 +69,7 @@ import {
   removeMentorFromStudent,
   deleteInstituteStudent,
   deleteInstituteFaculty,
+  toggleStudentStatus,
   selectInstituteOverview,
   selectInstituteStudents,
   selectInstituteCompanies,
@@ -1136,30 +1137,36 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     });
   }, [dispatch, applyFilters]);
 
-  // Delete student handler
-  const handleDeleteStudent = useCallback((student) => {
+  // Toggle student status handler (activate/deactivate)
+  const handleToggleStudentStatus = useCallback((student) => {
+    const isActive = student.user?.active !== false;
+    const action = isActive ? 'Deactivate' : 'Activate';
+    const actionLower = isActive ? 'deactivate' : 'activate';
+
     Modal.confirm({
-      title: 'Deactivate Student',
-      icon: <ExclamationCircleOutlined className="text-warning" />,
+      title: `${action} Student`,
+      icon: <ExclamationCircleOutlined className={isActive ? "text-warning" : "text-success"} />,
       content: (
         <div>
-          <p>Are you sure you want to deactivate <strong>{student.user?.name || student.name}</strong>?</p>
+          <p>Are you sure you want to {actionLower} <strong>{student.user?.name || student.name}</strong>?</p>
           <p className="text-text-tertiary text-sm mt-2">
-            The student will no longer be able to access the system. All associated data including reports, internship applications, and mentor assignments will be preserved.
+            {isActive
+              ? 'The student will no longer be able to access the system. Mentor assignments and internship applications will be deactivated but all data will be preserved.'
+              : 'The student will be able to access the system again. Internship applications will be reactivated. Mentor assignments will need to be reassigned.'}
           </p>
         </div>
       ),
-      okText: 'Deactivate',
-      okType: 'danger',
+      okText: action,
+      okType: isActive ? 'danger' : 'primary',
       onOk: async () => {
         try {
-          await dispatch(deleteInstituteStudent({
+          await dispatch(toggleStudentStatus({
             studentId: student.id,
             institutionId: selectedInstitute?.id
           })).unwrap();
-          message.success('Student deactivated successfully');
+          message.success(`Student ${actionLower}d successfully`);
         } catch (error) {
-          message.error(typeof error === 'string' ? error : 'Failed to deactivate student');
+          message.error(typeof error === 'string' ? error : `Failed to ${actionLower} student`);
         }
       },
     });
@@ -1203,15 +1210,24 @@ const InstituteDetailView = ({ defaultTab = null }) => {
   // Student action menu
   const getStudentActionItems = useCallback((record) => {
     const hasMentor = record.mentorAssignments?.some(ma => ma.isActive);
+    const isActive = record.user?.active !== false;
     return [
       { key: 'view', icon: <EyeOutlined />, label: 'View Details', onClick: () => handleViewStudentDetails(record) },
       { type: 'divider' },
-      { key: 'mentor', icon: <EditOutlined />, label: hasMentor ? 'Change Mentor' : 'Assign Mentor', onClick: () => handleEditMentor(record) },
-      ...(hasMentor ? [{ key: 'remove-mentor', icon: <DeleteOutlined />, label: 'Remove Mentor', danger: true, onClick: () => handleRemoveMentor(record) }] : []),
-      { type: 'divider' },
-      { key: 'delete', icon: <DeleteOutlined />, label: 'Delete Student', danger: true, onClick: () => handleDeleteStudent(record) },
+      ...(isActive ? [
+        { key: 'mentor', icon: <EditOutlined />, label: hasMentor ? 'Change Mentor' : 'Assign Mentor', onClick: () => handleEditMentor(record) },
+        ...(hasMentor ? [{ key: 'remove-mentor', icon: <DeleteOutlined />, label: 'Remove Mentor', danger: true, onClick: () => handleRemoveMentor(record) }] : []),
+        { type: 'divider' },
+      ] : []),
+      {
+        key: 'toggle-status',
+        icon: isActive ? <DeleteOutlined /> : <CheckCircleOutlined />,
+        label: isActive ? 'Deactivate Student' : 'Activate Student',
+        danger: isActive,
+        onClick: () => handleToggleStudentStatus(record)
+      },
     ];
-  }, [handleEditMentor, handleRemoveMentor, handleViewStudentDetails, handleDeleteStudent]);
+  }, [handleEditMentor, handleRemoveMentor, handleViewStudentDetails, handleToggleStudentStatus]);
 
   // Memoized student columns - Compact with all key info
   const studentColumns = useMemo(() => [
@@ -1222,19 +1238,18 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       width: 160,
       render: (_, record) => (
         <div className="min-w-0">
-          <div className="font-medium text-text-primary text-xs truncate" title={record.name}>
-            {record.name}
+          <div className="font-medium text-text-primary text-xs truncate" title={record.user?.name || record.name}>
+            {record.user?.name || record.name}
           </div>
-          <div className="text-[10px] text-text-tertiary font-mono">{record.rollNumber}</div>
+          <div className="text-[10px] text-text-tertiary font-mono">{record.user?.rollNumber || record.rollNumber}</div>
         </div>
       ),
     },
     {
       title: 'Branch',
-      dataIndex: 'branchName',
       key: 'branchName',
       width: 80,
-      render: (text) => <span className="text-xs text-text-secondary">{text || '-'}</span>,
+      render: (_, record) => <span className="text-xs text-text-secondary">{record.user?.branchName || record.branchName || '-'}</span>,
     },
     {
       title: 'Company',
@@ -1377,6 +1392,20 @@ const InstituteDetailView = ({ defaultTab = null }) => {
               {completed}/{expected}
             </span>
           </Tooltip>
+        );
+      },
+    },
+    {
+      title: 'Status',
+      key: 'status',
+      width: 70,
+      align: 'center',
+      render: (_, record) => {
+        const isActive = record.user?.active !== false;
+        return (
+          <Tag color={isActive ? 'success' : 'default'} className="m-0 rounded text-[10px]">
+            {isActive ? 'Active' : 'Inactive'}
+          </Tag>
         );
       },
     },
@@ -1706,12 +1735,12 @@ const InstituteDetailView = ({ defaultTab = null }) => {
                     title: 'Student', key: 'student', width: 200,
                     render: (_, record) => (
                       <div>
-                        <div className="font-medium text-sm text-text-primary">{record.name}</div>
-                        <div className="text-xs text-text-tertiary">{record.rollNumber}</div>
+                        <div className="font-medium text-sm text-text-primary">{record.user?.name || record.name}</div>
+                        <div className="text-xs text-text-tertiary">{record.user?.rollNumber || record.rollNumber}</div>
                       </div>
                     ),
                   },
-                  { title: 'Branch', dataIndex: 'branch', key: 'branch', width: 100, render: (t) => <Text className="text-xs">{t || '-'}</Text> },
+                  { title: 'Branch', key: 'branch', width: 100, render: (_, record) => <Text className="text-xs">{record.user?.branchName || record.branch || '-'}</Text> },
                   ...(selectedCompany.isSelfIdentifiedCompany ? [
                     { title: 'Job Profile', dataIndex: 'jobProfile', key: 'jobProfile', width: 140, render: (t) => <Text className="text-xs">{t || '-'}</Text> },
                     { title: 'Stipend', dataIndex: 'stipend', key: 'stipend', width: 100, render: (v) => v ? <Text className="text-xs text-success font-medium">₹{Number(v).toLocaleString()}</Text> : '-' },
@@ -1756,8 +1785,8 @@ const InstituteDetailView = ({ defaultTab = null }) => {
             <div className="flex items-center gap-3">
               <Avatar icon={<UserOutlined />} className="bg-background border border-border text-text-secondary" />
               <div>
-                <Text className="text-text-primary font-bold text-lg block leading-tight">{mentorStudent?.name || 'Student'}</Text>
-                <Text className="text-text-tertiary text-xs font-mono">{mentorStudent?.rollNumber}</Text>
+                <Text className="text-text-primary font-bold text-lg block leading-tight">{mentorStudent?.user?.name || mentorStudent?.name || 'Student'}</Text>
+                <Text className="text-text-tertiary text-xs font-mono">{mentorStudent?.user?.rollNumber || mentorStudent?.rollNumber}</Text>
               </div>
             </div>
 

@@ -1241,6 +1241,17 @@ export class StateInstitutionService {
       take: limit,
       orderBy: { createdAt: 'desc' },
       include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            rollNumber: true,
+            phoneNo: true,
+            branchName: true,
+            active: true,
+          },
+        },
         mentorAssignments: {
           where: { isActive: true },
           include: {

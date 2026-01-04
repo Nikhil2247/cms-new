@@ -188,7 +188,11 @@ export class SelfIdentifiedService {
           reviewRemarks: remarks,
         },
         include: {
-          student: true,
+          student: {
+            include: {
+              user: true,
+            },
+          },
           mentor: true,
         },
       });
@@ -245,7 +249,11 @@ export class SelfIdentifiedService {
           reviewRemarks: reason,
         },
         include: {
-          student: true,
+          student: {
+            include: {
+              user: true,
+            },
+          },
           mentor: true,
         },
       });

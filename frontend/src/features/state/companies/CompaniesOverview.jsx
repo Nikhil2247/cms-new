@@ -706,11 +706,11 @@ const CompaniesOverview = () => {
                                                 <Avatar size="small" icon={<UserOutlined />} className="bg-background-tertiary text-text-secondary" />
               
                                                 <div>
-              
-                                                  <div className="font-bold text-sm text-text-primary">{record.name}</div>
-              
-                                                  <div className="text-xs text-text-tertiary">{record.email}</div>
-              
+
+                                                  <div className="font-bold text-sm text-text-primary">{record.user?.name || record.name}</div>
+
+                                                  <div className="text-xs text-text-tertiary">{record.user?.email || record.email}</div>
+
                                                 </div>
               
                                               </div>
@@ -720,31 +720,27 @@ const CompaniesOverview = () => {
                                           },
               
                                           {
-              
+
                                             title: 'Roll No.',
-              
-                                            dataIndex: 'rollNumber',
-              
+
                                             key: 'rollNumber',
-              
+
                                             width: 120,
-              
-                                            render: (t) => <span className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded text-text-secondary">{t}</span>
-              
+
+                                            render: (_, record) => <span className="font-mono text-xs bg-background border border-border px-1.5 py-0.5 rounded text-text-secondary">{record.user?.rollNumber || record.rollNumber}</span>
+
                                           },
               
                                           {
-              
+
                                             title: 'Branch',
-              
-                                            dataIndex: 'branch',
-              
+
                                             key: 'branch',
-              
+
                                             width: 140,
-              
-                                            render: (text) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{text || 'N/A'}</Tag>,
-              
+
+                                            render: (_, record) => <Tag className="rounded-md border-0 bg-background-tertiary text-text-secondary m-0 text-[10px] font-bold uppercase">{record.user?.branchName || record.branch || 'N/A'}</Tag>,
+
                                           },
               
                                           {

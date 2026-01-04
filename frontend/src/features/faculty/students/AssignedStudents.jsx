@@ -58,6 +58,10 @@ const AssignedStudents = React.memo(() => {
             // Keep reference to original wrapper if needed, or just student properties
             assignmentId: item.id !== student.id ? item.id : null,
             // Ensure these fields exist for filtering/sorting - user relation fields
+            name: student?.user?.name || student.name,
+            email: student?.user?.email || student.email,
+            rollNumber: student?.user?.rollNumber || student.rollNumber,
+            phoneNo: student?.user?.phoneNo || student.contact || student.phoneNo,
             branchName: student?.user?.branchName || student.branchName || student.branch?.name || "N/A",
             // Helper for active internship
             activeInternship: student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate),

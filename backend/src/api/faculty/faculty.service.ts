@@ -406,6 +406,7 @@ export class FacultyService {
         include: {
           student: {
             include: {
+              user: true,
               batch: true,
               branch: true,
               Institution: {
@@ -2162,6 +2163,15 @@ export class FacultyService {
         student: {
           include: {
             Institution: true,
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                rollNumber: true,
+                phoneNo: true,
+              },
+            },
           },
         },
       },

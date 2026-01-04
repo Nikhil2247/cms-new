@@ -992,8 +992,12 @@ export class PrincipalService {
           user: {
             select: {
               id: true,
+              name: true,
               email: true,
               active: true,
+              rollNumber: true,
+              phoneNo: true,
+              branchName: true,
             },
           },
           // Include self-identified internship applications when requested
@@ -2025,7 +2029,19 @@ export class PrincipalService {
             isActive: true,
           },
           include: {
-            student: true,
+            student: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    rollNumber: true,
+                    phoneNo: true,
+                  },
+                },
+              },
+            },
             mentor: true,
           },
         }),

@@ -122,8 +122,8 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
           <div className="flex items-center gap-2">
             <ProfileAvatar profileImage={student?.profileImage} size={32} />
             <div>
-              <div className="font-medium text-sm">{student?.name || 'Unknown'}</div>
-              <div className="text-xs text-gray-500">{student?.rollNumber}</div>
+              <div className="font-medium text-sm">{student?.user?.name || student?.name || 'Unknown'}</div>
+              <div className="text-xs text-gray-500">{student?.user?.rollNumber || student?.rollNumber}</div>
             </div>
           </div>
         );
@@ -247,7 +247,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
       >
         {actionModal.letter && (
           <div className="mb-3 text-sm">
-            <p><strong>Student:</strong> {getStudentInfo(actionModal.letter)?.name}</p>
+            <p><strong>Student:</strong> {getStudentInfo(actionModal.letter)?.user?.name || getStudentInfo(actionModal.letter)?.name}</p>
             <p><strong>Company:</strong> {getCompanyInfo(actionModal.letter)?.companyName}</p>
           </div>
         )}

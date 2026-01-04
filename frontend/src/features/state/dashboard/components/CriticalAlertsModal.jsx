@@ -142,8 +142,8 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
       ellipsis: true,
       render: (text, record) => (
         <div>
-          <div className="font-medium text-text-primary">{text}</div>
-          <div className="text-xs text-text-tertiary">Roll: {record.rollNumber}</div>
+          <div className="font-medium text-text-primary">{text || record.user?.name || record.name}</div>
+          <div className="text-xs text-text-tertiary">Roll: {record.user?.rollNumber || record.rollNumber}</div>
         </div>
       ),
     },
@@ -200,8 +200,8 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
       ellipsis: true,
       render: (text, record) => (
         <div>
-          <div className="font-medium text-text-primary">{text}</div>
-          <div className="text-xs text-text-tertiary">Roll: {record.rollNumber}</div>
+          <div className="font-medium text-text-primary">{text || record.user?.name || record.name}</div>
+          <div className="text-xs text-text-tertiary">Roll: {record.user?.rollNumber || record.rollNumber}</div>
         </div>
       ),
     },

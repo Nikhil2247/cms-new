@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -324,6 +325,12 @@ export class StateController {
     return this.stateService.deleteFaculty(id);
   }
 
+  @Patch('faculty/:id/toggle-status')
+  @ApiOperation({ summary: 'Toggle faculty active status (activate/deactivate)' })
+  async toggleFacultyStatus(@Param('id') id: string) {
+    return this.stateService.toggleFacultyStatus(id);
+  }
+
   @Post('staff/:id/reset-password')
   @ApiOperation({ summary: 'Reset staff member password' })
   async resetStaffPassword(@Param('id') id: string) {
@@ -561,5 +568,15 @@ export class StateController {
   ) {
     const deletedBy = req.user?.userId || 'state-admin';
     return this.stateService.deleteStudent(studentId, deletedBy);
+  }
+
+  @Patch('students/:id/toggle-status')
+  @ApiOperation({ summary: 'Toggle student active status (activate/deactivate)' })
+  async toggleStudentStatus(
+    @Param('id') studentId: string,
+    @Req() req,
+  ) {
+    const toggledBy = req.user?.userId || 'state-admin';
+    return this.stateService.toggleStudentStatus(studentId, toggledBy);
   }
 }

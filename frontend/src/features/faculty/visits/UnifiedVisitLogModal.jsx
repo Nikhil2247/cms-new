@@ -335,7 +335,7 @@ const UnifiedVisitLogModal = ({
                 filterOption={(input, option) => option.children?.toLowerCase().includes(input.toLowerCase())}>
                 {students?.map((student) => {
                   const s = student.student || student;
-                  return <Option key={s.id} value={s.id}>{s.name} ({s.rollNumber})</Option>;
+                  return <Option key={s.id} value={s.id}>{s.user?.name || s.name} ({s.user?.rollNumber || s.rollNumber})</Option>;
                 })}
               </Select>
             </Form.Item>

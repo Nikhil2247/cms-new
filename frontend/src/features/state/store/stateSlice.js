@@ -959,6 +959,19 @@ export const deleteInstituteStudent = createAsyncThunk(
   }
 );
 
+// Toggle student status thunk (activate/deactivate)
+export const toggleStudentStatus = createAsyncThunk(
+  'state/toggleStudentStatus',
+  async ({ studentId, institutionId }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.toggleStudentStatus(studentId);
+      return { studentId, institutionId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle student status');
+    }
+  }
+);
+
 // Delete Faculty thunk
 export const deleteInstituteFaculty = createAsyncThunk(
   'state/deleteInstituteFaculty',
@@ -968,6 +981,19 @@ export const deleteInstituteFaculty = createAsyncThunk(
       return { facultyId, institutionId, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete faculty');
+    }
+  }
+);
+
+// Toggle faculty status thunk (activate/deactivate)
+export const toggleFacultyStatus = createAsyncThunk(
+  'state/toggleFacultyStatus',
+  async ({ facultyId, institutionId }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.toggleFacultyStatus(facultyId);
+      return { facultyId, institutionId, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle faculty status');
     }
   }
 );
@@ -1953,6 +1979,37 @@ const stateSlice = createSlice({
           s => s.id !== action.payload.studentId
         );
         state.instituteStudents.total = Math.max(0, state.instituteStudents.total - 1);
+        // Invalidate caches for this institution to force refresh on next visit
+        if (action.payload.institutionId) {
+          if (state.lastFetched.instituteStudents) {
+            delete state.lastFetched.instituteStudents[action.payload.institutionId];
+          }
+          if (state.lastFetched.instituteOverview) {
+            delete state.lastFetched.instituteOverview[action.payload.institutionId];
+          }
+        }
+      })
+
+      // Toggle Student Status (activate/deactivate)
+      .addCase(toggleStudentStatus.fulfilled, (state, action) => {
+        const { studentId, active } = action.payload;
+        // Update student in list with new status
+        const studentIndex = state.instituteStudents.list.findIndex(s => s.id === studentId);
+        if (studentIndex !== -1) {
+          const student = state.instituteStudents.list[studentIndex];
+          state.instituteStudents.list[studentIndex] = {
+            ...student,
+            user: {
+              ...student.user,
+              active: active,
+            },
+            // If deactivated, clear mentor assignments
+            ...(active === false && {
+              mentor: null,
+              mentorAssignments: (student.mentorAssignments || []).map(ma => ({ ...ma, isActive: false })),
+            }),
+          };
+        }
         // Invalidate caches for this institution to force refresh on next visit
         if (action.payload.institutionId) {
           if (state.lastFetched.instituteStudents) {

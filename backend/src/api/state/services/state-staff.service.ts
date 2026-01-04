@@ -342,6 +342,53 @@ export class StateStaffService {
   }
 
   /**
+   * Toggle faculty status (activate/deactivate)
+   * Uses soft delete to preserve mentor assignment history and audit trail
+   */
+  async toggleFacultyStatus(id: string) {
+    const facultyRoles: Role[] = [Role.TEACHER];
+
+    const existingFaculty = await this.prisma.user.findUnique({
+      where: { id, role: { in: facultyRoles } },
+    });
+
+    if (!existingFaculty) {
+      throw new NotFoundException(`Faculty member with ID ${id} not found`);
+    }
+
+    const currentStatus = existingFaculty.active;
+    const newStatus = !currentStatus;
+
+    if (!newStatus) {
+      // Deactivating: deactivate mentor assignments
+      await this.prisma.$transaction([
+        this.prisma.mentorAssignment.updateMany({
+          where: { mentorId: id, isActive: true },
+          data: { isActive: false, deactivatedAt: new Date() },
+        }),
+        this.prisma.user.update({
+          where: { id },
+          data: { active: false },
+        }),
+      ]);
+    } else {
+      // Activating: just activate the user (mentor assignments need to be reassigned)
+      await this.prisma.user.update({
+        where: { id },
+        data: { active: true },
+      });
+    }
+
+    await this.cache.invalidateByTags(['state', 'staff', 'faculty']);
+
+    return {
+      success: true,
+      active: newStatus,
+      message: `Faculty member ${newStatus ? 'activated' : 'deactivated'} successfully`,
+    };
+  }
+
+  /**
    * Reset staff member password
    */
   async resetStaffPassword(id: string) {

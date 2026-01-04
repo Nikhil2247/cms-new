@@ -100,8 +100,8 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
         // Set form values (without profileImage - we handle it separately)
         form.setFieldsValue({
           ...studentData,
-          dob: studentData.dob ? dayjs(studentData.dob) : null,
-          contact: studentData.contact || studentData.phoneNo,
+          dob: (studentData?.user?.dob || studentData.dob) ? dayjs(studentData?.user?.dob || studentData.dob) : null,
+          contact: studentData?.user?.phoneNo || studentData.contact || studentData.phoneNo,
         });
       } else if (open && !isEditMode) {
         form.resetFields();

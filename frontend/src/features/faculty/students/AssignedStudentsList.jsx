@@ -828,7 +828,7 @@ const AssignedStudentsList = () => {
                         }
                         title={
                           <Text className="font-semibold !text-sm !text-gray-600">
-                            {student?.user?.name}
+                            {student?.user?.name || student?.name}
                           </Text>
                         }
                         description={
@@ -839,7 +839,7 @@ const AssignedStudentsList = () => {
                             {getInternshipStatusTag(student)}
                             <div className="mt-1 text-xs text-gray-500">
                               <IdcardOutlined className="mr-1" />
-                              {student?.user?.rollNumber}
+                              {student?.user?.rollNumber || student?.rollNumber}
                               {student.semester && (
                                 <span className="ml-2">| Sem {student.semester}</span>
                               )}
@@ -870,7 +870,7 @@ const AssignedStudentsList = () => {
                   <div className="flex-grow text-center md:text-left">
                     <div className="flex items-center justify-between">
                       <Title level={3} className="mb-0 text-blue-800">
-                        {selectedStudent?.user?.name}
+                        {selectedStudent?.user?.name || selectedStudent?.name}
                       </Title>
                       {/* Three-dot action menu */}
                       <Dropdown
@@ -888,7 +888,7 @@ const AssignedStudentsList = () => {
                     </div>
                     <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
                       <IdcardOutlined className="mr-2" />
-                      {selectedStudent?.user?.rollNumber}
+                      {selectedStudent?.user?.rollNumber || selectedStudent?.rollNumber}
                     </div>
                     <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
                       {(selectedStudent?.user?.branchName || selectedStudent.branchName) && (

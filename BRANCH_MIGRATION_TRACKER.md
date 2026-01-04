@@ -393,3 +393,8 @@ Removed unused ID map entries: `semesters`, `subjects`, `industries`, `internshi
 - **3 student errors**: Duplicate email constraint violations in source MongoDB data
 - **36 skipped notifications**: Missing user references in source data
 - All data integrity maintained through the migration
+
+### Bug Fix (2026-01-04)
+- Fixed migration script to retry User updates without email when email conflict occurs
+- This ensures `active` status and other fields are still synced even when email is duplicate
+- Previously, email conflicts caused the entire User update to fail, leaving `active=true` (default)

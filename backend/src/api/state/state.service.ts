@@ -240,6 +240,10 @@ export class StateService {
     return this.staffService.deleteFaculty(id);
   }
 
+  async toggleFacultyStatus(id: string) {
+    return this.staffService.toggleFacultyStatus(id);
+  }
+
   async resetStaffPassword(id: string) {
     return this.staffService.resetStaffPassword(id);
   }
@@ -396,5 +400,9 @@ export class StateService {
 
   async deleteStudent(studentId: string, deletedBy: string) {
     return this.mentorService.deleteStudent(studentId, deletedBy);
+  }
+
+  async toggleStudentStatus(studentId: string, toggledBy: string) {
+    return this.mentorService.toggleStudentStatus(studentId, toggledBy);
   }
 }

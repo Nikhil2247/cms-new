@@ -721,44 +721,59 @@ async function migrateStudents(mongoDb: any, prisma: PrismaClient, config: Migra
     processedUserIds.set(userId, newId);
 
     // STEP 1: Update User with Student data (User is Single Source of Truth)
+    // Build update data carefully, only including fields that have values
+    const userUpdateData: Record<string, any> = {};
+
+    // Name is required for User, use student name or fallback
+    if (student.name) userUpdateData.name = student.name;
+
+    // Email - only update if student has one and it's valid
+    if (student.email && typeof student.email === 'string' && student.email.includes('@')) {
+      userUpdateData.email = student.email.toLowerCase().trim();
+    }
+
+    // Phone number (contact in old schema → phoneNo in new schema)
+    if (student.contact) userUpdateData.phoneNo = student.contact;
+
+    // Date of birth
+    if (student.dob) userUpdateData.dob = student.dob;
+
+    // Roll number
+    if (student.rollNumber) userUpdateData.rollNumber = student.rollNumber;
+
+    // Branch - set both branchId FK and cached branchName
+    if (branchId) userUpdateData.branchId = branchId;
+    if (student.branchName) userUpdateData.branchName = student.branchName;
+
+    // Institution
+    if (institutionId) userUpdateData.institutionId = institutionId;
+
+    // Active status (isActive in old schema → active in new schema)
+    userUpdateData.active = student.isActive ?? true;
+
     try {
-      // Build update data carefully, only including fields that have values
-      const userUpdateData: Record<string, any> = {};
-
-      // Name is required for User, use student name or fallback
-      if (student.name) userUpdateData.name = student.name;
-
-      // Email - only update if student has one and it's valid
-      if (student.email && typeof student.email === 'string' && student.email.includes('@')) {
-        userUpdateData.email = student.email.toLowerCase().trim();
-      }
-
-      // Phone number (contact in old schema → phoneNo in new schema)
-      if (student.contact) userUpdateData.phoneNo = student.contact;
-
-      // Date of birth
-      if (student.dob) userUpdateData.dob = student.dob;
-
-      // Roll number
-      if (student.rollNumber) userUpdateData.rollNumber = student.rollNumber;
-
-      // Branch - set both branchId FK and cached branchName
-      if (branchId) userUpdateData.branchId = branchId;
-      if (student.branchName) userUpdateData.branchName = student.branchName;
-
-      // Institution
-      if (institutionId) userUpdateData.institutionId = institutionId;
-
-      // Active status (isActive in old schema → active in new schema)
-      userUpdateData.active = student.isActive ?? true;
-
       await prisma.user.update({
         where: { id: userId },
         data: userUpdateData,
       });
     } catch (userError: any) {
-      recordError(stats, mongoStudentId, `User update failed: ${userError.message}`);
-      if (config.verbose) logError(`Failed to update User for student ${student.rollNumber || mongoStudentId}: ${userError.message}`);
+      // If email conflict, retry without email but still update other fields (especially active status)
+      if (userError.code === 'P2002' && userError.message?.includes('email')) {
+        try {
+          const { email, ...dataWithoutEmail } = userUpdateData;
+          await prisma.user.update({
+            where: { id: userId },
+            data: dataWithoutEmail,
+          });
+          if (config.verbose) logWarning(`Updated User for student ${student.rollNumber || mongoStudentId} without email (conflict)`);
+        } catch (retryError: any) {
+          recordError(stats, mongoStudentId, `User update failed (retry): ${retryError.message}`);
+          if (config.verbose) logError(`Failed to update User for student ${student.rollNumber || mongoStudentId}: ${retryError.message}`);
+        }
+      } else {
+        recordError(stats, mongoStudentId, `User update failed: ${userError.message}`);
+        if (config.verbose) logError(`Failed to update User for student ${student.rollNumber || mongoStudentId}: ${userError.message}`);
+      }
       // Continue to try creating student anyway if user update fails
     }
 

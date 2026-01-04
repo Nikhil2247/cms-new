@@ -159,7 +159,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
                   <ProfileAvatar profileImage={student?.profileImage} className="shrink-0" style={{ backgroundColor: token.colorPrimary }} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium truncate mr-2">{student?.name || 'Unknown Student'}</span>
+                      <span className="font-medium truncate mr-2">{student?.user?.name || student?.name || 'Unknown Student'}</span>
                       <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
                         {statusConfig.label}
                       </Tag>
@@ -256,7 +256,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
       >
         {actionModal.letter && (
           <div className="mb-4">
-            <p><strong>Student:</strong> {getStudentInfo(actionModal.letter)?.name || 'Unknown'}</p>
+            <p><strong>Student:</strong> {getStudentInfo(actionModal.letter)?.user?.name || getStudentInfo(actionModal.letter)?.name || 'Unknown'}</p>
             <p><strong>Company:</strong> {getCompanyInfo(actionModal.letter)?.companyName || 'N/A'}</p>
           </div>
         )}

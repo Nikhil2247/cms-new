@@ -392,14 +392,14 @@ const StudentDetailsModal = ({
                     <MailOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
                     <div>
                       <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Email</Text>
-                      <Text className="text-sm break-all">{studentData?.email || 'N/A'}</Text>
+                      <Text className="text-sm break-all">{studentData?.user?.email || studentData?.email || 'N/A'}</Text>
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <PhoneOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
                     <div>
                       <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Phone</Text>
-                      <Text className="text-sm">{studentData?.phone || studentData?.mobileNumber || 'N/A'}</Text>
+                      <Text className="text-sm">{studentData?.user?.phoneNo || studentData?.phone || studentData?.mobileNumber || 'N/A'}</Text>
                     </div>
                   </div>
                   <Divider className="my-2" />
@@ -408,7 +408,7 @@ const StudentDetailsModal = ({
                     <div>
                       <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>College & Branch</Text>
                       <Text className="text-sm block">{studentData?.collegeName || studentData?.college?.name || 'N/A'}</Text>
-                      <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{studentData?.branchName || studentData?.branch?.name || 'N/A'}</Text>
+                      <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{studentData?.user?.branchName || studentData?.branchName || studentData?.branch?.name || 'N/A'}</Text>
                     </div>
                   </div>
                 </div>
@@ -826,9 +826,9 @@ const StudentDetailsModal = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
                 <Title level={5} className="m-0 truncate">
-                  {studentData?.name || 'Student Details'}
+                  {studentData?.user?.name || studentData?.name || 'Student Details'}
                 </Title>
-                <Tag className="m-0 text-[10px] uppercase">{studentData?.rollNumber}</Tag>
+                <Tag className="m-0 text-[10px] uppercase">{studentData?.user?.rollNumber || studentData?.rollNumber}</Tag>
               </div>
               <Text className="text-xs truncate block" style={{ color: token.colorTextSecondary }}>
                 {internshipApp?.companyName ? internshipApp.companyName : 'No Active Internship'}

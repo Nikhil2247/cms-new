@@ -512,6 +512,94 @@ export class StateMentorService {
     };
   }
 
+  /**
+   * Toggle student status (activate/deactivate) - State Directorate only
+   * Preserves all historical data for audit trail
+   * When deactivating: deactivates mentor assignments and internship applications
+   * When activating: reactivates internship applications
+   */
+  async toggleStudentStatus(studentId: string, toggledBy: string) {
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        institutionId: true,
+        user: { select: { id: true, name: true, email: true, active: true } },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const currentStatus = student.user?.active ?? true;
+    const newStatus = !currentStatus;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (!newStatus) {
+        // Deactivating: remove mentor assignments and deactivate internship applications
+        await tx.mentorAssignment.updateMany({
+          where: { studentId },
+          data: { isActive: false },
+        });
+
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: true },
+          data: { isActive: false },
+        });
+      } else {
+        // Activating: reactivate internship applications (mentor assignments stay inactive, need to be reassigned)
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: false },
+          data: { isActive: true },
+        });
+      }
+
+      // Toggle the user's active status
+      if (student.user?.id) {
+        await tx.user.update({
+          where: { id: student.user.id },
+          data: { active: newStatus },
+        });
+      }
+    });
+
+    // Audit student status change
+    this.auditService.log({
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: toggledBy,
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Student ${student.user?.name} (${student.user?.email}) ${newStatus ? 'activated' : 'deactivated'} by State Directorate`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: student.institutionId || undefined,
+      oldValues: {
+        studentId,
+        studentName: student.user?.name,
+        studentEmail: student.user?.email,
+        active: currentStatus,
+      },
+      newValues: {
+        active: newStatus,
+      },
+    }).catch(() => {});
+
+    // Invalidate cache
+    await Promise.all([
+      this.cache.mdel(`student:${studentId}`),
+      this.cache.mdel(`state:institute:${student.institutionId}:students`),
+      this.cache.mdel(`state:institute:${student.institutionId}:overview`),
+    ]);
+
+    return {
+      success: true,
+      active: newStatus,
+      message: `Student ${student.user?.name} has been ${newStatus ? 'activated' : 'deactivated'} successfully`,
+    };
+  }
+
   private getCurrentAcademicYear(): string {
     const now = new Date();
     const year = now.getFullYear();
