@@ -9,6 +9,7 @@ import { AssignMentorDto } from './dto/assign-mentor.dto';
 import { UserService } from '../../domain/user/user.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import { FileStorageService } from '../../infrastructure/file-storage/file-storage.service';
+import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import {
   calculateExpectedMonths,
   getTotalExpectedCount,
@@ -33,6 +34,7 @@ export class PrincipalService {
     private readonly userService: UserService,
     private readonly auditService: AuditService,
     private readonly fileStorageService: FileStorageService,
+    private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
   /**
@@ -5104,6 +5106,12 @@ export class PrincipalService {
         },
       },
     });
+
+    // Recalculate expected counts if dates were updated
+    // This ONLY updates expected counts, never touches submitted/completed counts
+    if (data.startDate !== undefined || data.endDate !== undefined) {
+      await this.expectedCycleService.recalculateExpectedCounts(applicationId);
+    }
 
     // Clear related caches
     await this.cache.invalidateByTags([

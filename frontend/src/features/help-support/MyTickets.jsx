@@ -44,7 +44,7 @@ const { TextArea } = Input;
 // Status options for admin dropdown
 const STATUS_OPTIONS = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'PENDING_USER', 'RESOLVED', 'CLOSED'];
 
-const MyQueries = () => {
+const MyTickets = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [tickets, setTickets] = useState([]);
@@ -803,4 +803,4 @@ const MyQueries = () => {
   );
 };
 
-export default MyQueries;
+export default MyTickets;

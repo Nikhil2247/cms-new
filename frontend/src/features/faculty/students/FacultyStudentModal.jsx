@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, Avatar, Image } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, Avatar, Image, theme } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateStudent, fetchAssignedStudents, selectStudents } from '../store/facultySlice';
 import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, PlusOutlined } from '@ant-design/icons';
@@ -10,6 +10,7 @@ import facultyService from '../../../services/faculty.service';
 
 const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStudentData, onSuccess }) => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
@@ -36,11 +37,6 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
   // Get the actual student object - prefer prop, then found, handle nested structure
   const studentData = propStudentData || foundStudent?.student || foundStudent;
   const isEditMode = !!studentId;
-
-  // Debug logging
-  console.log('FacultyStudentModal - studentId:', studentId);
-  console.log('FacultyStudentModal - propStudentData:', propStudentData);
-  console.log('FacultyStudentModal - studentData:', studentData);
 
   // Use global lookup data
   const { activeBatches, activeBranches, isLoading: lookupLoading } = useLookup({
@@ -161,9 +157,6 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
   };
 
   const onFinish = async (values) => {
-    console.log('Form submitted with values:', values);
-    console.log('Student ID:', studentId);
-
     if (!studentId) {
       message.error('Student ID is missing');
       return;
@@ -202,11 +195,8 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
         }
       }
 
-      console.log('Sending update request with:', { id: studentId, data: formattedValues });
-
       // Use faculty updateStudent action
       const result = await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
-      console.log('Update result:', result);
       message.success('Student updated successfully');
 
       // Pass the updated data to parent for optimistic update
@@ -219,11 +209,6 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleFormSubmit = () => {
-    console.log('Manual form submit triggered');
-    form.submit();
   };
 
   const onFinishFailed = (errorInfo) => {
@@ -274,16 +259,18 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
       onCancel={handleClose}
       footer={null}
       width={900}
-      destroyOnHidden
-      className="student-modal"
+      centered
+      destroyOnClose
+      transitionName=""
+      maskTransitionName=""
     >
       {initialLoading || lookupLoading ? (
-        <div className="flex justify-center items-center py-12">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} onFinishFailed={onFinishFailed} className="max-h-[70vh] overflow-y-auto px-2">
-          <Divider plain><span className="text-primary font-medium">Personal Information</span></Divider>
+        <Form form={form} layout="vertical" onFinish={onFinish} onFinishFailed={onFinishFailed} style={{ maxHeight: '70vh', overflowY: 'auto', padding: '0 8px' }}>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Personal Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -292,7 +279,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                 label="Name"
                 rules={[{ required: true, message: 'Please enter full name' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter full name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter full name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -304,7 +291,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                   { type: 'email', message: 'Please enter valid email' }
                 ]}
               >
-                <Input prefix={<MailOutlined className="text-gray-400" />} placeholder="Enter email" />
+                <Input prefix={<MailOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter email" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -316,7 +303,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                   { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter contact number" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter contact number" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -325,12 +312,12 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                 label="Roll Number"
                 rules={[{ required: true, message: 'Please enter roll number' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter roll number" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter roll number" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Academic Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Academic Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -402,7 +389,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Parent/Guardian Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Parent/Guardian Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -411,7 +398,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                 label="Parent Name"
                 rules={[{ required: true, message: 'Please enter parent name' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter parent name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter parent name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -423,17 +410,17 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                   { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter parent contact" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter parent contact" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="motherName" label="Mother Name">
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter mother name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter mother name" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Personal Details</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Personal Details</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -457,7 +444,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Address Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Address Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -478,7 +465,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                 label="Address"
                 rules={[{ required: true, message: 'Please enter address' }]}
               >
-                <Input prefix={<HomeOutlined className="text-gray-400" />} placeholder="Enter address" />
+                <Input prefix={<HomeOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter address" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -519,31 +506,30 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Profile Image</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Profile Image</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24}>
-              <div className="flex items-center gap-4">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
                 {/* Current Profile Image Preview */}
                 {profileImageUrl && (
-                  <div className="relative group">
+                  <div style={{ position: 'relative' }}>
                     <Image
                       src={profileImageUrl}
                       alt="Profile"
                       width={100}
                       height={100}
-                      className="rounded-lg object-cover border-2 border-gray-200"
-                      style={{ objectFit: 'cover' }}
-                      fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAIpvN4AAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAABtNcJRAAAA/klEQVR4Ae3XAQ0AAADCMPV/egQJ+9kAQdIAAAAAdKsUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU8P8AhQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUI0KKQNWv6+dZgAAAABJRU5ErkJggg=="
+                      style={{ borderRadius: token.borderRadiusLG, objectFit: 'cover', border: `2px solid ${token.colorBorderSecondary}` }}
+                      fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAIpvN4AAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAABtNcJRAAAA/klEQVR4Ae3XAQ0AAADCMPV/egQJ+9kAQdIAAAAAdKsUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU8P8AhQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUI0KKQNWv6+dZgAAAABJRU5ErkJggg=="
                       preview={{
-                        mask: <span className="text-white text-xs">Preview</span>,
+                        mask: <span style={{ color: '#fff', fontSize: 12 }}>Preview</span>,
                       }}
                     />
                     <Button
                       type="text"
                       danger
                       size="small"
-                      className="absolute -top-2 -right-2 bg-white rounded-full shadow-md"
+                      style={{ position: 'absolute', top: -8, right: -8, backgroundColor: token.colorBgContainer, borderRadius: '50%', boxShadow: token.boxShadow }}
                       onClick={handleRemoveImage}
                     >
                       ×
@@ -562,13 +548,13 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
                   <Button
                     icon={profileImageUrl ? <UploadOutlined /> : <PlusOutlined />}
                     loading={uploadingImage}
-                    className="rounded-lg"
+                    style={{ borderRadius: token.borderRadiusLG }}
                   >
                     {profileImageUrl ? 'Change Image' : 'Upload Image'}
                   </Button>
                 </Upload>
 
-                <span className="text-gray-400 text-xs">Max 500KB, JPG/PNG</span>
+                <span style={{ color: token.colorTextDescription, fontSize: 12 }}>Max 500KB, JPG/PNG</span>
               </div>
             </Col>
           </Row>
@@ -579,15 +565,19 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
             title="Profile Image Preview"
             footer={null}
             onCancel={() => setPreviewOpen(false)}
+            centered
+            destroyOnClose
+            transitionName=""
+            maskTransitionName=""
           >
             <img alt="Preview" style={{ width: '100%' }} src={previewImage} />
           </Modal>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-white pb-2">
-            <Button onClick={handleClose} className="rounded-lg">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 16, position: 'sticky', bottom: 0, backgroundColor: token.colorBgContainer, paddingBottom: 8 }}>
+            <Button onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />} className="rounded-lg shadow-md shadow-primary/20">
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
               Update Student
             </Button>
           </div>

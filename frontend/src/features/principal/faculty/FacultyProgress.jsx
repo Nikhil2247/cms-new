@@ -12,7 +12,6 @@ import {
   Col,
   Tabs,
   Badge,
-  Skeleton,
   Descriptions,
   Rate,
   Modal,
@@ -25,6 +24,8 @@ import {
   Calendar,
   Spin,
   List,
+  theme,
+  Grid,
 } from 'antd';
 import {
   UserOutlined,
@@ -48,7 +49,6 @@ import {
   ClockCircleOutlined,
   WarningOutlined,
   IdcardOutlined,
-  BookOutlined,
   BankOutlined,
 } from '@ant-design/icons';
 import { toast } from 'react-hot-toast';
@@ -59,8 +59,12 @@ import ProfileAvatar from '../../../components/common/ProfileAvatar';
 
 const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
+const { useBreakpoint } = Grid;
 
 const FacultyProgress = () => {
+  const { token } = theme.useToken();
+  const screens = useBreakpoint();
+
   // State
   const [loading, setLoading] = useState(true);
   const [facultyList, setFacultyList] = useState([]);
@@ -97,8 +101,8 @@ const FacultyProgress = () => {
       const response = await principalService.getFacultyProgress();
       setFacultyList(response?.faculty || []);
 
-      // Auto-select first faculty if available
-      if (response?.faculty?.length > 0 && !selectedFaculty) {
+      // Auto-select first faculty if available and on desktop
+      if (response?.faculty?.length > 0 && !selectedFaculty && screens.md) {
         setSelectedFaculty(response.faculty[0]);
         fetchFacultyDetails(response.faculty[0].id);
       }
@@ -129,6 +133,16 @@ const FacultyProgress = () => {
     setSelectedFaculty(faculty);
     setFacultyDetails(null);
     fetchFacultyDetails(faculty.id);
+    
+    // On mobile, scroll to details
+    if (!screens.md) {
+      setTimeout(() => {
+        const element = document.getElementById('faculty-details-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
   };
 
   // Debounced search
@@ -169,15 +183,6 @@ const FacultyProgress = () => {
     return visits;
   }, [facultyDetails?.visits, visitStatusFilter, visitDateRange]);
 
-  // Calculate average rating
-  const averageRating = useMemo(() => {
-    const visits = facultyDetails?.visits || [];
-    const ratedVisits = visits.filter((v) => v.overallRating > 0);
-    if (ratedVisits.length === 0) return 0;
-    const sum = ratedVisits.reduce((acc, v) => acc + v.overallRating, 0);
-    return (sum / ratedVisits.length).toFixed(1);
-  }, [facultyDetails?.visits]);
-
   // Handle view report details
   const handleViewReportDetails = (visit) => {
     setSelectedReport(visit);
@@ -188,13 +193,13 @@ const FacultyProgress = () => {
   const getVisitTypeIcon = (type) => {
     switch (type) {
       case 'PHYSICAL':
-        return <CarOutlined className="text-blue-500" />;
+        return <CarOutlined style={{ color: token.colorPrimary }} />;
       case 'VIRTUAL':
-        return <VideoCameraOutlined className="text-purple-500" />;
+        return <VideoCameraOutlined style={{ color: token.colorPurple }} />;
       case 'SCHEDULED':
-        return <ScheduleOutlined className="text-orange-500" />;
+        return <ScheduleOutlined style={{ color: token.colorWarning }} />;
       default:
-        return <EnvironmentOutlined className="text-gray-500" />;
+        return <EnvironmentOutlined style={{ color: token.colorTextDisabled }} />;
     }
   };
 
@@ -277,11 +282,11 @@ const FacultyProgress = () => {
       title: 'Student',
       key: 'student',
       render: (_, record) => (
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ProfileAvatar size={32} profileImage={record.profileImage} />
           <div>
-            <Text className="block font-medium">{record.name}</Text>
-            <Text className="text-xs text-gray-500">{record.rollNumber}</Text>
+            <Text style={{ display: 'block', fontWeight: 500 }}>{record.name}</Text>
+            <Text style={{ fontSize: 12, color: token.colorTextDescription }}>{record.rollNumber}</Text>
           </div>
         </div>
       ),
@@ -291,8 +296,8 @@ const FacultyProgress = () => {
       key: 'batchDept',
       render: (_, record) => (
         <div>
-          <Tag color="blue" className="rounded-md m-0">{record.batch}</Tag>
-          <Text className="block text-xs text-gray-500 mt-1">{record.department}</Text>
+          <Tag color="blue" bordered={false} style={{ margin: 0 }}>{record.batch}</Tag>
+          <Text style={{ display: 'block', fontSize: 12, color: token.colorTextDescription, marginTop: 4 }}>{record.department}</Text>
         </div>
       ),
     },
@@ -302,21 +307,21 @@ const FacultyProgress = () => {
       width: 220,
       render: (_, record) => (
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Text className="block text-sm font-medium">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Text style={{ display: 'block', fontSize: 14, fontWeight: 500 }}>
               {record.companyName || record.internshipTitle || 'N/A'}
             </Text>
-            <Tag color="purple" className="rounded-full text-[9px] uppercase font-bold m-0 px-1.5">
+            <Tag color="purple" bordered={false} style={{ fontSize: 10, fontWeight: 'bold', margin: 0 }}>
               Self-ID
             </Tag>
           </div>
           {record.jobProfile && (
-            <Text className="text-xs text-gray-500 block">{record.jobProfile}</Text>
+            <Text style={{ fontSize: 12, color: token.colorTextDescription, display: 'block' }}>{record.jobProfile}</Text>
           )}
-          <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-400">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: 10, color: token.colorTextDisabled }}>
             {record.internshipDuration && <span>{record.internshipDuration}</span>}
             {record.stipend && (
-              <Tag color="green" className="rounded-full text-[9px] m-0 px-1.5">
+              <Tag color="green" bordered={false} style={{ fontSize: 10, margin: 0 }}>
                 ₹{record.stipend}/mo
               </Tag>
             )}
@@ -346,7 +351,7 @@ const FacultyProgress = () => {
           'NOT_STARTED': 'Not Started',
         };
         const statusKey = status?.toUpperCase?.() || status;
-        return <Tag color={colors[statusKey] || 'default'} className="rounded-full">{labels[statusKey] || status || 'N/A'}</Tag>;
+        return <Tag color={colors[statusKey] || 'default'} bordered={false}>{labels[statusKey] || status || 'N/A'}</Tag>;
       },
     },
     {
@@ -355,7 +360,7 @@ const FacultyProgress = () => {
       key: 'visits',
       align: 'center',
       render: (visits) => (
-        <Badge count={visits || 0} showZero color={visits > 0 ? '#1890ff' : '#ff4d4f'} />
+        <Badge count={visits || 0} showZero color={visits > 0 ? token.colorPrimary : token.colorError} />
       ),
     },
     {
@@ -363,9 +368,9 @@ const FacultyProgress = () => {
       dataIndex: 'lastVisitDate',
       key: 'lastVisit',
       render: (date) => date ? (
-        <Text className="text-sm text-gray-600">{formatDate(date)}</Text>
+        <Text style={{ fontSize: 14, color: token.colorTextSecondary }}>{formatDate(date)}</Text>
       ) : (
-        <Text className="text-xs text-gray-400 italic">No visits</Text>
+        <Text style={{ fontSize: 12, color: token.colorTextDisabled, fontStyle: 'italic' }}>No visits</Text>
       ),
     },
     {
@@ -378,7 +383,7 @@ const FacultyProgress = () => {
             type="text"
             icon={<EditOutlined />}
             onClick={() => handleEditInternship(record)}
-            className="text-orange-500 hover:bg-orange-50"
+            style={{ color: token.colorWarning }}
           />
         </Tooltip>
       ),
@@ -393,9 +398,9 @@ const FacultyProgress = () => {
       key: 'visitDate',
       width: 140,
       render: (date) => (
-        <div className="flex items-center gap-2">
-          <CalendarOutlined className="text-gray-400" />
-          <Text className="font-medium">{formatDate(date)}</Text>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <CalendarOutlined style={{ color: token.colorTextDisabled }} />
+          <Text style={{ fontWeight: 500 }}>{formatDate(date)}</Text>
         </div>
       ),
     },
@@ -407,7 +412,7 @@ const FacultyProgress = () => {
       render: (type) => (
         <Space>
           {getVisitTypeIcon(type)}
-          <Text className="text-sm">{type}</Text>
+          <Text style={{ fontSize: 14 }}>{type}</Text>
         </Space>
       ),
     },
@@ -415,11 +420,11 @@ const FacultyProgress = () => {
       title: 'Student',
       key: 'student',
       render: (_, record) => (
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ProfileAvatar size={28} profileImage={record.studentProfileImage} />
           <div>
-            <Text className="block text-sm">{record.studentName}</Text>
-            <Text className="text-xs text-gray-500">{record.studentRollNumber}</Text>
+            <Text style={{ display: 'block', fontSize: 14 }}>{record.studentName}</Text>
+            <Text style={{ fontSize: 12, color: token.colorTextDescription }}>{record.studentRollNumber}</Text>
           </div>
         </div>
       ),
@@ -430,9 +435,9 @@ const FacultyProgress = () => {
       key: 'company',
       render: (name, record) => (
         <div>
-          <Text className="block text-sm">{name || 'N/A'}</Text>
+          <Text style={{ display: 'block', fontSize: 14 }}>{name || 'N/A'}</Text>
           {record.visitLocation && (
-            <Text className="text-xs text-gray-500 flex items-center gap-1">
+            <Text style={{ fontSize: 12, color: token.colorTextDescription, display: 'flex', alignItems: 'center', gap: 4 }}>
               <EnvironmentOutlined /> {record.visitLocation}
             </Text>
           )}
@@ -445,9 +450,9 @@ const FacultyProgress = () => {
       key: 'rating',
       width: 100,
       render: (rating) => rating ? (
-        <Rate disabled value={rating} count={5} className="text-sm" />
+        <Rate disabled value={rating} count={5} style={{ fontSize: 12 }} />
       ) : (
-        <Text className="text-xs text-gray-400">Not rated</Text>
+        <Text style={{ fontSize: 12, color: token.colorTextDisabled }}>Not rated</Text>
       ),
     },
     {
@@ -456,7 +461,7 @@ const FacultyProgress = () => {
       key: 'status',
       width: 110,
       render: (status) => (
-        <Tag color={getVisitStatusColor(status)} className="rounded-full m-0">
+        <Tag color={getVisitStatusColor(status)} bordered={false} style={{ margin: 0 }}>
           {status || 'Completed'}
         </Tag>
       ),
@@ -471,7 +476,7 @@ const FacultyProgress = () => {
             type="text"
             icon={<EyeOutlined />}
             onClick={() => handleViewReportDetails(record)}
-            className="text-blue-500 hover:bg-blue-50"
+            style={{ color: token.colorPrimary }}
           />
         </Tooltip>
       ),
@@ -486,13 +491,13 @@ const FacultyProgress = () => {
     );
 
     return (
-      <ul className="list-none p-0 m-0">
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
         {dayVisits.map((visit, index) => (
-          <li key={index} className="mb-1">
+          <li key={index} style={{ marginBottom: 4 }}>
             <Badge
               status={visit.status === 'COMPLETED' ? 'success' : visit.status === 'SCHEDULED' ? 'processing' : 'warning'}
               text={
-                <span className="text-xs cursor-pointer" onClick={() => handleViewReportDetails(visit)}>
+                <span style={{ fontSize: 10, cursor: 'pointer' }} onClick={() => handleViewReportDetails(visit)}>
                   {visit.studentName?.split(' ')[0]}
                 </span>
               }
@@ -509,7 +514,7 @@ const FacultyProgress = () => {
       key: 'students',
       label: <span><TeamOutlined /> Assigned Students</span>,
       children: (
-        <div className="p-4">
+        <div style={{ padding: 16 }}>
           <Table
             columns={studentColumns}
             dataSource={facultyDetails?.students || []}
@@ -522,7 +527,7 @@ const FacultyProgress = () => {
             }}
             scroll={{ x: 900 }}
             locale={{
-              emptyText: <Empty description="No students assigned to this faculty" className="py-8" />,
+              emptyText: <Empty description="No students assigned to this faculty" style={{ padding: 32 }} />,
             }}
           />
         </div>
@@ -534,20 +539,20 @@ const FacultyProgress = () => {
         <span>
           <CarOutlined /> Faculty Visits
           {facultyDetails?.visits?.length > 0 && (
-            <Tag color="green" className="ml-2">{facultyDetails.visits.length}</Tag>
+            <Tag color="green" bordered={false} style={{ marginLeft: 8 }}>{facultyDetails.visits.length}</Tag>
           )}
         </span>
       ),
       children: (
-        <div className="p-4 space-y-4">
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Filters */}
-          <Card size="small" className="shadow-sm border-0">
-            <div className="flex flex-wrap gap-3 items-center justify-between">
-              <div className="flex flex-wrap gap-2 items-center">
+          <Card size="small" bordered={false} style={{ backgroundColor: token.colorFillAlter }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
                 <Select
                   value={visitStatusFilter}
                   onChange={setVisitStatusFilter}
-                  className="w-32"
+                  style={{ width: 130 }}
                   size="small"
                   placeholder="Status"
                 >
@@ -561,7 +566,7 @@ const FacultyProgress = () => {
                   value={visitDateRange}
                   onChange={setVisitDateRange}
                   format="DD/MM/YYYY"
-                  className="w-56"
+                  style={{ width: 220 }}
                   size="small"
                   placeholder={['Start', 'End']}
                 />
@@ -573,7 +578,7 @@ const FacultyProgress = () => {
                       setVisitStatusFilter('all');
                       setVisitDateRange(null);
                     }}
-                    className="text-gray-500 hover:text-red-500"
+                    style={{ color: token.colorTextDescription }}
                   >
                     Clear
                   </Button>
@@ -591,25 +596,37 @@ const FacultyProgress = () => {
 
           {/* Monthly Summary */}
           {facultyDetails?.visitSummary && facultyDetails.visitSummary.length > 0 && (
-            <Card size="small" className="shadow-sm border-0">
-              <Text className="text-xs font-semibold text-gray-500 uppercase mb-3 block">
-                <CalendarOutlined className="mr-1.5" />Monthly Summary
+            <Card size="small" bordered={false} style={{ backgroundColor: token.colorBgContainer }}>
+              <Text style={{ fontSize: 12, fontWeight: 600, color: token.colorTextDescription, textTransform: 'uppercase', marginBottom: 12, display: 'block' }}>
+                <CalendarOutlined style={{ marginRight: 6 }} />Monthly Summary
               </Text>
-              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-12 gap-2">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 8 }}>
                 {facultyDetails.visitSummary.map((month, index) => (
-                  <div key={index} className={`p-2 rounded-lg border text-center ${
-                    month.isPast && month.visits === 0
-                      ? 'border-red-200 bg-red-50'
+                  <div key={index} style={{ 
+                    padding: 8, 
+                    borderRadius: token.borderRadius, 
+                    border: `1px solid ${
+                      month.isPast && month.visits === 0
+                        ? token.colorErrorBorder
+                        : month.visits > 0
+                        ? token.colorSuccessBorder
+                        : token.colorBorderSecondary
+                    }`,
+                    textAlign: 'center',
+                    backgroundColor: month.isPast && month.visits === 0
+                      ? token.colorErrorBg
                       : month.visits > 0
-                      ? 'border-green-200 bg-green-50'
-                      : 'border-gray-200 bg-gray-50'
-                  }`}>
-                    <Text className="block text-[10px] font-medium">
+                      ? token.colorSuccessBg
+                      : token.colorFillAlter
+                  }}>
+                    <Text style={{ display: 'block', fontSize: 10, fontWeight: 500 }}>
                       {month.monthName?.substring(0, 3)}
                     </Text>
-                    <span className={`text-sm font-bold ${
-                      month.isPast && month.visits === 0 ? 'text-red-500' : month.visits > 0 ? 'text-green-500' : 'text-gray-400'
-                    }`}>
+                    <span style={{ 
+                      fontSize: 14, 
+                      fontWeight: 'bold', 
+                      color: month.isPast && month.visits === 0 ? token.colorError : month.visits > 0 ? token.colorSuccess : token.colorTextDisabled
+                    }}>
                       {month.visits}
                     </span>
                   </div>
@@ -633,7 +650,7 @@ const FacultyProgress = () => {
               scroll={{ x: 1000 }}
               expandable={{
                 expandedRowRender: (record) => (
-                  <div className="p-4 bg-gray-50 rounded-lg mx-2 my-2">
+                  <div style={{ padding: 16, backgroundColor: token.colorBgLayout, borderRadius: token.borderRadiusLG, margin: 8 }}>
                     <Row gutter={[20, 16]}>
                       <Col xs={24} md={12}>
                         <Descriptions column={1} size="small">
@@ -661,11 +678,11 @@ const FacultyProgress = () => {
                 rowExpandable: () => true,
               }}
               locale={{
-                emptyText: <Empty description="No visits recorded" className="py-8" />,
+                emptyText: <Empty description="No visits recorded" style={{ padding: 32 }} />,
               }}
             />
           ) : (
-            <Card className="shadow-sm border-0">
+            <Card bordered={false}>
               <Calendar
                 cellRender={(current, info) => {
                   if (info.type === 'date') {
@@ -682,11 +699,11 @@ const FacultyProgress = () => {
   ];
 
   return (
-    <div className="p-4">
+    <div style={{ padding: screens.md ? 24 : 12, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
       {/* Header */}
-      <div className="flex flex-wrap justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
-          <Title level={3} className="text-blue-800 !mb-0">
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Title level={3} style={{ color: token.colorTextHeading, margin: 0 }}>
             Faculty Progress Tracking
           </Title>
         </div>
@@ -694,7 +711,6 @@ const FacultyProgress = () => {
           icon={<ReloadOutlined />}
           onClick={handleRefresh}
           loading={loading || detailsLoading}
-          className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
         >
           Refresh
         </Button>
@@ -702,38 +718,40 @@ const FacultyProgress = () => {
 
       <Row gutter={[16, 16]}>
         {/* Faculty List - Left Column */}
-        <Col xs={24} sm={24} md={8} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={8} lg={7} xl={6}>
           <Card
             title={
-              <div className="flex items-center text-blue-800">
-                <TeamOutlined className="mr-2" /> Faculty Directory
-                <Text type="secondary" className="ml-auto text-xs">
+              <div style={{ display: 'flex', alignItems: 'center', color: token.colorPrimary }}>
+                <TeamOutlined style={{ marginRight: 8 }} /> Faculty Directory
+                <Text type="secondary" style={{ marginLeft: 'auto', fontSize: 12 }}>
                   {filteredFaculty.length} faculty
                 </Text>
               </div>
             }
-            className="rounded-lg border-0"
+            bordered={false}
+            style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, height: screens.md ? 'calc(100vh - 120px)' : '50vh', minHeight: 400, display: 'flex', flexDirection: 'column' }}
             styles={{
-              body: { padding: 0, maxHeight: 'calc(80vh - 80px)', overflowY: 'hidden' },
-              header: { borderBottom: '2px solid #e6f7ff', backgroundColor: '#f0f7ff' },
+              body: { padding: 0, overflowY: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' },
+              header: { backgroundColor: token.colorFillAlter, borderBottom: `1px solid ${token.colorBorderSecondary}` },
             }}
           >
-            <div style={{ maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', padding: '0.5rem' }} className="hide-scrollbar">
+            <div style={{ padding: 12, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
               <Input
                 placeholder="Search Faculty..."
-                className="mb-3 rounded-lg"
                 value={searchText}
                 onChange={(e) => debouncedSearch(e.target.value)}
-                prefix={<UserOutlined className="text-gray-400" />}
+                prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />}
                 allowClear
               />
+            </div>
 
+            <div style={{ overflowY: 'auto', padding: 8, flex: 1 }}>
               {loading ? (
-                <div className="flex justify-center items-center h-40">
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 160 }}>
                   <Spin size="small" tip="Loading faculty..." />
                 </div>
               ) : filteredFaculty.length === 0 ? (
-                <Empty description="No faculty found" className="py-8" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                <Empty description="No faculty found" style={{ padding: 32 }} image={Empty.PRESENTED_IMAGE_SIMPLE} />
               ) : (
                 <List
                   itemLayout="horizontal"
@@ -741,36 +759,36 @@ const FacultyProgress = () => {
                   renderItem={(faculty) => (
                     <List.Item
                       onClick={() => handleFacultySelect(faculty)}
-                      className={`cursor-pointer my-2 rounded-xl transition-all duration-300 ease-in-out ${
-                        selectedFaculty?.id === faculty.id
-                          ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-indigo-100 border-l-4 border-l-blue-500 shadow-sm'
-                          : 'hover:bg-gray-100 hover:shadow-md hover:translate-x-1'
-                      }`}
+                      style={{
+                        cursor: 'pointer',
+                        margin: '4px 0',
+                        padding: '8px 12px',
+                        borderRadius: token.borderRadiusLG,
+                        backgroundColor: selectedFaculty?.id === faculty.id ? token.colorPrimaryBg : 'transparent',
+                        borderLeft: `4px solid ${selectedFaculty?.id === faculty.id ? token.colorPrimary : 'transparent'}`,
+                        transition: 'none'
+                      }}
                     >
                       <List.Item.Meta
-                        className="px-3 py-1"
                         avatar={
                           <ProfileAvatar
                             profileImage={faculty.profileImage}
-                            size={50}
-                            className={selectedFaculty?.id === faculty.id
-                              ? 'border-2 border-blue-400'
-                              : 'border border-gray-200 hover:border-gray-300'
-                            }
+                            size={44}
+                            style={{ border: `1px solid ${selectedFaculty?.id === faculty.id ? token.colorPrimary : token.colorBorderSecondary}` }}
                           />
                         }
                         title={
-                          <Text className="font-semibold !text-sm !text-gray-600">
+                          <Text style={{ fontWeight: 600, fontSize: 14 }}>
                             {faculty.name}
                           </Text>
                         }
                         description={
-                          <div>
-                            <Tag color="blue" className="text-xs">
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            <Tag color="blue" bordered={false} style={{ width: 'fit-content' }}>
                               {faculty.assignedCount || 0} Students
                             </Tag>
-                            <div className="mt-1 text-xs text-gray-500">
-                              <IdcardOutlined className="mr-1" />
+                            <div style={{ fontSize: 12, color: token.colorTextDescription }}>
+                              <IdcardOutlined style={{ marginRight: 4 }} />
                               {faculty.designation || 'Faculty'}
                             </div>
                           </div>
@@ -785,49 +803,49 @@ const FacultyProgress = () => {
         </Col>
 
         {/* Faculty Details - Right Column */}
-        <Col xs={24} sm={24} md={16} lg={18} xl={18} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+        <Col xs={24} sm={24} md={16} lg={17} xl={18} id="faculty-details-section">
           {displayFaculty ? (
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: screens.md ? 'calc(100vh - 120px)' : 'auto', overflowY: 'auto', paddingRight: 4 }}>
               {/* Profile Header */}
-              <Card className="border-0 rounded-lg shadow-sm">
-                <div className="flex flex-col md:flex-row items-center gap-6">
+              <Card bordered={false} style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
                   <ProfileAvatar
                     profileImage={displayFaculty.profileImage}
                     size={90}
-                    className="border-4 border-white shadow-lg"
+                    style={{ border: `4px solid ${token.colorBgContainer}`, boxShadow: token.boxShadow }}
                   />
-                  <div className="flex-grow text-center md:text-left">
-                    <Title level={3} className="mb-0 text-blue-800">
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <Title level={3} style={{ margin: 0, color: token.colorTextHeading }}>
                       {displayFaculty.name}
                     </Title>
-                    <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
-                      <IdcardOutlined className="mr-2" />
+                    <div style={{ display: 'flex', alignItems: 'center', color: token.colorTextSecondary, marginBottom: 8 }}>
+                      <IdcardOutlined style={{ marginRight: 8 }} />
                       {displayFaculty.designation || 'Faculty'} • {displayFaculty.employeeId || displayFaculty.email}
                     </div>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                      <Tag color="blue" className="px-3 py-1 rounded-full">
-                        <TeamOutlined className="mr-1" />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <Tag color="blue" bordered={false} className="rounded-full">
+                        <TeamOutlined style={{ marginRight: 4 }} />
                         {stats.totalStudents || displayFaculty.assignedCount || 0} Students
                       </Tag>
-                      <Tag color="green" className="px-3 py-1 rounded-full">
-                        <CheckCircleOutlined className="mr-1" />
+                      <Tag color="green" bordered={false} className="rounded-full">
+                        <CheckCircleOutlined style={{ marginRight: 4 }} />
                         {stats.totalVisits || 0} Total Visits
                       </Tag>
-                      <Tag color="purple" className="px-3 py-1 rounded-full">
-                        <RiseOutlined className="mr-1" />
+                      <Tag color="purple" bordered={false} className="rounded-full">
+                        <RiseOutlined style={{ marginRight: 4 }} />
                         {stats.visitsThisMonth || 0} This Month
                       </Tag>
-                      <Tag color="cyan" className="px-3 py-1 rounded-full">
-                        <ClockCircleOutlined className="mr-1" />
+                      <Tag color="cyan" bordered={false} className="rounded-full">
+                        <ClockCircleOutlined style={{ marginRight: 4 }} />
                         {stats.visitsLastMonth || 0} Last Month
                       </Tag>
-                      <Tag color="orange" className="px-3 py-1 rounded-full">
-                        <ScheduleOutlined className="mr-1" />
+                      <Tag color="orange" bordered={false} className="rounded-full">
+                        <ScheduleOutlined style={{ marginRight: 4 }} />
                         {stats.scheduledNextMonth || 0} Scheduled
                       </Tag>
                       {stats.missedVisits > 0 && (
-                        <Tag color="red" className="px-3 py-1 rounded-full">
-                          <WarningOutlined className="mr-1" />
+                        <Tag color="red" bordered={false} className="rounded-full">
+                          <WarningOutlined style={{ marginRight: 4 }} />
                           {stats.missedVisits} Missed
                         </Tag>
                       )}
@@ -836,64 +854,47 @@ const FacultyProgress = () => {
                 </div>
 
                 {/* Contact Quick Info */}
-                <div className="grid lg:grid-cols-3 gap-4 mt-6 p-3 rounded-lg shadow-sm bg-gray-50">
-                  <div className="flex items-center">
-                    <MailOutlined className="text-blue-500 text-xl mr-3" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginTop: 24, padding: 12, borderRadius: token.borderRadius, backgroundColor: token.colorFillAlter }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <MailOutlined style={{ color: token.colorPrimary, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Email</div>
-                      <div className="text-sm font-medium">{displayFaculty.email || 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Email</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>{displayFaculty.email || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <PhoneOutlined className="text-green-500 text-xl mr-3" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <PhoneOutlined style={{ color: token.colorSuccess, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Contact</div>
-                      <div className="text-sm font-medium">{displayFaculty.phoneNo || displayFaculty.contact || 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Contact</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{displayFaculty.phoneNo || displayFaculty.contact || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <BankOutlined className="text-orange-500 text-xl mr-3" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <BankOutlined style={{ color: token.colorWarning, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Department</div>
-                      <div className="text-sm font-medium">{displayFaculty.branch?.name || displayFaculty.branchName || 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Department</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{displayFaculty.branch?.name || displayFaculty.branchName || 'N/A'}</div>
                     </div>
                   </div>
                 </div>
               </Card>
 
               {/* Detailed Information in Tabs */}
-              <Card className="rounded-lg !mt-3 shadow-sm" styles={{ body: { padding: 0 } }}>
+              <Card bordered={false} style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }} styles={{ body: { padding: 0 } }}>
                 <Tabs
                   activeKey={activeTab}
                   onChange={setActiveTab}
                   items={tabItems}
-                  tabBarStyle={{ padding: '10px 16px 0', marginBottom: 0 }}
-                  className="faculty-tabs"
+                  style={{ padding: '0 16px' }}
                 />
               </Card>
             </div>
           ) : (
-            <Card className="min-h-[75vh] shadow-xl rounded-3xl bg-white/90 backdrop-blur-lg border-0 flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto py-16">
-                <div className="relative mb-8">
-                  <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mb-4 mx-auto">
-                    <UserOutlined className="text-gray-600 text-4xl" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <SearchOutlined className="text-indigo-500 text-sm" />
-                  </div>
-                </div>
-                <Title level={4} className="text-gray-600 mb-4">
-                  Select a Faculty Member
-                </Title>
-                <Text className="text-gray-500 text-base block mb-6">
-                  Choose a faculty from the directory on the left to view detailed progress and student assignments.
-                </Text>
-                <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-4 border-0">
-                  <Text className="text-indigo-700 text-sm">
-                    Tip: Use the search to quickly find specific faculty members
-                  </Text>
-                </Card>
+            <Card style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: token.borderRadiusLG, border: `1px dashed ${token.colorBorder}` }}>
+              <div style={{ textAlign: 'center', maxWidth: 400 }}>
+                <UserOutlined style={{ fontSize: 48, color: token.colorTextDisabled, marginBottom: 16 }} />
+                <Title level={4} style={{ color: token.colorTextSecondary }}>Select a Faculty Member</Title>
+                <Text type="secondary">Choose a faculty from the directory on the left to view detailed progress and student assignments.</Text>
               </div>
             </Card>
           )}
@@ -910,17 +911,19 @@ const FacultyProgress = () => {
         }}
         width={600}
         footer={null}
-        forceRender
-        destroyOnClose={false}
+        centered
+        destroyOnClose
+        transitionName=""
+        maskTransitionName=""
       >
-        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} className="mt-4">
+        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} style={{ marginTop: 16 }}>
           {editStudent && (
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 mb-5">
-              <div className="flex items-center gap-3">
+            <div style={{ padding: 16, borderRadius: token.borderRadiusLG, backgroundColor: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}`, marginBottom: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <ProfileAvatar size={48} profileImage={editStudent.profileImage} />
                 <div>
-                  <Text className="font-bold block text-base">{editStudent.name}</Text>
-                  <Text className="text-gray-600 text-sm">{editStudent.rollNumber}</Text>
+                  <Text style={{ fontWeight: 'bold', display: 'block', fontSize: 16 }}>{editStudent.name}</Text>
+                  <Text style={{ color: token.colorTextSecondary, fontSize: 14 }}>{editStudent.rollNumber}</Text>
                 </div>
               </div>
             </div>
@@ -948,7 +951,7 @@ const FacultyProgress = () => {
               <Form.Item name="stipend" label="Monthly Stipend (₹)">
                 <InputNumber
                   placeholder="Enter stipend"
-                  className="w-full"
+                  style={{ width: '100%' }}
                   min={0}
                   formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                   parser={value => value.replace(/\$\s?|(,*)/g, '')}
@@ -972,8 +975,8 @@ const FacultyProgress = () => {
             </Col>
           </Row>
 
-          <Divider className="my-4" />
-          <div className="flex justify-end gap-3">
+          <Divider style={{ margin: '16px 0' }} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
             <Button onClick={() => { setEditVisible(false); editForm.resetFields(); }}>
               Cancel
             </Button>
@@ -994,30 +997,34 @@ const FacultyProgress = () => {
         }}
         footer={<Button onClick={() => setReportDetailsVisible(false)}>Close</Button>}
         width={720}
+        centered
+        destroyOnClose
+        transitionName=""
+        maskTransitionName=""
       >
         {selectedReport && (
-          <div className="space-y-5 mt-4">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, marginTop: 16 }}>
             {/* Visit Header Card */}
-            <div className="p-4 rounded-xl bg-blue-50 border border-blue-100">
+            <div style={{ padding: 16, borderRadius: token.borderRadiusLG, backgroundColor: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}` }}>
               <Row gutter={[20, 16]}>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Faculty</Text>
-                  <Text className="font-semibold">{selectedFaculty?.name}</Text>
+                  <Text style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', color: token.colorTextDescription, display: 'block', marginBottom: 4 }}>Faculty</Text>
+                  <Text style={{ fontWeight: 600 }}>{selectedFaculty?.name}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Visit Date</Text>
-                  <Text className="font-semibold">{formatDate(selectedReport.visitDate)}</Text>
+                  <Text style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', color: token.colorTextDescription, display: 'block', marginBottom: 4 }}>Visit Date</Text>
+                  <Text style={{ fontWeight: 600 }}>{formatDate(selectedReport.visitDate)}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Student</Text>
-                  <Text className="font-semibold block">{selectedReport.studentName}</Text>
-                  <Text className="text-xs text-gray-500">{selectedReport.studentRollNumber}</Text>
+                  <Text style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', color: token.colorTextDescription, display: 'block', marginBottom: 4 }}>Student</Text>
+                  <Text style={{ fontWeight: 600, display: 'block' }}>{selectedReport.studentName}</Text>
+                  <Text style={{ fontSize: 12, color: token.colorTextDescription }}>{selectedReport.studentRollNumber}</Text>
                 </Col>
                 <Col xs={12} sm={6}>
-                  <Text className="text-[10px] uppercase font-bold text-gray-500 block mb-1">Visit Type</Text>
-                  <div className="flex items-center gap-2">
+                  <Text style={{ fontSize: 10, textTransform: 'uppercase', fontWeight: 'bold', color: token.colorTextDescription, display: 'block', marginBottom: 4 }}>Visit Type</Text>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     {getVisitTypeIcon(selectedReport.visitType)}
-                    <Text className="font-semibold">{selectedReport.visitType}</Text>
+                    <Text style={{ fontWeight: 600 }}>{selectedReport.visitType}</Text>
                   </div>
                 </Col>
               </Row>
@@ -1029,37 +1036,37 @@ const FacultyProgress = () => {
               <Descriptions.Item label="Location">{selectedReport.visitLocation || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Duration">{selectedReport.visitDuration || 'N/A'}</Descriptions.Item>
               <Descriptions.Item label="Status">
-                <Tag color={getVisitStatusColor(selectedReport.status)} className="rounded-full">
+                <Tag color={getVisitStatusColor(selectedReport.status)} bordered={false} style={{ margin: 0 }}>
                   {selectedReport.status || 'Completed'}
                 </Tag>
               </Descriptions.Item>
               <Descriptions.Item label="Overall Rating" span={2}>
                 {selectedReport.overallRating ? (
-                  <div className="flex items-center gap-3">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <Rate disabled value={selectedReport.overallRating} />
-                    <span className="text-sm text-gray-500">({selectedReport.overallRating}/5)</span>
+                    <span style={{ fontSize: 14, color: token.colorTextDescription }}>({selectedReport.overallRating}/5)</span>
                   </div>
                 ) : (
-                  <Text className="text-gray-400 italic">Not rated</Text>
+                  <Text style={{ color: token.colorTextDisabled, fontStyle: 'italic' }}>Not rated</Text>
                 )}
               </Descriptions.Item>
               <Descriptions.Item label="Title of Project/Work" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.titleOfProjectWork || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.titleOfProjectWork || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Assistance Required" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.assistanceRequiredFromInstitute || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.assistanceRequiredFromInstitute || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Response from Organisation" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.responseFromOrganisation || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.responseFromOrganisation || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Supervisor Remarks" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.remarksOfOrganisationSupervisor || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.remarksOfOrganisationSupervisor || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Observations" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.observationsAboutStudent || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.observationsAboutStudent || 'N/A'}</div>
               </Descriptions.Item>
               <Descriptions.Item label="Feedback Shared" span={2}>
-                <div className="whitespace-pre-wrap text-sm">{selectedReport.feedbackSharedWithStudent || 'N/A'}</div>
+                <div style={{ whiteSpace: 'pre-wrap', fontSize: 14 }}>{selectedReport.feedbackSharedWithStudent || 'N/A'}</div>
               </Descriptions.Item>
             </Descriptions>
           </div>

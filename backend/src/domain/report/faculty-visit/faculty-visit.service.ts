@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { Role, VisitType, VisitLogStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
+import { ExpectedCycleService } from '../../internship/expected-cycle/expected-cycle.service';
 import {
   calculateExpectedMonths,
   MonthlyCycle,
@@ -13,20 +14,8 @@ import {
 // Types for visit status
 export type VisitStatusType = 'UPCOMING' | 'PENDING' | 'OVERDUE' | 'COMPLETED';
 
-/**
- * Visit period now based on calendar months (aligned with monthly cycle system)
- * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V
- */
-interface VisitPeriod {
-  monthNumber: number; // 1-12
-  month: number; // Same as monthNumber for backward compatibility
-  year: number;
-  requiredByDate: Date; // Last day of month at 11:59:59 PM (NO grace period)
-  monthStartDate: Date; // First day of month
-  monthEndDate: Date; // Last day of month
-  isPartialMonth: boolean; // true if <=10 days in month
-  daysInMonth: number;
-}
+// REMOVED: VisitPeriod interface - was used by removed generateExpectedVisits function
+// Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
 export interface VisitWithStatus {
   id: string;
@@ -42,44 +31,8 @@ export interface VisitWithStatus {
   isOverdue: boolean;
 }
 
-/**
- * Calculate expected visit periods for internship
- *
- * UPDATED: Now uses calendar months (aligned with monthly cycle system)
- * @see COMPLIANCE_CALCULATION_ANALYSIS.md Section V
- *
- * Example (NO grace period for visits):
- * - Internship Start: Jan 15, 2025
- * - January: 16 days (>10) -> Visit due Jan 31 11:59:59 PM
- * - February: 28 days -> Visit due Feb 28 11:59:59 PM
- * - March: 31 days -> Visit due Mar 31 11:59:59 PM
- */
-function calculateExpectedVisitPeriods(startDate: Date, endDate: Date): VisitPeriod[] {
-  const months = calculateExpectedMonths(startDate, endDate);
-
-  return months.map((month: MonthlyCycle) => {
-    // Calculate first day of month
-    const monthStartDate = new Date(month.year, month.monthNumber - 1, 1);
-    monthStartDate.setHours(0, 0, 0, 0);
-
-    // Calculate last day of month
-    const monthEndDate = new Date(month.year, month.monthNumber, 0);
-    monthEndDate.setHours(23, 59, 59, 999);
-
-    return {
-      monthNumber: month.monthNumber,
-      // For backward compatibility
-      month: month.monthNumber,
-      year: month.year,
-      // Visit is due on the last day of the month (NO grace period)
-      requiredByDate: month.visitDueDate,
-      monthStartDate,
-      monthEndDate,
-      isPartialMonth: month.daysInMonth <= MONTHLY_CYCLE.MIN_DAYS_FOR_INCLUSION,
-      daysInMonth: month.daysInMonth,
-    };
-  });
-}
+// REMOVED: calculateExpectedVisitPeriods function - was used by removed generateExpectedVisits
+// Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
 /**
  * Get visit submission status based on calendar months
@@ -174,6 +127,7 @@ export class FacultyVisitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: CacheService,
+    private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
   async createVisitLog(
@@ -225,6 +179,8 @@ export class FacultyVisitService {
         );
       }
 
+      // When faculty logs a visit, it's an actual completed visit (not scheduled)
+      // Explicitly set status to COMPLETED to match the counter increment
       const visitLog = await this.prisma.facultyVisitLog.create({
         data: {
           facultyId,
@@ -241,6 +197,7 @@ export class FacultyVisitService {
           nextVisitDate: data.nextVisitDate,
           visitPhotos: data.visitPhotos ?? [],
           filesUrl: data.filesUrl,
+          status: VisitLogStatus.COMPLETED, // Explicitly mark as completed since this is an actual logged visit
         },
         include: {
           faculty: { select: { id: true, name: true, designation: true } },
@@ -251,6 +208,9 @@ export class FacultyVisitService {
           },
         },
       });
+
+      // Increment the completed visits counter
+      await this.expectedCycleService.incrementVisitCount(applicationId);
 
       // Invalidate cache (parallel)
       await Promise.all([
@@ -388,7 +348,7 @@ export class FacultyVisitService {
 
       const visitLog = await this.prisma.facultyVisitLog.findUnique({
         where: { id },
-        include: { application: { select: { studentId: true } } },
+        include: { application: { select: { id: true, studentId: true } } },
       });
 
       if (!visitLog) {
@@ -398,6 +358,11 @@ export class FacultyVisitService {
       await this.prisma.facultyVisitLog.delete({
         where: { id },
       });
+
+      // Decrement counter only if this was a completed visit
+      if (visitLog.status === VisitLogStatus.COMPLETED) {
+        await this.expectedCycleService.decrementVisitCount(visitLog.application.id);
+      }
 
       // Invalidate cache (parallel)
       await Promise.all([
@@ -455,105 +420,10 @@ export class FacultyVisitService {
     }
   }
 
-  /**
-   * Generate expected monthly visits for an application
-   * Called when mentor is assigned or internship is approved
-   */
-  async generateExpectedVisits(applicationId: string) {
-    try {
-      this.logger.log(`Generating expected visits for application ${applicationId}`);
-
-      // Get application with dates
-      const application = await this.prisma.internshipApplication.findUnique({
-        where: { id: applicationId },
-        select: {
-          id: true,
-          startDate: true,
-          endDate: true,
-          mentorId: true,
-        },
-      });
-
-      if (!application) {
-        throw new NotFoundException('Application not found');
-      }
-
-      // Use application dates
-      const startDate = application.startDate;
-      const endDate = application.endDate;
-
-      if (!startDate || !endDate) {
-        this.logger.warn(`Application ${applicationId} has no start/end dates, skipping visit generation`);
-        return { count: 0, visits: [] };
-      }
-
-      // Calculate expected visit periods
-      const periods = calculateExpectedVisitPeriods(new Date(startDate), new Date(endDate));
-
-      // Check for existing visits
-      const existingVisits = await this.prisma.facultyVisitLog.findMany({
-        where: { applicationId },
-        select: { visitMonth: true, visitYear: true },
-      });
-
-      const existingPeriods = new Set(
-        existingVisits.map((v) => `${v.visitMonth}-${v.visitYear}`)
-      );
-
-      // Create missing visit records
-      const newVisits = [];
-      for (const period of periods) {
-        const key = `${period.month}-${period.year}`;
-        if (!existingPeriods.has(key)) {
-          const visitData: any = {
-            applicationId,
-            visitMonth: period.month,
-            visitYear: period.year,
-            requiredByDate: period.requiredByDate,
-            isMonthlyVisit: true,
-            status: VisitLogStatus.SCHEDULED,
-            visitNumber: 0, // Will be updated when visit is logged
-          };
-
-          // Only add facultyId if mentor is assigned
-          if (application.mentorId) {
-            visitData.facultyId = application.mentorId;
-          }
-
-          newVisits.push(visitData);
-        }
-      }
-
-      // Batch create
-      if (newVisits.length > 0) {
-        await this.prisma.facultyVisitLog.createMany({
-          data: newVisits,
-        });
-      }
-
-      // Update application with expected visits count
-      await this.prisma.internshipApplication.update({
-        where: { id: applicationId },
-        data: { totalExpectedVisits: periods.length },
-      });
-
-      // Invalidate cache
-      if (application.mentorId) {
-        await this.cache.del(`visits:faculty:${application.mentorId}`);
-      }
-
-      this.logger.log(`Generated ${newVisits.length} new expected visits for application ${applicationId}`);
-
-      return {
-        count: newVisits.length,
-        total: periods.length,
-        visits: newVisits,
-      };
-    } catch (error) {
-      this.logger.error(`Failed to generate expected visits: ${error.message}`, error.stack);
-      throw error;
-    }
-  }
+  // REMOVED: generateExpectedVisits function - was creating SCHEDULED placeholder records
+  // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
+  // and stored in InternshipApplication.totalExpectedVisits and completedVisitsCount
+  // Actual visits are logged via createVisitLog or completeMonthlyVisit when faculty completes a visit
 
   /**
    * Get monthly visits with status for an application
@@ -641,17 +511,21 @@ export class FacultyVisitService {
 
       const visit = await this.prisma.facultyVisitLog.findUnique({
         where: { id: visitId },
-        include: { application: { select: { studentId: true } } },
+        include: { application: { select: { id: true, studentId: true } } },
       });
 
       if (!visit) {
         throw new NotFoundException('Visit not found');
       }
 
+      // Check if visit was already completed (to avoid double counting)
+      const wasAlreadyCompleted = visit.status === VisitLogStatus.COMPLETED;
+
       const updated = await this.prisma.facultyVisitLog.update({
         where: { id: visitId },
         data: {
           visitDate: data.visitDate,
+          
           visitType: data.visitType,
           visitLocation: data.visitLocation,
           visitDuration: data.visitDuration,
@@ -673,6 +547,11 @@ export class FacultyVisitService {
           },
         },
       });
+
+      // Increment counter only if visit wasn't already completed
+      if (!wasAlreadyCompleted) {
+        await this.expectedCycleService.incrementVisitCount(visit.application.id);
+      }
 
       // Invalidate cache
       await Promise.all([

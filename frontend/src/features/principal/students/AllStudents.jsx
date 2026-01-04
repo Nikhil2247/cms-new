@@ -360,7 +360,7 @@ const AllStudents = () => {
       key: '1',
       label: <span><UserOutlined /> Personal Info</span>,
       children: displayStudent && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, padding: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24, padding: 16 }}>
           <Card title="Basic Information" bordered={false} style={{ backgroundColor: token.colorBgLayout }} size="small">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
               <div style={{ color: token.colorTextSecondary }}>Gender</div>
@@ -432,7 +432,7 @@ const AllStudents = () => {
       children: (
         <div style={{ padding: 16 }}>
           {studentDocuments?.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16 }}>
               {studentDocuments.map((doc) => (
                 <Card
                   key={doc.id}
@@ -634,7 +634,7 @@ const AllStudents = () => {
               ))}
             </div>
           ) : (
-            <Empty description="No internship applications yet" style={{ padding: 48 }} />
+            <Empty description="No internship applications yet" className="py-8" />
           )}
         </div>
       ),
@@ -642,8 +642,8 @@ const AllStudents = () => {
   ];
 
   return (
-    <div style={{ padding: 24, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div style={{ padding: screens.md ? 24 : 12, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16 }}>
         <Title level={3} style={{ color: token.colorTextHeading, margin: 0 }}>
           Student Management
         </Title>
@@ -662,7 +662,7 @@ const AllStudents = () => {
               </div>
             }
             bordered={false}
-            style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}
+            style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, height: screens.md ? 'calc(100vh - 120px)' : '50vh', minHeight: 400, display: 'flex', flexDirection: 'column' }}
             styles={{
               body: { padding: 0, overflowY: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' },
               header: { backgroundColor: token.colorFillAlter, borderBottom: `1px solid ${token.colorBorderSecondary}` },
@@ -786,9 +786,9 @@ const AllStudents = () => {
         </Col>
 
         {/* Student Details - Right Column */}
-        <Col xs={24} sm={24} md={16} lg={17} xl={18}>
+        <Col xs={24} sm={24} md={16} lg={17} xl={18} id="student-details-section">
           {displayStudent ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: screens.md ? 'calc(100vh - 120px)' : 'auto', overflowY: 'auto', paddingRight: 4 }}>
               {/* Profile Header */}
               <Card
                 bordered={false}

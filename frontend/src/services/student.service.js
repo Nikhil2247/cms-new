@@ -165,12 +165,11 @@ export const studentService = {
   },
 
   // =====================
-  // Technical Queries
+  // Support Tickets - Use helpSupportService instead
   // =====================
-  async submitTechnicalQuery(data) {
-    const response = await API.post('/student/technical-queries', data);
-    return response.data;
-  },
+  // REMOVED: submitTechnicalQuery - Students should use helpSupportService.createTicket()
+  // POST /support/tickets - Create ticket (all authenticated users)
+  // GET /support/tickets/my-tickets - Get user's own tickets
 
   // =====================
   // Mentor

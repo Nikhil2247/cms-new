@@ -3,6 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { CacheService } from '../../core/cache/cache.service';
 import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
+import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import { Prisma, ApplicationStatus, InternshipPhase, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
 import {
@@ -22,24 +23,8 @@ const MONTH_NAMES = [
 // Report submission status types
 type ReportSubmissionStatus = 'NOT_YET_DUE' | 'CAN_SUBMIT' | 'OVERDUE' | 'SUBMITTED' | 'APPROVED';
 
-/**
- * Report period based on calendar months
- * Uses the monthly cycle system where reports are due on the 5th of the following month
- * @see monthly-cycle.util.ts
- */
-interface ReportPeriod {
-  monthNumber: number; // 1-12
-  month: number; // For backward compatibility (same as monthNumber)
-  year: number;
-  periodStartDate: Date; // First day of month
-  periodEndDate: Date; // Last day of month
-  submissionWindowStart: Date; // First day of next month
-  submissionWindowEnd: Date; // 5th of next month (reportDueDate)
-  dueDate: Date;
-  isPartialMonth: boolean; // True if daysInMonth < full month
-  isFinalReport: boolean;
-  daysInMonth: number;
-}
+// REMOVED: ReportPeriod interface - was used by removed generateExpectedReports function
+// Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
 @Injectable()
 export class StudentService {
@@ -49,59 +34,11 @@ export class StudentService {
     private readonly redisCache: CacheService,
     private readonly facultyVisitService: FacultyVisitService,
     private readonly auditService: AuditService,
+    private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
-  /**
-   * Helper: Calculate all expected report periods for an internship
-   *
-   * Uses calendar months for report periods
-   * - Month Inclusion Rule: Both first and last months require >10 days to be included
-   * - Report Due Date: 5th of the next month
-   *
-   * Example:
-   * - Internship: Jan 15 - May 15
-   * - January: 16 days (>10) -> Report due Feb 5
-   * - February: 28 days -> Report due Mar 5
-   * - March: 31 days -> Report due Apr 5
-   * - April: 30 days -> Report due May 5
-   * - May: 15 days (>10) -> Report due Jun 5
-   */
-  private calculateExpectedReportPeriods(startDate: Date, endDate: Date): ReportPeriod[] {
-    const months = calculateExpectedMonths(startDate, endDate);
-
-    return months.map((month: MonthlyCycle) => {
-      // Calculate first day of the month
-      const periodStartDate = new Date(month.year, month.monthNumber - 1, 1);
-      periodStartDate.setHours(0, 0, 0, 0);
-
-      // Calculate last day of the month
-      const periodEndDate = new Date(month.year, month.monthNumber, 0);
-      periodEndDate.setHours(23, 59, 59, 999);
-
-      // Submission window starts on first day of next month
-      const nextMonth = month.monthNumber === 12 ? 1 : month.monthNumber + 1;
-      const nextYear = month.monthNumber === 12 ? month.year + 1 : month.year;
-      const submissionWindowStart = new Date(nextYear, nextMonth - 1, 1);
-      submissionWindowStart.setHours(0, 0, 0, 0);
-
-      // Get total days in the full month for partial month check
-      const totalDaysInFullMonth = new Date(month.year, month.monthNumber, 0).getDate();
-
-      return {
-        monthNumber: month.monthNumber,
-        month: month.monthNumber, // For backward compatibility
-        year: month.year,
-        periodStartDate,
-        periodEndDate,
-        submissionWindowStart,
-        submissionWindowEnd: month.reportDueDate,
-        dueDate: month.reportDueDate,
-        isPartialMonth: month.daysInMonth < totalDaysInFullMonth,
-        isFinalReport: month.isLastMonth,
-        daysInMonth: month.daysInMonth,
-      };
-    });
-  }
+  // REMOVED: calculateExpectedReportPeriods function - was used by removed generateExpectedReports
+  // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
 
   /**
    * Helper: Get submission status for a report
@@ -1254,6 +1191,10 @@ export class StudentService {
 
       await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
 
+      // Increment submitted reports counter
+      // Note: We know status is not APPROVED here (checked earlier on line 1143)
+      await this.expectedCycleService.incrementReportCount(reportDto.applicationId);
+
       return {
         ...updated,
         message: 'Report submitted and auto-approved successfully',
@@ -1310,6 +1251,9 @@ export class StudentService {
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
+
+    // Increment submitted reports counter for new report
+    await this.expectedCycleService.incrementReportCount(reportDto.applicationId);
 
     return {
       ...report,
@@ -1406,11 +1350,6 @@ export class StudentService {
       throw new NotFoundException('Monthly report not found');
     }
 
-    // Only allow deletion of non-approved reports
-    if (existing.status === MonthlyReportStatus.APPROVED) {
-      throw new BadRequestException('Approved reports cannot be deleted');
-    }
-
     // Soft delete instead of hard delete
     await this.prisma.monthlyReport.update({
       where: { id },
@@ -1419,6 +1358,12 @@ export class StudentService {
         deletedAt: new Date(),
       },
     });
+
+    // Decrement the submitted reports counter ONLY if report was APPROVED
+    // DRAFT/SUBMITTED/REJECTED reports were never counted, so don't decrement
+    if (existing.applicationId && existing.status === MonthlyReportStatus.APPROVED) {
+      await this.expectedCycleService.decrementReportCount(existing.applicationId);
+    }
 
     // Audit monthly report deletion
     this.auditService.log({
@@ -1834,142 +1779,14 @@ export class StudentService {
     };
   }
 
-  /**
-   * Submit technical query
-   */
-  async submitTechnicalQuery(userId: string, queryDto: {
-    title?: string;
-    description?: string;
-    priority?: string;
-    attachments?: string[];
-  }) {
-    const student = await this.prisma.student.findUnique({
-      where: { userId },
-      include: { user: true },
-    });
+  // Support Tickets: Students should use SupportTicketService via /support/tickets endpoints
+  // POST /support/tickets - Create ticket (all authenticated users)
+  // GET /support/tickets/my-tickets - Get user's own tickets
 
-    if (!student) {
-      throw new NotFoundException('Student not found');
-    }
-
-    const query = await this.prisma.technicalQuery.create({
-      data: {
-        userId: student.userId,
-        title: queryDto.title,
-        description: queryDto.description,
-        priority: (queryDto.priority as any) || 'MEDIUM',
-        attachments: queryDto.attachments || [],
-        status: 'OPEN',
-        institutionId: student.institutionId,
-      },
-    });
-
-    // Audit technical query submission
-    this.auditService.log({
-      action: AuditAction.TECHNICAL_QUERY_SUBMIT,
-      entityType: 'TechnicalQuery',
-      entityId: query.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Technical query submitted: ${queryDto.title || 'Untitled'}`,
-      category: AuditCategory.SUPPORT,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        queryId: query.id,
-        title: queryDto.title,
-        priority: queryDto.priority || 'MEDIUM',
-        status: 'OPEN',
-      },
-    }).catch(() => {});
-
-    return query;
-  }
-
-  /**
-   * Generate expected reports for an application
-   * Called when internship starts or application is approved
-   */
-  async generateExpectedReports(applicationId: string) {
-    const application = await this.prisma.internshipApplication.findUnique({
-      where: { id: applicationId },
-      include: { student: true },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Application not found');
-    }
-
-    // Check if reports already generated
-    if (application.reportsGenerated) {
-      return { message: 'Reports already generated', count: 0 };
-    }
-
-    // Get start and end dates
-    const startDate = application.startDate || application.joiningDate;
-    const endDate = application.endDate || application.completionDate;
-
-    if (!startDate || !endDate) {
-      throw new BadRequestException('Start date and end date are required to generate reports');
-    }
-
-    // Calculate expected periods
-    const periods = this.calculateExpectedReportPeriods(startDate, endDate);
-
-    // Create DRAFT reports for each period
-    const createdReports = [];
-    for (const period of periods) {
-      // Check if report already exists
-      const existing = await this.prisma.monthlyReport.findFirst({
-        where: {
-          applicationId,
-          reportMonth: period.month,
-          reportYear: period.year,
-          isDeleted: false,
-        },
-      });
-
-      if (!existing) {
-        const report = await this.prisma.monthlyReport.create({
-          data: {
-            applicationId,
-            studentId: application.studentId,
-            reportMonth: period.month,
-            reportYear: period.year,
-            monthName: MONTH_NAMES[period.month - 1],
-            status: MonthlyReportStatus.DRAFT,
-            periodStartDate: period.periodStartDate,
-            periodEndDate: period.periodEndDate,
-            submissionWindowStart: period.submissionWindowStart,
-            submissionWindowEnd: period.submissionWindowEnd,
-            dueDate: period.dueDate,
-            isPartialMonth: period.isPartialMonth,
-            isFinalReport: period.isFinalReport,
-          },
-        });
-        createdReports.push(report);
-      }
-    }
-
-    // Update application to mark reports as generated
-    await this.prisma.internshipApplication.update({
-      where: { id: applicationId },
-      data: {
-        reportsGenerated: true,
-        totalExpectedReports: periods.length,
-      },
-    });
-
-    await this.cache.invalidateByTags(['reports', `student:${application.studentId}`]);
-
-    return {
-      message: `Generated ${createdReports.length} expected reports`,
-      count: createdReports.length,
-      totalExpected: periods.length,
-      reports: createdReports,
-    };
-  }
+  // REMOVED: generateExpectedReports function
+  // Legacy system that created DRAFT records has been replaced by counter-based tracking
+  // Expected counts are now calculated via ExpectedCycleService.recalculateExpectedCounts()
+  // when internship is created (self-identified submission) or dates are updated
 
   /**
    * Get monthly reports with submission status for an application
@@ -2280,12 +2097,9 @@ export class StudentService {
     return this.facultyVisitService.getMonthlyVisitStatus(applicationId);
   }
 
-  /**
-   * Generate expected faculty visits for an application
-   */
-  async generateExpectedVisits(applicationId: string) {
-    return this.facultyVisitService.generateExpectedVisits(applicationId);
-  }
+  // REMOVED: generateExpectedVisits function - was a wrapper for legacy FacultyVisitService.generateExpectedVisits
+  // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
+  // and stored in InternshipApplication.totalExpectedVisits and completedVisitsCount
 
   /**
    * Get the assigned mentor for the student

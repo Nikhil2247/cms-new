@@ -3,6 +3,7 @@ import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
 import { Prisma, ApplicationStatus, MonthlyReportStatus, AuditAction, AuditCategory, AuditSeverity, Role, InternshipPhase } from '../../generated/prisma/client';
 import { AuditService } from '../../infrastructure/audit/audit.service';
+import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
 import {
   calculateExpectedMonths,
   getTotalExpectedCount,
@@ -18,6 +19,7 @@ export class FacultyService {
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
     private readonly auditService: AuditService,
+    private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
   /**
@@ -1482,6 +1484,12 @@ export class FacultyService {
 
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+
+    // Recalculate expected counts if dates were updated
+    // This ONLY updates expected counts, never touches submitted/completed counts
+    if (updateDto.startDate || updateDto.endDate) {
+      await this.expectedCycleService.recalculateExpectedCounts(id);
+    }
 
     // Audit internship update
     this.auditService.log({

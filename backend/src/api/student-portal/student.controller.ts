@@ -272,15 +272,9 @@ export class StudentController {
     return this.studentService.getMonthlyReportsWithStatus(req.user.userId, applicationId);
   }
 
-  @Post('applications/:id/generate-reports')
-  @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Generate expected reports for an application' })
-  @ApiResponse({ status: 201, description: 'Reports generated successfully' })
-  async generateApplicationReports(@Req() req, @Param('id') applicationId: string) {
-    // First verify ownership
-    await this.studentService.getApplicationDetails(req.user.userId, applicationId);
-    return this.studentService.generateExpectedReports(applicationId);
-  }
+  // REMOVED: generateApplicationReports endpoint
+  // Legacy system that created DRAFT records has been replaced by counter-based tracking
+  // Expected counts are now calculated when internship is created/updated via ExpectedCycleService
 
   @Post('monthly-reports/upload')
   @Roles(Role.STUDENT)
@@ -425,13 +419,9 @@ export class StudentController {
     });
   }
 
-  @Post('technical-queries')
-  @Roles(Role.STUDENT)
-  @ApiOperation({ summary: 'Submit technical query' })
-  @ApiResponse({ status: 201, description: 'Technical query submitted successfully' })
-  async submitTechnicalQuery(@Req() req, @Body() queryDto: any) {
-    return this.studentService.submitTechnicalQuery(req.user.userId, queryDto);
-  }
+  // Support Tickets: Students should use /support/tickets endpoints
+  // POST /support/tickets - Create ticket (all authenticated users)
+  // GET /support/tickets/my-tickets - Get user's own tickets
 
   // Mentor
   @Get('my-mentor')

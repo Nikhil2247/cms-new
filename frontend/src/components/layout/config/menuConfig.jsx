@@ -253,7 +253,7 @@ export const menuConfig = {
     title: 'Support',
     icon: <CustomerServiceOutlined />,
     items: [
-      { key: 'technical-queries', label: 'Queries', icon: <ExclamationCircleOutlined />, path: '/app/admin/queries' },
+      { key: 'support-tickets', label: 'Support Tickets', icon: <CustomerServiceOutlined />, path: '/app/support-dashboard' },
       { key: 'system-alerts', label: 'Alerts', icon: <AlertOutlined />, path: '/app/admin/alerts' },
     ],
   },
@@ -268,7 +268,7 @@ export const menuConfig = {
     icon: <CustomerServiceOutlined />,
     items: [
       { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/app/help' },
-      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/app/my-queries' },
+      { key: 'my-tickets', label: 'My Tickets', icon: <MessageOutlined />, path: '/app/my-tickets' },
     ],
   },
 
@@ -282,7 +282,7 @@ export const menuConfig = {
     items: [
       { key: 'support-dashboard', label: 'Support Dashboard', icon: <DashboardOutlined />, path: '/app/support-dashboard' },
       { key: 'help-center', label: 'Help Center', icon: <QuestionCircleOutlined />, path: '/app/help' },
-      { key: 'my-queries', label: 'My Queries', icon: <MessageOutlined />, path: '/app/my-queries' },
+      { key: 'my-tickets', label: 'My Tickets', icon: <MessageOutlined />, path: '/app/my-tickets' },
     ],
   },
 };

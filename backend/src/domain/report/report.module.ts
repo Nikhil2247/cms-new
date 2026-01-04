@@ -3,9 +3,10 @@ import { MonthlyReportService } from './monthly/monthly-report.service';
 import { FacultyVisitService } from './faculty-visit/faculty-visit.service';
 import { StateReportService } from './state/state-report.service';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
+import { InternshipModule } from '../internship/internship.module';
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, InternshipModule],
   providers: [
     MonthlyReportService,
     FacultyVisitService,

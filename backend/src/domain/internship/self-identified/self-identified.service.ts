@@ -4,6 +4,7 @@ import { PrismaService } from '../../../core/database/prisma.service';
 import { CacheService } from '../../../core/cache/cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
 import { SystemConfigService } from '../../../api/system-admin/services/system-config.service';
+import { ExpectedCycleService } from '../expected-cycle/expected-cycle.service';
 
 export interface SubmitSelfIdentifiedDto {
   companyName: string;
@@ -30,6 +31,7 @@ export class SelfIdentifiedService {
     private readonly cache: CacheService,
     private readonly auditService: AuditService,
     private readonly systemConfigService: SystemConfigService,
+    private readonly expectedCycleService: ExpectedCycleService,
   ) {}
 
   async submitSelfIdentified(studentId: string, data: SubmitSelfIdentifiedDto) {
@@ -106,6 +108,9 @@ export class SelfIdentifiedService {
           },
         },
       });
+
+      // Calculate expected reports/visits counts based on internship dates
+      await this.expectedCycleService.recalculateExpectedCounts(selfIdentified.id);
 
       // Invalidate cache
       await this.cache.del(`self-identified:student:${studentId}`);

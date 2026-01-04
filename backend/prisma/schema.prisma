@@ -674,10 +674,12 @@ model InternshipApplication {
   secondVisit        DateTime?
   facultyVisitLogs   FacultyVisitLog[]
 
-  // Report & Visit Generation Tracking
-  reportsGenerated     Boolean @default(false) // True when expected reports have been generated
-  totalExpectedReports Int? // Total number of reports expected for this internship
-  totalExpectedVisits  Int? // Total number of faculty visits expected
+  // Report & Visit Counter Fields
+  totalExpectedReports          Int       @default(0) // Calculated from internship dates
+  totalExpectedVisits           Int       @default(0) // Calculated from internship dates
+  submittedReportsCount         Int       @default(0) // Incremented when student submits report
+  completedVisitsCount          Int       @default(0) // Incremented when faculty logs visit
+  expectedCountsLastCalculated  DateTime?             // When expected counts were last calculated
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

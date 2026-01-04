@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { GrievanceService } from './grievance/grievance.service';
 import { GrievanceController } from './grievance/grievance.controller';
-import { TechnicalQueryService } from './technical-query/technical-query.service';
 import { NoticeService } from './notice/notice.service';
 import { CalendarService } from './calendar/calendar.service';
 import { NotificationModule } from '../../infrastructure/notification/notification.module';
@@ -21,7 +20,6 @@ import { FAQController } from './help-support/faq.controller';
   ],
   providers: [
     GrievanceService,
-    TechnicalQueryService,
     NoticeService,
     CalendarService,
     SupportTicketService,
@@ -29,7 +27,6 @@ import { FAQController } from './help-support/faq.controller';
   ],
   exports: [
     GrievanceService,
-    TechnicalQueryService,
     NoticeService,
     CalendarService,
     SupportTicketService,

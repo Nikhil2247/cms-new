@@ -1,403 +1,482 @@
 # Monthly Cycle Refactoring Plan
 
-## Current State Analysis
-
-### Existing Schema Fields (InternshipApplication)
-
-| Field | Type | Purpose |
-|-------|------|---------|
-| `startDate` | DateTime? | Internship start date |
-| `endDate` | DateTime? | Internship end date |
-| `joiningDate` | DateTime? | When student actually joined |
-| `completionDate` | DateTime? | When internship was completed |
-| `reportsGenerated` | Boolean | Flag if DRAFT reports were generated |
-| `totalExpectedReports` | Int? | Stored expected reports count |
-| `totalExpectedVisits` | Int? | Stored expected visits count |
-
-### Current Problems
-
-1. **Pre-creating DRAFT reports** - Unnecessary placeholder records (student.service.ts:1931)
-2. **Pre-creating SCHEDULED visits** - Unnecessary placeholder records (faculty-visit.service.ts:514)
-3. **No Auto-Recalculation** - Changing dates doesn't trigger recalculation
-4. **Complex Sync Logic** - Need to manage placeholder records lifecycle
-
----
-
-## Proposed Solution: Simple Count-Based Approach
+## Proposed Solution: Counter-Based Approach
 
 ### Key Principle
-**Don't create placeholder records. Just store expected counts and compare against actual submissions.**
+**Store counters on InternshipApplication and increment on submission - no COUNT queries needed.**
 
-### Flow Diagram
+---
 
+## Schema Changes
+
+### Fields to ADD
+```prisma
+submittedReportsCount         Int       @default(0)  // Increment when report submitted
+completedVisitsCount          Int       @default(0)  // Increment when visit completed
+expectedCountsLastCalculated  DateTime?              // Track when calculation ran
 ```
-┌────────────────────────────────────────────────────────────────┐
-│                 INTERNSHIP CREATE/UPDATE                        │
-├────────────────────────────────────────────────────────────────┤
-│  1. Student submits self-identified internship with dates      │
-│  2. OR Principal/Faculty updates dates                         │
-│                        ↓                                        │
-│  calculateExpectedMonths(startDate, endDate)                   │
-│                        ↓                                        │
-│  Store on InternshipApplication:                               │
-│    - totalExpectedReports = months.length                      │
-│    - totalExpectedVisits = months.length                       │
-│    - expectedCountsLastCalculated = now()                      │
-│                                                                 │
-│  NO DRAFT/SCHEDULED RECORDS CREATED                            │
-└────────────────────────────────────────────────────────────────┘
 
-┌────────────────────────────────────────────────────────────────┐
-│                 STUDENT SUBMITS REPORT                          │
-├────────────────────────────────────────────────────────────────┤
-│  1. Student uploads report for month/year                      │
-│  2. Create MonthlyReport with status=APPROVED (auto-approve)   │
-│  3. No placeholder existed - direct creation                   │
-└────────────────────────────────────────────────────────────────┘
+### Fields to KEEP
+```prisma
+totalExpectedReports  Int @default(0)  // Calculated from dates
+totalExpectedVisits   Int @default(0)  // Calculated from dates
+```
 
-┌────────────────────────────────────────────────────────────────┐
-│                 FACULTY LOGS VISIT                              │
-├────────────────────────────────────────────────────────────────┤
-│  1. Faculty logs visit for student                             │
-│  2. Create FacultyVisitLog with status=COMPLETED               │
-│  3. No placeholder existed - direct creation                   │
-└────────────────────────────────────────────────────────────────┘
-
-┌────────────────────────────────────────────────────────────────┐
-│                 DISPLAY PROGRESS                                │
-├────────────────────────────────────────────────────────────────┤
-│  Expected Reports:  InternshipApplication.totalExpectedReports │
-│  Submitted Reports: COUNT(MonthlyReport WHERE status=APPROVED) │
-│  Completion Rate:   submitted / expected * 100                 │
-│                                                                 │
-│  Expected Visits:   InternshipApplication.totalExpectedVisits  │
-│  Completed Visits:  COUNT(FacultyVisitLog WHERE status=COMPLETED)│
-│  Completion Rate:   completed / expected * 100                 │
-└────────────────────────────────────────────────────────────────┘
+### Fields to REMOVE
+```prisma
+reportsGenerated  Boolean @default(false)  // No longer needed - REMOVE
 ```
 
 ---
 
-## Implementation Plan
+## Edge Cases & Business Rules
 
-### Phase 1: Create Recalculation Service
+### CRITICAL: Date Changes After Submissions
 
-**File:** `backend/src/domain/internship/expected-cycle/expected-cycle.service.ts`
+| Scenario | Expected Count | Submitted Count | Action |
+|----------|---------------|-----------------|--------|
+| Student changes startDate earlier | Recalculate (may increase) | **NO CHANGE** | Only update expected |
+| Student changes endDate later | Recalculate (may increase) | **NO CHANGE** | Only update expected |
+| Student changes startDate later | Recalculate (may decrease) | **NO CHANGE** | Only update expected |
+| Student changes endDate earlier | Recalculate (may decrease) | **NO CHANGE** | Only update expected |
+
+**Rule: Submitted/Completed counts are NEVER affected by date changes. Only expected counts recalculate.**
+
+### Report Submission Edge Cases
+
+| Scenario | Action |
+|----------|--------|
+| Report submitted successfully | `submittedReportsCount: { increment: 1 }` |
+| Report rejected by mentor | **NO CHANGE** (rejection ≠ deletion) |
+| Report deleted by student | `submittedReportsCount: { decrement: 1 }` |
+| Report soft-deleted (isDeleted=true) | `submittedReportsCount: { decrement: 1 }` |
+| Duplicate report for same month | Prevent creation OR still increment (decide) |
+| Report submitted for invalid month | Validate against expected months, reject if invalid |
+
+### Visit Logging Edge Cases
+
+| Scenario | Action |
+|----------|--------|
+| Visit logged as COMPLETED | `completedVisitsCount: { increment: 1 }` |
+| Visit status changed to CANCELLED | `completedVisitsCount: { decrement: 1 }` |
+| Visit deleted | `completedVisitsCount: { decrement: 1 }` |
+| Multiple visits in same month | Allow and increment (faculty can visit multiple times) |
+| Visit logged for month outside internship | Validate, allow but don't count toward expected |
+
+### Expected Count Edge Cases
+
+| Scenario | Action |
+|----------|--------|
+| Internship < 10 days in a month | Month NOT counted in expected |
+| Internship exactly 10 days in month | Month NOT counted (rule is >10) |
+| Internship 11+ days in month | Month IS counted |
+| No startDate or endDate set | expected = 0 |
+| endDate before startDate | Validation error, reject |
+| Submitted > Expected | Display warning, but allow (overtime work) |
+
+---
+
+## Files to Modify
+
+### BACKEND - Schema
+
+| File | Change |
+|------|--------|
+| `prisma/schema.prisma` | Add 3 new fields, remove `reportsGenerated` |
+
+### BACKEND - New Service
+
+| File | Change |
+|------|--------|
+| `domain/internship/expected-cycle/expected-cycle.service.ts` | CREATE new service |
+| `domain/internship/expected-cycle/expected-cycle.module.ts` | CREATE new module |
+
+### BACKEND - Hook into Operations
+
+| File | Line(s) | Change |
+|------|---------|--------|
+| `api/student-portal/student.service.ts` | ~1266 | Add `incrementReportCount()` after report creation |
+| `api/student-portal/student.service.ts` | ~1005-1017 | Add `recalculateExpectedCounts()` after self-identified submission |
+| `api/student-portal/student.service.ts` | Report delete | Add `decrementReportCount()` |
+| `api/faculty/faculty.service.ts` | ~791 | Add `incrementVisitCount()` after visit creation |
+| `api/faculty/faculty.service.ts` | Visit cancel/delete | Add `decrementVisitCount()` |
+| `domain/report/faculty-visit/faculty-visit.service.ts` | ~228 | Add `incrementVisitCount()` after visit creation |
+| `api/principal/principal.service.ts` | Date update | Add `recalculateExpectedCounts()` (expected only) |
+
+### BACKEND - Remove DRAFT/SCHEDULED Generation
+
+| File | Line(s) | Change |
+|------|---------|--------|
+| `api/student-portal/student.service.ts` | 1891-1969 | DELETE `generateExpectedReports()` method |
+| `domain/report/faculty-visit/faculty-visit.service.ts` | 462-556 | DELETE `generateExpectedVisits()` method |
+
+### BACKEND - Update Dashboard Queries
+
+| File | Change |
+|------|--------|
+| `api/principal/principal.service.ts` | Use counter fields instead of COUNT queries |
+| `api/faculty/faculty.service.ts` | Use counter fields instead of `calculateExpectedCycles()` |
+| `api/state/services/state-institution.service.ts` | Use counter fields instead of COUNT queries |
+| `api/state/services/state-dashboard.service.ts` | Use counter fields instead of COUNT queries |
+
+### FRONTEND - Use Counter Fields from API
+
+| File | Line(s) | Change |
+|------|---------|--------|
+| `features/principal/dashboard/components/DashboardInternshipTable.jsx` | 173-184 | Remove `getTotalExpectedCount()`, use API fields |
+| `features/principal/internships/SelfIdentifiedInternships.jsx` | 173-184 | Remove `getTotalExpectedCount()`, use API fields |
+| `features/faculty/dashboard/components/AssignedStudentsList.jsx` | 84-105 | Remove local calculation, use API fields |
+| `features/faculty/dashboard/components/StudentDetailsModal.jsx` | ~60 | Remove local calculation, use API fields |
+| `features/state/dashboard/components/InstituteDetailView.jsx` | 1378, 1398 | Use consistent field names |
+
+### FRONTEND - Cleanup (Optional)
+
+| File | Change |
+|------|--------|
+| `utils/monthlyCycle.js` | Mark `getTotalExpectedCount`, `getExpectedReportsAsOfToday`, `getExpectedVisitsAsOfToday` as deprecated |
+
+---
+
+## Implementation Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│              INTERNSHIP CREATE (Self-Identified)                 │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Create InternshipApplication with:                          │
+│       - startDate, endDate                                       │
+│       - submittedReportsCount = 0                                │
+│       - completedVisitsCount = 0                                 │
+│                                                                  │
+│  2. Call recalculateExpectedCounts(applicationId):               │
+│       - totalExpectedReports = getTotalExpectedCount(start, end) │
+│       - totalExpectedVisits = getTotalExpectedCount(start, end)  │
+│       - expectedCountsLastCalculated = now()                     │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│              DATE UPDATE (By Principal/Student)                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Update startDate and/or endDate                              │
+│                                                                  │
+│  2. Call recalculateExpectedCounts(applicationId):               │
+│       - totalExpectedReports = getTotalExpectedCount(start, end) │
+│       - totalExpectedVisits = getTotalExpectedCount(start, end)  │
+│       - expectedCountsLastCalculated = now()                     │
+│                                                                  │
+│  ⚠️  DO NOT touch submittedReportsCount or completedVisitsCount  │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│              STUDENT SUBMITS MONTHLY REPORT                      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Create MonthlyReport with status=APPROVED                    │
+│                                                                  │
+│  2. Increment counter (atomic):                                  │
+│     prisma.internshipApplication.update({                        │
+│       where: { id: applicationId },                              │
+│       data: { submittedReportsCount: { increment: 1 } }          │
+│     });                                                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│              FACULTY LOGS VISIT                                  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Create FacultyVisitLog with status=COMPLETED                 │
+│                                                                  │
+│  2. Increment counter (atomic):                                  │
+│     prisma.internshipApplication.update({                        │
+│       where: { id: applicationId },                              │
+│       data: { completedVisitsCount: { increment: 1 } }           │
+│     });                                                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│              DISPLAY PROGRESS (Dashboard)                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  // All data already on InternshipApplication - NO QUERIES!     │
+│                                                                  │
+│  const {                                                         │
+│    totalExpectedReports,   // 5                                  │
+│    submittedReportsCount,  // 3                                  │
+│    totalExpectedVisits,    // 5                                  │
+│    completedVisitsCount    // 2                                  │
+│  } = application;                                                │
+│                                                                  │
+│  reportRate = (submittedReportsCount / totalExpectedReports)*100 │
+│  visitRate = (completedVisitsCount / totalExpectedVisits) * 100  │
+│                                                                  │
+│  // Display: "3/5 reports (60%), 2/5 visits (40%)"               │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ExpectedCycleService Implementation
 
 ```typescript
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { calculateExpectedMonths, getTotalExpectedCount } from '../../../common/utils/monthly-cycle.util';
+import { getTotalExpectedCount } from '../../../common/utils/monthly-cycle.util';
 
 @Injectable()
 export class ExpectedCycleService {
   constructor(private prisma: PrismaService) {}
 
   /**
-   * Recalculates expected counts when internship dates change.
-   * Does NOT create any placeholder records.
+   * Recalculate ONLY expected counts when dates change.
+   * NEVER modifies submittedReportsCount or completedVisitsCount.
    */
-  async recalculateExpectedCounts(applicationId: string): Promise<{
-    success: boolean;
-    totalExpectedReports: number;
-    totalExpectedVisits: number;
-    months: number;
-  }> {
-    const application = await this.prisma.internshipApplication.findUnique({
+  async recalculateExpectedCounts(applicationId: string) {
+    const app = await this.prisma.internshipApplication.findUnique({
       where: { id: applicationId },
       select: { startDate: true, endDate: true, joiningDate: true, completionDate: true },
     });
 
-    if (!application) {
-      return { success: false, totalExpectedReports: 0, totalExpectedVisits: 0, months: 0 };
-    }
+    if (!app) return { success: false, reason: 'Application not found' };
 
-    const startDate = application.startDate || application.joiningDate;
-    const endDate = application.endDate || application.completionDate;
+    const startDate = app.startDate || app.joiningDate;
+    const endDate = app.endDate || app.completionDate;
 
     if (!startDate || !endDate) {
-      return { success: false, totalExpectedReports: 0, totalExpectedVisits: 0, months: 0 };
+      // Set expected to 0 if no valid dates
+      await this.prisma.internshipApplication.update({
+        where: { id: applicationId },
+        data: {
+          totalExpectedReports: 0,
+          totalExpectedVisits: 0,
+          expectedCountsLastCalculated: new Date(),
+        },
+      });
+      return { success: true, totalExpected: 0 };
     }
 
-    // Calculate expected count using monthly cycle utility
     const totalExpected = getTotalExpectedCount(startDate, endDate);
 
-    // Update stored counts (both reports and visits use same month count)
     await this.prisma.internshipApplication.update({
       where: { id: applicationId },
       data: {
         totalExpectedReports: totalExpected,
         totalExpectedVisits: totalExpected,
-        expectedCountsLastCalculated: new Date(), // New field
+        expectedCountsLastCalculated: new Date(),
       },
     });
 
-    return {
-      success: true,
-      totalExpectedReports: totalExpected,
-      totalExpectedVisits: totalExpected,
-      months: totalExpected,
-    };
+    return { success: true, totalExpected };
   }
 
   /**
-   * Get current submission/completion status for an internship
+   * Increment report counter when student submits a report.
    */
-  async getProgressStatus(applicationId: string): Promise<{
-    expectedReports: number;
-    submittedReports: number;
-    reportCompletionRate: number;
-    expectedVisits: number;
-    completedVisits: number;
-    visitCompletionRate: number;
-  }> {
-    const [application, submittedReports, completedVisits] = await Promise.all([
-      this.prisma.internshipApplication.findUnique({
+  async incrementReportCount(applicationId: string) {
+    return this.prisma.internshipApplication.update({
+      where: { id: applicationId },
+      data: { submittedReportsCount: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Decrement report counter when report is deleted.
+   * Ensures count doesn't go below 0.
+   */
+  async decrementReportCount(applicationId: string) {
+    const app = await this.prisma.internshipApplication.findUnique({
+      where: { id: applicationId },
+      select: { submittedReportsCount: true },
+    });
+
+    if (app && app.submittedReportsCount > 0) {
+      return this.prisma.internshipApplication.update({
         where: { id: applicationId },
-        select: { totalExpectedReports: true, totalExpectedVisits: true },
-      }),
-      this.prisma.monthlyReport.count({
+        data: { submittedReportsCount: { decrement: 1 } },
+      });
+    }
+    return app;
+  }
+
+  /**
+   * Increment visit counter when faculty logs a completed visit.
+   */
+  async incrementVisitCount(applicationId: string) {
+    return this.prisma.internshipApplication.update({
+      where: { id: applicationId },
+      data: { completedVisitsCount: { increment: 1 } },
+    });
+  }
+
+  /**
+   * Decrement visit counter when visit is cancelled/deleted.
+   * Ensures count doesn't go below 0.
+   */
+  async decrementVisitCount(applicationId: string) {
+    const app = await this.prisma.internshipApplication.findUnique({
+      where: { id: applicationId },
+      select: { completedVisitsCount: true },
+    });
+
+    if (app && app.completedVisitsCount > 0) {
+      return this.prisma.internshipApplication.update({
+        where: { id: applicationId },
+        data: { completedVisitsCount: { decrement: 1 } },
+      });
+    }
+    return app;
+  }
+}
+```
+
+---
+
+## Backfill Migration Script
+
+```typescript
+// backend/prisma/backfill-counters.ts
+
+import { PrismaClient } from '@prisma/client';
+import { getTotalExpectedCount } from '../src/common/utils/monthly-cycle.util';
+
+const prisma = new PrismaClient();
+
+async function backfillCounters() {
+  console.log('Starting backfill of counter fields...');
+
+  const applications = await prisma.internshipApplication.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      startDate: true,
+      endDate: true,
+      joiningDate: true,
+      completionDate: true,
+    },
+  });
+
+  console.log(`Found ${applications.length} active applications`);
+
+  let updated = 0;
+  let errors = 0;
+
+  for (const app of applications) {
+    try {
+      // Count existing submitted reports (SUBMITTED or APPROVED status)
+      const submittedReports = await prisma.monthlyReport.count({
         where: {
-          applicationId,
+          applicationId: app.id,
           status: { in: ['SUBMITTED', 'APPROVED'] },
           isDeleted: false,
         },
-      }),
-      this.prisma.facultyVisitLog.count({
+      });
+
+      // Count existing completed visits
+      const completedVisits = await prisma.facultyVisitLog.count({
         where: {
-          applicationId,
+          applicationId: app.id,
           status: 'COMPLETED',
         },
-      }),
-    ]);
+      });
 
-    const expectedReports = application?.totalExpectedReports || 0;
-    const expectedVisits = application?.totalExpectedVisits || 0;
+      // Calculate expected from dates
+      const startDate = app.startDate || app.joiningDate;
+      const endDate = app.endDate || app.completionDate;
 
-    return {
-      expectedReports,
-      submittedReports,
-      reportCompletionRate: expectedReports > 0 ? (submittedReports / expectedReports) * 100 : 0,
-      expectedVisits,
-      completedVisits,
-      visitCompletionRate: expectedVisits > 0 ? (completedVisits / expectedVisits) * 100 : 0,
-    };
-  }
-}
-```
+      let totalExpected = 0;
+      if (startDate && endDate) {
+        totalExpected = getTotalExpectedCount(new Date(startDate), new Date(endDate));
+      }
 
----
+      // Update application with counter values
+      await prisma.internshipApplication.update({
+        where: { id: app.id },
+        data: {
+          totalExpectedReports: totalExpected,
+          totalExpectedVisits: totalExpected,
+          submittedReportsCount: submittedReports,
+          completedVisitsCount: completedVisits,
+          expectedCountsLastCalculated: new Date(),
+        },
+      });
 
-### Phase 2: Add Schema Field
-
-**File:** `backend/prisma/schema.prisma`
-
-Add one new field to track when counts were last calculated:
-
-```prisma
-model InternshipApplication {
-  // Existing fields...
-
-  reportsGenerated              Boolean   @default(false)  // Can be deprecated
-  totalExpectedReports          Int?
-  totalExpectedVisits           Int?
-  expectedCountsLastCalculated  DateTime? // NEW: Track when calculation ran
-}
-```
-
----
-
-### Phase 3: Hook into Date Operations
-
-#### A. Self-Identified Submission
-
-**File:** `backend/src/api/student-portal/student.service.ts`
-
-```typescript
-async submitSelfIdentified(studentId: string, dto: SelfIdentifiedDto) {
-  const application = await this.prisma.internshipApplication.create({
-    data: {
-      studentId,
-      isSelfIdentified: true,
-      isActive: true,
-      status: ApplicationStatus.APPROVED,
-      startDate: dto.startDate,
-      endDate: dto.endDate,
-      // ... other fields
-    },
-  });
-
-  // Calculate expected counts immediately (no DRAFT records)
-  if (dto.startDate && dto.endDate) {
-    await this.expectedCycleService.recalculateExpectedCounts(application.id);
+      updated++;
+      if (updated % 100 === 0) {
+        console.log(`Progress: ${updated}/${applications.length}`);
+      }
+    } catch (error) {
+      console.error(`Error updating application ${app.id}:`, error);
+      errors++;
+    }
   }
 
-  return application;
+  console.log(`\nBackfill complete!`);
+  console.log(`Updated: ${updated}`);
+  console.log(`Errors: ${errors}`);
 }
-```
 
-#### B. Date Update Endpoint (New)
-
-**File:** `backend/src/api/principal/principal.controller.ts`
-
-```typescript
-@Patch('internship/:applicationId/dates')
-@ApiOperation({ summary: 'Update internship dates and recalculate expected counts' })
-async updateInternshipDates(
-  @Param('applicationId') applicationId: string,
-  @Body() dto: UpdateInternshipDatesDto,
-  @Request() req,
-) {
-  return this.principalService.updateInternshipDates(req.user.userId, applicationId, dto);
-}
-```
-
-**DTO:**
-```typescript
-export class UpdateInternshipDatesDto {
-  @IsOptional()
-  @IsDateString()
-  startDate?: string;
-
-  @IsOptional()
-  @IsDateString()
-  endDate?: string;
-}
-```
-
-**Service:**
-```typescript
-async updateInternshipDates(
-  principalId: string,
-  applicationId: string,
-  dto: UpdateInternshipDatesDto
-) {
-  // Verify access
-  await this.verifyPrincipalAccessToApplication(principalId, applicationId);
-
-  // Update dates
-  const updated = await this.prisma.internshipApplication.update({
-    where: { id: applicationId },
-    data: {
-      ...(dto.startDate && { startDate: new Date(dto.startDate) }),
-      ...(dto.endDate && { endDate: new Date(dto.endDate) }),
-    },
-  });
-
-  // Recalculate expected counts
-  const counts = await this.expectedCycleService.recalculateExpectedCounts(applicationId);
-
-  return {
-    ...updated,
-    expectedCounts: counts,
-  };
-}
+backfillCounters()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());
 ```
 
 ---
 
-### Phase 4: Remove Placeholder Record Generation
+## Cleanup: Delete DRAFT/SCHEDULED Records (Optional)
 
-#### A. Remove from Student Service
+After backfill, clean up orphaned placeholder records:
 
-**File:** `backend/src/api/student-portal/student.service.ts`
-
-**Delete or deprecate:** `generateExpectedReports()` method (lines 1891-1969)
-
-This method currently creates DRAFT MonthlyReport records. We no longer need it.
-
-#### B. Remove from Faculty Visit Service
-
-**File:** `backend/src/domain/report/faculty-visit/faculty-visit.service.ts`
-
-**Delete or deprecate:** `generateExpectedVisits()` method (lines 462-556)
-
-This method currently creates SCHEDULED FacultyVisitLog records. We no longer need it.
-
----
-
-### Phase 5: Update Progress Queries
-
-All places that display progress should use this pattern:
-
-```typescript
-// Get expected from stored count
-const expected = application.totalExpectedReports || 0;
-
-// Get actual from real records (not DRAFT placeholders)
-const submitted = await prisma.monthlyReport.count({
-  where: {
-    applicationId,
-    status: { in: ['SUBMITTED', 'APPROVED'] },
-    isDeleted: false,
-  },
-});
-
-// Calculate rate
-const completionRate = expected > 0 ? (submitted / expected) * 100 : 0;
-```
-
----
-
-## Summary: Before vs After
-
-| Aspect | Before | After |
-|--------|--------|-------|
-| **Report Creation** | Create DRAFT placeholders, then update when submitted | Create directly when student submits |
-| **Visit Creation** | Create SCHEDULED placeholders, then update when logged | Create directly when faculty logs |
-| **Expected Count** | Count placeholder records OR stored field | Use stored `totalExpectedReports/Visits` field |
-| **Date Change** | Manual recalculation, orphaned records | Auto-recalculate stored counts only |
-| **Data Integrity** | Complex (must sync placeholders) | Simple (just numbers) |
-| **Storage** | Many unused DRAFT/SCHEDULED records | Only actual submissions |
-
----
-
-## Migration Steps
-
-### 1. Add Schema Field
-```bash
-npx prisma migrate dev --name add_expected_counts_timestamp
-```
-
-### 2. Create Service
-Create `ExpectedCycleService` and wire into module.
-
-### 3. Hook Service Calls
-Add recalculation calls to all date-modifying operations.
-
-### 4. Run Backfill Migration
-```typescript
-async function backfillExpectedCounts() {
-  const internships = await prisma.internshipApplication.findMany({
-    where: { isActive: true, startDate: { not: null }, endDate: { not: null } },
-  });
-
-  for (const app of internships) {
-    await expectedCycleService.recalculateExpectedCounts(app.id);
-  }
-
-  console.log(`Backfilled ${internships.length} internships`);
-}
-```
-
-### 5. Deprecate Old Functions
-Mark `generateExpectedReports()` and `generateExpectedVisits()` as deprecated.
-
-### 6. Clean Up Old DRAFT/SCHEDULED Records (Optional)
 ```sql
--- Remove orphaned DRAFT reports (never submitted)
-DELETE FROM "MonthlyReport" WHERE status = 'DRAFT' AND "submittedAt" IS NULL;
+-- Remove DRAFT reports that were never actually submitted
+DELETE FROM "MonthlyReport"
+WHERE status = 'DRAFT'
+  AND "submittedAt" IS NULL
+  AND "reportFileUrl" IS NULL;
 
--- Remove orphaned SCHEDULED visits (never completed)
-DELETE FROM "FacultyVisitLog" WHERE status = 'SCHEDULED' AND "visitDate" IS NULL;
+-- Remove SCHEDULED visits that were never completed
+DELETE FROM "FacultyVisitLog"
+WHERE status = 'SCHEDULED'
+  AND "visitDate" IS NULL;
 ```
 
 ---
 
-## Benefits
+## API Response Standardization
 
-1. **Simpler Data Model** - No placeholder records to manage
-2. **Automatic Recalculation** - Dates change → counts update automatically
-3. **Less Storage** - Only actual submissions stored
-4. **Cleaner Queries** - Count real records, not placeholders
-5. **No Orphaned Records** - No cleanup needed when dates change
+All endpoints should return these fields consistently:
+
+```typescript
+interface InternshipWithCounts {
+  id: string;
+  // ... other fields
+
+  // Counter fields (always include)
+  totalExpectedReports: number;
+  totalExpectedVisits: number;
+  submittedReportsCount: number;
+  completedVisitsCount: number;
+
+  // Computed rates (optional, can compute on frontend)
+  reportCompletionRate?: number;  // (submitted / expected) * 100
+  visitCompletionRate?: number;   // (completed / expected) * 100
+}
+```
+
+---
+
+## Summary
+
+| Before | After |
+|--------|-------|
+| Create DRAFT MonthlyReport records | Direct creation on submit |
+| Create SCHEDULED FacultyVisitLog records | Direct creation on log |
+| COUNT queries every dashboard load | Read 4 counter fields |
+| `reportsGenerated` flag | Removed |
+| Date change = orphaned records | Date change = only update expected |
+| O(n) COUNT queries | O(1) field reads |

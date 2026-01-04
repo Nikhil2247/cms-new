@@ -57,7 +57,7 @@ import { SendNotification } from '../../features/shared';
 import SubmitGrievance from '../../features/student/grievances/SubmitGrievance';
 
 // Help & Support
-import { HelpCenter, MyQueries, SupportDashboard } from '../../features/help-support';
+import { HelpCenter, MyTickets, SupportDashboard } from '../../features/help-support';
 
 // Principal
 import PrincipalDashboard from '../../features/principal/dashboard/PrincipalDashboard';
@@ -560,7 +560,7 @@ const AppRoutes = () => {
 
         {/* Help & Support Routes - Available to all authenticated users */}
         <Route path="help" element={<HelpCenter />} />
-        <Route path="my-queries" element={<MyQueries />} />
+        <Route path="my-tickets" element={<MyTickets />} />
         <Route
           path="support-dashboard"
           element={
