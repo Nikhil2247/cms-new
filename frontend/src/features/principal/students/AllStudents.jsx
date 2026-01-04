@@ -268,17 +268,31 @@ const AllStudents = () => {
     }
   };
 
-  // Handle delete internship
+  // Handle delete internship with optimistic update
   const handleDeleteInternship = async (applicationId) => {
+    if (!applicationId) return;
+
+    // Store previous state for rollback
+    const previousStudentFull = selectedStudentFull;
+
+    // Optimistic update - remove from UI immediately
+    setSelectedStudentFull(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        internshipApplications: (prev.internshipApplications || []).filter(
+          app => app.id !== applicationId
+        ),
+      };
+    });
+
     setDeletingInternship(applicationId);
     try {
       await principalService.deleteInternship(applicationId);
       message.success('Internship application deleted successfully');
-      // Reload student details to update the internship list
-      if (selectedStudent?.id) {
-        loadFullStudentDetails(selectedStudent.id);
-      }
     } catch (error) {
+      // Rollback on error
+      setSelectedStudentFull(previousStudentFull);
       message.error(error?.response?.data?.message || error?.message || 'Failed to delete internship');
     } finally {
       setDeletingInternship(null);
@@ -699,14 +713,14 @@ const AllStudents = () => {
             }
             className="rounded-lg border-0"
             styles={{
-              body: { padding: 0, maxHeight: 'calc(80vh - 80px)', overflowY: 'hidden' },
+              body: { padding: 0, overflowY: 'hidden' },
               header: { borderBottom: '2px solid #e6f7ff', backgroundColor: '#f0f7ff' },
             }}
           >
             <div
               onScroll={handleScroll}
-              style={{ maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', padding: '0.5rem' }}
-              className="hide-scrollbar"
+              style={{ overflowY: 'auto', padding: '0.5rem' }}
+              className="hide-scrollbar max-h-[35vh] sm:max-h-[35vh] md:max-h-[calc(80vh-80px)]"
             >
               <Input
                 placeholder="Search Student..."
@@ -950,17 +964,17 @@ const AllStudents = () => {
                           {displayStudent.category}
                         </Tag>
                       )}
-                      {displayStudent.admissionType && (
+                      {/* {displayStudent.admissionType && (
                         <Tag color="purple" className="px-3 py-1 rounded-full">
                           {displayStudent.admissionType}
                         </Tag>
-                      )}
-                      {(displayStudent.batchName || displayStudent.batch?.name) && (
+                      )} */}
+                      {/* {(displayStudent.batchName || displayStudent.batch?.name) && (
                         <Tag color="cyan" className="px-3 py-1 rounded-full">
                           {displayStudent.batchName || displayStudent.batch?.name}
                         </Tag>
-                      )}
-                      {displayStudent.currentYear && (
+                      )} */}
+                      {/* {displayStudent.currentYear && (
                         <Tag color="orange" className="px-3 py-1 rounded-full">
                           <CalendarOutlined className="mr-1" />
                           Year {displayStudent.currentYear}
@@ -971,7 +985,7 @@ const AllStudents = () => {
                           <BookOutlined className="mr-1" />
                           Semester {displayStudent.currentSemester}
                         </Tag>
-                      )}
+                      )} */}
                       <Tag
                         color={displayStudent?.user?.active ? 'success' : 'error'}
                         className="px-3 py-1 rounded-full"

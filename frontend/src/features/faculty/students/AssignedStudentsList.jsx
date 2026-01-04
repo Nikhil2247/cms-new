@@ -308,32 +308,32 @@ const AssignedStudentsList = () => {
     handleRefresh();
   };
 
-  // Handle delete internship application
+  // Handle delete internship application with optimistic update
   const handleDeleteInternship = async (internshipId) => {
     if (!internshipId) return;
+
+    // Store previous state for rollback
+    const previousStudent = selectedStudent;
+
+    // Optimistic update - remove from UI immediately
+    setSelectedStudent(prev => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        internshipApplications: (prev.internshipApplications || []).filter(
+          app => app.id !== internshipId
+        ),
+        activeInternship: prev.activeInternship?.id === internshipId ? null : prev.activeInternship,
+      };
+    });
 
     setDeletingInternshipId(internshipId);
     try {
       await dispatch(deleteInternship(internshipId)).unwrap();
       message.success('Internship application deleted successfully');
-
-      // Update selected student - remove the deleted internship from the list
-      if (selectedStudent) {
-        setSelectedStudent(prev => {
-          if (!prev) return null;
-          return {
-            ...prev,
-            internshipApplications: (prev.internshipApplications || []).filter(
-              app => app.id !== internshipId
-            ),
-            activeInternship: prev.activeInternship?.id === internshipId ? null : prev.activeInternship,
-          };
-        });
-      }
-
-      // Refresh the list
-      handleRefresh();
     } catch (error) {
+      // Rollback on error
+      setSelectedStudent(previousStudent);
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete internship';
       message.error(errorMessage);
     } finally {
@@ -779,13 +779,13 @@ const AssignedStudentsList = () => {
             }
             className="rounded-lg border-0"
             styles={{
-              body: { padding: 0, maxHeight: 'calc(80vh - 80px)', overflowY: 'hidden' },
+              body: { padding: 0, overflowY: 'hidden' },
               header: { borderBottom: '2px solid #e6f7ff', backgroundColor: '#f0f7ff' },
             }}
           >
             <div
-              style={{ maxHeight: 'calc(80vh - 80px)', overflowY: 'auto', padding: '0.5rem' }}
-              className="hide-scrollbar"
+              style={{ overflowY: 'auto', padding: '0.5rem' }}
+              className="hide-scrollbar max-h-[35vh] sm:max-h-[35vh] md:max-h-[calc(80vh-80px)]"
             >
               <Input
                 placeholder="Search Student..."
