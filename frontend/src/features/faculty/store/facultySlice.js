@@ -695,11 +695,20 @@ export const uploadStudentDocument = createAsyncThunk(
 
 export const toggleStudentStatus = createAsyncThunk(
   'faculty/toggleStudentStatus',
-  async ({ studentId }, { rejectWithValue }) => {
+  async ({ studentId }, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().faculty.students.list];
+
     try {
+      // Optimistic update - toggle status immediately
+      dispatch(facultySlice.actions.optimisticallyToggleStudentStatus(studentId));
+
+      // Make API call
       const response = await facultyService.toggleStudentStatus(studentId);
       return { studentId, ...response };
     } catch (error) {
+      // Rollback on error
+      dispatch(facultySlice.actions.rollbackStudentOperation({ list: previousList }));
       return rejectWithValue(error.response?.data?.message || 'Failed to toggle student status');
     }
   }
@@ -897,8 +906,9 @@ const facultySlice = createSlice({
     },
     // Optimistic update: Toggle student status immediately
     // Uses User SOT pattern - active status is stored on user object
+    // Auto-toggles based on current status (doesn't require isActive parameter)
     optimisticallyToggleStudentStatus: (state, action) => {
-      const { studentId, isActive } = action.payload;
+      const studentId = action.payload;
       const index = state.students.list.findIndex(s => {
         const stud = s.student || s;
         return stud.id === studentId || s.id === studentId;
@@ -906,21 +916,27 @@ const facultySlice = createSlice({
       if (index !== -1) {
         const student = state.students.list[index];
         if (student.student) {
-          // Nested structure: update both student.isActive and student.user.active for compatibility
+          // Nested structure: get current status from student.user.active or student.isActive
+          const currentStatus = student.student.user?.active ?? student.student.isActive ?? true;
+          const newStatus = !currentStatus;
+          // Update both student.isActive and student.user.active for compatibility
           state.students.list[index] = {
             ...student,
             student: {
               ...student.student,
-              isActive,
-              user: student.student.user ? { ...student.student.user, active: isActive } : undefined,
+              isActive: newStatus,
+              user: student.student.user ? { ...student.student.user, active: newStatus } : undefined,
             },
           };
         } else {
-          // Flat structure: update both isActive and user.active for compatibility
+          // Flat structure: get current status from user.active or isActive
+          const currentStatus = student.user?.active ?? student.isActive ?? true;
+          const newStatus = !currentStatus;
+          // Update both isActive and user.active for compatibility
           state.students.list[index] = {
             ...student,
-            isActive,
-            user: student.user ? { ...student.user, active: isActive } : undefined,
+            isActive: newStatus,
+            user: student.user ? { ...student.user, active: newStatus } : undefined,
           };
         }
       }
@@ -1449,7 +1465,7 @@ const facultySlice = createSlice({
       })
 
       .addCase(toggleStudentStatus.pending, (state) => {
-        state.students.loading = true;
+        // Don't set loading to true since we use optimistic updates
         state.students.error = null;
       })
       .addCase(toggleStudentStatus.fulfilled, (state, action) => {
@@ -1481,9 +1497,15 @@ const facultySlice = createSlice({
               state.students.list[index] = {
                 ...existing,
                 isActive: newActiveStatus,
-                user: existing.user ? { ...existing.user, active: newActiveStatus } : undefined,
-              };
-            }
+                user: existing.student.user ? { ...existing.student.user, active: newActiveStatus } : undefined,
+              },
+            };
+          } else {
+            state.students.list[index] = {
+              ...existing,
+              isActive: newActiveStatus,
+              user: existing.user ? { ...existing.user, active: newActiveStatus } : undefined,
+            };
           }
         }
         // Invalidate cache to refresh student list
@@ -1491,7 +1513,7 @@ const facultySlice = createSlice({
         state.lastFetched.studentsKey = null;
       })
       .addCase(toggleStudentStatus.rejected, (state, action) => {
-        state.students.loading = false;
+        // Rollback already handled in thunk, just set error
         state.students.error = action.payload;
       })
       ;
