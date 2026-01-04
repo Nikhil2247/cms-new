@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
 import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
 import {
@@ -89,24 +89,11 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
   };
 
   // With auto-approval, only DRAFT reports are considered pending
-  const pendingCount = reports.filter(r => {
-    const isPending = r.status === 'DRAFT';
-    if (!isPending) return false;
-
-    // Check if report is after internship start date
-    const internshipStartDate = r.application?.internship?.startDate ||
-                                 r.student?.activeInternship?.startDate;
-
-    if (internshipStartDate) {
-      // Report month should be >= internship start month
-      const startDate = new Date(internshipStartDate);
-      const reportDate = new Date(r.reportYear, r.reportMonth - 1, 1);
-      return reportDate >= new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-    }
-
-    // If no start date available, include the report
-    return true;
-  }).length;
+  // Use ONLY counter fields from API - no fallback to date-based filtering logic
+  const pendingCount = useMemo(() => {
+    // Simply count DRAFT reports - counter fields are used by the API to determine report status
+    return reports.filter(r => r.status === 'DRAFT').length;
+  }, [reports]);
 
   return (
     <>
@@ -132,21 +119,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
         {reports.length > 0 ? (
           <div className="flex flex-col">
             {reports.slice(0, 5).map((report, index) => {
-              // FIXED: Filter out reports that are before internship start date
-              const internshipStartDate = report.application?.internship?.startDate ||
-                                           report.student?.activeInternship?.startDate;
-
-              if (internshipStartDate) {
-                const startDate = new Date(internshipStartDate);
-                const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
-                const internshipStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-
-                // Skip reports before internship start
-                if (reportDate < internshipStartMonth) {
-                  return null;
-                }
-              }
-
+              // Use ONLY counter fields from API - no date-based filtering logic
               const statusConfig = getStatusConfig(report.status);
               const monthName = dayjs().month(report.reportMonth - 1).format('MMMM');
 

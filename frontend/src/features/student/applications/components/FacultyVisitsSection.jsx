@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Card,
   Tag,
@@ -36,14 +36,16 @@ const FacultyVisitsSection = ({
   const [viewModalVisible, setViewModalVisible] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState(null);
 
-  // Calculate progress from visits
-  const calculatedProgress = {
-    total: progress.total || visits.length,
-    completed: progress.completed || visits.filter((v) => v.status === 'COMPLETED').length,
-    pending: progress.pending || visits.filter((v) => v.status !== 'COMPLETED').length,
-    overdue: progress.overdue || 0,
-    percentage: progress.percentage || 0,
-  };
+  // Calculate progress - use ONLY counter fields from application object (API)
+  const calculatedProgress = useMemo(() => {
+    // Use ONLY counter fields from application object, default to 0 if not available
+    const total = application?.totalExpectedVisits ?? 0;
+    const completed = application?.completedVisitsCount ?? 0;
+    const pending = total - completed;
+    const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return { total, completed, pending, overdue: 0, percentage };
+  }, [application?.totalExpectedVisits, application?.completedVisitsCount]);
 
   const openViewModal = (visit) => {
     setSelectedVisit(visit);

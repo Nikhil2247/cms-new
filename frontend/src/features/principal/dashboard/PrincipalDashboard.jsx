@@ -174,6 +174,7 @@ const PrincipalDashboard = () => {
   }), [stats, mentorCoverage, dashboardStats]);
 
   // Memoized data for SubmissionStatusGrid
+  // Uses fields from dashboard API response
   const submissionStatusData = useMemo(() => {
     // Get joining letter stats directly from dashboard response
     const joiningStats = stats?.joiningLetterStats || {};
@@ -186,21 +187,20 @@ const PrincipalDashboard = () => {
       ? Math.round((joiningPending / joiningTotal) * 100)
       : 0;
 
-    // Monthly reports - total is students with active internships
-    const studentsWithActiveInternships = stats?.internships?.ongoingInternships || 0;
+    // Monthly reports - API returns pending count in stats.pending.monthlyReports
+    // Submitted/total counts are tracked at application level, shown in the table
     const reportsPending = stats?.pending?.monthlyReports || 0;
-    const reportsTotal = studentsWithActiveInternships;
-    const reportsSubmitted = Math.max(0, reportsTotal - reportsPending);
 
-    // Faculty visits from dashboard response
-    const visitsCompleted = stats?.facultyVisits?.completed || 0;
-    const visitsTotal = stats?.facultyVisits?.expected || 0;
+    // Faculty visits - use facultyVisits object from dashboard API
+    // API returns: facultyVisits: { completed, expected }
+    const visitsCompleted = stats?.facultyVisits?.completed ?? 0;
+    const visitsTotal = stats?.facultyVisits?.expected ?? 0;
     const visitsPending = Math.max(0, visitsTotal - visitsCompleted);
 
     return {
       monthlyReports: {
-        submitted: reportsSubmitted,
-        total: reportsTotal,
+        submitted: 0, // Not aggregated at dashboard level - shown per-student in table
+        total: 0,     // Not aggregated at dashboard level - shown per-student in table
         pending: reportsPending,
       },
       joiningLetters: {

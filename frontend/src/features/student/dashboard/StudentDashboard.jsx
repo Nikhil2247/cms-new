@@ -444,102 +444,25 @@ const StudentDashboard = () => {
     return dayjs(startDate).isSameOrBefore(dayjs(), "day");
   }, [currentInternship]);
 
-  // Calculate monthly report status
+  // Calculate monthly report status using ONLY counter fields from API
   const monthlyReportStatus = useMemo(() => {
     if (!currentInternship) return { submitted: 0, total: 0, pending: [], startDateInfo: null };
 
-    let startDate, endDate;
-    if (currentInternship.isSelfIdentified) {
-      startDate = currentInternship.startDate;
-      endDate = currentInternship.endDate;
-    } else {
-      startDate =
-        currentInternship.joiningDate ||
-        currentInternship.internship?.startDate;
-      endDate = currentInternship.internship?.endDate;
-    }
+    // Use ONLY counter fields from API, default to 0 if not available
+    const submittedCount = currentInternship.submittedReportsCount ?? 0;
+    const totalExpected = currentInternship.totalExpectedReports ?? 0;
+    const pendingCount = totalExpected - submittedCount;
 
-    if (!startDate || !endDate) return { submitted: 0, total: 0, pending: [], startDateInfo: null };
-
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const currentDate = new Date();
-
-    // Check if internship starts in the future
-    if (currentDate < start) {
-      const threeMonthsLater = new Date(currentDate.getFullYear(), currentDate.getMonth() + 3, currentDate.getDate());
-
-      // Show start date if internship starts within next 3 months
-      if (start <= threeMonthsLater) {
-        const startMonth = start.toLocaleString('default', { month: 'short' });
-        const monthsUntilStart = Math.ceil((start - currentDate) / (1000 * 60 * 60 * 24 * 30));
-
-        return {
-          submitted: 0,
-          total: 0,
-          pending: [],
-          startDateInfo: {
-            dateStr: `${startMonth} ${start.getDate()}, ${start.getFullYear()}`,
-            message: monthsUntilStart <= 1
-              ? "Starting soon - Reports will be due monthly"
-              : `Starts in ~${monthsUntilStart} month${monthsUntilStart > 1 ? 's' : ''}`
-          }
-        };
-      }
-
-      return { submitted: 0, total: 0, pending: [], startDateInfo: null };
-    }
-
-    const monthsDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24 * 30));
-    const totalReports = Math.max(1, Math.min(monthsDiff, 12));
-
-    const monthNames = [
-      "January",
-      "February",
-      "March",
-      "April",
-      "May",
-      "June",
-      "July",
-      "August",
-      "September",
-      "October",
-      "November",
-      "December",
-    ];
-
-    const pendingMonths = [];
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-
-    let checkDate = new Date(start);
-    while (checkDate <= currentDate && checkDate <= end) {
-      const checkMonth = checkDate.getMonth();
-      const checkYear = checkDate.getFullYear();
-      const isCurrentMonth =
-        checkMonth === currentMonth && checkYear === currentYear;
-      const isPastMonth = checkDate < new Date(currentYear, currentMonth, 1);
-
-      if (isPastMonth || isCurrentMonth) {
-        const hasReport = currentInternshipReports.some((r) => {
-          const reportMonth =
-            typeof r.reportMonth === "number"
-              ? r.reportMonth
-              : parseInt(r.reportMonth, 10);
-          return reportMonth === checkMonth + 1 && r.reportYear === checkYear;
-        });
-        if (!hasReport) pendingMonths.push(monthNames[checkMonth]);
-      }
-      checkDate.setMonth(checkDate.getMonth() + 1);
-    }
+    // Generate pending months display based on counter difference
+    const pendingMonths = pendingCount > 0 ? [`${pendingCount} pending`] : [];
 
     return {
-      submitted: currentInternshipReports.length,
-      total: totalReports,
+      submitted: submittedCount,
+      total: totalExpected,
       pending: pendingMonths,
       startDateInfo: null,
     };
-  }, [currentInternship, currentInternshipReports]);
+  }, [currentInternship]);
 
   // Internship data status check
   const getInternshipDataStatus = useCallback((application) => {
@@ -568,15 +491,18 @@ const StudentDashboard = () => {
   // Joining letter status check
   const isJoiningLetterUploaded = currentInternship?.joiningLetterUrl;
 
-  // Faculty mentor info
+  // Faculty mentor info - use ONLY completedVisitsCount from API
   const facultyMentorInfo = useMemo(() => {
+    // Use ONLY counter field from API, default to 0 if not available
+    const visitsCount = currentInternship?.completedVisitsCount ?? 0;
+
     if (mentor) {
       const mentorInfo = {
         name: mentor.name || "Not Assigned",
         email: mentor.email || null,
         contact: mentor.phoneNo || mentor.contact || null,
         designation: mentor.designation || "Faculty Mentor",
-        visits: currentInternship?.facultyVisitLogs?.length || 0,
+        visits: visitsCount,
       };
       return mentorInfo;
     }
@@ -591,7 +517,7 @@ const StudentDashboard = () => {
         email: currentInternship.facultyMentorEmail || null,
         contact: currentInternship.facultyMentorContact || null,
         designation: currentInternship.facultyMentorDesignation || "N/A",
-        visits: currentInternship.facultyVisitLogs?.length || 0,
+        visits: visitsCount,
       };
       return mentorInfo;
     }
@@ -602,7 +528,7 @@ const StudentDashboard = () => {
         email: currentInternship.mentor.email || null,
         contact: currentInternship.mentor.contact || null,
         designation: currentInternship.mentor.designation || "Faculty Mentor",
-        visits: currentInternship.facultyVisitLogs?.length || 0,
+        visits: visitsCount,
       };
       return mentorInfo;
     }

@@ -28,7 +28,10 @@ const MonthlyReportsCard = ({
   submitted,
   activeInternship,
 }) => {
-  const progressPercent = totalRequired > 0 ? Math.round((submitted / totalRequired) * 100) : 0;
+  // Use ONLY counter fields from API, default to 0 if not available
+  const submittedCount = activeInternship?.submittedReportsCount ?? 0;
+  const totalExpected = activeInternship?.totalExpectedReports ?? 0;
+  const progressPercent = totalExpected > 0 ? Math.round((submittedCount / totalExpected) * 100) : 0;
 
   // Check if internship starts in the future and get start date display
   const getStartDateInfo = () => {
@@ -81,11 +84,11 @@ const MonthlyReportsCard = ({
       className="h-full border border-border rounded-xl"
     >
       {/* Progress Summary */}
-      {totalRequired > 0 && (
+      {totalExpected > 0 && (
         <div className="mb-4 p-3 bg-secondary-50 rounded-lg">
           <div className="flex justify-between items-center mb-2">
             <Text className="text-sm">Report Submission Progress</Text>
-            <Text className="text-sm font-medium">{submitted}/{totalRequired}</Text>
+            <Text className="text-sm font-medium">{submittedCount}/{totalExpected}</Text>
           </div>
           <Progress
             percent={progressPercent}
@@ -130,7 +133,7 @@ const MonthlyReportsCard = ({
             );
           })}
         </div>
-      ) : totalRequired === 0 && startDateInfo ? (
+      ) : totalExpected === 0 && startDateInfo ? (
         // Show internship start date when no reports yet and internship starts soon
         <div className="text-center py-6">
           <div className="mb-3">

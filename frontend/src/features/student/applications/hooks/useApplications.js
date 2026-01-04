@@ -130,30 +130,22 @@ export const useMonthlyReports = () => {
       const response = await API.get(`/student/applications/${applicationId}/reports`);
 
       // Response structure: { reports, progress, internship }
+      // Use ONLY counter fields from API: submittedReportsCount, totalExpectedReports
       const data = response.data;
       const reportsData = data?.reports || [];
-      const progressData = data?.progress || {
-        total: 0,
-        approved: 0,
+
+      // Use ONLY counter fields from API, default to 0 if not available
+      const submittedCount = data?.submittedReportsCount ?? 0;
+      const totalCount = data?.totalExpectedReports ?? 0;
+
+      const progressData = {
+        total: totalCount,
+        approved: submittedCount,
         submitted: 0,
         draft: 0,
         overdue: 0,
-        percentage: 0,
+        percentage: totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0,
       };
-
-      // Backend calculates overdue count, but if missing, calculate from submission status
-      if (progressData.overdue === 0 && reportsData.length > 0) {
-        const overdueCount = reportsData.filter((r) => {
-          if (r.status === 'APPROVED') return false;
-          return r.submissionStatus?.status === 'OVERDUE';
-        }).length;
-        progressData.overdue = overdueCount;
-      }
-
-      // Calculate percentage if not provided
-      if (progressData.percentage === 0 && progressData.total > 0) {
-        progressData.percentage = Math.round((progressData.approved / progressData.total) * 100);
-      }
 
       setReports(reportsData);
       setProgress(progressData);
@@ -352,29 +344,21 @@ export const useFacultyVisits = () => {
       const response = await API.get(`/student/applications/${applicationId}/faculty-visits`);
 
       // Response structure: { visits, progress }
-      // Backend returns visits with: id, visitMonth, visitYear, requiredByDate, status,
-      // submissionStatus, statusLabel, statusColor, sublabel, visitDate, isCompleted, isOverdue,
-      // faculty, visitType, visitLocation, meetingMinutes
+      // Use ONLY counter fields from API: completedVisitsCount, totalExpectedVisits
       const data = response.data;
       const visitsData = data?.visits || [];
-      const progressData = data?.progress || {
-        total: 0,
-        completed: 0,
-        pending: 0,
+
+      // Use ONLY counter fields from API, default to 0 if not available
+      const completedCount = data?.completedVisitsCount ?? 0;
+      const totalCount = data?.totalExpectedVisits ?? 0;
+
+      const progressData = {
+        total: totalCount,
+        completed: completedCount,
+        pending: totalCount - completedCount,
         overdue: 0,
-        percentage: 0,
+        percentage: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
       };
-
-      // Backend calculates overdue from isOverdue field if not provided
-      if (progressData.overdue === 0 && visitsData.length > 0) {
-        const overdueCount = visitsData.filter((v) => v.isOverdue === true).length;
-        progressData.overdue = overdueCount;
-      }
-
-      // Calculate percentage if not provided
-      if (progressData.percentage === 0 && progressData.total > 0) {
-        progressData.percentage = Math.round((progressData.completed / progressData.total) * 100);
-      }
 
       setVisits(visitsData);
       setProgress(progressData);

@@ -296,14 +296,24 @@ const StudentProgressPage = () => {
 
   const profileKPIs = useMemo(() => {
     const apps = metrics.internshipApps || [];
-    const active = apps.some((a) => a.status === "JOINED");
+    const activeApp = apps.find((a) => a.status === "JOINED" || a.internshipPhase === "ACTIVE");
+    const active = !!activeApp;
+
+    // Use ONLY counter fields from API - no fallback to array lengths
+    const visitsCount = activeApp?.completedVisitsCount || 0;
+    const reportsCount = activeApp?.submittedReportsCount || 0;
+    const expectedVisits = activeApp?.totalExpectedVisits || 0;
+    const expectedReports = activeApp?.totalExpectedReports || 0;
+
     return {
       status: active ? "Active Internship" : "No Active Internship",
       applications: apps.length,
-      visits: metrics.visits?.length ?? 0,
+      visits: visitsCount,
+      expectedVisits: expectedVisits,
       monthly: metrics.monthlyFeedbacks?.length ?? 0,
       completion: metrics.completionFeedbacks?.length ?? 0,
-      monthlyReports: metrics.monthlyReports?.length ?? 0,
+      monthlyReports: reportsCount,
+      expectedReports: expectedReports,
       progressPct: Math.round((metrics.averageRating || 0) * 20), // 5-star rating to percentage
       visitAvg: metrics.visitAverageRating || 0,
     };

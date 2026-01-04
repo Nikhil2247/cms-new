@@ -92,14 +92,16 @@ const MonthlyReportsSection = ({
     }
   }, [autoMonthSelection, allowedMonthOptions, selectedMonth]);
 
-  // Calculate progress
-  const calculatedProgress = {
-    total: progress.total || reports.length,
-    approved: progress.approved || reports.filter(r => r.status === 'APPROVED').length,
-    pending: progress.pending || reports.filter(r => r.status === 'DRAFT' || r.status === 'SUBMITTED').length,
-    overdue: progress.overdue || 0,
-    percentage: progress.percentage || 0,
-  };
+  // Calculate progress - use ONLY counter fields from application object (API)
+  const calculatedProgress = useMemo(() => {
+    // Use ONLY counter fields from application object, default to 0 if not available
+    const total = application?.totalExpectedReports ?? 0;
+    const approved = application?.submittedReportsCount ?? 0;
+    const pending = total - approved;
+    const percentage = total > 0 ? Math.round((approved / total) * 100) : 0;
+
+    return { total, approved, pending, overdue: 0, percentage };
+  }, [application?.totalExpectedReports, application?.submittedReportsCount]);
 
   // Handle file change
   const handleFileChange = useCallback(({ fileList: newFileList }) => {

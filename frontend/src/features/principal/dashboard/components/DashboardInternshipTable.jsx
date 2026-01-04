@@ -72,7 +72,6 @@ import {
   fetchInternshipStats,
   selectInternshipStats,
 } from "../../store/principalSlice";
-import { getTotalExpectedCount } from "../../../../utils/monthlyCycle";
 import ProfileAvatar from "../../../../components/common/ProfileAvatar";
 
 dayjs.extend(relativeTime);
@@ -166,25 +165,13 @@ const DashboardInternshipTable = () => {
             submittedAt: application?.joiningDate || student.createdAt,
             updatedAt: application?.updatedAt,
             isSelfIdentified: application?.isSelfIdentified ?? true,
-            // Calculate expected values dynamically from dates
-            reportsSubmitted: student.reportsSubmitted || 0,
-            totalReports:
-              application?.startDate && application?.endDate
-                ? getTotalExpectedCount(
-                    new Date(application.startDate),
-                    new Date(application.endDate)
-                  )
-                : 0,
+            // Counter fields come at student level from API, not inside application
+            reportsSubmitted: student.reportsSubmitted ?? 0,
+            totalReports: student.totalReports ?? 0,
             expectedReportsAsOfNow: student.expectedReportsAsOfNow || 0,
             completionPercentage: student.completionPercentage || 0,
-            facultyVisitsCount: student.facultyVisitsCount || 0,
-            totalExpectedVisits:
-              application?.startDate && application?.endDate
-                ? getTotalExpectedCount(
-                    new Date(application.startDate),
-                    new Date(application.endDate)
-                  )
-                : 0,
+            facultyVisitsCount: student.facultyVisitsCount ?? 0,
+            totalExpectedVisits: student.totalExpectedVisits ?? 0,
             expectedVisitsAsOfNow: student.expectedVisitsAsOfNow || 0,
             lastFacultyVisit: student.lastFacultyVisit,
             timeline: student.timeline || [],

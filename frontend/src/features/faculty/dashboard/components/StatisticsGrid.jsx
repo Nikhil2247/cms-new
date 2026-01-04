@@ -150,26 +150,18 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     return activeStudents.length > 0 ? activeStudents : students;
   }, [students, isInternshipActiveInCurrentMonth]);
 
-  // Filter reports for current month
-  const currentMonthReports = useMemo(() => {
-    return monthlyReports.filter(r => {
-      const reportDate = dayjs(r.reportMonth || r.createdAt);
-      return reportDate.isSame(currentMonthStart, 'month');
-    });
-  }, [monthlyReports, currentMonthStart]);
-
   // Calculate approved reports for current month
+  // Use ONLY counter fields from API - no fallback logic
   const approvedReportsCount = useMemo(() => {
-    return currentMonthReports.filter(r => r.status === 'APPROVED').length;
-  }, [currentMonthReports]);
-
-  // Filter visit logs for current month
-  const currentMonthVisitLogs = useMemo(() => {
-    return visitLogs.filter(v => {
-      const visitDate = dayjs(v.visitDate || v.createdAt);
-      return visitDate.isSame(currentMonthStart, 'month');
-    });
-  }, [visitLogs, currentMonthStart]);
+    // Sum up submittedReportsCount from all students with active internships
+    return studentsActiveThisMonth.reduce((sum, student) => {
+      const apps = student.internshipApplications ||
+                   student.student?.internshipApplications ||
+                   [];
+      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
+      return sum + (activeApp?.submittedReportsCount || 0);
+    }, 0);
+  }, [studentsActiveThisMonth]);
 
   // Total students (with breakdown)
   const totalStudents = stats.totalStudents || students.length || 0;
@@ -177,7 +169,39 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
   const externalStudents = stats.externalStudents || 0;
 
   // Expected total for current month - students with active internships
-  const expectedTotal = studentsActiveThisMonth.length || totalStudents;
+  // Use ONLY counter fields from API - no fallback logic
+  const expectedTotal = useMemo(() => {
+    // Get totalExpectedReports from counter fields only
+    return studentsActiveThisMonth.reduce((sum, student) => {
+      const apps = student.internshipApplications ||
+                   student.student?.internshipApplications ||
+                   [];
+      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
+      return sum + (activeApp?.totalExpectedReports || 0);
+    }, 0);
+  }, [studentsActiveThisMonth]);
+
+  // Calculate completed visits using ONLY counter fields - no fallback logic
+  const completedVisitsCount = useMemo(() => {
+    return studentsActiveThisMonth.reduce((sum, student) => {
+      const apps = student.internshipApplications ||
+                   student.student?.internshipApplications ||
+                   [];
+      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
+      return sum + (activeApp?.completedVisitsCount || 0);
+    }, 0);
+  }, [studentsActiveThisMonth]);
+
+  // Calculate expected visits using ONLY counter fields - no fallback logic
+  const expectedVisitsTotal = useMemo(() => {
+    return studentsActiveThisMonth.reduce((sum, student) => {
+      const apps = student.internshipApplications ||
+                   student.student?.internshipApplications ||
+                   [];
+      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
+      return sum + (activeApp?.totalExpectedVisits || 0);
+    }, 0);
+  }, [studentsActiveThisMonth]);
 
   // Get grievance stats from API
   const pendingGrievances = stats.pendingGrievances || 0;
@@ -235,8 +259,8 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     },
     {
       title: 'Visit Logs',
-      value: currentMonthVisitLogs.length,
-      secondaryValue: expectedTotal,
+      value: completedVisitsCount,
+      secondaryValue: expectedVisitsTotal,
       icon: <VideoCameraOutlined />,
       iconBgColor: '#d1fae5',
       iconColor: '#10b981',

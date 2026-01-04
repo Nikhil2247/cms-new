@@ -26,7 +26,6 @@ import {
   CheckCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { getFacultyVisitStatus } from "../../../utils/visitUtils";
 
 const { Text } = Typography;
 
@@ -212,11 +211,13 @@ const StudentsList = React.memo(({
           <div className="text-center">
             {applications.length > 0 ? (
               applications.map((app) => {
-                // Determine expected visits and completed visits for this application
-                const { expected: totalFacultyVisits, completed: completedVisits } = getFacultyVisitStatus(app);
+                // Use ONLY counter fields from API - no fallback logic
+                const totalFacultyVisits = app.totalExpectedVisits || 0;
+                const completedVisits = app.completedVisitsCount || 0;
 
                 // Determine color based on visit progress
                 const getVisitColor = (completed, total) => {
+                  if (total === 0) return "gray";
                   const percentage = (completed / total) * 100;
                   if (percentage === 0) return "gray";
                   if (percentage < 50) return "orange";

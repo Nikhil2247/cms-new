@@ -45,13 +45,14 @@ const FacultyWorkloadCard = () => {
   }, [dispatch]);
 
   // Memoized summary stats - prevents recalculation on every render
+  // Uses field names from API: totalVisits, expectedVisits, completedReports, expectedReports
   const summaryStats = useMemo(() => ({
     totalFaculty: faculty.length,
     totalAssigned: faculty.reduce((sum, f) => sum + (f.assignedCount || 0), 0),
-    totalVisits: faculty.reduce((sum, f) => sum + (f.totalVisits || 0), 0),
-    expectedVisits: faculty.reduce((sum, f) => sum + (f.expectedVisits || 0), 0),
-    totalReports: faculty.reduce((sum, f) => sum + (f.completedReports || 0), 0),
-    expectedReports: faculty.reduce((sum, f) => sum + (f.expectedReports || 0), 0),
+    totalVisits: faculty.reduce((sum, f) => sum + (f.totalVisits ?? 0), 0),
+    expectedVisits: faculty.reduce((sum, f) => sum + (f.expectedVisits ?? 0), 0),
+    totalReports: faculty.reduce((sum, f) => sum + (f.completedReports ?? 0), 0),
+    expectedReports: faculty.reduce((sum, f) => sum + (f.expectedReports ?? 0), 0),
     overloadedCount: faculty.filter((f) => (f.assignedCount || 0) > LOAD_THRESHOLDS.OPTIMAL_MAX).length,
   }), [faculty]);
 
@@ -100,8 +101,9 @@ const FacultyWorkloadCard = () => {
       width: 100,
       align: 'center',
       render: (_, record) => {
-        const completed = record.totalVisits || 0;
-        const expected = record.expectedVisits || 0;
+        // API returns: totalVisits, expectedVisits
+        const completed = record.totalVisits ?? 0;
+        const expected = record.expectedVisits ?? 0;
         const progress = expected > 0 ? Math.round((completed / expected) * 100) : 0;
         const color = progress >= 100 ? 'text-success' : progress >= 50 ? 'text-warning' : 'text-error';
 
@@ -115,7 +117,7 @@ const FacultyWorkloadCard = () => {
           </Tooltip>
         );
       },
-      sorter: (a, b) => (a.totalVisits || 0) - (b.totalVisits || 0),
+      sorter: (a, b) => (a.totalVisits ?? 0) - (b.totalVisits ?? 0),
     },
     {
       title: 'Reports',
@@ -123,10 +125,10 @@ const FacultyWorkloadCard = () => {
       width: 130,
       align: 'center',
       render: (_, record) => {
-        const completed = record.completedReports || 0;
+        // API returns: completedReports, pendingReports, expectedReports
+        const completed = record.completedReports ?? 0;
         const pending = record.pendingReports || 0;
-        const expected = record.expectedReports || 0;
-        const total = completed + pending;
+        const expected = record.expectedReports ?? 0;
         const progress = expected > 0 ? Math.round((completed / expected) * 100) : 0;
         const color = progress >= 100 ? 'text-success' : progress >= 50 ? 'text-warning' : completed > 0 ? 'text-primary' : 'text-text-tertiary';
 
@@ -146,8 +148,8 @@ const FacultyWorkloadCard = () => {
         );
       },
       sorter: (a, b) => {
-        const totalA = (a.completedReports || 0);
-        const totalB = (b.completedReports || 0);
+        const totalA = (a.completedReports ?? 0);
+        const totalB = (b.completedReports ?? 0);
         return totalA - totalB;
       },
     },
