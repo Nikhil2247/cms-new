@@ -135,7 +135,7 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
         }}
       >
         {!collapsed ? (
-          <Link to="/support/technical-query" onClick={handleLinkClick}>
+          <Link to="/app/my-tickets" onClick={handleLinkClick}>
             <Button
               type="default"
               block
@@ -151,13 +151,13 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
               }}
               className="hover:!bg-white/10 hover:!border-white/25 transition-all"
             >
-              Report Issue
+              Support Ticket
             </Button>
           </Link>
         ) : (
           <div className="flex justify-center">
-            <Tooltip title="Report Technical Issue" placement="right">
-              <Link to="/support/technical-query" onClick={handleLinkClick}>
+            <Tooltip title="Submit Support Ticket" placement="right">
+              <Link to="/app/my-tickets" onClick={handleLinkClick}>
                 <Button
                   type="default"
                   shape="circle"
