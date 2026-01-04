@@ -1854,6 +1854,8 @@ export class FacultyService {
           reviewRemarks: true,
           studentId: true,
           mentorId: true,
+          createdAt: true,
+          updatedAt: true,
           student: {
             select: {
               id: true,
