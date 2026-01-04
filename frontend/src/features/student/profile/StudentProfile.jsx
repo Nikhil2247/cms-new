@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import API from "../../../services/api";
 import { getImageUrl, openFileWithPresignedUrl } from "../../../utils/imageUtils";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
+import { fetchStudentProfile, updateProfile } from "../store/studentSlice";
 import {
   Card,
   Col,
@@ -47,12 +49,13 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
 export default function StudentProfile() {
-  const [id, setId] = useState(null);
-  const [student, setStudent] = useState(null);
+  const dispatch = useDispatch();
+
+  // Redux state for profile with caching
+  const { data: reduxProfile, loading: reduxLoading, error: reduxError } = useSelector(state => state.student.profile);
+  const lastFetched = useSelector(state => state.student.lastFetched?.profile);
+
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const rawResults = student?.results || [];
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [form] = Form.useForm();
   const [uploadForm] = Form.useForm();
@@ -63,6 +66,12 @@ export default function StudentProfile() {
   const [imageUploading, setImageUploading] = useState(false);
   const toastShownRef = useRef(false);
   const { token } = theme.useToken();
+
+  // Use Redux profile data
+  const student = reduxProfile;
+  const loading = reduxLoading && !reduxProfile;
+  const error = reduxError;
+  const rawResults = student?.results || [];
 
   // State-wise District and Tehsil data
   const stateDistrictTehsilData = {
@@ -163,95 +172,64 @@ export default function StudentProfile() {
     });
   };
 
-  const fetchStudent = async () => {
-    let userId = null;
-    const authToken = localStorage.getItem("auth_token");
-    if (authToken) {
-      try {
-        const payload = JSON.parse(atob(authToken.split('.')[1]));
-        userId = payload?.userId || payload?.id || payload?.sub;
-      } catch (e) {
-        console.error("Failed to decode token:", e);
-      }
-    }
-    if (!userId) {
-      const loginData = localStorage.getItem("loginResponse");
-      if (loginData) {
-        try {
-          const parsed = JSON.parse(loginData);
-          userId = parsed?.user?.id || parsed?.userId || parsed?.id;
-        } catch (e) {
-          console.error("Failed to parse loginResponse:", e);
+  // Fetch profile using Redux with caching
+  const fetchStudent = useCallback((forceRefresh = false) => {
+    dispatch(fetchStudentProfile({ forceRefresh }));
+  }, [dispatch]);
+
+  // Check for incomplete profile and show toast
+  useEffect(() => {
+    if (!student || toastShownRef.current) return;
+
+    const requiredFields = [
+      { key: 'name', label: 'Name' },
+      { key: 'email', label: 'Email' },
+      { key: 'contact', label: 'Contact' },
+      { key: 'parentName', label: 'Parent Name' },
+      { key: 'parentContact', label: 'Parent Contact' },
+      { key: 'gender', label: 'Gender' },
+      { key: 'pinCode', label: 'Pin Code' },
+      { key: 'address', label: 'Address' },
+      { key: 'city', label: 'City/Village' },
+      { key: 'state', label: 'State' },
+      { key: 'tehsil', label: 'Tehsil' },
+      { key: 'district', label: 'District' },
+      { key: 'category', label: 'Category' }
+    ];
+
+    const missingFields = requiredFields.filter(field =>
+      !student[field.key] || student[field.key].toString().trim() === ''
+    );
+
+    if (missingFields.length > 0) {
+      const toastId = toast.error(
+        (t) => (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+            <span>Please complete your profile!</span>
+            <button
+              onClick={() => toast.dismiss(t.id)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '18px',
+                padding: '0',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+        ),
+        {
+          duration: Infinity,
+          position: 'top-right',
+          style: { fontWeight: 'bold', padding: '16px', borderRadius: '8px', minWidth: '300px' },
+          icon: '⚠️',
         }
-      }
-    }
-    if (!userId) {
-      setError("Not logged in. Please log in again.");
-      setLoading(false);
-      return;
-    }
-    setId(userId);
-
-    try {
-      const res = await API.get(`/student/profile`);
-      setStudent(res.data);
-
-      const studentData = res.data;
-      const requiredFields = [
-        { key: 'name', label: 'Name' },
-        { key: 'email', label: 'Email' },
-        { key: 'contact', label: 'Contact' },
-        { key: 'parentName', label: 'Parent Name' },
-        { key: 'parentContact', label: 'Parent Contact' },
-        { key: 'gender', label: 'Gender' },
-        { key: 'pinCode', label: 'Pin Code' },
-        { key: 'address', label: 'Address' },
-        { key: 'city', label: 'City/Village' },
-        { key: 'state', label: 'State' },
-        { key: 'tehsil', label: 'Tehsil' },
-        { key: 'district', label: 'District' },
-        { key: 'category', label: 'Category' }
-      ];
-
-      const missingFields = requiredFields.filter(field =>
-        !studentData[field.key] || studentData[field.key].toString().trim() === ''
       );
-
-      if (missingFields.length > 0 && !toastShownRef.current) {
-        const toastId = toast.error(
-          (t) => (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-              <span>Please complete your profile!</span>
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '18px',
-                  padding: '0',
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          ),
-          {
-            duration: Infinity,
-            position: 'top-right',
-            style: { fontWeight: 'bold', padding: '16px', borderRadius: '8px', minWidth: '300px' },
-            icon: '⚠️',
-          }
-        );
-        toastShownRef.current = toastId;
-      }
-    } catch (e) {
-      console.error(e);
-      setError("Failed to load student profile.");
-    } finally {
-      setLoading(false);
+      toastShownRef.current = toastId;
     }
-  };
+  }, [student]);
 
   const fetchDocuments = async () => {
     try {
@@ -265,16 +243,17 @@ export default function StudentProfile() {
   };
 
   useEffect(() => {
+    // Fetch profile using Redux (will use cache if valid)
     fetchStudent();
     fetchDocuments();
-  }, []);
+  }, [fetchStudent]);
 
   const handleEditSubmit = async (values) => {
     try {
       setImageUploading(true);
 
-      // Step 1: Update profile data (text fields)
-      await API.put(`/student/profile`, values);
+      // Step 1: Update profile data using Redux (text fields)
+      await dispatch(updateProfile(values)).unwrap();
 
       // Step 2: Upload profile image if provided
       if (profileImageList.length > 0 && profileImageList[0].originFileObj) {
@@ -284,15 +263,16 @@ export default function StudentProfile() {
         await API.post(`/student/profile/image`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+        // Force refresh to get updated profile image
+        fetchStudent(true);
       }
 
       toast.success("Profile updated successfully", { duration: 4000, position: 'top-center' });
       setIsModalOpen(false);
       setProfileImageList([]);
-      fetchStudent();
     } catch (error) {
       console.error("Update error:", error);
-      toast.error(error.response?.data?.message || "Failed to update profile", { duration: 5000, position: 'top-center' });
+      toast.error(error.response?.data?.message || error?.message || "Failed to update profile", { duration: 5000, position: 'top-center' });
     } finally {
       setImageUploading(false);
     }
@@ -360,9 +340,11 @@ export default function StudentProfile() {
     }
   };
 
-  if (loading)
+  if (loading || !student)
     return (
-      <Spin  tip="Loading profile..." />
+      <div className="flex items-center justify-center min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
+        <Spin tip="Loading profile..." />
+      </div>
     );
 
   if (error)
@@ -479,7 +461,7 @@ export default function StudentProfile() {
                   className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase m-0 border-0"
                   color="blue"
                 >
-                  {student?.user?.branchName || student.branchName}
+                  {student?.user?.branch?.shortName || student?.branch?.shortName || student?.branchName || 'N/A'}
                 </Tag>
               </div>
 
@@ -583,7 +565,7 @@ export default function StudentProfile() {
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Branch</Text>
                             <Tag className="m-0 text-[10px] rounded-md border-0" color="blue">
-                              {student?.user?.branchName || student.branchName}
+                              {student?.user?.branch?.shortName || student?.branch?.shortName || student?.branchName || 'N/A'}
                             </Tag>
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>

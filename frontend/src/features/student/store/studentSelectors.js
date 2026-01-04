@@ -828,7 +828,7 @@ export const selectNormalizedGrievancesList = createSelector(
 export const selectActiveInternships = createSelector(
   [selectNormalizedApplicationsList],
   (applications) => applications.filter(app =>
-    ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status)
+    ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status) && app.isActive === true
   )
 );
 
@@ -1097,7 +1097,7 @@ export const selectPlatformFromProfile = createSelector(
 export const selectActiveInternshipsFromProfile = createSelector(
   [selectApplicationsFromProfile],
   (applications) => applications.filter(app =>
-    ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status)
+    ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status) && app.isActive !== false
   )
 );
 

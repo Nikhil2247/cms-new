@@ -53,9 +53,6 @@ model User {
   assignedGrievances     Grievance[]              @relation("GrievanceAssignedTo")
   grievanceStatusChanges GrievanceStatusHistory[]
 
-  //technical query
-  technicalQueries TechnicalQuery[]
-
   // Help & Support relations
   submittedTickets SupportTicket[]   @relation("TicketSubmitter")
   assignedTickets  SupportTicket[]   @relation("TicketAssignee")
@@ -321,8 +318,6 @@ model Institution {
   // Internship (self-identified only)
   Branch               Branch[]
   Department           Department[]
-  //technical query
-  technicalQueries     TechnicalQuery[]
 
   // Help & Support
   supportTickets SupportTicket[]
@@ -1100,50 +1095,6 @@ enum MonthlyReportStatus {
   APPROVED
   REJECTED
   REVISION_REQUIRED
-}
-
-// Technical Query: Users can raise technical issues or support tickets
-enum TechnicalQueryStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
-}
-
-enum TechnicalQueryPriority {
-  LOW
-  MEDIUM
-  HIGH
-  URGENT
-}
-
-model TechnicalQuery {
-  id String @id @default(uuid())
-
-  // Who raised the query
-  userId String
-  user   User   @relation(fields: [userId], references: [id])
-
-  // Core content
-  title       String?
-  description String?
-  attachments String[] @default([]) // file URLs
-
-  // Status & priority
-  status   TechnicalQueryStatus   @default(OPEN)
-  priority TechnicalQueryPriority @default(MEDIUM)
-
-  // Conversation / resolution
-  resolution String?
-
-  // Context
-  institutionId String?
-  Institution   Institution? @relation(fields: [institutionId], references: [id])
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("technical_queries")
 }
 
 // =============================================

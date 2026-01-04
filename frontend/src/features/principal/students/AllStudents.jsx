@@ -277,6 +277,7 @@ const AllStudents = () => {
     }
   };
 
+<<<<<<< Updated upstream
   const handleDeleteInternship = async (applicationId) => {
     if (!applicationId) return;
     const previousStudentFull = selectedStudentFull;
@@ -302,6 +303,8 @@ const AllStudents = () => {
       setDeletingInternship(null);
     }
   };
+=======
+>>>>>>> Stashed changes
 
   const openUploadModal = () => {
     uploadForm.resetFields();
@@ -655,6 +658,7 @@ const AllStudents = () => {
                       <span style={{ marginLeft: 4, fontWeight: 500 }}>{app.facultyMentorName}</span>
                     </div>
                   )}
+<<<<<<< Updated upstream
 
                   <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', justifyContent: 'flex-end' }}>
                     <Popconfirm
@@ -675,6 +679,8 @@ const AllStudents = () => {
                       </Button>
                     </Popconfirm>
                   </div>
+=======
+>>>>>>> Stashed changes
                 </Card>
               ))}
             </div>

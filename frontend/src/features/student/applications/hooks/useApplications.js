@@ -1,7 +1,9 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import API from '../../../../services/api';
 import { toast } from 'react-hot-toast';
 import { getStoredLoginResponse } from '../../../../utils/authStorage';
+import { fetchApplications } from '../../store/studentSlice';
 
 // Utility function to get student ID from localStorage
 const getStudentId = () => {
@@ -10,64 +12,41 @@ const getStudentId = () => {
 };
 
 export const useApplications = () => {
-  const [applications, setApplications] = useState([]);
-  const [selfIdentifiedApplications, setSelfIdentifiedApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const hasFetchedRef = useRef(false);
+  const dispatch = useDispatch();
 
-  const fetchAllApplications = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await API.get('/student/applications');
+  // Redux state with caching
+  const { list: allApplications, loading: reduxLoading, error: reduxError } = useSelector(
+    state => state.student.applications
+  );
+  const lastFetched = useSelector(state => state.student.lastFetched?.applications);
 
-      // Handle different response structures
-      let allApps = [];
-      if (response.data) {
-        if (Array.isArray(response.data)) {
-          allApps = response.data;
-        } else if (response.data.applications) {
-          allApps = response.data.applications;
-        } else if (response.data.data) {
-          allApps = response.data.data;
-        }
-      }
+  // Memoized derived data - separate platform and self-identified applications
+  const { applications, selfIdentifiedApplications } = useMemo(() => {
+    const allApps = Array.isArray(allApplications) ? allApplications : [];
+    return {
+      applications: allApps.filter(app => !app.isSelfIdentified),
+      selfIdentifiedApplications: allApps.filter(app => app.isSelfIdentified),
+    };
+  }, [allApplications]);
 
-      // Separate platform and self-identified applications
-      const platformApps = allApps.filter(app => !app.isSelfIdentified);
-      const selfIdentifiedApps = allApps.filter(app => app.isSelfIdentified);
-
-      setApplications(platformApps);
-      setSelfIdentifiedApplications(selfIdentifiedApps);
-      setError(null);
-
-      return { platformApps, selfIdentifiedApps };
-    } catch (err) {
-      console.error('Error fetching applications:', err);
-      const errorMsg = err.message || 'Failed to fetch applications';
-      setError(errorMsg);
-      toast.error(errorMsg);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // Fetch applications using Redux (uses cache if valid)
+  const fetchAllApplications = useCallback((forceRefresh = false) => {
+    dispatch(fetchApplications({ forceRefresh }));
+  }, [dispatch]);
 
   // Initial fetch on mount
   useEffect(() => {
-    if (!hasFetchedRef.current) {
-      hasFetchedRef.current = true;
-      fetchAllApplications();
-    }
+    fetchAllApplications();
   }, [fetchAllApplications]);
 
   return {
-    loading,
-    isRevalidating: loading, // For backward compatibility
-    error,
+    loading: reduxLoading && !allApplications?.length,
+    isRevalidating: reduxLoading,
+    error: reduxError,
     applications,
     selfIdentifiedApplications,
-    refetch: fetchAllApplications,
+    refetch: () => fetchAllApplications(true),
+    lastFetched,
   };
 };
 

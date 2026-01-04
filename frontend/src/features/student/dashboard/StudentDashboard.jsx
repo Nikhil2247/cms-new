@@ -824,7 +824,7 @@ const StudentDashboard = () => {
           <Row justify="space-between" align="middle" gutter={[16, 16]}>
             <Col>
               <Title level={3} className="!mb-1">
-                Welcome back, {profile?.name || "Student"}!
+                Welcome back, {profile?.user.name || "Student"}!
               </Title>
               <Paragraph type="secondary" className="!mb-0 text-sm">
                 Here's a snapshot of your internship journey.

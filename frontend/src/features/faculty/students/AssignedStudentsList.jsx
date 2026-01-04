@@ -308,38 +308,6 @@ const AssignedStudentsList = () => {
     handleRefresh();
   };
 
-  // Handle delete internship application with optimistic update
-  const handleDeleteInternship = async (internshipId) => {
-    if (!internshipId) return;
-
-    // Store previous state for rollback
-    const previousStudent = selectedStudent;
-
-    // Optimistic update - remove from UI immediately
-    setSelectedStudent(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        internshipApplications: (prev.internshipApplications || []).filter(
-          app => app.id !== internshipId
-        ),
-        activeInternship: prev.activeInternship?.id === internshipId ? null : prev.activeInternship,
-      };
-    });
-
-    setDeletingInternshipId(internshipId);
-    try {
-      await dispatch(deleteInternship(internshipId)).unwrap();
-      message.success('Internship application deleted successfully');
-    } catch (error) {
-      // Rollback on error
-      setSelectedStudent(previousStudent);
-      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete internship';
-      message.error(errorMessage);
-    } finally {
-      setDeletingInternshipId(null);
-    }
-  };
 
   // Three-dot menu items
   const getActionMenuItems = () => [
@@ -513,25 +481,6 @@ const AssignedStudentsList = () => {
                           <Tag color="purple" icon={<BankOutlined />}>Self Identified</Tag>
                         )}
                       </div>
-                      {/* Delete Button */}
-                      <Popconfirm
-                        title="Delete Internship Application"
-                        description="Are you sure you want to delete this internship application? This action cannot be undone."
-                        icon={<ExclamationCircleOutlined className="text-red-500" />}
-                        onConfirm={() => handleDeleteInternship(app.id)}
-                        okText="Yes, Delete"
-                        cancelText="Cancel"
-                        okButtonProps={{ danger: true, loading: deletingInternshipId === app.id }}
-                      >
-                        <Button
-                          type="text"
-                          danger
-                          size="small"
-                          icon={<DeleteOutlined />}
-                          loading={deletingInternshipId === app.id}
-                          className="hover:bg-red-50"
-                        />
-                      </Popconfirm>
                     </div>
                   </div>
 

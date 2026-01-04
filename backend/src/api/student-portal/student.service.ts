@@ -405,11 +405,14 @@ export class StudentService {
           },
         },
         // OPTIMIZED: Include only necessary fields for Career Track section
+        // Filter out deactivated applications
         internshipApplications: {
+          where: { isActive: true },
           select: {
             id: true,
             status: true,
             isSelfIdentified: true,
+            isActive: true,
             companyName: true,
             jobProfile: true,
             startDate: true,
