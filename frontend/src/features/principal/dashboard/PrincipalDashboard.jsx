@@ -18,35 +18,26 @@ import {
   Tabs,
 } from 'antd';
 import {
-  ExclamationCircleOutlined,
-  FileTextOutlined,
-  EyeOutlined,
   TeamOutlined,
   ReloadOutlined,
   BankOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import {
   fetchPrincipalDashboard,
   fetchMentorCoverage,
-  fetchAlertsEnhanced,
   fetchInternshipStats,
-  fetchJoiningLetterStats,
-  fetchComplianceMetrics,
+  fetchFacultyWorkload,
   selectDashboardStats,
   selectDashboardLoading,
   selectDashboardError,
   selectMentorCoverage,
   selectMentorCoverageLoading,
-  selectAlertsEnhanced,
-  selectAlertsEnhancedLoading,
-  selectAlertsEnhancedError,
   selectMostRecentFetch,
   selectInternshipStats,
   selectInternshipStatsLoading,
-  selectJoiningLetterStats,
-  selectJoiningLetterStatsLoading,
-  selectComplianceMetrics,
-  selectComplianceMetricsLoading,
 } from '../store/principalSlice';
 import FacultyWorkloadCard from './components/FacultyWorkloadCard';
 import { BasicStatisticsGrid, SubmissionStatusGrid } from './components/DashboardStatCards';
@@ -97,6 +88,8 @@ const PrincipalDashboard = () => {
   const [reportsModal, setReportsModal] = useState({ visible: false });
   const [visitsModal, setVisitsModal] = useState({ visible: false });
   const [joiningLettersModal, setJoiningLettersModal] = useState({ visible: false });
+  const [unassignedModal, setUnassignedModal] = useState({ visible: false });
+  const [grievancesModal, setGrievancesModal] = useState({ visible: false });
 
   // Redux selectors for dashboard data
   const dashboardStats = useSelector(selectDashboardStats);
@@ -104,16 +97,9 @@ const PrincipalDashboard = () => {
   const dashboardError = useSelector(selectDashboardError);
   const mentorCoverage = useSelector(selectMentorCoverage);
   const mentorCoverageLoading = useSelector(selectMentorCoverageLoading);
-  const alertsEnhanced = useSelector(selectAlertsEnhanced);
-  const alertsEnhancedLoading = useSelector(selectAlertsEnhancedLoading);
-  const alertsEnhancedError = useSelector(selectAlertsEnhancedError);
   const lastFetched = useSelector(selectMostRecentFetch);
   const internshipStats = useSelector(selectInternshipStats);
   const internshipStatsLoading = useSelector(selectInternshipStatsLoading);
-  const joiningLetterStats = useSelector(selectJoiningLetterStats);
-  const joiningLetterStatsLoading = useSelector(selectJoiningLetterStatsLoading);
-  const complianceMetrics = useSelector(selectComplianceMetrics);
-  const complianceMetricsLoading = useSelector(selectComplianceMetricsLoading);
 
   // Memoized stats derived from Redux data
   const stats = useMemo(() => {
@@ -121,10 +107,6 @@ const PrincipalDashboard = () => {
 
     const studentsData = dashboardStats.students || {};
     const staffData = dashboardStats.staff || {};
-    // Support both old format (number) and new format (object with total/active)
-    const batchesData = typeof dashboardStats.batches === 'number'
-      ? { total: dashboardStats.batches, active: dashboardStats.batches }
-      : (dashboardStats.batches || { total: 0, active: 0 });
 
     return {
       students: {
@@ -137,37 +119,30 @@ const PrincipalDashboard = () => {
         active: staffData.active || 0,
         inactive: (staffData.total || 0) - (staffData.active || 0),
       },
-      batches: {
-        total: batchesData.total || 0,
-        active: batchesData.active || 0,
-        inactive: (batchesData.total || 0) - (batchesData.active || 0),
-      },
       internships: dashboardStats.internships || {},
       pending: dashboardStats.pending || {},
+      grievances: dashboardStats.grievances || { total: 0, pending: 0 },
+      facultyVisits: dashboardStats.facultyVisits || { completed: 0, expected: 0 },
+      joiningLetterStats: dashboardStats.joiningLetterStats || { total: 0, uploaded: 0, pending: 0, uploadRate: 0 },
+      partnerCompanies: dashboardStats.partnerCompanies || 0,
     };
   }, [dashboardStats]);
 
-  // Calculate total pending items from alertsEnhanced (more accurate than stats.pending)
+  // Calculate total pending items from dashboard stats
   const totalPendingItems = useMemo(() => {
-    if (!alertsEnhanced?.summary) return 0;
-    return (alertsEnhanced.summary.overdueReportsCount || 0) +
-           (alertsEnhanced.summary.missingVisitsCount || 0) +
-           (alertsEnhanced.summary.urgentGrievancesCount || 0) +
-           (alertsEnhanced.summary.pendingJoiningLettersCount || 0);
-  }, [alertsEnhanced]);
+    if (!stats?.pending) return 0;
+    return (stats.pending.monthlyReports || 0) +
+           (stats.pending.grievances || 0) +
+           (stats.pending.joiningLetters || 0);
+  }, [stats]);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
     const userName = currentUser?.name || 'Principal';
     setPrincipalName(userName);
 
-    // Fetch all dashboard data using Redux
+    // Fetch main dashboard data - other data fetched on-demand when clicking cards
     dispatch(fetchPrincipalDashboard());
-    dispatch(fetchMentorCoverage());
-    dispatch(fetchAlertsEnhanced());
-    dispatch(fetchInternshipStats());
-    dispatch(fetchJoiningLetterStats());
-    dispatch(fetchComplianceMetrics());
   }, [dispatch]);
 
   // Update institution name from dashboard stats
@@ -183,55 +158,42 @@ const PrincipalDashboard = () => {
   const refreshData = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([
-        dispatch(fetchPrincipalDashboard({ forceRefresh: true })),
-        dispatch(fetchMentorCoverage({ forceRefresh: true })),
-        dispatch(fetchAlertsEnhanced({ forceRefresh: true })),
-        dispatch(fetchInternshipStats({ forceRefresh: true })),
-        dispatch(fetchJoiningLetterStats({ forceRefresh: true })),
-        dispatch(fetchComplianceMetrics({ forceRefresh: true })),
-      ]);
+      await dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } finally {
       setIsRefreshing(false);
     }
   }, [dispatch]);
 
-  // Memoized data for BasicStatisticsGrid
+  // Memoized data for BasicStatisticsGrid - uses dashboard data, details fetched on-demand
   const basicStatsData = useMemo(() => ({
     totalStudents: stats?.students?.total || 0,
-    totalMentors: mentorCoverage?.totalMentors || 0,
-    unassignedStudents: alertsEnhanced?.summary?.unassignedStudentsCount || 0,
-    partnerCompanies: internshipStats?.totalUniqueCompanies || 0,
-  }), [stats, mentorCoverage, alertsEnhanced, internshipStats]);
+    totalMentors: mentorCoverage?.totalMentors || stats?.staff?.total || 0,
+    unassignedStudents: dashboardStats?.unassignedStudents || 0,
+    partnerCompanies: stats?.partnerCompanies || 0,
+  }), [stats, mentorCoverage, dashboardStats]);
 
   // Memoized data for SubmissionStatusGrid
   const submissionStatusData = useMemo(() => {
-    // Get data from complianceMetrics.currentMonth
-    const currentMonthData = complianceMetrics?.currentMonth || {};
-    const studentsWithInternships = currentMonthData.studentsWithInternships || stats?.internships?.ongoingInternships || 0;
-    const totalStudents = stats?.students?.total || 0;
-
-    // Get data from joiningLetterStats.summary
-    const joiningStats = joiningLetterStats?.summary || {};
-    const joiningTotal = joiningStats.total || totalStudents;
-    const joiningVerified = joiningStats.verified || 0;
-    const joiningPending = joiningStats.pendingReview || 0;
-    const joiningNoLetter = joiningStats.noLetter || 0;
-    const joiningUploaded = joiningStats.uploaded || joiningVerified;
+    // Get joining letter stats directly from dashboard response
+    const joiningStats = stats?.joiningLetterStats || {};
+    const joiningTotal = joiningStats.total || 0;
+    const joiningUploaded = joiningStats.uploaded || 0;
+    const joiningPending = joiningStats.pending || 0;
 
     // Calculate pending percentage for joining letters
     const pendingPercent = joiningTotal > 0
-      ? Math.round(((joiningNoLetter + joiningPending) / joiningTotal) * 100 * 10) / 10
+      ? Math.round((joiningPending / joiningTotal) * 100)
       : 0;
 
-    // Monthly reports - use dashboardStats.pending as fallback
-    const reportsSubmitted = currentMonthData.reportsSubmitted || 0;
-    const reportsTotal = studentsWithInternships || totalStudents;
-    const reportsPending = stats?.pending?.monthlyReports || Math.max(0, reportsTotal - reportsSubmitted);
+    // Monthly reports - total is students with active internships
+    const studentsWithActiveInternships = stats?.internships?.ongoingInternships || 0;
+    const reportsPending = stats?.pending?.monthlyReports || 0;
+    const reportsTotal = studentsWithActiveInternships;
+    const reportsSubmitted = Math.max(0, reportsTotal - reportsPending);
 
-    // Faculty visits
-    const visitsCompleted = currentMonthData.facultyVisits || 0;
-    const visitsTotal = studentsWithInternships || totalStudents;
+    // Faculty visits from dashboard response
+    const visitsCompleted = stats?.facultyVisits?.completed || 0;
+    const visitsTotal = stats?.facultyVisits?.expected || 0;
     const visitsPending = Math.max(0, visitsTotal - visitsCompleted);
 
     return {
@@ -251,11 +213,11 @@ const PrincipalDashboard = () => {
         pending: visitsPending,
       },
       grievances: {
-        total: alertsEnhanced?.summary?.totalGrievances || stats?.pending?.grievances || 0,
-        unaddressed: alertsEnhanced?.summary?.urgentGrievancesCount || stats?.pending?.grievances || 0,
+        total: stats?.grievances?.total || 0,
+        unaddressed: stats?.grievances?.pending || 0,
       },
     };
-  }, [stats, joiningLetterStats, complianceMetrics, alertsEnhanced]);
+  }, [stats]);
 
   const currentDate = useMemo(() => new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -334,117 +296,25 @@ const PrincipalDashboard = () => {
           </Tooltip>
         </div>
 
-        {/* Alerts & Action Items - At Top with Closable Alerts */}
-        {alertsEnhanced?.summary?.totalAlerts > 0 && (
-          <div className="space-y-2">
-            {alertsEnhanced.summary.overdueReportsCount > 0 && !dismissedAlerts.includes('reports') && (
-              <Alert
-                type="warning"
-                showIcon
-                closable
-                onClose={(e) => { e.stopPropagation(); setDismissedAlerts([...dismissedAlerts, 'reports']); }}
-                icon={<FileTextOutlined />}
-                message={`${alertsEnhanced.summary.overdueReportsCount} Overdue Monthly Reports`}
-                description="Students with overdue monthly reports"
-                className="cursor-pointer"
-                onClick={() => setAlertDetailModal({
-                  visible: true,
-                  type: 'reports',
-                  title: 'Overdue Reports',
-                  data: alertsEnhanced.alerts?.overdueReports || []
-                })}
-              />
-            )}
-            {alertsEnhanced.summary.missingVisitsCount > 0 && !dismissedAlerts.includes('visits') && (
-              <Alert
-                type="info"
-                showIcon
-                closable
-                onClose={(e) => { e.stopPropagation(); setDismissedAlerts([...dismissedAlerts, 'visits']); }}
-                icon={<EyeOutlined />}
-                message={`${alertsEnhanced.summary.missingVisitsCount} Missing Faculty Visits`}
-                description="Students without recent faculty visits (30+ days)"
-                className="cursor-pointer"
-                onClick={() => setAlertDetailModal({
-                  visible: true,
-                  type: 'visits',
-                  title: 'Missing Faculty Visits',
-                  data: alertsEnhanced.alerts?.missingVisits || []
-                })}
-              />
-            )}
-            {alertsEnhanced.summary.pendingJoiningLettersCount > 0 && !dismissedAlerts.includes('joiningLetters') && (
-              <Alert
-                type="warning"
-                showIcon
-                closable
-                onClose={(e) => { e.stopPropagation(); setDismissedAlerts([...dismissedAlerts, 'joiningLetters']); }}
-                icon={<FileTextOutlined />}
-                message={`${alertsEnhanced.summary.pendingJoiningLettersCount} Pending Joining Letters`}
-                description="Students with internships awaiting joining letter submission"
-                className="cursor-pointer"
-                onClick={() => setAlertDetailModal({
-                  visible: true,
-                  type: 'joiningLetters',
-                  title: 'Pending Joining Letters',
-                  data: alertsEnhanced.alerts?.pendingJoiningLetters || []
-                })}
-              />
-            )}
-            {alertsEnhanced.summary.urgentGrievancesCount > 0 && !dismissedAlerts.includes('grievances') && (
-              <Alert
-                type="error"
-                showIcon
-                closable
-                onClose={(e) => { e.stopPropagation(); setDismissedAlerts([...dismissedAlerts, 'grievances']); }}
-                icon={<ExclamationCircleOutlined />}
-                message={`${alertsEnhanced.summary.urgentGrievancesCount} Urgent Grievances`}
-                description="Pending grievances that require immediate attention"
-                className="cursor-pointer"
-                onClick={() => setAlertDetailModal({
-                  visible: true,
-                  type: 'grievances',
-                  title: 'Urgent Grievances',
-                  data: alertsEnhanced.alerts?.urgentGrievances || []
-                })}
-              />
-            )}
-            {alertsEnhanced.summary.unassignedStudentsCount > 0 && !dismissedAlerts.includes('unassigned') && (
-              <Alert
-                type="warning"
-                showIcon
-                closable
-                onClose={(e) => { e.stopPropagation(); setDismissedAlerts([...dismissedAlerts, 'unassigned']); }}
-                icon={<TeamOutlined />}
-                message={`${alertsEnhanced.summary.unassignedStudentsCount} Unassigned Students`}
-                description="Active internship students without assigned mentors"
-                className="cursor-pointer"
-                onClick={() => setAlertDetailModal({
-                  visible: true,
-                  type: 'unassigned',
-                  title: 'Unassigned Students',
-                  data: alertsEnhanced.alerts?.unassignedStudents || []
-                })}
-              />
-            )}
-          </div>
-        )}
-
         {/* Basic Statistics Section */}
         <div>
           <SectionTitle title="Basic Statistics" />
           <BasicStatisticsGrid
             {...basicStatsData}
-            loading={dashboardLoading || mentorCoverageLoading || alertsEnhancedLoading || internshipStatsLoading}
-            onViewStudents={() => setStudentsModal({ visible: true })}
-            onViewMentors={() => setMentorsModal({ visible: true })}
-            onViewUnassigned={() => setAlertDetailModal({
-              visible: true,
-              type: 'unassigned',
-              title: 'Unassigned Students',
-              data: alertsEnhanced?.alerts?.unassignedStudents || []
-            })}
-            onViewCompanies={() => setCompaniesModal({ visible: true })}
+            loading={dashboardLoading}
+            onViewStudents={() => {
+              // Uses studentsByBranch data from dashboard response (already loaded)
+              setStudentsModal({ visible: true });
+            }}
+            onViewMentors={() => {
+              dispatch(fetchMentorCoverage());
+              setMentorsModal({ visible: true });
+            }}
+            onViewUnassigned={() => setUnassignedModal({ visible: true })}
+            onViewCompanies={() => {
+              dispatch(fetchInternshipStats());
+              setCompaniesModal({ visible: true });
+            }}
           />
         </div>
 
@@ -453,16 +323,23 @@ const PrincipalDashboard = () => {
           <SectionTitle title="Submission & Status Overview" />
           <SubmissionStatusGrid
             {...submissionStatusData}
-            loading={complianceMetricsLoading || joiningLetterStatsLoading || alertsEnhancedLoading}
-            onViewReports={() => setReportsModal({ visible: true })}
-            onViewJoiningLetters={() => setJoiningLettersModal({ visible: true })}
-            onViewVisits={() => setVisitsModal({ visible: true })}
-            onViewGrievances={() => setAlertDetailModal({
-              visible: true,
-              type: 'grievances',
-              title: 'Student Grievances',
-              data: alertsEnhanced?.alerts?.urgentGrievances || []
-            })}
+            loading={dashboardLoading}
+            onViewReports={() => {
+              dispatch(fetchFacultyWorkload());
+              dispatch(fetchMentorCoverage());
+              setReportsModal({ visible: true });
+            }}
+            onViewJoiningLetters={() => {
+              dispatch(fetchFacultyWorkload());
+              dispatch(fetchMentorCoverage());
+              setJoiningLettersModal({ visible: true });
+            }}
+            onViewVisits={() => {
+              dispatch(fetchFacultyWorkload());
+              dispatch(fetchMentorCoverage());
+              setVisitsModal({ visible: true });
+            }}
+            onViewGrievances={() => setGrievancesModal({ visible: true })}
           />
         </div>
 
@@ -561,10 +438,11 @@ const PrincipalDashboard = () => {
           width={700}
         >
           <Table
-            dataSource={dashboardStats?.studentsByBranch || dashboardStats?.branchWiseStudents || []}
+            dataSource={dashboardStats?.studentsByBranch || []}
             rowKey={(record) => record.branchId || record.branch || record.id || Math.random()}
             pagination={false}
             size="small"
+            loading={dashboardLoading}
             columns={[
               {
                 title: 'Course / Branch',
@@ -658,6 +536,7 @@ const PrincipalDashboard = () => {
             rowKey={(record) => record.mentorId || record.id || Math.random()}
             pagination={{ pageSize: 10 }}
             size="small"
+            loading={mentorCoverageLoading}
             columns={[
               {
                 title: 'Mentor Name',
@@ -745,13 +624,6 @@ const PrincipalDashboard = () => {
               <div className="text-xs text-text-tertiary">Active Rate</div>
             </div>
           </div>
-          
-          {internshipStatsLoading && (
-            <div className="text-center py-4">
-              <Spin size="small" />
-              <Text className="ml-2 text-xs text-text-tertiary">Loading companies data...</Text>
-            </div>
-          )}
 
           <Table
             dataSource={internshipStats?.byCompany || []}
@@ -859,25 +731,116 @@ const PrincipalDashboard = () => {
         <MonthlyReportsModal
           visible={reportsModal.visible}
           onClose={() => setReportsModal({ visible: false })}
-          alertsData={alertsEnhanced?.alerts?.overdueReports || []}
-          complianceData={complianceMetrics}
+          alertsData={[]}
+          complianceData={null}
         />
 
         {/* Faculty Visits Modal */}
         <FacultyVisitsModal
           visible={visitsModal.visible}
           onClose={() => setVisitsModal({ visible: false })}
-          alertsData={alertsEnhanced?.alerts?.missingVisits || []}
-          complianceData={complianceMetrics}
+          alertsData={[]}
+          complianceData={null}
         />
 
         {/* Joining Letters Modal */}
         <JoiningLettersModal
           visible={joiningLettersModal.visible}
           onClose={() => setJoiningLettersModal({ visible: false })}
-          alertsData={alertsEnhanced?.alerts?.pendingJoiningLetters || []}
-          complianceData={complianceMetrics}
+          alertsData={[]}
+          complianceData={null}
         />
+
+        {/* Unassigned Students Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2">
+              <WarningOutlined className="text-error" />
+              <span>Unassigned Students</span>
+            </div>
+          }
+          open={unassignedModal.visible}
+          onCancel={() => setUnassignedModal({ visible: false })}
+          footer={
+            <Button onClick={() => { setUnassignedModal({ visible: false }); navigate('/app/mentor-assignments'); }}>
+              Go to Mentor Assignments
+            </Button>
+          }
+          width={500}
+        >
+          {(dashboardStats?.unassignedStudents || 0) === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircleOutlined className="text-5xl text-success mb-4" />
+              <Title level={4} className="!mb-2 text-success">All Students Assigned!</Title>
+              <Text type="secondary">
+                All students with active internships have been assigned to mentors.
+              </Text>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <div className="text-5xl font-bold text-error mb-4">
+                {dashboardStats?.unassignedStudents || 0}
+              </div>
+              <Text className="text-lg">
+                students with active internships need mentor assignment
+              </Text>
+              <div className="mt-4 p-4 bg-warning-light rounded-lg">
+                <Text type="secondary">
+                  These students have joined internships but have not been assigned a faculty mentor yet.
+                </Text>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Student Grievances Modal */}
+        <Modal
+          title={
+            <div className="flex items-center gap-2">
+              <ExclamationCircleOutlined className="text-error" />
+              <span>Student Grievances</span>
+              <Badge count={stats?.grievances?.total || 0} style={{ backgroundColor: '#ef4444' }} />
+            </div>
+          }
+          open={grievancesModal.visible}
+          onCancel={() => setGrievancesModal({ visible: false })}
+          footer={
+            <Button onClick={() => { setGrievancesModal({ visible: false }); navigate('/app/grievances'); }}>
+              View All Grievances
+            </Button>
+          }
+          width={500}
+        >
+          {(stats?.grievances?.total || 0) === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircleOutlined className="text-5xl text-success mb-4" />
+              <Title level={4} className="!mb-2 text-success">No Grievances!</Title>
+              <Text type="secondary">
+                There are no student grievances at this time.
+              </Text>
+            </div>
+          ) : (
+            <div className="py-4">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="text-center p-4 bg-info-light rounded-lg">
+                  <div className="text-3xl font-bold text-info">{stats?.grievances?.total || 0}</div>
+                  <div className="text-sm text-text-tertiary">Total Grievances</div>
+                </div>
+                <div className="text-center p-4 bg-error-light rounded-lg">
+                  <div className="text-3xl font-bold text-error">{stats?.grievances?.pending || 0}</div>
+                  <div className="text-sm text-text-tertiary">Pending / Unaddressed</div>
+                </div>
+              </div>
+              {(stats?.grievances?.pending || 0) > 0 && (
+                <div className="p-4 bg-warning-light rounded-lg">
+                  <Text type="secondary">
+                    {stats?.grievances?.pending} grievance(s) require attention. Please review and address them promptly.
+                  </Text>
+                </div>
+              )}
+            </div>
+          )}
+        </Modal>
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ export const setStore = (store) => {
 };
 
 const getBaseURL = () => {
-  const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+  const baseUrl = import.meta.env.VITE_API_BASE_UR || 'https://48dn9ngv-8000.inc1.devtunnels.ms';
   // Don't add /api if it's already in the URL (e.g., from Docker config)
   return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`;
 };

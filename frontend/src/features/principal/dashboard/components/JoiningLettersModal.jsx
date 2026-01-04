@@ -5,14 +5,12 @@ import {
   Table,
   Typography,
   Tag,
-  Spin,
   Empty,
 } from 'antd';
 import {
   selectFacultyWorkload,
   selectFacultyWorkloadLoading,
   selectMentorCoverage,
-  selectAlertsEnhanced,
 } from '../../store/principalSlice';
 
 const { Text } = Typography;
@@ -26,7 +24,6 @@ const JoiningLettersModal = ({
   const faculty = useSelector(selectFacultyWorkload);
   const facultyLoading = useSelector(selectFacultyWorkloadLoading);
   const mentorCoverage = useSelector(selectMentorCoverage);
-  const alertsEnhanced = useSelector(selectAlertsEnhanced);
 
   // Process faculty data with joining letter status
   const facultyLetterData = useMemo(() => {
@@ -109,16 +106,12 @@ const JoiningLettersModal = ({
     // Convert to array
     const result = Array.from(mentorMap.values());
 
-    // Get unassigned students count from alertsEnhanced if available
-    const totalUnassignedFromAlerts = alertsEnhanced?.summary?.unassignedStudentsCount || 0;
-    const unassignedCount = Math.max(unassignedPendingCount, totalUnassignedFromAlerts);
-
     // Add "Not Assigned" row if there are unassigned students
-    if (unassignedCount > 0) {
+    if (unassignedPendingCount > 0) {
       result.push({
         id: 'unassigned',
         name: 'Not Assigned',
-        studentsWithInternship: unassignedCount,
+        studentsWithInternship: unassignedPendingCount,
         pendingLetters: unassignedPendingCount,
         isUnassigned: true,
       });
@@ -138,7 +131,7 @@ const JoiningLettersModal = ({
       // Then by students with internship descending
       return b.studentsWithInternship - a.studentsWithInternship;
     });
-  }, [faculty, mentorCoverage, alertsData, alertsEnhanced]);
+  }, [faculty, mentorCoverage, alertsData]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -244,29 +237,22 @@ const JoiningLettersModal = ({
       </div>
 
       {/* Faculty Table */}
-      {facultyLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Spin size="large" />
-        </div>
-      ) : facultyLetterData.length > 0 ? (
-        <Table className="custom-table"
-          dataSource={facultyLetterData}
-          columns={columns}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} mentors`,
-          }}
-          size="middle"
-        />
-      ) : (
-        <Empty
-          description="No faculty data available"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      )}
+      <Table
+        dataSource={facultyLetterData}
+        columns={columns}
+        rowKey="id"
+        loading={facultyLoading}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '10', '20'],
+          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} mentors`,
+        }}
+        size="small"
+        locale={{
+          emptyText: <Empty description="No faculty data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        }}
+      />
     </Modal>
   );
 };

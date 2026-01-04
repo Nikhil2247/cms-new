@@ -2011,6 +2011,24 @@ async function main() {
     // Print comprehensive CLI report
     printMigrationReport(config, totalTime);
 
+    // Recommend post-migration fixes
+    if (!config.dryRun) {
+      console.log('');
+      log('┌─────────────────────────────────────────────────────────────────────────────┐', 'cyan');
+      log('│                         POST-MIGRATION STEPS                                 │', 'cyan');
+      log('├─────────────────────────────────────────────────────────────────────────────┤', 'cyan');
+      log('│ Run the following script to fix branch data and sync User.branchName:       │', 'cyan');
+      log('│                                                                              │', 'cyan');
+      log('│   npx tsx prisma/post-migrate-fix-branches.ts                                │', 'cyan');
+      log('│                                                                              │', 'cyan');
+      log('│ This script will:                                                            │', 'cyan');
+      log('│   • Create branches from unique Student.branchName values                    │', 'cyan');
+      log('│   • Link Student.branchId to Branch records                                  │', 'cyan');
+      log('│   • Sync User.branchName from Student.branchName                             │', 'cyan');
+      log('│   • Normalize faculty branchName values                                      │', 'cyan');
+      log('└─────────────────────────────────────────────────────────────────────────────┘', 'cyan');
+    }
+
   } catch (error: any) {
     logError(`Migration failed: ${error.message}`);
     if (config.verbose) {

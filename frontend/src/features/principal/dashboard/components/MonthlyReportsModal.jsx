@@ -6,7 +6,6 @@ import {
   Typography,
   Tag,
   Select,
-  Spin,
   Empty,
 } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
@@ -14,7 +13,6 @@ import {
   selectFacultyWorkload,
   selectFacultyWorkloadLoading,
   selectMentorCoverage,
-  selectAlertsEnhanced,
 } from '../../store/principalSlice';
 
 const { Text } = Typography;
@@ -50,7 +48,6 @@ const MonthlyReportsModal = ({
   const faculty = useSelector(selectFacultyWorkload);
   const facultyLoading = useSelector(selectFacultyWorkloadLoading);
   const mentorCoverage = useSelector(selectMentorCoverage);
-  const alertsEnhanced = useSelector(selectAlertsEnhanced);
 
   const monthOptions = useMemo(() => generateMonthOptions(), []);
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]?.value);
@@ -147,16 +144,12 @@ const MonthlyReportsModal = ({
     // Convert to array
     const result = Array.from(mentorMap.values());
 
-    // Get unassigned students count from alertsEnhanced if available
-    const totalUnassignedFromAlerts = alertsEnhanced?.summary?.unassignedStudentsCount || 0;
-    const unassignedCount = Math.max(unassignedPendingCount, totalUnassignedFromAlerts);
-
     // Add "Not Assigned" row if there are unassigned students
-    if (unassignedCount > 0) {
+    if (unassignedPendingCount > 0) {
       result.push({
         id: 'unassigned',
         name: 'Not Assigned',
-        assignedStudents: unassignedCount,
+        assignedStudents: unassignedPendingCount,
         pendingReports: unassignedPendingCount,
         isUnassigned: true,
       });
@@ -176,7 +169,7 @@ const MonthlyReportsModal = ({
       // Then by assigned students descending
       return b.assignedStudents - a.assignedStudents;
     });
-  }, [faculty, mentorCoverage, alertsData, alertsEnhanced]);
+  }, [faculty, mentorCoverage, alertsData]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -303,29 +296,22 @@ const MonthlyReportsModal = ({
       </div>
 
       {/* Faculty Table */}
-      {facultyLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <Spin size="large" />
-        </div>
-      ) : facultyReportData.length > 0 ? (
-        <Table className="custom-table"
-          dataSource={facultyReportData}
-          columns={columns}
-          rowKey="id"
-          pagination={{
-            pageSize: 10,
-            showSizeChanger: true,
-            pageSizeOptions: ['5', '10', '20'],
-            showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} mentors`,
-          }}
-          size="middle"
-        />
-      ) : (
-        <Empty
-          description="No faculty data available"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
-      )}
+      <Table
+        dataSource={facultyReportData}
+        columns={columns}
+        rowKey="id"
+        loading={facultyLoading}
+        pagination={{
+          pageSize: 10,
+          showSizeChanger: true,
+          pageSizeOptions: ['5', '10', '20'],
+          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} mentors`,
+        }}
+        size="small"
+        locale={{
+          emptyText: <Empty description="No faculty data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        }}
+      />
     </Modal>
   );
 };

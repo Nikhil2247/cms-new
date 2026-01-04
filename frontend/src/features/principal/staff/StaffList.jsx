@@ -52,7 +52,7 @@ const StaffList = () => {
   const [filters, setFilters] = useState({
     search: '',
     role: '',
-    isActive: '',
+     isActive: '',
     page: 1,
     limit: 10,
   });
