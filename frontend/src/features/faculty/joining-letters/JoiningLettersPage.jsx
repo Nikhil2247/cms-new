@@ -292,8 +292,8 @@ const JoiningLettersPage = () => {
 
     if (searchText) {
       filtered = filtered.filter(l =>
-        l.student?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        l.student?.rollNumber?.toLowerCase().includes(searchText.toLowerCase())
+        (l.student?.user?.name || l.student?.name)?.toLowerCase().includes(searchText.toLowerCase()) ||
+        (l.student?.user?.rollNumber || l.student?.rollNumber)?.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
@@ -315,8 +315,8 @@ const JoiningLettersPage = () => {
           <div className="flex items-center gap-3">
             <Avatar icon={<UserOutlined />} style={{ backgroundColor: token.colorPrimary }} />
             <div>
-              <div className="font-semibold" style={{ color: token.colorText }}>{student?.name || 'Unknown'}</div>
-              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.rollNumber}</div>
+              <div className="font-semibold" style={{ color: token.colorText }}>{student?.user?.name || student?.name || 'Unknown'}</div>
+              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.user?.rollNumber || student?.rollNumber}</div>
             </div>
           </div>
         );
@@ -640,7 +640,7 @@ const JoiningLettersPage = () => {
       >
         {reviewModal.letter && (
           <div className="mb-4 p-4 rounded-xl border" style={{ backgroundColor: token.colorBgContainer, borderColor: token.colorBorder }}>
-            <p><strong>Student:</strong> {reviewModal.letter.student?.name}</p>
+            <p><strong>Student:</strong> {reviewModal.letter.student?.user?.name || reviewModal.letter.student?.name}</p>
             <p><strong>Company:</strong> {reviewModal.letter.internship?.industry?.companyName || reviewModal.letter.companyName || 'Self-Identified'}</p>
           </div>
         )}
@@ -707,7 +707,7 @@ const JoiningLettersPage = () => {
                 option.label.toLowerCase().includes(input.toLowerCase())
               }
               options={students.map((s) => ({
-                label: `${s.student?.user?.name || s.student.name} (${s.student?.user?.rollNumber || s.student.rollNumber})`,
+                label: `${s.student?.user?.name || s.student?.name} (${s.student?.user?.rollNumber || s.student?.rollNumber})`,
                 value: s.student.id,
               }))}
               size="large"
@@ -747,10 +747,10 @@ const JoiningLettersPage = () => {
                 return (
                   <div className="space-y-1">
                     <div>
-                      <Text strong>{studentData?.student?.name}</Text>
+                      <Text strong>{studentData?.student?.user?.name || studentData?.student?.name}</Text>
                     </div>
                     <div className="text-sm" style={{ color: token.colorTextSecondary }}>
-                      {studentData?.student?.rollNumber}
+                      {studentData?.student?.user?.rollNumber || studentData?.student?.rollNumber}
                     </div>
                     {application && (
                       <div className="text-sm mt-2" style={{ color: token.colorTextSecondary }}>
@@ -823,13 +823,13 @@ const JoiningLettersPage = () => {
               <div className="p-4">
                 <Descriptions column={1} size="small">
                   <Descriptions.Item label="Name">
-                    <Text strong>{selectedLetter.student?.name}</Text>
+                    <Text strong>{selectedLetter.student?.user?.name || selectedLetter.student?.name}</Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="Roll Number">
-                    {selectedLetter.student?.rollNumber}
+                    {selectedLetter.student?.user?.rollNumber || selectedLetter.student?.rollNumber}
                   </Descriptions.Item>
                   <Descriptions.Item label="Email">
-                    {selectedLetter.student?.email || '-'}
+                    {selectedLetter.student?.user?.email || selectedLetter.student?.email || '-'}
                   </Descriptions.Item>
                 </Descriptions>
               </div>

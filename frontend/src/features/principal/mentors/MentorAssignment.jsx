@@ -560,7 +560,7 @@ const MentorAssignment = () => {
         return (
           <Flex wrap="wrap" gap={4}>
             {assignedStudents.slice(0, 3).map((a) => (
-              <Tag key={a.id}>{a.student?.name || a.student?.rollNumber}</Tag>
+              <Tag key={a.id}>{a.student?.user?.name || a.student?.name || a.student?.user?.rollNumber || a.student?.rollNumber}</Tag>
             ))}
             {assignedStudents.length > 3 && <Tag>+{assignedStudents.length - 3} more</Tag>}
           </Flex>

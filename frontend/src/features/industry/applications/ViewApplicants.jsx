@@ -194,7 +194,7 @@ const ViewApplicants = () => {
   // Add function to open monthly modal
   const openMonthlyModal = (application, existingFeedback = null) => {
     setMonthlyModalAppId(application?.id);
-    setMonthlyModalStudentName(application?.student?.name);
+    setMonthlyModalStudentName(application?.student?.user?.name || application?.student?.name);
     setEditingMonthlyFeedback(existingFeedback);
     setMonthlyModalVisible(true);
   };
@@ -212,7 +212,7 @@ const ViewApplicants = () => {
   // Function to open CompletionFeedbackModal
   const openCompletionModal = (application, existingFeedback = null) => {
     setCompletionModalAppId(application?.id);
-    setCompletionModalStudentName(application?.student?.name);
+    setCompletionModalStudentName(application?.student?.user?.name || application?.student?.name);
     setEditingCompletionFeedback(existingFeedback);
     setCompletionModalVisible(true);
   };
@@ -274,13 +274,13 @@ const ViewApplicants = () => {
     if (searchText) {
       filtered = filtered.filter(
         (item) =>
-          item.student?.name
+          (item.student?.user?.name || item.student?.name)
             ?.toLowerCase()
             .includes(searchText.toLowerCase()) ||
-          item.student?.rollNumber
+          (item.student?.user?.rollNumber || item.student?.rollNumber)
             ?.toLowerCase()
             .includes(searchText.toLowerCase()) ||
-          item.student?.email?.toLowerCase().includes(searchText.toLowerCase())
+          (item.student?.user?.email || item.student?.email)?.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
@@ -290,7 +290,7 @@ const ViewApplicants = () => {
 
     if (branchFilter !== "all") {
       filtered = filtered.filter(
-        (item) => item.student?.branchName === branchFilter
+        (item) => (item.student?.user?.branchName || item.student?.branchName) === branchFilter
       );
     }
 
@@ -430,10 +430,10 @@ const ViewApplicants = () => {
           />
           <div className="ml-3">
             <Text strong className="text-base block">
-              {record.student?.name}
+              {record.student?.user?.name || record.student?.name}
             </Text>
             <Text className="text-gray-600 text-sm block">
-              {record.student?.rollNumber} • {record.student?.branchName}
+              {record.student?.user?.rollNumber || record.student?.rollNumber} • {record.student?.user?.branchName || record.student?.branchName}
             </Text>
             <Text className="text-gray-500 text-xs">
               {record.student?.tenthper}% (10th) • {record.student?.twelthper}%
@@ -811,10 +811,10 @@ const ViewApplicants = () => {
                         />
                         <div className="flex-grow text-center md:text-left">
                           <Title level={3} className="!mb-1 !text-text-primary text-2xl font-black">
-                            {selectedApplication.student?.name}
+                            {selectedApplication.student?.user?.name || selectedApplication.student?.name}
                           </Title>
                           <Text className="text-primary font-bold text-sm block mb-4 uppercase tracking-wider">
-                            {selectedApplication.student?.branchName} • {selectedApplication.student?.rollNumber}
+                            {selectedApplication.student?.user?.branchName || selectedApplication.student?.branchName} • {selectedApplication.student?.user?.rollNumber || selectedApplication.student?.rollNumber}
                           </Text>
                           <div className="flex flex-wrap justify-center md:justify-start gap-2">
                             <Tag className="m-0 px-3 py-0.5 rounded-full border-0 bg-background-tertiary text-text-secondary font-bold text-[10px] uppercase tracking-wider">
@@ -834,13 +834,13 @@ const ViewApplicants = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-border/60">
                           <div className="p-4">
                             <Text className="text-[10px] uppercase font-black text-text-tertiary tracking-widest block mb-1">Email Address</Text>
-                            <a href={`mailto:${selectedApplication.student?.email}`} className="text-sm font-bold text-primary hover:underline block truncate">
-                              {selectedApplication.student?.email}
+                            <a href={`mailto:${selectedApplication.student?.user?.email || selectedApplication.student?.email}`} className="text-sm font-bold text-primary hover:underline block truncate">
+                              {selectedApplication.student?.user?.email || selectedApplication.student?.email}
                             </a>
                           </div>
                           <div className="p-4">
                             <Text className="text-[10px] uppercase font-black text-text-tertiary tracking-widest block mb-1">Contact Number</Text>
-                            <Text className="text-sm font-bold text-text-primary block">{selectedApplication.student?.contact}</Text>
+                            <Text className="text-sm font-bold text-text-primary block">{selectedApplication.student?.user?.phoneNo || selectedApplication.student?.contact}</Text>
                           </div>
                           <div className="p-4 md:col-span-2">
                             <Text className="text-[10px] uppercase font-black text-text-tertiary tracking-widest block mb-1">Permanent Address</Text>
@@ -1192,7 +1192,7 @@ const ViewApplicants = () => {
                             icon={<PlusOutlined />}
                             onClick={() =>
                               navigate(
-                                `/industry/reports?tab=monthly&applicationId=${selectedApplication.id}&studentName=${selectedApplication.student?.name}&mode=create`
+                                `/industry/reports?tab=monthly&applicationId=${selectedApplication.id}&studentName=${selectedApplication.student?.user?.name || selectedApplication.student?.name}&mode=create`
                               )
                             }
                             className="bg-blue-600 hover:bg-blue-700"

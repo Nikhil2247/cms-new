@@ -77,7 +77,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `monthly_report_${report.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
+      link.download = `monthly_report_${report.student?.user?.name || report.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -168,7 +168,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium truncate mr-2">{report.application?.student?.name || report.student?.name || 'Unknown Student'}</span>
+                      <span className="font-medium truncate mr-2">{report.application?.student?.user?.name || report.application?.student?.name || report.student?.user?.name || report.student?.name || 'Unknown Student'}</span>
                       <Tag color={statusConfig.color} icon={statusConfig.icon} className="m-0">
                         {statusConfig.label}
                       </Tag>
@@ -235,7 +235,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       >
         {reviewModal.report && (
           <div className="mb-4">
-            <p><strong>Student:</strong> {reviewModal.report.student?.name}</p>
+            <p><strong>Student:</strong> {reviewModal.report.student?.user?.name || reviewModal.report.student?.name}</p>
             <p><strong>Period:</strong> {dayjs().month(reviewModal.report.reportMonth - 1).format('MMMM')} {reviewModal.report.reportYear}</p>
           </div>
         )}

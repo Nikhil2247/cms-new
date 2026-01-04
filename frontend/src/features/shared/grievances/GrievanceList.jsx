@@ -321,7 +321,7 @@ const GrievanceList = () => {
       render: (name, record) => (
         <Space>
           <UserOutlined />
-          <Text>{name || record.student?.name || 'N/A'}</Text>
+          <Text>{name || record.student?.user?.name || record.student?.name || 'N/A'}</Text>
         </Space>
       ),
     },

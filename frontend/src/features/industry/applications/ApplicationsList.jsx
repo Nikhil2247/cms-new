@@ -146,8 +146,8 @@ const ApplicationsList = () => {
         <Space>
           <ProfileAvatar profileImage={record.student?.profileImage} />
           <div>
-            <div className="font-medium">{record.student?.name}</div>
-            <div className="text-gray-500 text-xs">{record.student?.email}</div>
+            <div className="font-medium">{record.student?.user?.name || record.student?.name}</div>
+            <div className="text-gray-500 text-xs">{record.student?.user?.email || record.student?.email}</div>
           </div>
         </Space>
       ),
@@ -302,7 +302,7 @@ const ApplicationsList = () => {
       >
         <div className="py-4">
           <Paragraph className="mb-4 text-text-primary">
-            You are about to reject the application from <Text strong>{selectedApp?.student?.name}</Text>.
+            You are about to reject the application from <Text strong>{selectedApp?.student?.user?.name || selectedApp?.student?.name}</Text>.
           </Paragraph>
           <Text strong className="block mb-2 text-text-secondary uppercase text-[10px] tracking-wider">Reason for rejection:</Text>
           <Input.TextArea
@@ -333,7 +333,7 @@ const ApplicationsList = () => {
           <div className="space-y-8">
             <div className="text-center bg-background-tertiary/30 p-6 rounded-2xl border border-border/50">
               <ProfileAvatar size={80} profileImage={selectedApp.student?.profileImage} className="shadow-md border-4 border-background" />
-              <h2 className="text-2xl font-bold text-text-primary mt-4">{selectedApp.student?.name}</h2>
+              <h2 className="text-2xl font-bold text-text-primary mt-4">{selectedApp.student?.user?.name || selectedApp.student?.name}</h2>
               <Tag color={getStatusColor(selectedApp.status)} className="mt-2 px-4 py-0.5 rounded-full font-medium">
                 {selectedApp.status}
               </Tag>
@@ -342,9 +342,9 @@ const ApplicationsList = () => {
             <div>
               <Divider plain className="!text-text-secondary uppercase text-[10px] tracking-widest font-bold">Personal Information</Divider>
               <Descriptions column={1} bordered size="small" className="rounded-xl overflow-hidden">
-                <Descriptions.Item label="Email">{selectedApp.student?.email}</Descriptions.Item>
-                <Descriptions.Item label="Phone">{selectedApp.student?.phone || 'N/A'}</Descriptions.Item>
-                <Descriptions.Item label="Roll Number">{selectedApp.student?.rollNumber || 'N/A'}</Descriptions.Item>
+                <Descriptions.Item label="Email">{selectedApp.student?.user?.email || selectedApp.student?.email}</Descriptions.Item>
+                <Descriptions.Item label="Phone">{selectedApp.student?.user?.phoneNo || selectedApp.student?.phone || 'N/A'}</Descriptions.Item>
+                <Descriptions.Item label="Roll Number">{selectedApp.student?.user?.rollNumber || selectedApp.student?.rollNumber || 'N/A'}</Descriptions.Item>
               </Descriptions>
             </div>
 

@@ -190,10 +190,10 @@ export default function MonthlyFeedbackPage() {
           <UserOutlined className="mr-2 text-blue-500" />
           <div>
             <div className="font-medium">
-              {record.application?.student?.name}
+              {record.application?.student?.user?.name || record.application?.student?.name}
             </div>
             <div className="text-xs text-gray-500">
-              {record.application?.student?.rollNumber}
+              {record.application?.student?.user?.rollNumber || record.application?.student?.rollNumber}
             </div>
           </div>
         </div>
@@ -339,11 +339,11 @@ export default function MonthlyFeedbackPage() {
                         <UserOutlined className="mr-2 text-blue-500" />
                         <div>
                           <Text strong>
-                            {selectedFeedback.application?.student?.name}
+                            {selectedFeedback.application?.student?.user?.name || selectedFeedback.application?.student?.name}
                           </Text>
                           <br />
                           <Text type="secondary" className="text-xs">
-                            {selectedFeedback.application?.student?.rollNumber}
+                            {selectedFeedback.application?.student?.user?.rollNumber || selectedFeedback.application?.student?.rollNumber}
                           </Text>
                         </div>
                       </div>

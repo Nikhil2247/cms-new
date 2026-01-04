@@ -87,7 +87,7 @@ const VisitLogsCard = ({ visitLogs = [], loading, onCreateNew, onViewAll }) => {
                   />
                   <div>
                     <Text className="text-sm font-medium block">
-                      {visit.application?.student?.name || visit.studentName || 'Student'}
+                      {visit.application?.student?.user?.name || visit.application?.student?.name || visit.studentName || 'Student'}
                     </Text>
                     <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
                       <EnvironmentOutlined />
