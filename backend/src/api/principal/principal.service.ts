@@ -1370,6 +1370,85 @@ export class PrincipalService {
   }
 
   /**
+   * Toggle student status (activate/deactivate) - Principal only
+   * When deactivating: deactivates mentor assignments and internship applications
+   * When activating: reactivates internship applications (mentor assignments need reassignment)
+   */
+  async toggleStudentStatus(principalId: string, studentId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Institution not found');
+    }
+
+    // Find student and verify they belong to this institution
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      include: { user: true },
+    });
+
+    if (!student || student.institutionId !== principal.institutionId) {
+      throw new NotFoundException('Student not found in your institution');
+    }
+
+    const currentStatus = student.user?.active ?? true;
+    const newStatus = !currentStatus;
+
+    await this.prisma.$transaction(async (tx) => {
+      if (!newStatus) {
+        // Deactivating: deactivate mentor assignments and internship applications
+        await tx.mentorAssignment.updateMany({
+          where: { studentId, isActive: true },
+          data: { isActive: false, deactivatedAt: new Date() },
+        });
+
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: true },
+          data: { isActive: false },
+        });
+      } else {
+        // Activating: reactivate internship applications
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: false },
+          data: { isActive: true },
+        });
+      }
+
+      // Toggle the user's active status
+      await tx.user.update({
+        where: { id: student.userId },
+        data: { active: newStatus },
+      });
+    });
+
+    // Log status change
+    this.auditService.log({
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Student ${newStatus ? 'activated' : 'deactivated'}: ${student.user?.name} (${student.user?.email})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      institutionId: principal.institutionId,
+      oldValues: { active: currentStatus },
+      newValues: { active: newStatus },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['students', `student:${studentId}`]);
+
+    return {
+      success: true,
+      active: newStatus,
+      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully`,
+    };
+  }
+
+  /**
    * Parse Excel/CSV file buffer to JSON
    */
   private async parseExcelFile(file: Express.Multer.File): Promise<any[]> {

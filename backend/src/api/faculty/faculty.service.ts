@@ -2474,9 +2474,9 @@ export class FacultyService {
   /**
    * Toggle student active status
    * SECURITY: Requires facultyId to verify authorization via MentorAssignment
-   * Also toggles the associated user account status
+   * Also toggles mentor assignments and internship applications
    */
-  async toggleStudentStatus(studentId: string, isActive: boolean, facultyId: string) {
+  async toggleStudentStatus(studentId: string, facultyId: string) {
     // Verify faculty is assigned to this student
     const isAuthorized = await this.prisma.mentorAssignment.findFirst({
       where: {
@@ -2499,47 +2499,65 @@ export class FacultyService {
       throw new NotFoundException('Student not found');
     }
 
-    const oldStatus = student.user?.active;
-
-    // Update user account status (active status is now on User model)
-    let updated = student;
-    if (student.userId) {
-      await this.prisma.user.update({
-        where: { id: student.userId },
-        data: { active: isActive },
-      });
-      // Refetch student with updated user data
-      updated = await this.prisma.student.findUnique({
-        where: { id: studentId },
-        include: { user: true },
-      }) as any;
+    if (!student.user) {
+      throw new NotFoundException('Student user account not found');
     }
+
+    const currentStatus = student.user.active ?? true;
+    const newStatus = !currentStatus;
+
+    // Use transaction to ensure all related data is updated atomically
+    await this.prisma.$transaction(async (tx) => {
+      if (!newStatus) {
+        // Deactivating: Also deactivate mentor assignments and internship applications
+        await tx.mentorAssignment.updateMany({
+          where: { studentId },
+          data: { isActive: false },
+        });
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: true },
+          data: { isActive: false },
+        });
+      } else {
+        // Activating: Reactivate internship applications (mentor assignments stay inactive for manual reassignment)
+        await tx.internshipApplication.updateMany({
+          where: { studentId, isActive: false },
+          data: { isActive: true },
+        });
+      }
+
+      // Toggle user active status
+      await tx.user.update({
+        where: { id: student.user!.id },
+        data: { active: newStatus },
+      });
+    });
 
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
 
     // Audit status toggle
     this.auditService.log({
-      action: isActive ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
       entityType: 'Student',
       entityId: studentId,
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Student ${isActive ? 'activated' : 'deactivated'} by faculty: ${student.user?.name}${student.userId ? ' (user account updated)' : ''}`,
+      description: `Student ${newStatus ? 'activated' : 'deactivated'} by faculty: ${student.user?.name} (mentor assignments and internship applications ${newStatus ? 'reactivated' : 'deactivated'})`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
-      oldValues: { active: oldStatus },
-      newValues: { active: isActive },
+      oldValues: { active: currentStatus },
+      newValues: { active: newStatus },
     }).catch(() => {});
 
-    await this.cache.invalidateByTags(['students', `student:${studentId}`, 'users', `user:${student.userId}`]);
+    await this.cache.invalidateByTags(['students', `student:${studentId}`, 'users', `user:${student.userId}`, 'faculty', `faculty:${facultyId}`]);
 
     return {
       success: true,
-      message: `Student ${isActive ? 'activated' : 'deactivated'} successfully${student.userId ? ' (user account updated)' : ''}`,
-      data: updated,
+      active: newStatus,
+      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully. ${newStatus ? 'Internship applications reactivated.' : 'Mentor assignments and internship applications deactivated.'}`,
     };
   }
 

@@ -1,22 +1,25 @@
 // src/pages/faculty/AssignedStudents.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic } from "antd";
-import { 
-  PhoneOutlined, 
-  MailOutlined, 
-  ReloadOutlined, 
-  TeamOutlined, 
-  SearchOutlined, 
-  EyeOutlined, 
+import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic, Popconfirm, message } from "antd";
+import {
+  PhoneOutlined,
+  MailOutlined,
+  ReloadOutlined,
+  TeamOutlined,
+  SearchOutlined,
+  EyeOutlined,
   FilterOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined
+  ClockCircleOutlined,
+  StopOutlined,
+  PlayCircleOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import {
   fetchAssignedStudents,
   selectStudents,
+  toggleStudentStatus,
 } from "../store/facultySlice";
 import StudentDetailsModal from "../dashboard/components/StudentDetailsModal";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
@@ -47,6 +50,16 @@ const AssignedStudents = React.memo(() => {
     dispatch(fetchAssignedStudents({ forceRefresh: true }));
   }, [dispatch]);
 
+  // Handle toggle student status
+  const handleToggleStatus = useCallback(async (student) => {
+    try {
+      const result = await dispatch(toggleStudentStatus({ studentId: student.id })).unwrap();
+      message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      message.error(error || 'Failed to toggle student status');
+    }
+  }, [dispatch]);
+
   // Flatten and process student data
   const students = useMemo(() => {
     if (!Array.isArray(rawStudents)) return [];
@@ -63,6 +76,8 @@ const AssignedStudents = React.memo(() => {
             rollNumber: student?.user?.rollNumber || student.rollNumber,
             phoneNo: student?.user?.phoneNo || student.contact || student.phoneNo,
             branchName: student?.user?.branchName || student.branchName || student.branch?.name || "N/A",
+            // User SOT pattern: prefer user.active, fallback to isActive
+            isActive: student?.user?.active ?? student.active ?? student.isActive ?? true,
             // Helper for active internship
             activeInternship: student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate),
             // Helper for pending applications
@@ -149,7 +164,7 @@ const AssignedStudents = React.memo(() => {
     },
     {
       title: "Internship Status",
-      key: "status",
+      key: "internshipStatus",
       width: 180,
       render: (_, r) => {
         if (r.activeInternship) {
@@ -174,22 +189,53 @@ const AssignedStudents = React.memo(() => {
       }
     },
     {
+      title: "Status",
+      key: "status",
+      width: 100,
+      render: (_, r) => (
+        <Tag color={r.isActive ? "green" : "red"}>
+          {r.isActive ? "Active" : "Inactive"}
+        </Tag>
+      ),
+    },
+    {
       title: "Actions",
       key: "actions",
       fixed: 'right',
-      width: 100,
+      width: 180,
       render: (_, r) => (
-        <Button 
-            type="text" 
-            icon={<EyeOutlined />} 
+        <Space size="small">
+          <Button
+            type="text"
+            icon={<EyeOutlined />}
             onClick={() => {
                 setSelectedStudent(r);
                 setDetailModalVisible(true);
             }}
             style={{ color: token.colorPrimary }}
-        >
+          >
             Details
-        </Button>
+          </Button>
+          <Popconfirm
+            title={r.isActive ? "Deactivate Student" : "Activate Student"}
+            description={r.isActive
+              ? "This will deactivate the student and their mentor assignments and internship applications."
+              : "This will activate the student and their internship applications."
+            }
+            onConfirm={() => handleToggleStatus(r)}
+            okText="Yes"
+            cancelText="No"
+            okButtonProps={{ danger: r.isActive }}
+          >
+            <Button
+              type="text"
+              icon={r.isActive ? <StopOutlined /> : <PlayCircleOutlined />}
+              style={{ color: r.isActive ? token.colorError : token.colorSuccess }}
+            >
+              {r.isActive ? "Deactivate" : "Activate"}
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ];

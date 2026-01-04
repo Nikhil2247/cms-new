@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -129,6 +130,12 @@ export class PrincipalController {
   @ApiOperation({ summary: 'Delete student (soft delete)' })
   async deleteStudent(@Request() req, @Param('id') id: string) {
     return this.principalService.deleteStudent(req.user.userId, id);
+  }
+
+  @Patch('students/:id/toggle-status')
+  @ApiOperation({ summary: 'Toggle student active status (also toggles mentor assignments and internship applications)' })
+  async toggleStudentStatus(@Request() req, @Param('id') id: string) {
+    return this.principalService.toggleStudentStatus(req.user.userId, id);
   }
 
   @Post('students/bulk-upload')

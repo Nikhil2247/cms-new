@@ -2038,6 +2038,28 @@ const stateSlice = createSlice({
         }
       })
 
+      // Toggle Faculty Status (activate/deactivate)
+      .addCase(toggleFacultyStatus.fulfilled, (state, action) => {
+        const { facultyId, active } = action.payload;
+        // Update faculty in list with new status
+        const facultyIndex = state.instituteFacultyPrincipal.faculty.findIndex(f => f.id === facultyId);
+        if (facultyIndex !== -1) {
+          state.instituteFacultyPrincipal.faculty[facultyIndex] = {
+            ...state.instituteFacultyPrincipal.faculty[facultyIndex],
+            active: active,
+          };
+        }
+        // Invalidate caches for this institution to force refresh on next visit
+        if (action.payload.institutionId) {
+          if (state.lastFetched.instituteFaculty) {
+            delete state.lastFetched.instituteFaculty[action.payload.institutionId];
+          }
+          if (state.lastFetched.instituteOverview) {
+            delete state.lastFetched.instituteOverview[action.payload.institutionId];
+          }
+        }
+      })
+
       // Critical Alerts
       .addCase(fetchCriticalAlerts.pending, (state) => {
         state.criticalAlerts.loading = true;

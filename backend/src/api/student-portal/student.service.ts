@@ -363,10 +363,18 @@ export class StudentService {
         user: {
           select: {
             id: true,
+            name: true,
             email: true,
             phoneNo: true,
             active: true,
             rollNumber: true,
+            branch: {
+              select: {
+                id: true,
+                name: true,
+                shortName: true,
+              },
+            },
             Institution: {
               select: {
                 id: true,

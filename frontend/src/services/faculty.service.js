@@ -59,8 +59,8 @@ export const facultyService = {
     return response.data;
   },
 
-  async toggleStudentStatus(studentId, isActive) {
-    const response = await API.put(`/faculty/students/${studentId}/toggle-status`, { isActive });
+  async toggleStudentStatus(studentId) {
+    const response = await API.patch(`/faculty/students/${studentId}/toggle-status`);
     return response.data;
   },
 

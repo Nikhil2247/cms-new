@@ -90,6 +90,11 @@ export const principalService = {
     return response.data;
   },
 
+  async toggleStudentStatus(studentId) {
+    const response = await API.patch(`/principal/students/${studentId}/toggle-status`);
+    return response.data;
+  },
+
   async bulkUploadStudents(file) {
     const formData = new FormData();
     formData.append('file', file);

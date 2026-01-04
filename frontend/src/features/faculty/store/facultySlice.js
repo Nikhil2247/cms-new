@@ -695,10 +695,10 @@ export const uploadStudentDocument = createAsyncThunk(
 
 export const toggleStudentStatus = createAsyncThunk(
   'faculty/toggleStudentStatus',
-  async ({ studentId, isActive }, { rejectWithValue }) => {
+  async ({ studentId }, { rejectWithValue }) => {
     try {
-      const response = await facultyService.toggleStudentStatus(studentId, isActive);
-      return response;
+      const response = await facultyService.toggleStudentStatus(studentId);
+      return { studentId, ...response };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to toggle student status');
     }

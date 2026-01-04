@@ -70,6 +70,7 @@ import {
   deleteInstituteStudent,
   deleteInstituteFaculty,
   toggleStudentStatus,
+  toggleFacultyStatus,
   selectInstituteOverview,
   selectInstituteStudents,
   selectInstituteCompanies,
@@ -658,7 +659,7 @@ const OverviewTab = memo(({ data, loading, error }) => {
 OverviewTab.displayName = 'OverviewTab';
 
 // Memoized Faculty Tab Component
-const FacultyTab = memo(({ principal, faculty, summary, loading, error, onDeleteFaculty }) => {
+const FacultyTab = memo(({ principal, faculty, summary, loading, error, onToggleFacultyStatus }) => {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -744,32 +745,36 @@ const FacultyTab = memo(({ principal, faculty, summary, loading, error, onDelete
           className="rounded-xl border-border"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {faculty.map((member, index) => (
-              <div key={member.id || index} className="flex items-center gap-3 p-3 rounded-lg bg-background-tertiary/30 border border-border/50 hover:border-primary/30 transition-colors group">
-                <Avatar size={36} icon={<UserOutlined />} className={member.role === 'HOD' ? 'bg-purple-500' : 'bg-primary'} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <Text className="font-medium text-text-primary text-sm truncate">{member.name}</Text>
-                    <Tag color={member.role === 'HOD' ? 'purple' : 'blue'} className="text-[10px]">{member.role}</Tag>
+            {faculty.map((member, index) => {
+              const isActive = member.active !== false;
+              return (
+                <div key={member.id || index} className={`flex items-center gap-3 p-3 rounded-lg border border-border/50 hover:border-primary/30 transition-colors group ${isActive ? 'bg-background-tertiary/30' : 'bg-background-tertiary/10 opacity-75'}`}>
+                  <Avatar size={36} icon={<UserOutlined />} className={member.role === 'HOD' ? 'bg-purple-500' : isActive ? 'bg-primary' : 'bg-gray-400'} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Text className={`font-medium text-sm truncate ${isActive ? 'text-text-primary' : 'text-text-tertiary'}`}>{member.name}</Text>
+                      <Tag color={member.role === 'HOD' ? 'purple' : 'blue'} className="text-[10px]">{member.role}</Tag>
+                      <Tag color={isActive ? 'success' : 'default'} className="text-[10px]">{isActive ? 'Active' : 'Inactive'}</Tag>
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-tertiary">
+                      {member.branchName && <span>{member.branchName}</span>}
+                      <span><TeamOutlined className="mr-1" />{member.stats?.assignedStudents || 0}</span>
+                      <span><EnvironmentOutlined className="mr-1" />{member.stats?.visitsCompleted || 0}/{member.stats?.visitsScheduled || 0}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-0.5 text-[11px] text-text-tertiary">
-                    {member.branchName && <span>{member.branchName}</span>}
-                    <span><TeamOutlined className="mr-1" />{member.stats?.assignedStudents || 0}</span>
-                    <span><EnvironmentOutlined className="mr-1" />{member.stats?.visitsCompleted || 0}/{member.stats?.visitsScheduled || 0}</span>
-                  </div>
+                  <Tooltip title={isActive ? 'Deactivate Faculty' : 'Activate Faculty'}>
+                    <Button
+                      type="text"
+                      size="small"
+                      danger={isActive}
+                      icon={isActive ? <DeleteOutlined /> : <CheckCircleOutlined />}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => onToggleFacultyStatus?.(member)}
+                    />
+                  </Tooltip>
                 </div>
-                <Tooltip title="Delete Faculty">
-                  <Button
-                    type="text"
-                    size="small"
-                    danger
-                    icon={<DeleteOutlined />}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onDeleteFaculty?.(member)}
-                  />
-                </Tooltip>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       )}
@@ -1172,30 +1177,36 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     });
   }, [dispatch, selectedInstitute?.id]);
 
-  // Deactivate faculty handler
-  const handleDeleteFaculty = useCallback((faculty) => {
+  // Toggle faculty status handler (activate/deactivate)
+  const handleToggleFacultyStatus = useCallback((faculty) => {
+    const isActive = faculty.active !== false;
+    const action = isActive ? 'Deactivate' : 'Activate';
+    const actionLower = isActive ? 'deactivate' : 'activate';
+
     Modal.confirm({
-      title: 'Deactivate Faculty',
-      icon: <ExclamationCircleOutlined className="text-warning" />,
+      title: `${action} Faculty`,
+      icon: <ExclamationCircleOutlined className={isActive ? "text-warning" : "text-success"} />,
       content: (
         <div>
-          <p>Are you sure you want to deactivate <strong>{faculty.name}</strong>?</p>
+          <p>Are you sure you want to {actionLower} <strong>{faculty.name}</strong>?</p>
           <p className="text-text-tertiary text-sm mt-2">
-            The faculty member will no longer be able to access the system. All associated data including student assignments and visit logs will be preserved.
+            {isActive
+              ? 'The faculty member will no longer be able to access the system. All student mentor assignments will be deactivated but data will be preserved.'
+              : 'The faculty member will be able to access the system again. Student assignments will need to be reassigned.'}
           </p>
         </div>
       ),
-      okText: 'Deactivate',
-      okType: 'danger',
+      okText: action,
+      okType: isActive ? 'danger' : 'primary',
       onOk: async () => {
         try {
-          await dispatch(deleteInstituteFaculty({
+          await dispatch(toggleFacultyStatus({
             facultyId: faculty.id,
             institutionId: selectedInstitute?.id
           })).unwrap();
-          message.success('Faculty deactivated successfully');
+          message.success(`Faculty ${actionLower}d successfully`);
         } catch (error) {
-          message.error(typeof error === 'string' ? error : 'Failed to deactivate faculty');
+          message.error(typeof error === 'string' ? error : `Failed to ${actionLower} faculty`);
         }
       },
     });
@@ -1664,7 +1675,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
               label: <span className="flex items-center gap-2"><IdcardOutlined /> Faculty</span>,
               children: (
                 <div className="h-full overflow-y-auto hide-scrollbar p-4">
-                  <FacultyTab principal={facultyPrincipal.principal} faculty={facultyPrincipal.faculty} summary={facultyPrincipal.summary} loading={facultyPrincipal.loading} error={facultyPrincipal.error} onDeleteFaculty={handleDeleteFaculty} />
+                  <FacultyTab principal={facultyPrincipal.principal} faculty={facultyPrincipal.faculty} summary={facultyPrincipal.summary} loading={facultyPrincipal.loading} error={facultyPrincipal.error} onToggleFacultyStatus={handleToggleFacultyStatus} />
                 </div>
               ),
             },

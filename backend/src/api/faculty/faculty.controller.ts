@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -36,7 +37,6 @@ import {
   UploadVisitDocumentDto,
   UpdateStudentDto,
   UploadStudentDocumentDto,
-  ToggleStudentStatusDto,
 } from './dto';
 import {
   validateVisitDocument,
@@ -513,15 +513,14 @@ export class FacultyController {
     return this.facultyService.saveStudentDocument(studentId, result.url, body.type, req.user.userId);
   }
 
-  @Put('students/:id/toggle-status')
+  @Patch('students/:id/toggle-status')
   @Roles(Role.TEACHER, Role.TEACHER)
-  @ApiOperation({ summary: 'Toggle student active status' })
+  @ApiOperation({ summary: 'Toggle student active status (also toggles mentor assignments and internship applications)' })
   @ApiResponse({ status: 200, description: 'Student status toggled successfully' })
   async toggleStudentStatus(
     @Param('id') studentId: string,
-    @Body() body: ToggleStudentStatusDto,
     @Req() req,
   ) {
-    return this.facultyService.toggleStudentStatus(studentId, body.isActive, req.user.userId);
+    return this.facultyService.toggleStudentStatus(studentId, req.user.userId);
   }
 }

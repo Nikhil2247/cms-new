@@ -26,6 +26,7 @@ import {
   uploadStudentDocument,
   fetchStudentDocuments,
   fetchStudentById,
+  toggleStudentStatus,
 } from '../store/principalSlice';
 import {
   selectStudentsList,
@@ -206,22 +207,19 @@ const AllStudents = () => {
   };
 
   // Handle active state toggle
+  // Uses dedicated toggleStudentStatus thunk which also handles mentor assignments and internship applications
   const handleActiveStateToggle = async () => {
     if (!selectedStudent) return;
-    const newStatus = !selectedStudent?.user?.active;
 
     try {
-      await dispatch(
-        updateStudent({
-          id: selectedStudent.id,
-          data: { isActive: newStatus },
-        })
+      const result = await dispatch(
+        toggleStudentStatus({ studentId: selectedStudent.id })
       ).unwrap();
-      message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
-      setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: newStatus } }));
+      message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
+      setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
       handleRefresh();
     } catch (error) {
-      message.error(error || 'Failed to update student status');
+      message.error(error || 'Failed to toggle student status');
     }
   };
 
@@ -920,7 +918,9 @@ const AllStudents = () => {
                           onClick: () => {
                             Modal.confirm({
                               title: `${selectedStudent?.user?.active ? 'Deactivate' : 'Activate'} Student`,
-                              content: `Are you sure you want to ${selectedStudent?.user?.active ? 'deactivate' : 'activate'} ${selectedStudent?.user?.name}? ${selectedStudent?.user?.active ? 'This will also deactivate their user account.' : ''}`,
+                              content: selectedStudent?.user?.active
+                                ? `Are you sure you want to deactivate ${selectedStudent?.user?.name}? This will also deactivate their mentor assignments and internship applications.`
+                                : `Are you sure you want to activate ${selectedStudent?.user?.name}? This will also reactivate their internship applications.`,
                               okText: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
                               okButtonProps: { danger: selectedStudent?.user?.active },
                               onOk: handleActiveStateToggle,

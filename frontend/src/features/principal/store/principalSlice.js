@@ -310,6 +310,34 @@ export const deleteStudent = createAsyncThunk(
   }
 );
 
+// Toggle student active status (activate/deactivate)
+// Also toggles related mentor assignments and internship applications
+export const toggleStudentStatus = createAsyncThunk(
+  'principal/toggleStudentStatus',
+  async ({ studentId }, { rejectWithValue, dispatch, getState }) => {
+    // Save current state for rollback
+    const previousList = [...getState().principal.students.list];
+
+    try {
+      // Optimistic update - toggle status immediately
+      dispatch(principalSlice.actions.optimisticallyToggleStudentStatus(studentId));
+
+      // Make API call
+      const response = await principalService.toggleStudentStatus(studentId);
+      return { studentId, ...response };
+    } catch (error) {
+      // Rollback on error
+      dispatch(principalSlice.actions.rollbackStudentOperation({ list: previousList }));
+
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to toggle student status. Please try again.';
+      console.error('Toggle student status error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 export const bulkUploadStudents = createAsyncThunk(
   'principal/bulkUploadStudents',
   async (file, { rejectWithValue }) => {
@@ -1015,6 +1043,21 @@ const principalSlice = createSlice({
     optimisticallyDeleteStudent: (state, action) => {
       state.students.list = state.students.list.filter(s => s.id !== action.payload);
     },
+    optimisticallyToggleStudentStatus: (state, action) => {
+      const studentId = action.payload;
+      const index = state.students.list.findIndex(s => s.id === studentId);
+      if (index !== -1) {
+        const student = state.students.list[index];
+        // Status can be on user.active or directly on student
+        const currentStatus = student.user?.active ?? student.active ?? true;
+        state.students.list[index] = {
+          ...student,
+          user: student.user ? { ...student.user, active: !currentStatus } : undefined,
+          active: !currentStatus,
+          _isOptimistic: true,
+        };
+      }
+    },
     rollbackStudentOperation: (state, action) => {
       if (action.payload?.list) {
         state.students.list = action.payload.list;
@@ -1146,6 +1189,32 @@ const principalSlice = createSlice({
       })
       .addCase(deleteStudent.rejected, (state, action) => {
         state.students.loading = false;
+        state.students.error = action.payload;
+        // Rollback is handled in the thunk
+      })
+      // Toggle Student Status
+      .addCase(toggleStudentStatus.pending, (state) => {
+        state.students.error = null;
+      })
+      .addCase(toggleStudentStatus.fulfilled, (state, action) => {
+        // Update student status with server response
+        const { studentId, active } = action.payload;
+        const index = state.students.list.findIndex(s => s.id === studentId);
+        if (index !== -1) {
+          const student = state.students.list[index];
+          state.students.list[index] = {
+            ...student,
+            user: student.user ? { ...student.user, active } : undefined,
+            active,
+            _isOptimistic: undefined,
+          };
+        }
+        // Invalidate related caches
+        state.lastFetched.mentorAssignments = null;
+        state.lastFetched.mentorAssignmentsKey = null;
+        state.lastFetched.mentorStats = null;
+      })
+      .addCase(toggleStudentStatus.rejected, (state, action) => {
         state.students.error = action.payload;
         // Rollback is handled in the thunk
       })
@@ -1633,6 +1702,7 @@ export const {
   optimisticallyAddStudent,
   optimisticallyUpdateStudent,
   optimisticallyDeleteStudent,
+  optimisticallyToggleStudentStatus,
   rollbackStudentOperation,
   // Staff optimistic updates
   optimisticallyAddStaff,
