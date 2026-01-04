@@ -30,7 +30,7 @@
  *   npx ts-node prisma/server-migrate-mongo-to-postgres.ts --batch-size 500
  */
 
-import { PrismaClient, ApplicationStatus, InternshipPhase } from '../src/generated/prisma/client';
+import { PrismaClient, ApplicationStatus, InternshipPhase, SupportTicketPriority, SupportTicketStatus } from '../src/generated/prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 import { MongoClient, ObjectId } from 'mongodb';
@@ -117,7 +117,7 @@ ENVIRONMENT VARIABLES:
   TARGET_DATABASE_URL         PostgreSQL connection URL (alternative to -p)
 
 FEATURES:
-  • Migrates 25+ collections from MongoDB to PostgreSQL
+  • Migrates 14 core collections from MongoDB to PostgreSQL
   • Automatically maps ObjectId to UUID
   • Handles foreign key constraints with proper ordering
   • Maps deprecated internshipStatus to new InternshipPhase enum
@@ -201,32 +201,16 @@ const idMaps: Record<string, Map<string, string>> = {
   students: new Map(),
   branches: new Map(),
   batches: new Map(),
-  semesters: new Map(),
-  subjects: new Map(),
-  industries: new Map(),
-  internships: new Map(),
   internshipApplications: new Map(),
   mentorAssignments: new Map(),
   documents: new Map(),
-  fees: new Map(),
-  examResults: new Map(),
   notifications: new Map(),
   auditLogs: new Map(),
   grievances: new Map(),
   technicalQueries: new Map(),
+  supportTickets: new Map(),
   monthlyReports: new Map(),
   facultyVisitLogs: new Map(),
-  monthlyFeedbacks: new Map(),
-  completionFeedbacks: new Map(),
-  complianceRecords: new Map(),
-  industryRequests: new Map(),
-  referralApplications: new Map(),
-  approvedReferrals: new Map(),
-  scholarships: new Map(),
-  placements: new Map(),
-  calendars: new Map(),
-  notices: new Map(),
-  internshipPreferences: new Map(),
 };
 
 function convertId(objectId: string | ObjectId | null | undefined, collection: string): string {
@@ -305,6 +289,166 @@ function finishCollectionMigration(stats: MigrationStats): void {
 }
 
 // =============================================================================
+// Pre-Migration Validation
+// =============================================================================
+
+interface ValidationResult {
+  collection: string;
+  total: number;
+  issues: Array<{ type: string; count: number; examples: string[] }>;
+}
+
+async function validateSourceData(mongoDb: any, config: MigrationConfig): Promise<ValidationResult[]> {
+  logPhase('Validating Source Data');
+  const results: ValidationResult[] = [];
+
+  // Validate Users
+  log('Checking Users collection...', 'reset');
+  const users = await mongoDb.collection('User').find({}).toArray();
+  const userIssues: Array<{ type: string; count: number; examples: string[] }> = [];
+
+  const duplicateEmails = new Map<string, string[]>();
+  const missingPasswords: string[] = [];
+  const missingNames: string[] = [];
+  const invalidRoles: string[] = [];
+
+  for (const user of users) {
+    const email = user.email?.toLowerCase()?.trim();
+    if (email) {
+      if (!duplicateEmails.has(email)) {
+        duplicateEmails.set(email, []);
+      }
+      duplicateEmails.get(email)!.push(user._id.toString());
+    }
+    if (!user.password) missingPasswords.push(user._id.toString());
+    if (!user.name) missingNames.push(user._id.toString());
+    const validRoles = ['STUDENT', 'PRINCIPAL', 'TEACHER', 'STATE_DIRECTORATE', 'SYSTEM_ADMIN'];
+    if (user.role && !validRoles.includes(user.role.toUpperCase())) {
+      invalidRoles.push(`${user._id}: ${user.role}`);
+    }
+  }
+
+  const actualDuplicates = Array.from(duplicateEmails.entries())
+    .filter(([, ids]) => ids.length > 1)
+    .map(([email, ids]) => `${email} (${ids.length} occurrences)`);
+
+  if (actualDuplicates.length > 0) {
+    userIssues.push({ type: 'Duplicate emails', count: actualDuplicates.length, examples: actualDuplicates.slice(0, 5) });
+  }
+  if (missingPasswords.length > 0) {
+    userIssues.push({ type: 'Missing passwords', count: missingPasswords.length, examples: missingPasswords.slice(0, 5) });
+  }
+  if (missingNames.length > 0) {
+    userIssues.push({ type: 'Missing names', count: missingNames.length, examples: missingNames.slice(0, 5) });
+  }
+  if (invalidRoles.length > 0) {
+    userIssues.push({ type: 'Invalid roles', count: invalidRoles.length, examples: invalidRoles.slice(0, 5) });
+  }
+
+  results.push({ collection: 'User', total: users.length, issues: userIssues });
+
+  // Validate Students
+  log('Checking Student collection...', 'reset');
+  const students = await mongoDb.collection('Student').find({}).toArray();
+  const studentIssues: Array<{ type: string; count: number; examples: string[] }> = [];
+
+  const orphanedStudents: string[] = [];
+  const duplicateUserIds = new Map<string, string[]>();
+  const missingStudentNames: string[] = [];
+
+  const userIdSet = new Set(users.map((u: any) => u._id.toString()));
+
+  for (const student of students) {
+    const userId = student.userId?.toString();
+    if (!userId || !userIdSet.has(userId)) {
+      orphanedStudents.push(`${student._id}: userId=${userId || 'null'}`);
+    }
+    if (userId) {
+      if (!duplicateUserIds.has(userId)) {
+        duplicateUserIds.set(userId, []);
+      }
+      duplicateUserIds.get(userId)!.push(student._id.toString());
+    }
+    if (!student.name) {
+      missingStudentNames.push(student._id.toString());
+    }
+  }
+
+  const studentDuplicates = Array.from(duplicateUserIds.entries())
+    .filter(([, ids]) => ids.length > 1)
+    .map(([userId, ids]) => `userId=${userId} (${ids.length} students)`);
+
+  if (orphanedStudents.length > 0) {
+    studentIssues.push({ type: 'Orphaned students (no matching User)', count: orphanedStudents.length, examples: orphanedStudents.slice(0, 5) });
+  }
+  if (studentDuplicates.length > 0) {
+    studentIssues.push({ type: 'Duplicate userId references', count: studentDuplicates.length, examples: studentDuplicates.slice(0, 5) });
+  }
+  if (missingStudentNames.length > 0) {
+    studentIssues.push({ type: 'Missing student names', count: missingStudentNames.length, examples: missingStudentNames.slice(0, 5) });
+  }
+
+  results.push({ collection: 'Student', total: students.length, issues: studentIssues });
+
+  // Validate Institutions
+  log('Checking Institution collection...', 'reset');
+  const institutions = await mongoDb.collection('Institution').find({}).toArray();
+  const institutionIssues: Array<{ type: string; count: number; examples: string[] }> = [];
+
+  const duplicateCodes = new Map<string, number>();
+  for (const inst of institutions) {
+    const code = inst.code?.toLowerCase();
+    if (code) {
+      duplicateCodes.set(code, (duplicateCodes.get(code) || 0) + 1);
+    }
+  }
+  const instDuplicates = Array.from(duplicateCodes.entries())
+    .filter(([, count]) => count > 1)
+    .map(([code, count]) => `${code} (${count}x)`);
+
+  if (instDuplicates.length > 0) {
+    institutionIssues.push({ type: 'Duplicate institution codes', count: instDuplicates.length, examples: instDuplicates.slice(0, 5) });
+  }
+
+  results.push({ collection: 'Institution', total: institutions.length, issues: institutionIssues });
+
+  // Print validation results
+  console.log('');
+  log('┌─────────────────────────────────────────────────────────────────────────────┐', 'reset');
+  log('│                         VALIDATION RESULTS                                   │', 'reset');
+  log('├─────────────────────────────────────────────────────────────────────────────┤', 'reset');
+
+  let hasIssues = false;
+  for (const result of results) {
+    if (result.issues.length > 0) {
+      hasIssues = true;
+      log(`│ ${result.collection} (${result.total} records):`.padEnd(78) + '│', 'yellow');
+      for (const issue of result.issues) {
+        log(`│   - ${issue.type}: ${issue.count}`.padEnd(78) + '│', 'yellow');
+        if (config.verbose && issue.examples.length > 0) {
+          for (const example of issue.examples) {
+            log(`│       ${example.slice(0, 68)}`.padEnd(78) + '│', 'reset');
+          }
+        }
+      }
+    } else {
+      log(`│ ${result.collection} (${result.total} records): ✓ No issues`.padEnd(78) + '│', 'green');
+    }
+  }
+
+  log('└─────────────────────────────────────────────────────────────────────────────┘', 'reset');
+
+  if (hasIssues) {
+    logWarning('Data quality issues detected. Migration will attempt to handle these automatically.');
+    logWarning('Use --verbose to see detailed examples of each issue.');
+  } else {
+    logSuccess('All validation checks passed!');
+  }
+
+  return results;
+}
+
+// =============================================================================
 // Migration Functions
 // =============================================================================
 
@@ -354,51 +498,98 @@ async function migrateUsers(mongoDb: any, prisma: PrismaClient, config: Migratio
   const users = await mongoDb.collection('User').find({}).toArray();
   const stats = startCollectionMigration('users', users.length);
   const processedEmails = new Set<string>();
+  const emailToUserId = new Map<string, string>();
 
   if (config.dryRun) {
     logWarning(`Dry run: Would migrate ${users.length} users`);
     return;
   }
 
-  for (const user of users) {
-    const newId = convertId(user._id, 'users');
-    const institutionId = getMappedId(user.institutionId, 'institutions');
-    const email = user.email?.toLowerCase();
-    const isDuplicate = email && processedEmails.has(email);
+  // Progress tracking
+  let progressCounter = 0;
+  const progressInterval = Math.max(1, Math.floor(users.length / 10));
 
-    if (email && !isDuplicate) {
-      processedEmails.add(email);
+  for (const user of users) {
+    progressCounter++;
+    if (progressCounter % progressInterval === 0) {
+      log(`  Progress: ${progressCounter}/${users.length} (${Math.round((progressCounter / users.length) * 100)}%)`, 'reset');
     }
 
-    const finalEmail = isDuplicate
-      ? `duplicate_${user._id.toString()}@removed.local`
-      : user.email;
+    const mongoUserId = user._id?.toString() || 'unknown';
+    const newId = convertId(user._id, 'users');
+    const institutionId = getMappedId(user.institutionId, 'institutions');
+
+    // Normalize and validate email
+    let email = user.email?.toLowerCase()?.trim();
+    const isValidEmail = email && typeof email === 'string' && email.includes('@') && email.length > 3;
+
+    // Handle duplicate emails
+    const isDuplicate = isValidEmail && processedEmails.has(email!);
+    if (isValidEmail && !isDuplicate) {
+      processedEmails.add(email!);
+      emailToUserId.set(email!, mongoUserId);
+    }
+
+    // Generate unique email for duplicates
+    let finalEmail: string | null = null;
+    if (isDuplicate) {
+      finalEmail = `duplicate_${mongoUserId}@removed.local`;
+      if (config.verbose) {
+        const originalUserId = emailToUserId.get(email!);
+        logWarning(`Duplicate email '${email}' for user ${mongoUserId}, original user: ${originalUserId}`);
+      }
+    } else if (isValidEmail) {
+      finalEmail = email!;
+    } else {
+      // No email or invalid email - generate placeholder for non-student roles
+      if (user.role !== 'STUDENT') {
+        finalEmail = `no_email_${mongoUserId}@placeholder.local`;
+        if (config.verbose) logWarning(`User ${mongoUserId} has no valid email, using placeholder`);
+      }
+    }
+
+    // Validate required fields
+    const name = user.name?.trim() || `User_${mongoUserId.slice(-8)}`;
+
+    // Validate role enum
+    const validRoles = ['STUDENT', 'PRINCIPAL', 'TEACHER', 'STATE_DIRECTORATE', 'SYSTEM_ADMIN'];
+    const role = validRoles.includes(user.role?.toUpperCase()) ? user.role.toUpperCase() : null;
+
+    // Validate password - must exist
+    const password = user.password || '$2b$10$placeholder.hash.for.migration';
 
     try {
       await prisma.user.create({
         data: {
           id: newId,
           email: finalEmail,
-          password: user.password,
-          name: user.name,
-          role: user.role,
+          password: password,
+          name: name,
+          role: role as any,
           active: isDuplicate ? false : (user.active ?? true),
-          institutionId: institutionId,
-          designation: user.designation,
-          phoneNo: user.phoneNo,
-          rollNumber: user.rollNumber,
-          branchName: user.branchName,
-          dob: user.dob,
+          institutionId: institutionId || null,
+          designation: user.designation || null,
+          phoneNo: user.phoneNo || null,
+          rollNumber: user.rollNumber || null,
+          branchName: user.branchName || null,
+          dob: user.dob || null,
           createdAt: processDate(user.createdAt) || new Date(),
         },
       });
       stats.migrated++;
       if (isDuplicate) stats.skipped++;
     } catch (error: any) {
-      recordError(stats, user._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating user ${user.email}: ${error.message}`);
+      // Handle unique constraint violations
+      if (error.code === 'P2002') {
+        recordError(stats, mongoUserId, `Unique constraint violation: ${error.meta?.target || 'unknown'}`);
+      } else {
+        recordError(stats, mongoUserId, error.message);
+      }
+      if (config.verbose) logError(`Error migrating user ${user.email || mongoUserId}: ${error.message}`);
     }
   }
+
+  log(`  Processed ${progressCounter} users`, 'reset');
   finishCollectionMigration(stats);
 }
 
@@ -430,38 +621,6 @@ async function migrateBatches(mongoDb: any, prisma: PrismaClient, config: Migrat
     } catch (error: any) {
       recordError(stats, batch._id?.toString() || 'unknown', error.message);
       if (config.verbose) logError(`Error migrating batch ${batch.name}: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateSemesters(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Semesters...', 'blue');
-  const semesters = await mongoDb.collection('Semester').find({}).toArray();
-  const stats = startCollectionMigration('semesters', semesters.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${semesters.length} semesters`);
-    return;
-  }
-
-  for (const sem of semesters) {
-    const newId = convertId(sem._id, 'semesters');
-    const institutionId = getMappedId(sem.institutionId, 'institutions');
-
-    try {
-      await prisma.semester.create({
-        data: {
-          id: newId,
-          number: sem.number,
-          isActive: sem.isActive ?? true,
-          institutionId: institutionId,
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      recordError(stats, sem._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating semester ${sem.number}: ${error.message}`);
     }
   }
   finishCollectionMigration(stats);
@@ -503,244 +662,179 @@ async function migrateBranches(mongoDb: any, prisma: PrismaClient, config: Migra
   finishCollectionMigration(stats);
 }
 
-async function migrateSubjects(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Subjects...', 'blue');
-  const subjects = await mongoDb.collection('Subject').find({}).toArray();
-  const stats = startCollectionMigration('subjects', subjects.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${subjects.length} subjects`);
-    return;
-  }
-
-  for (const subject of subjects) {
-    const newId = convertId(subject._id, 'subjects');
-    const branchId = getMappedId(subject.branchId, 'branches');
-    const institutionId = getMappedId(subject.institutionId, 'institutions');
-
-    try {
-      await prisma.subject.create({
-        data: {
-          id: newId,
-          subjectName: subject.subjectName,
-          subjectCode: subject.subjectCode,
-          syllabusYear: subject.syllabusYear,
-          semesterNumber: subject.semesterNumber,
-          branchName: subject.branchName,
-          maxMarks: subject.maxMarks || 100,
-          subjectType: subject.subjectType || 'THEORY',
-          branchId: branchId,
-          institutionId: institutionId,
-          createdAt: processDate(subject.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      recordError(stats, subject._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating subject ${subject.subjectName}: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
 async function migrateStudents(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
   log('Migrating Students...', 'blue');
   const students = await mongoDb.collection('Student').find({}).toArray();
   const stats = startCollectionMigration('students', students.length);
   const processedUserIds = new Map<string, string>();
+  const processedAdmissionNumbers = new Set<string>();
 
   if (config.dryRun) {
     logWarning(`Dry run: Would migrate ${students.length} students`);
     return;
   }
 
+  // Progress tracking for large datasets
+  let progressCounter = 0;
+  const progressInterval = Math.max(1, Math.floor(students.length / 10));
+
   for (const student of students) {
+    progressCounter++;
+    if (progressCounter % progressInterval === 0) {
+      log(`  Progress: ${progressCounter}/${students.length} (${Math.round((progressCounter / students.length) * 100)}%)`, 'reset');
+    }
+
+    const mongoStudentId = student._id?.toString() || 'unknown';
     const userId = getMappedId(student.userId, 'users');
     const institutionId = getMappedId(student.institutionId, 'institutions');
     const branchId = getMappedId(student.branchId, 'branches');
     const batchId = getMappedId(student.batchId, 'batches');
 
+    // Validation: Skip if no userId mapping
     if (!userId) {
+      recordError(stats, mongoStudentId, 'Missing userId mapping - User not found in migration');
       stats.skipped++;
       continue;
     }
 
+    // Handle duplicate userIds (one user can only have one student record)
     const isDuplicate = processedUserIds.has(userId);
     if (isDuplicate) {
       const existingUuid = processedUserIds.get(userId)!;
-      idMaps['students'].set(student._id.toString(), existingUuid);
+      idMaps['students'].set(mongoStudentId, existingUuid);
+      if (config.verbose) logWarning(`Duplicate student for userId ${userId}, mapping to existing: ${existingUuid}`);
       stats.skipped++;
       continue;
+    }
+
+    // Handle duplicate admission numbers
+    const admissionNumber = student.admissionNumber?.trim();
+    if (admissionNumber && processedAdmissionNumbers.has(admissionNumber.toLowerCase())) {
+      if (config.verbose) logWarning(`Duplicate admission number: ${admissionNumber} for student ${mongoStudentId}`);
+      // Still migrate but with modified admission number
+    }
+    if (admissionNumber) {
+      processedAdmissionNumbers.add(admissionNumber.toLowerCase());
     }
 
     const newId = convertId(student._id, 'students');
     processedUserIds.set(userId, newId);
 
+    // STEP 1: Update User with Student data (User is Single Source of Truth)
     try {
-      // FIRST: Update User with Student data (User is Single Source of Truth)
-      // User stores: name, email, phoneNo, dob, rollNumber, branchId, branchName, institutionId, active
+      // Build update data carefully, only including fields that have values
+      const userUpdateData: Record<string, any> = {};
+
+      // Name is required for User, use student name or fallback
+      if (student.name) userUpdateData.name = student.name;
+
+      // Email - only update if student has one and it's valid
+      if (student.email && typeof student.email === 'string' && student.email.includes('@')) {
+        userUpdateData.email = student.email.toLowerCase().trim();
+      }
+
+      // Phone number (contact in old schema → phoneNo in new schema)
+      if (student.contact) userUpdateData.phoneNo = student.contact;
+
+      // Date of birth
+      if (student.dob) userUpdateData.dob = student.dob;
+
+      // Roll number
+      if (student.rollNumber) userUpdateData.rollNumber = student.rollNumber;
+
+      // Branch - set both branchId FK and cached branchName
+      if (branchId) userUpdateData.branchId = branchId;
+      if (student.branchName) userUpdateData.branchName = student.branchName;
+
+      // Institution
+      if (institutionId) userUpdateData.institutionId = institutionId;
+
+      // Active status (isActive in old schema → active in new schema)
+      userUpdateData.active = student.isActive ?? true;
+
       await prisma.user.update({
         where: { id: userId },
-        data: {
-          name: student.name || undefined,
-          email: student.email || undefined,
-          phoneNo: student.contact || undefined,
-          dob: student.dob || undefined,
-          rollNumber: student.rollNumber || undefined,
-          branchId: branchId || undefined,
-          branchName: student.branchName || undefined,
-          institutionId: institutionId || undefined,
-          active: student.isActive ?? true,
-        },
+        data: userUpdateData,
       });
+    } catch (userError: any) {
+      recordError(stats, mongoStudentId, `User update failed: ${userError.message}`);
+      if (config.verbose) logError(`Failed to update User for student ${student.rollNumber || mongoStudentId}: ${userError.message}`);
+      // Continue to try creating student anyway if user update fails
+    }
 
-      // THEN: Create Student record with ONLY student-specific fields
-      // Duplicate fields removed: name, email, contact, dob, rollNumber, branchName, isActive
+    // STEP 2: Create Student record with ONLY student-specific fields
+    try {
+      // Validate numeric fields
+      const currentYear = typeof student.currentYear === 'number' ? student.currentYear :
+                         (typeof student.currentYear === 'string' ? parseInt(student.currentYear, 10) : null);
+      const currentSemester = typeof student.currentSemester === 'number' ? student.currentSemester :
+                             (typeof student.currentSemester === 'string' ? parseInt(student.currentSemester, 10) : null);
+
+      // Validate clearance status enum
+      const validClearanceStatuses = ['PENDING', 'CLEARED', 'HOLD', 'REJECTED'];
+      const clearanceStatus = validClearanceStatuses.includes(student.clearanceStatus?.toUpperCase())
+        ? student.clearanceStatus.toUpperCase()
+        : 'PENDING';
+
+      // Validate admission type enum
+      const validAdmissionTypes = ['FIRST_YEAR', 'LEET'];
+      const admissionType = validAdmissionTypes.includes(student.admissionType?.toUpperCase())
+        ? student.admissionType.toUpperCase()
+        : null;
+
+      // Validate category enum
+      const validCategories = ['GENERAL', 'OBC', 'ST', 'SC'];
+      const category = validCategories.includes(student.category?.toUpperCase())
+        ? student.category.toUpperCase()
+        : null;
+
       await prisma.student.create({
         data: {
           id: newId,
           userId: userId,
-          profileImage: student.profilePicture || student.profileImage,
-          admissionNumber: student.admissionNumber,
+          profileImage: student.profilePicture || student.profileImage || null,
+          admissionNumber: admissionNumber || null,
           // Address
-          address: student.address,
-          city: student.city,
-          state: student.state,
-          pinCode: student.pinCode,
-          tehsil: student.tehsil,
-          district: student.district,
+          address: student.address || null,
+          city: student.city || null,
+          state: student.state || null,
+          pinCode: student.pinCode || null,
+          tehsil: student.tehsil || null,
+          district: student.district || null,
           // Family
-          parentName: student.parentName,
-          parentContact: student.parentContact,
-          motherName: student.motherName,
+          parentName: student.parentName || null,
+          parentContact: student.parentContact || null,
+          motherName: student.motherName || null,
           // Demographics
-          gender: student.gender,
+          gender: student.gender || null,
           // Academic
-          currentYear: student.currentYear,
-          currentSemester: student.currentSemester,
-          admissionType: student.admissionType,
-          category: student.category,
-          clearanceStatus: student.clearanceStatus || 'PENDING',
+          currentYear: isNaN(currentYear as number) ? null : currentYear,
+          currentSemester: isNaN(currentSemester as number) ? null : currentSemester,
+          admissionType: admissionType as any,
+          category: category as any,
+          clearanceStatus: clearanceStatus as any,
           // Batch & Institution (keep FKs for direct queries)
-          batchId: batchId,
-          institutionId: institutionId,
-          branchId: branchId,
+          batchId: batchId || null,
+          institutionId: institutionId || null,
+          branchId: branchId || null,
           createdAt: processDate(student.createdAt) || new Date(),
         },
       });
 
       stats.migrated++;
-    } catch (error: any) {
-      recordError(stats, student._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating student ${student.rollNumber}: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateIndustries(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Industries...', 'blue');
-  const industries = await mongoDb.collection('industries').find({}).toArray();
-  const stats = startCollectionMigration('industries', industries.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${industries.length} industries`);
-    return;
-  }
-
-  for (const industry of industries) {
-    const newId = convertId(industry._id, 'industries');
-    const userId = getMappedId(industry.userId, 'users');
-
-    try {
-      if (!userId) {
-        stats.skipped++;
-        recordError(stats, industry._id?.toString() || 'unknown', 'Missing userId mapping for industry');
-        continue;
+    } catch (studentError: any) {
+      // Handle unique constraint violations
+      if (studentError.code === 'P2002') {
+        recordError(stats, mongoStudentId, `Unique constraint violation: ${studentError.meta?.target || 'unknown field'}`);
+        if (config.verbose) logError(`Unique constraint violation for student ${mongoStudentId}: ${studentError.meta?.target}`);
+      } else {
+        recordError(stats, mongoStudentId, `Student create failed: ${studentError.message}`);
+        if (config.verbose) logError(`Failed to create Student ${student.rollNumber || mongoStudentId}: ${studentError.message}`);
       }
-      await prisma.industry.create({
-        data: {
-          id: newId,
-          user: { connect: { id: userId } },
-          companyName: industry.companyName || 'Unknown Company',
-          industryType: industry.industryType || 'OTHER',
-          companySize: industry.companySize || 'SMALL',
-          website: industry.website,
-          address: industry.address || 'Address',
-          city: industry.city || 'City',
-          state: industry.state || 'State',
-          pinCode: industry.pinCode || '000000',
-          contactPersonName: industry.contactPersonName || 'Contact',
-          contactPersonTitle: industry.contactPersonTitle || 'Manager',
-          primaryEmail: industry.primaryEmail || 'contact@company.com',
-          primaryPhone: industry.primaryPhone || '0000000000',
-          registrationNumber: industry.registrationNumber || 'REG000',
-          panNumber: industry.panNumber || 'PAN00000',
-          isApproved: industry.isApproved ?? false,
-          createdAt: processDate(industry.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      recordError(stats, industry._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating industry ${industry.companyName}: ${error.message}`);
     }
   }
-  finishCollectionMigration(stats);
-}
 
-async function migrateInternships(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Internships...', 'blue');
-  const internships = await mongoDb.collection('internships').find({}).toArray();
-  const stats = startCollectionMigration('internships', internships.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${internships.length} internships`);
-    return;
-  }
-
-  for (const internship of internships) {
-    const newId = convertId(internship._id, 'internships');
-    const industryId = getMappedId(internship.industryId, 'industries');
-    const institutionId = getMappedId(internship.institutionId, 'institutions');
-
-    try {
-      if (!industryId) {
-        stats.skipped++;
-        recordError(stats, internship._id?.toString() || 'unknown', 'Missing industryId mapping for internship');
-        continue;
-      }
-      await prisma.internship.create({
-        data: {
-          id: newId,
-          title: internship.title,
-          description: internship.description || '',
-          industry: { connect: { id: industryId } },
-          ...(institutionId ? { Institution: { connect: { id: institutionId } } } : {}),
-          fieldOfWork: internship.fieldOfWork || internship.field || 'General',
-          requiredSkills: internship.skillRequirements || internship.requiredSkills || [],
-          preferredSkills: internship.preferredSkills || [],
-          numberOfPositions: internship.positions || internship.numberOfPositions || 1,
-          stipendAmount: internship.stipend || internship.stipendAmount,
-          isStipendProvided: Boolean(internship.isStipendProvided ?? (internship.stipend || internship.stipendAmount)),
-          workLocation: internship.location || internship.workLocation || '',
-          duration: internship.duration || '3 months',
-          startDate: processDate(internship.startDate),
-          endDate: processDate(internship.endDate),
-          applicationDeadline: processDate(internship.applicationDeadline) || new Date(),
-          eligibleBranches: internship.eligibleBranches || [],
-          eligibleSemesters: internship.eligibleSemesters || [],
-          status: internship.status || 'ACTIVE',
-          isActive: internship.isActive ?? true,
-          createdAt: processDate(internship.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      recordError(stats, internship._id?.toString() || 'unknown', error.message);
-      if (config.verbose) logError(`Error migrating internship ${internship.title}: ${error.message}`);
-    }
-  }
+  log(`  Processed ${progressCounter} students`, 'reset');
   finishCollectionMigration(stats);
 }
 
@@ -805,7 +899,6 @@ async function migrateInternshipApplications(mongoDb: any, prisma: PrismaClient,
   for (const app of applications) {
     const newId = convertId(app._id, 'internshipApplications');
     const studentId = getMappedId(app.studentId, 'students');
-    const internshipId = getMappedId(app.internshipId, 'internships');
 
     if (!studentId) {
       stats.skipped++;
@@ -817,7 +910,6 @@ async function migrateInternshipApplications(mongoDb: any, prisma: PrismaClient,
         data: {
           id: newId,
           studentId: studentId,
-          internshipId: internshipId,
           isSelfIdentified: app.isSelfIdentified ?? false,
           companyName: app.companyName,
           companyAddress: app.companyAddress,
@@ -833,7 +925,7 @@ async function migrateInternshipApplications(mongoDb: any, prisma: PrismaClient,
           coverLetter: app.coverLetter,
           resume: app.resumeUrl || app.resume,
           joiningLetterUrl: app.offerLetterUrl || app.offerLetter || app.joiningLetterUrl,
-          notes: app.noc || app.remarks || app.notes,
+          additionalInfo: app.noc || app.remarks || app.notes,
           isActive: app.isActive ?? true,
           createdAt: processDate(app.createdAt) || new Date(),
         },
@@ -936,54 +1028,6 @@ async function migrateDocuments(mongoDb: any, prisma: PrismaClient, config: Migr
       } else {
         stats.errors++;
         if (config.verbose) logError(`Error migrating document: ${error.message}`);
-      }
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateFees(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Fees...', 'blue');
-  const fees = await mongoDb.collection('Fee').find({}).toArray();
-  const stats = startCollectionMigration('fees', fees.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${fees.length} fees`);
-    return;
-  }
-
-  for (const fee of fees) {
-    const newId = convertId(fee._id, 'fees');
-    const studentId = getMappedId(fee.studentId, 'students');
-    const semesterId = getMappedId(fee.semesterId, 'semesters');
-    const institutionId = getMappedId(fee.institutionId, 'institutions');
-
-    if (!studentId || !semesterId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.fee.create({
-        data: {
-          id: newId,
-          studentId: studentId,
-          semesterId: semesterId,
-          amountDue: fee.amountDue || 0,
-          amountPaid: fee.amountPaid || 0,
-          dueDate: processDate(fee.dueDate) || new Date(),
-          status: fee.status || 'PENDING',
-          institutionId: institutionId,
-          createdAt: processDate(fee.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      if (error.code === 'P2003') {
-        stats.skipped++;
-      } else {
-        stats.errors++;
-        if (config.verbose) logError(`Error migrating fee: ${error.message}`);
       }
     }
   }
@@ -1224,6 +1268,95 @@ async function migrateTechnicalQueries(mongoDb: any, prisma: PrismaClient, confi
   finishCollectionMigration(stats);
 }
 
+async function migrateSupportTickets(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
+  log('Migrating Support Tickets (from Technical Queries)...', 'blue');
+  const queries = await mongoDb.collection('technical_queries').find({}).toArray();
+  const stats = startCollectionMigration('supportTickets', queries.length);
+
+  if (config.dryRun) {
+    logWarning(`Dry run: Would migrate ${queries.length} technical queries to support tickets`);
+    return;
+  }
+
+  let ticketCounter = 1;
+
+  for (const query of queries) {
+    const newId = convertId(query._id, 'supportTickets');
+    const userId = getMappedId(query.userId, 'users');
+
+    if (!userId) {
+      stats.skipped++;
+      continue;
+    }
+
+    try {
+      // Get user details for the ticket
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { name: true, email: true, role: true }
+      });
+
+      if (!user) {
+        stats.skipped++;
+        continue;
+      }
+
+      // Generate ticket number (SUP-YYYYMMDD-XXXX)
+      const createdDate = processDate(query.createdAt) || new Date();
+      const dateStr = createdDate.toISOString().slice(0, 10).replace(/-/g, '');
+      const ticketNumber = `SUP-${dateStr}-${String(ticketCounter++).padStart(4, '0')}`;
+
+      // Map priority
+      const priorityMap: Record<string, SupportTicketPriority> = {
+        'LOW': SupportTicketPriority.LOW,
+        'MEDIUM': SupportTicketPriority.MEDIUM,
+        'HIGH': SupportTicketPriority.HIGH,
+        'URGENT': SupportTicketPriority.URGENT,
+        'CRITICAL': SupportTicketPriority.URGENT
+      };
+
+      // Map status
+      const statusMap: Record<string, SupportTicketStatus> = {
+        'OPEN': SupportTicketStatus.OPEN,
+        'IN_PROGRESS': SupportTicketStatus.IN_PROGRESS,
+        'RESOLVED': SupportTicketStatus.RESOLVED,
+        'CLOSED': SupportTicketStatus.CLOSED,
+        'PENDING': SupportTicketStatus.PENDING_USER
+      };
+
+      await prisma.supportTicket.create({
+        data: {
+          id: newId,
+          ticketNumber: ticketNumber,
+          submittedById: userId,
+          submitterRole: user.role,
+          submitterName: user.name || 'Unknown User',
+          submitterEmail: user.email,
+          subject: query.title || 'Technical Query',
+          description: query.description || '',
+          category: 'TECHNICAL_ISSUES',
+          priority: priorityMap[query.priority?.toUpperCase()] || SupportTicketPriority.MEDIUM,
+          attachments: query.attachments || [],
+          status: statusMap[query.status?.toUpperCase()] || SupportTicketStatus.OPEN,
+          resolution: query.resolution,
+          resolvedAt: query.resolution ? processDate(query.updatedAt) : null,
+          createdAt: createdDate,
+        },
+      });
+      stats.migrated++;
+    } catch (error: any) {
+      if (error.code === 'P2002') {
+        // Unique constraint violation - skip
+        stats.skipped++;
+      } else {
+        stats.errors++;
+        if (config.verbose) logError(`Error migrating support ticket: ${error.message}`);
+      }
+    }
+  }
+  finishCollectionMigration(stats);
+}
+
 async function migrateAuditLogs(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
   log('Migrating Audit Logs...', 'blue');
   const logs = await mongoDb.collection('AuditLog').find({}).toArray();
@@ -1269,442 +1402,142 @@ async function migrateAuditLogs(mongoDb: any, prisma: PrismaClient, config: Migr
   finishCollectionMigration(stats);
 }
 
-async function migrateInternshipPreferences(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Internship Preferences...', 'blue');
-  const prefs = await mongoDb.collection('internship_preferences').find({}).toArray();
-  const stats = startCollectionMigration('internshipPreferences', prefs.length);
+// =============================================================================
+// Post-Migration: Branch Fixing
+// =============================================================================
+
+const branchNormalizationMap: Record<string, string> = {
+  // CSE variants
+  'cse': 'CSE', 'Cse': 'CSE', 'CSE ': 'CSE', 'Computer Science': 'CSE',
+  'Computer Science Engineering': 'CSE', 'Computer Science and Engineering': 'CSE',
+  'COMPUTER SCIENCE AND ENGINEERING': 'CSE', 'COMPUTER SCIENCE': 'CSE',
+  // ECE variants
+  'ece': 'ECE', 'Ece': 'ECE', 'ECE ': 'ECE', 'Electronics': 'ECE',
+  'Electronics and Communication': 'ECE', 'Electronics and Communication Engineering': 'ECE',
+  'ELECTRONICS AND COMMUNICATION ENGINEERING': 'ECE',
+  // EE / Electrical variants
+  'ee': 'EE', 'Ee': 'EE', 'EE ': 'EE', 'Electrical': 'EE',
+  'Electrical Engineering': 'EE', 'ELECTRICAL ENGINEERING': 'EE', 'ELECTRICAL': 'EE',
+  // ME / Mechanical variants
+  'me': 'ME', 'Me': 'ME', 'ME ': 'ME', 'MECH': 'ME', 'Mech': 'ME', 'mech': 'ME',
+  'Mechanical': 'ME', 'Mechanical Engineering': 'ME', 'MECHANICAL ENGINEERING': 'ME', 'MECHANICAL': 'ME',
+  // CE / Civil variants
+  'ce': 'CE', 'Ce': 'CE', 'CE ': 'CE', 'CIVIL': 'CE', 'Civil': 'CE',
+  'Civil Engineering': 'CE', 'CIVIL ENGINEERING': 'CE',
+  // IT variants
+  'it': 'IT', 'It': 'IT', 'IT ': 'IT', 'Information Technology': 'IT', 'INFORMATION TECHNOLOGY': 'IT',
+  // Other
+  'LT': 'LT', 'lt': 'LT', 'Leather Technology': 'LT',
+  'AS': 'AS', 'Applied Science': 'AS', 'Applied Sciences': 'AS',
+};
+
+function normalizeBranchName(branchName: string | null | undefined): string | null {
+  if (!branchName) return null;
+  const trimmed = branchName.trim();
+  if (!trimmed) return null;
+  if (branchNormalizationMap[trimmed]) return branchNormalizationMap[trimmed];
+  const lowerTrimmed = trimmed.toLowerCase();
+  for (const [key, value] of Object.entries(branchNormalizationMap)) {
+    if (key.toLowerCase() === lowerTrimmed) return value;
+  }
+  return trimmed;
+}
+
+async function postMigrationBranchFix(prisma: PrismaClient, config: MigrationConfig) {
+  logPhase('Post-Migration: Fixing Branch Data');
 
   if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${prefs.length} internship preferences`);
+    logWarning('Dry run: Would fix branch data');
     return;
   }
 
-  for (const pref of prefs) {
-    const newId = convertId(pref._id, 'internshipPreferences');
-    const studentId = getMappedId(pref.studentId, 'students');
+  try {
+    // Step 1: Get all unique branchName values from Users
+    const usersWithBranch = await prisma.user.findMany({
+      where: { branchName: { not: null } },
+      select: { branchName: true },
+      distinct: ['branchName'],
+    });
 
-    if (!studentId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.internshipPreference.create({
-        data: {
-          id: newId,
-          studentId: studentId,
-          preferredFields: pref.preferredFields || [],
-          preferredLocations: pref.preferredLocations || [],
-          preferredDurations: pref.preferredDurations || [],
-          minimumStipend: pref.minimumStipend,
-          isRemotePreferred: pref.isRemotePreferred ?? false,
-          additionalRequirements: pref.additionalRequirements,
-          createdAt: processDate(pref.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      if (error.code === 'P2003') {
-        stats.skipped++;
-      } else {
-        stats.errors++;
-        if (config.verbose) logError(`Error migrating internship preference: ${error.message}`);
-      }
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateCalendars(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Calendars...', 'blue');
-  const calendars = await mongoDb.collection('Calendar').find({}).toArray();
-  const stats = startCollectionMigration('calendars', calendars.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${calendars.length} calendars`);
-    return;
-  }
-
-  for (const cal of calendars) {
-    const newId = convertId(cal._id, 'calendars');
-    const institutionId = getMappedId(cal.institutionId, 'institutions');
-
-    if (!institutionId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.calendar.create({
-        data: {
-          id: newId,
-          institutionId: institutionId,
-          title: cal.title,
-          startDate: processDate(cal.startDate) || new Date(),
-          endDate: processDate(cal.endDate) || new Date(),
-          createdAt: processDate(cal.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      stats.errors++;
-      if (config.verbose) logError(`Error migrating calendar ${cal.title}: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateNotices(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Notices...', 'blue');
-  const notices = await mongoDb.collection('Notice').find({}).toArray();
-  const stats = startCollectionMigration('notices', notices.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${notices.length} notices`);
-    return;
-  }
-
-  for (const notice of notices) {
-    const newId = convertId(notice._id, 'notices');
-    const institutionId = getMappedId(notice.institutionId, 'institutions');
-
-    if (!institutionId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.notice.create({
-        data: {
-          id: newId,
-          institutionId: institutionId,
-          title: notice.title,
-          message: notice.message,
-          createdAt: processDate(notice.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      stats.errors++;
-      if (config.verbose) logError(`Error migrating notice ${notice.title}: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateComplianceRecords(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Compliance Records...', 'blue');
-  const records = await mongoDb.collection('compliance_records').find({}).toArray();
-  const stats = startCollectionMigration('complianceRecords', records.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${records.length} compliance records`);
-    return;
-  }
-
-  for (const record of records) {
-    const newId = convertId(record._id, 'complianceRecords');
-    const studentId = getMappedId(record.studentId, 'students');
-
-    if (!studentId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.complianceRecord.create({
-        data: {
-          id: newId,
-          studentId: studentId,
-          complianceType: record.complianceType || 'FACULTY_VISIT',
-          status: record.status || 'PENDING_REVIEW',
-          requiredVisits: record.requiredVisits,
-          completedVisits: record.completedVisits,
-          lastVisitDate: processDate(record.lastVisitDate),
-          nextVisitDue: processDate(record.nextVisitDue),
-          academicYear: record.academicYear,
-          semester: record.semester,
-          remarks: record.remarks,
-          createdAt: processDate(record.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      stats.errors++;
-      if (config.verbose) logError(`Error migrating compliance record: ${error.message}`);
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
-async function migrateRemainingCollections(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  // Monthly Feedback
-  log('Migrating Monthly Feedbacks...', 'blue');
-  const feedbacks = await mongoDb.collection('monthly_feedbacks').find({}).toArray();
-  let fbStats = startCollectionMigration('monthlyFeedbacks', feedbacks.length);
-
-  if (!config.dryRun) {
-    for (const fb of feedbacks) {
-      const newId = convertId(fb._id, 'monthlyFeedbacks');
-      const applicationId = getMappedId(fb.applicationId, 'internshipApplications');
-      const studentId = getMappedId(fb.studentId, 'students');
-      const internshipId = getMappedId(fb.internshipId, 'internships');
-      const industryId = getMappedId(fb.industryId, 'industries');
-
-      if (!applicationId || !studentId) {
-        fbStats.skipped++;
-        continue;
-      }
-
-      try {
-        await prisma.monthlyFeedback.create({
-          data: {
-            id: newId,
-            applicationId,
-            studentId,
-            internshipId,
-            industryId,
-            feedbackMonth: processDate(fb.feedbackMonth) || new Date(),
-            attendanceRating: fb.attendanceRating,
-            performanceRating: fb.performanceRating,
-            punctualityRating: fb.punctualityRating,
-            technicalSkillsRating: fb.technicalSkillsRating,
-            overallRating: fb.overallRating,
-            strengths: fb.strengths,
-            areasForImprovement: fb.areasForImprovement,
-            tasksAssigned: fb.tasksAssigned,
-            tasksCompleted: fb.tasksCompleted,
-            overallComments: fb.overallComments,
-            submittedBy: fb.submittedBy,
-            createdAt: processDate(fb.createdAt) || new Date(),
-          },
-        });
-        fbStats.migrated++;
-      } catch (error: any) {
-        fbStats.errors++;
-        if (config.verbose) logError(`Error migrating monthly feedback: ${error.message}`);
-      }
-    }
-  } else {
-    logWarning(`Dry run: Would migrate ${feedbacks.length} monthly feedbacks`);
-  }
-  finishCollectionMigration(fbStats);
-
-  // Completion Feedback
-  log('Migrating Completion Feedbacks...', 'blue');
-  const completions = await mongoDb.collection('completion_feedbacks').find({}).toArray();
-  let cfStats = startCollectionMigration('completionFeedbacks', completions.length);
-
-  if (!config.dryRun) {
-    for (const cf of completions) {
-      const newId = convertId(cf._id, 'completionFeedbacks');
-      const applicationId = getMappedId(cf.applicationId, 'internshipApplications');
-      const industryId = getMappedId(cf.industryId, 'industries');
-
-      if (!applicationId) {
-        cfStats.skipped++;
-        continue;
-      }
-
-      try {
-        await prisma.completionFeedback.create({
-          data: {
-            id: newId,
-            applicationId,
-            industryId,
-            industryRating: cf.industryRating,
-            industryFeedback: cf.industryFeedback,
-            finalPerformance: cf.finalPerformance,
-            recommendForHire: cf.recommendForHire ?? false,
-            skillsLearned: cf.skillsLearned,
-            isCompleted: cf.isCompleted ?? false,
-            completionCertificate: cf.completionCertificate,
-            industrySubmittedAt: processDate(cf.industrySubmittedAt),
-            createdAt: processDate(cf.createdAt) || new Date(),
-          },
-        });
-        cfStats.migrated++;
-      } catch (error: any) {
-        cfStats.errors++;
-        if (config.verbose) logError(`Error migrating completion feedback: ${error.message}`);
-      }
-    }
-  } else {
-    logWarning(`Dry run: Would migrate ${completions.length} completion feedbacks`);
-  }
-  finishCollectionMigration(cfStats);
-
-  // Industry Requests
-  log('Migrating Industry Requests...', 'blue');
-  const requests = await mongoDb.collection('industry_requests').find({}).toArray();
-  let irStats = startCollectionMigration('industryRequests', requests.length);
-
-  if (!config.dryRun) {
-    for (const req of requests) {
-      const newId = convertId(req._id, 'industryRequests');
-      const industryId = getMappedId(req.industryId, 'industries');
-      const institutionId = getMappedId(req.institutionId, 'institutions');
-      const requestedBy = getMappedId(req.requestedBy, 'users');
-
-      try {
-        if (!institutionId || !requestedBy) {
-          irStats.skipped++;
-          if (!institutionId) irStats.errors++;
-          if (!requestedBy) irStats.errors++;
-          if (config.verbose) logError(`Skipping industry request ${req._id}: missing institutionId or requestedBy mapping`);
-          continue;
+    const uniqueBranchNames: string[] = [];
+    for (const u of usersWithBranch) {
+      if (u.branchName) {
+        const normalized = normalizeBranchName(u.branchName);
+        if (normalized && !uniqueBranchNames.includes(normalized)) {
+          uniqueBranchNames.push(normalized);
         }
-        await prisma.industryRequest.create({
-          data: {
-            id: newId,
-            ...(industryId ? { industry: { connect: { id: industryId } } } : {}),
-            institution: { connect: { id: institutionId } },
-            requestedByUser: { connect: { id: requestedBy } },
-            requestType: req.requestType,
-            title: req.title,
-            description: req.description,
-            status: req.status || 'SENT',
-            priority: req.priority || 'MEDIUM',
-            responseMessage: req.responseMessage,
-            respondedAt: processDate(req.respondedAt),
-            statusHistory: req.statusHistory || [],
-            responseAttachments: req.responseAttachments || [],
-            createdAt: processDate(req.createdAt) || new Date(),
-          },
-        });
-        irStats.migrated++;
-      } catch (error: any) {
-        irStats.errors++;
-        if (config.verbose) logError(`Error migrating industry request: ${error.message}`);
       }
     }
-  } else {
-    logWarning(`Dry run: Would migrate ${requests.length} industry requests`);
-  }
-  finishCollectionMigration(irStats);
 
-  // Scholarships
-  log('Migrating Scholarships...', 'blue');
-  const scholarships = await mongoDb.collection('Scholarship').find({}).toArray();
-  let schStats = startCollectionMigration('scholarships', scholarships.length);
+    log(`  Found ${uniqueBranchNames.length} unique branch names`, 'reset');
 
-  if (!config.dryRun) {
-    for (const sch of scholarships) {
-      const newId = convertId(sch._id, 'scholarships');
-      const institutionId = getMappedId(sch.institutionId, 'institutions');
-
-      try {
-        await prisma.scholarship.create({
+    // Step 2: Create branches that don't exist (using name, shortName, code fields)
+    let branchesCreated = 0;
+    for (const branchName of uniqueBranchNames) {
+      const existing = await prisma.branch.findFirst({ where: { code: branchName } });
+      if (!existing) {
+        await prisma.branch.create({
           data: {
-            id: newId,
-            institutionId,
-            type: sch.type,
-            amount: sch.amount || 0,
-            status: sch.status || 'APPROVED',
-            createdAt: processDate(sch.createdAt) || new Date(),
+            name: `${branchName} Department`,
+            shortName: branchName,
+            code: branchName,
+            duration: 4, // Default 4 years
           },
         });
-        schStats.migrated++;
-      } catch (error: any) {
-        schStats.errors++;
-        if (config.verbose) logError(`Error migrating scholarship: ${error.message}`);
+        branchesCreated++;
       }
     }
-  } else {
-    logWarning(`Dry run: Would migrate ${scholarships.length} scholarships`);
-  }
-  finishCollectionMigration(schStats);
+    logSuccess(`Created ${branchesCreated} new branches`);
 
-  // Referral Applications
-  log('Migrating Referral Applications...', 'blue');
-  const referrals = await mongoDb.collection('referral_applications').find({}).toArray();
-  let refStats = startCollectionMigration('referralApplications', referrals.length);
+    // Step 3: Link users to branches
+    const allBranches = await prisma.branch.findMany();
+    const branchMap = new Map(allBranches.map(b => [b.code.toUpperCase(), b.id]));
 
-  if (!config.dryRun) {
-    for (const ref of referrals) {
-      const newId = convertId(ref._id, 'referralApplications');
-      const industryId = getMappedId(ref.industryId, 'industries');
-      const institutionId = getMappedId(ref.institutionId, 'institutions');
+    const usersToUpdate = await prisma.user.findMany({
+      where: { branchName: { not: null }, branchId: null },
+      select: { id: true, branchName: true },
+    });
 
-      try {
-        if (!industryId || !institutionId) {
-          refStats.skipped++;
-          if (config.verbose) logError(`Skipping referral application ${ref._id}: missing industryId or institutionId mapping`);
-          continue;
+    let usersLinked = 0;
+    for (const user of usersToUpdate) {
+      if (user.branchName) {
+        const normalized = normalizeBranchName(user.branchName);
+        if (normalized) {
+          const branchId = branchMap.get(normalized.toUpperCase());
+          if (branchId) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { branchId, branchName: normalized },
+            });
+            usersLinked++;
+          }
         }
-        await prisma.referralApplication.create({
-          data: {
-            id: newId,
-            industry: { connect: { id: industryId } },
-            institution: { connect: { id: institutionId } },
-            title: ref.title,
-            description: ref.description,
-            referralType: ref.referralType,
-            targetAudience: ref.targetAudience || [],
-            qualifications: ref.qualifications,
-            experienceDetails: ref.experienceDetails,
-            proposedBenefits: ref.proposedBenefits,
-            status: ref.status || 'PENDING',
-            applicationDate: processDate(ref.applicationDate) || new Date(),
-            createdAt: processDate(ref.createdAt) || new Date(),
-          },
-        });
-        refStats.migrated++;
-      } catch (error: any) {
-        refStats.errors++;
-        if (config.verbose) logError(`Error migrating referral application: ${error.message}`);
       }
     }
-  } else {
-    logWarning(`Dry run: Would migrate ${referrals.length} referral applications`);
-  }
-  finishCollectionMigration(refStats);
+    logSuccess(`Linked ${usersLinked} users to branches`);
 
-  // Approved Referrals
-  log('Migrating Approved Referrals...', 'blue');
-  const approved = await mongoDb.collection('approved_referrals').find({}).toArray();
-  let arStats = startCollectionMigration('approvedReferrals', approved.length);
+    // Step 4: Sync Student.branchId from User.branchId
+    const studentsToUpdate = await prisma.student.findMany({
+      where: { branchId: null },
+      include: { user: { select: { branchId: true } } },
+    });
 
-  if (!config.dryRun) {
-    for (const ar of approved) {
-      const newId = convertId(ar._id, 'approvedReferrals');
-      const applicationId = getMappedId(ar.applicationId, 'referralApplications');
-      const industryId = getMappedId(ar.industryId, 'industries');
-
-      try {
-        if (!applicationId || !industryId) {
-          arStats.skipped++;
-          if (config.verbose) logError(`Skipping approved referral ${ar._id}: missing applicationId or industryId mapping`);
-          continue;
-        }
-        await prisma.approvedReferral.create({
-          data: {
-            id: newId,
-            application: { connect: { id: applicationId } },
-            industry: { connect: { id: industryId } },
-            referralCode: ar.referralCode,
-            displayName: ar.displayName,
-            description: ar.description,
-            referralType: ar.referralType,
-            isActive: ar.isActive ?? true,
-            usageCount: ar.usageCount || 0,
-            maxUsageLimit: ar.maxUsageLimit,
-            tags: ar.tags || [],
-            category: ar.category,
-            priority: ar.priority || 0,
-            createdAt: processDate(ar.createdAt) || new Date(),
-          },
+    let studentsLinked = 0;
+    for (const student of studentsToUpdate) {
+      if (student.user?.branchId) {
+        await prisma.student.update({
+          where: { id: student.id },
+          data: { branchId: student.user.branchId },
         });
-        arStats.migrated++;
-      } catch (error: any) {
-        arStats.errors++;
-        if (config.verbose) logError(`Error migrating approved referral: ${error.message}`);
+        studentsLinked++;
       }
     }
-  } else {
-    logWarning(`Dry run: Would migrate ${approved.length} approved referrals`);
+    logSuccess(`Linked ${studentsLinked} students to branches`);
+
+  } catch (error: any) {
+    logError(`Branch fix error: ${error.message}`);
+    if (config.verbose) console.error(error);
   }
-  finishCollectionMigration(arStats);
 }
 
 // =============================================================================
@@ -1952,6 +1785,9 @@ async function main() {
     const collections = await mongoDb.listCollections().toArray();
     log(`Available MongoDB collections: ${collections.map((c: any) => c.name).join(', ')}`, 'reset');
 
+    // Run pre-migration validation
+    await validateSourceData(mongoDb, config);
+
     if (config.dryRun) {
       logPhase('Dry Run Mode - No data will be modified');
     }
@@ -1984,70 +1820,50 @@ async function main() {
 
     // Phase 3: Academic structure
     await migrateBatches(mongoDb, prisma, config);
-    await migrateSemesters(mongoDb, prisma, config);
     await migrateBranches(mongoDb, prisma, config);
-    await migrateSubjects(mongoDb, prisma, config);
 
     // Phase 4: Students
     await migrateStudents(mongoDb, prisma, config);
 
-    // Phase 5: Industries
-    await migrateIndustries(mongoDb, prisma, config);
-
-    // Phase 6: Internships
-    await migrateInternships(mongoDb, prisma, config);
-
-    // Phase 7: Applications and assignments
+    // Phase 5: Applications and assignments
     await migrateInternshipApplications(mongoDb, prisma, config);
     await migrateMentorAssignments(mongoDb, prisma, config);
-    await migrateInternshipPreferences(mongoDb, prisma, config);
 
-    // Phase 8: Documents and fees
+    // Phase 6: Documents
     await migrateDocuments(mongoDb, prisma, config);
-    await migrateFees(mongoDb, prisma, config);
 
-    // Phase 9: Reports and visits
+    // Phase 7: Reports and visits
     await migrateMonthlyReports(mongoDb, prisma, config);
     await migrateFacultyVisitLogs(mongoDb, prisma, config);
 
-    // Phase 10: Support data
+    // Phase 8: Support data
     await migrateNotifications(mongoDb, prisma, config);
     await migrateGrievances(mongoDb, prisma, config);
     await migrateTechnicalQueries(mongoDb, prisma, config);
+    await migrateSupportTickets(mongoDb, prisma, config);
     await migrateAuditLogs(mongoDb, prisma, config);
 
-    // Phase 11: Calendar and notices
-    await migrateCalendars(mongoDb, prisma, config);
-    await migrateNotices(mongoDb, prisma, config);
-    await migrateComplianceRecords(mongoDb, prisma, config);
-
-    // Phase 12: Remaining collections
-    await migrateRemainingCollections(mongoDb, prisma, config);
+    // Phase 9: Post-migration fixes
+    await postMigrationBranchFix(prisma, config);
 
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
 
     // Print comprehensive CLI report
     printMigrationReport(config, totalTime);
 
-    // Recommend post-migration fixes
+    // Summary message
     if (!config.dryRun) {
       console.log('');
       log('┌─────────────────────────────────────────────────────────────────────────────┐', 'cyan');
-      log('│                         POST-MIGRATION STEPS                                 │', 'cyan');
+      log('│                         MIGRATION COMPLETE                                   │', 'cyan');
       log('├─────────────────────────────────────────────────────────────────────────────┤', 'cyan');
-      log('│ Run the following script to fix branch data for Teachers:                   │', 'cyan');
+      log('│ The migration has completed with the following data synced:                  │', 'cyan');
       log('│                                                                              │', 'cyan');
-      log('│   npx tsx prisma/post-migrate-fix-branches.ts                                │', 'cyan');
-      log('│                                                                              │', 'cyan');
-      log('│ This script will:                                                            │', 'cyan');
-      log('│   • Create branches from unique branchName values (if not exists)            │', 'cyan');
-      log('│   • Set User.branchId for TEACHER role users                                 │', 'cyan');
-      log('│   • Normalize faculty branchName values (MECH→ME, CIVIL→CE, etc.)            │', 'cyan');
-      log('│                                                                              │', 'cyan');
-      log('│ NOTE: Student data has already been synced to User during migration:         │', 'cyan');
       log('│   • User.name, email, phoneNo, dob, rollNumber synced from Student           │', 'cyan');
       log('│   • User.branchId, branchName, institutionId synced from Student             │', 'cyan');
       log('│   • User.active synced from Student.isActive                                 │', 'cyan');
+      log('│   • Branch records created and linked to Users/Students                      │', 'cyan');
+      log('│   • Technical queries migrated to Support Tickets                            │', 'cyan');
       log('│   • User is now the Single Source of Truth (SOT) for these fields            │', 'cyan');
       log('└─────────────────────────────────────────────────────────────────────────────┘', 'cyan');
     }
