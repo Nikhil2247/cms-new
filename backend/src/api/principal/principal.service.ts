@@ -1409,7 +1409,12 @@ export class PrincipalService {
           data: { isActive: false },
         });
       } else {
-        // Activating: reactivate internship applications
+        // Activating: reactivate mentor assignments and internship applications
+        await tx.mentorAssignment.updateMany({
+          where: { studentId, isActive: false },
+          data: { isActive: true, deactivatedAt: null },
+        });
+
         await tx.internshipApplication.updateMany({
           where: { studentId, isActive: false },
           data: { isActive: true },
@@ -1444,7 +1449,7 @@ export class PrincipalService {
     return {
       success: true,
       active: newStatus,
-      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully`,
+      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully. Mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'}.`,
     };
   }
 

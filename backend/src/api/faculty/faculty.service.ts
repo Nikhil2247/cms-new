@@ -2519,7 +2519,12 @@ export class FacultyService {
           data: { isActive: false },
         });
       } else {
-        // Activating: Reactivate internship applications (mentor assignments stay inactive for manual reassignment)
+        // Activating: Reactivate mentor assignments and internship applications
+        await tx.mentorAssignment.updateMany({
+          where: { studentId, isActive: false },
+          data: { isActive: true },
+        });
+
         await tx.internshipApplication.updateMany({
           where: { studentId, isActive: false },
           data: { isActive: true },
@@ -2544,7 +2549,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Student ${newStatus ? 'activated' : 'deactivated'} by faculty: ${student.user?.name} (mentor assignments and internship applications ${newStatus ? 'reactivated' : 'deactivated'})`,
+      description: `Student ${newStatus ? 'activated' : 'deactivated'} by faculty: ${student.user?.name} (mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'})`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
@@ -2557,7 +2562,7 @@ export class FacultyService {
     return {
       success: true,
       active: newStatus,
-      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully. ${newStatus ? 'Internship applications reactivated.' : 'Mentor assignments and internship applications deactivated.'}`,
+      message: `Student ${newStatus ? 'activated' : 'deactivated'} successfully. Mentor assignments and internship applications also ${newStatus ? 'reactivated' : 'deactivated'}.`,
     };
   }
 

@@ -2003,11 +2003,11 @@ const stateSlice = createSlice({
               ...student.user,
               active: active,
             },
-            // If deactivated, clear mentor assignments
-            ...(active === false && {
-              mentor: null,
-              mentorAssignments: (student.mentorAssignments || []).map(ma => ({ ...ma, isActive: false })),
-            }),
+            // Update mentor assignments based on new status
+            mentorAssignments: (student.mentorAssignments || []).map(ma => ({
+              ...ma,
+              isActive: active, // Reactivate or deactivate based on student status
+            })),
           };
         }
         // Invalidate caches for this institution to force refresh on next visit

@@ -208,6 +208,7 @@ const AllStudents = () => {
 
   // Handle active state toggle
   // Uses dedicated toggleStudentStatus thunk which also handles mentor assignments and internship applications
+  // Note: No need to call handleRefresh() - optimistic update already updates the local state
   const handleActiveStateToggle = async () => {
     if (!selectedStudent) return;
 
@@ -216,8 +217,10 @@ const AllStudents = () => {
         toggleStudentStatus({ studentId: selectedStudent.id })
       ).unwrap();
       message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
+      // Update local selected student state to reflect the change
       setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
-      handleRefresh();
+      // Also update the full student details if loaded
+      setSelectedStudentFull(prev => prev ? { ...prev, user: { ...prev.user, active: result.active } } : null);
     } catch (error) {
       message.error(error || 'Failed to toggle student status');
     }
@@ -920,7 +923,7 @@ const AllStudents = () => {
                               title: `${selectedStudent?.user?.active ? 'Deactivate' : 'Activate'} Student`,
                               content: selectedStudent?.user?.active
                                 ? `Are you sure you want to deactivate ${selectedStudent?.user?.name}? This will also deactivate their mentor assignments and internship applications.`
-                                : `Are you sure you want to activate ${selectedStudent?.user?.name}? This will also reactivate their internship applications.`,
+                                : `Are you sure you want to activate ${selectedStudent?.user?.name}? This will also reactivate their mentor assignments and internship applications.`,
                               okText: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
                               okButtonProps: { danger: selectedStudent?.user?.active },
                               onOk: handleActiveStateToggle,

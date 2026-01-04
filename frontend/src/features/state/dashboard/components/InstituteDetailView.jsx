@@ -1157,7 +1157,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
           <p className="text-text-tertiary text-sm mt-2">
             {isActive
               ? 'The student will no longer be able to access the system. Mentor assignments and internship applications will be deactivated but all data will be preserved.'
-              : 'The student will be able to access the system again. Internship applications will be reactivated. Mentor assignments will need to be reassigned.'}
+              : 'The student will be able to access the system again. Mentor assignments and internship applications will be reactivated.'}
           </p>
         </div>
       ),

@@ -220,7 +220,7 @@ const AssignedStudents = React.memo(() => {
             title={r.isActive ? "Deactivate Student" : "Activate Student"}
             description={r.isActive
               ? "This will deactivate the student and their mentor assignments and internship applications."
-              : "This will activate the student and their internship applications."
+              : "This will activate the student and their mentor assignments and internship applications."
             }
             onConfirm={() => handleToggleStatus(r)}
             okText="Yes"
