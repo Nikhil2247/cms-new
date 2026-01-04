@@ -896,6 +896,7 @@ const facultySlice = createSlice({
       }
     },
     // Optimistic update: Toggle student status immediately
+    // Uses User SOT pattern - active status is stored on user object
     optimisticallyToggleStudentStatus: (state, action) => {
       const { studentId, isActive } = action.payload;
       const index = state.students.list.findIndex(s => {
@@ -905,12 +906,22 @@ const facultySlice = createSlice({
       if (index !== -1) {
         const student = state.students.list[index];
         if (student.student) {
+          // Nested structure: update both student.isActive and student.user.active for compatibility
           state.students.list[index] = {
             ...student,
-            student: { ...student.student, isActive },
+            student: {
+              ...student.student,
+              isActive,
+              user: student.student.user ? { ...student.student.user, active: isActive } : undefined,
+            },
           };
         } else {
-          state.students.list[index] = { ...student, isActive };
+          // Flat structure: update both isActive and user.active for compatibility
+          state.students.list[index] = {
+            ...student,
+            isActive,
+            user: student.user ? { ...student.user, active: isActive } : undefined,
+          };
         }
       }
     },
@@ -1444,7 +1455,10 @@ const facultySlice = createSlice({
       .addCase(toggleStudentStatus.fulfilled, (state, action) => {
         state.students.loading = false;
         // Update the student in the list - handle nested structure
+        // Uses User SOT pattern - active status is on user object
         const updatedStudent = action.payload.data;
+        // Backend may return active status as user.active or isActive
+        const newActiveStatus = updatedStudent?.user?.active ?? updatedStudent?.isActive;
         if (updatedStudent?.id) {
           const index = state.students.list.findIndex(s => {
             const stud = s.student || s;
@@ -1453,13 +1467,22 @@ const facultySlice = createSlice({
           if (index !== -1) {
             const existing = state.students.list[index];
             // Handle nested structure (s.student) vs flat structure
+            // Update both isActive and user.active for compatibility
             if (existing.student) {
               state.students.list[index] = {
                 ...existing,
-                student: { ...existing.student, isActive: updatedStudent.isActive },
+                student: {
+                  ...existing.student,
+                  isActive: newActiveStatus,
+                  user: existing.student.user ? { ...existing.student.user, active: newActiveStatus } : undefined,
+                },
               };
             } else {
-              state.students.list[index] = { ...existing, isActive: updatedStudent.isActive };
+              state.students.list[index] = {
+                ...existing,
+                isActive: newActiveStatus,
+                user: existing.user ? { ...existing.user, active: newActiveStatus } : undefined,
+              };
             }
           }
         }

@@ -21,8 +21,13 @@ model User {
   phoneNo     String?
   rollNumber  String?
   dob         String?
-  branchName  String?
-  designation String?
+
+  // Branch - for STUDENT and TEACHER roles
+  branchId    String?
+  branch      Branch?  @relation(fields: [branchId], references: [id])
+  branchName  String?  // Cached for quick access
+
+  designation String?  // Only for TEACHER/PRINCIPAL
   role        Role?
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
@@ -98,6 +103,9 @@ model User {
   @@index([institutionId, active])
   @@index([institutionId, role, active])
   @@index([role, active, createdAt])
+  @@index([branchId])
+  @@index([institutionId, branchId])
+  @@index([role, branchId])
 }
 
 enum Role {
@@ -111,46 +119,63 @@ enum Role {
 // Student Information linked with admissiontype, category, batch, fees, results, documents, and scholarship
 
 model Student {
-  id                     String                  @id @default(uuid())
-  profileImage           String?
-  userId                 String                  @unique
-  user                   User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  rollNumber             String?
-  branchId               String?
-  branch                 Branch?                 @relation(fields: [branchId], references: [id])
-  branchName             String? // Cached for quick access
-  admissionNumber        String?
-  name                   String
-  email                  String?
-  contact                String?
-  address                String?
-  pinCode                String?
-  tehsil                 String?
-  district               String?
-  city                   String?
-  dob                    String?
-  state                  String?
-  parentName             String?
-  parentContact          String?
-  motherName             String?
-  gender                 String?
-  currentYear            Int?
-  currentSemester        Int?
-  currentSemesterMarks   Float?
-  tenthper               Float?
-  twelthper              Float?
-  diplomaPercentage      Float?
-  totalBacklogs          Int?                    @default(0)
-  clearanceStatus        ClearanceStatus         @default(PENDING)
-  isActive               Boolean                 @default(true)
-  // Preferences
-  batchId                String?
-  batch                  Batch?                  @relation(fields: [batchId], references: [id])
-  admissionType          AdmissionType?
-  category               Category?
+  id           String  @id @default(uuid())
+  profileImage String?
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // REMOVED DUPLICATES - Now use User fields via relation:
+  // name → user.name
+  // email → user.email
+  // contact → user.phoneNo
+  // dob → user.dob
+  // rollNumber → user.rollNumber
+  // branchName → user.branchName
+  // isActive → user.active
+
+  // Student-specific fields only
+  admissionNumber String?
+
+  // Address (student's permanent address)
+  address String?
+  pinCode String?
+  tehsil  String?
+  district String?
+  city    String?
+  state   String?
+
+  // Family
+  parentName    String?
+  parentContact String?
+  motherName    String?
+
+  // Demographics
+  gender String?
+
+  // Academic
+  currentYear          Int?
+  currentSemester      Int?
+  currentSemesterMarks Float?
+  tenthper             Float?
+  twelthper            Float?
+  diplomaPercentage    Float?
+  totalBacklogs        Int?            @default(0)
+  clearanceStatus      ClearanceStatus @default(PENDING)
+
+  // Batch & Category
+  batchId       String?
+  batch         Batch?         @relation(fields: [batchId], references: [id])
+  admissionType AdmissionType?
+  category      Category?
+
+  // Institution & Branch (keep FKs for direct queries, but User is SOT)
+  institutionId String?
+  Institution   Institution? @relation(fields: [institutionId], references: [id])
+  branchId      String?
+  branch        Branch?      @relation(fields: [branchId], references: [id])
+
+  // Relations
   document               Document[]
-  institutionId          String?
-  Institution            Institution?            @relation(fields: [institutionId], references: [id])
   createdAt              DateTime                @default(now())
   internshipApplications InternshipApplication[]
   mentorAssignments      MentorAssignment[]
@@ -164,7 +189,6 @@ model Student {
   @@index([institutionId, batchId])
   @@index([institutionId, branchId])
   @@index([clearanceStatus])
-  @@index([isActive])
 }
 
 enum ClearanceStatus {
@@ -328,7 +352,9 @@ model Branch {
   institutionId String?
   institution   Institution? @relation(fields: [institutionId], references: [id])
 
-  students Student[]
+  // Relations
+  users    User[]    // Teachers and Students with branchId
+  students Student[] // Direct student relation (for backward compatibility)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

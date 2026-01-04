@@ -91,7 +91,7 @@ export class StateDashboardService {
           // Total students (only from ACTIVE institutions for consistency with institution table)
           this.prisma.student.count({ where: { Institution: { isActive: true } } }),
           // Active students (only from ACTIVE institutions for consistency with institution table)
-          this.prisma.student.count({ where: { isActive: true, Institution: { isActive: true } } }),
+          this.prisma.student.count({ where: { user: { active: true }, Institution: { isActive: true } } }),
           this.prisma.user.count({
             where: { role: { in: [Role.TEACHER] } },
           }),
@@ -106,7 +106,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           this.prisma.internshipApplication.count({
@@ -114,7 +114,7 @@ export class StateDashboardService {
               isSelfIdentified: true,
               isActive: true,
               status: ApplicationStatus.APPROVED,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // All application counts are for self-identified only (from ACTIVE institutions, active students with active users, active applications)
@@ -122,7 +122,7 @@ export class StateDashboardService {
             where: {
               isSelfIdentified: true,
               isActive: true,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           this.prisma.internshipApplication.count({
@@ -130,7 +130,7 @@ export class StateDashboardService {
               isSelfIdentified: true,
               isActive: true,
               status: ApplicationStatus.APPROVED,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Mentor assignments - count records (for reference)
@@ -140,7 +140,7 @@ export class StateDashboardService {
           this.prisma.mentorAssignment.findMany({
             where: {
               isActive: true,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
             select: { studentId: true },
             distinct: ['studentId'],
@@ -150,7 +150,6 @@ export class StateDashboardService {
             where: {
               isActive: true,
               student: {
-                isActive: true,
                 user: { active: true },
                 Institution: { isActive: true },
                 internshipApplications: {
@@ -171,7 +170,7 @@ export class StateDashboardService {
               visitDate: { gte: startOfTargetMonth, lte: endOfTargetMonth },
               application: {
                 startDate: { lte: endOfTargetMonth },
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
             },
           }),
@@ -181,7 +180,7 @@ export class StateDashboardService {
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
                 startDate: { lte: endOfPrevMonth },
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
             },
           }),
@@ -190,7 +189,7 @@ export class StateDashboardService {
             where: {
               application: {
                 startDate: { lte: endOfTargetMonth },
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
             },
           }),
@@ -200,7 +199,7 @@ export class StateDashboardService {
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Monthly reports - submitted previous month (ACTIVE institutions, active users)
@@ -209,14 +208,14 @@ export class StateDashboardService {
               reportMonth: prevMonth,
               reportYear: prevMonthYear,
               status: 'APPROVED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Monthly reports - pending review (should be 0 with auto-approval, kept for legacy)
           this.prisma.monthlyReport.count({
             where: {
               status: 'SUBMITTED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Monthly reports - approved for target month (ACTIVE institutions, active users)
@@ -225,14 +224,14 @@ export class StateDashboardService {
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Total reports submitted (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
               status: 'APPROVED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Recent activity (ACTIVE institutions, active users, active applications)
@@ -241,7 +240,7 @@ export class StateDashboardService {
               isSelfIdentified: true,
               isActive: true,
               createdAt: { gte: lastWeek },
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
         ]);
@@ -266,7 +265,7 @@ export class StateDashboardService {
             isActive: true,
             status: ApplicationStatus.APPROVED,
             startDate: { not: null, lte: endOfTargetMonth },
-            student: { isActive: true, Institution: { isActive: true } },
+            student: { user: { active: true }, Institution: { isActive: true } },
             OR: [
               { endDate: { gte: startOfTargetMonth } },
               { endDate: null },
@@ -438,7 +437,7 @@ export class StateDashboardService {
           // 2. All students without mentors (no day limit) - from active institutions only
           this.prisma.student.findMany({
             where: {
-              isActive: true,
+              user: { active: true },
               Institution: { isActive: true },
               mentorAssignments: {
                 none: { isActive: true },
@@ -446,8 +445,7 @@ export class StateDashboardService {
             },
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
+              user: { select: { name: true, rollNumber: true } },
               Institution: { select: { id: true, name: true, code: true } },
               internshipApplications: {
                 where: { isSelfIdentified: true, isActive: true, status: ApplicationStatus.APPROVED },
@@ -465,7 +463,7 @@ export class StateDashboardService {
           // Only from active institutions, active applications
           this.prisma.student.findMany({
             where: {
-              isActive: true,
+              user: { active: true },
               Institution: { isActive: true },
               internshipApplications: {
                 some: {
@@ -485,8 +483,7 @@ export class StateDashboardService {
             },
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
+              user: { select: { name: true, rollNumber: true } },
               Institution: { select: { id: true, name: true, code: true } },
             },
             take: 20,
@@ -574,8 +571,8 @@ export class StateDashboardService {
               const startDate = internship?.startDate ? new Date(internship.startDate) : null;
               return {
                 studentId: s.id,
-                studentName: s.name,
-                rollNumber: s.rollNumber,
+                studentName: s.user?.name,
+                rollNumber: s.user?.rollNumber,
                 institutionId: s.Institution?.id,
                 institutionName: s.Institution?.name,
                 institutionCode: s.Institution?.code,
@@ -588,8 +585,8 @@ export class StateDashboardService {
             }),
             missingReports: missingReports.map(s => ({
               studentId: s.id,
-              studentName: s.name,
-              rollNumber: s.rollNumber,
+              studentName: s.user?.name,
+              rollNumber: s.user?.rollNumber,
               institutionId: s.Institution?.id,
               institutionName: s.Institution?.name,
               institutionCode: s.Institution?.code,
@@ -627,7 +624,7 @@ export class StateDashboardService {
           // With auto-approval, all submitted reports are APPROVED
           this.prisma.student.findMany({
             where: {
-              isActive: true,
+              user: { active: true },
               Institution: { isActive: true },
               internshipApplications: {
                 some: {
@@ -647,8 +644,7 @@ export class StateDashboardService {
             },
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
+              user: { select: { name: true, rollNumber: true } },
               Institution: { select: { id: true, name: true, code: true } },
             },
             take: 15,
@@ -699,8 +695,8 @@ export class StateDashboardService {
             institutionsRequiringIntervention: requiresIntervention,
             overdueComplianceItems: overdueItems.map(s => ({
               studentId: s.id,
-              studentName: s.name,
-              rollNumber: s.rollNumber,
+              studentName: s.user?.name,
+              rollNumber: s.user?.rollNumber,
               institutionName: s.Institution?.name,
               institutionCode: s.Institution?.code,
               daysOverdue: 15,
@@ -741,20 +737,20 @@ export class StateDashboardService {
         ] = await Promise.all([
           this.prisma.institution.count({ where: { isActive: true } }),
           // Count active students from active institutions with active users (denominator for compliance)
-          this.prisma.student.count({ where: { isActive: true, user: { active: true }, Institution: { isActive: true } } }),
+          this.prisma.student.count({ where: { user: { active: true }, Institution: { isActive: true } } }),
           this.prisma.internshipApplication.count({
             where: {
               isSelfIdentified: true,
               isActive: true,
               status: ApplicationStatus.APPROVED,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Count unique students with active mentor assignments (from active institutions, active users)
           this.prisma.mentorAssignment.findMany({
             where: {
               isActive: true,
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
             select: { studentId: true },
             distinct: ['studentId'],
@@ -766,13 +762,13 @@ export class StateDashboardService {
               isActive: true,
               status: ApplicationStatus.APPROVED,
               joiningLetterUrl: { not: null },
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           this.prisma.facultyVisitLog.count({
             where: {
               visitDate: { gte: startOfMonth },
-              application: { student: { isActive: true, user: { active: true }, Institution: { isActive: true } } },
+              application: { student: { user: { active: true }, Institution: { isActive: true } } },
             },
           }),
           // With auto-approval, all submitted reports are APPROVED (active users)
@@ -781,7 +777,7 @@ export class StateDashboardService {
               reportMonth: currentMonth,
               reportYear: currentYear,
               status: 'APPROVED',
-              student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              student: { user: { active: true }, Institution: { isActive: true } },
             },
           }),
           // Run institution stats in parallel with state-wide counts
@@ -931,7 +927,7 @@ export class StateDashboardService {
             // Get student counts per institution (active students with active users from active institutions)
             const studentCounts = await this.prisma.student.groupBy({
               by: ['institutionId'],
-              where: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+              where: { user: { active: true }, Institution: { isActive: true } },
               _count: { id: true },
             });
 
@@ -942,7 +938,7 @@ export class StateDashboardService {
                 isSelfIdentified: true,
                 isActive: true,
                 status: ApplicationStatus.APPROVED,
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
             });
 
@@ -950,7 +946,6 @@ export class StateDashboardService {
             const studentsWithInternships = await this.prisma.student.findMany({
               where: {
                 id: { in: internshipCounts.map(i => i.studentId) },
-                isActive: true,
                 user: { active: true },
                 Institution: { isActive: true },
               },
@@ -980,7 +975,7 @@ export class StateDashboardService {
                 reportMonth: targetMonth,
                 reportYear: targetYear,
                 status: 'APPROVED',
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
               select: {
                 student: { select: { institutionId: true } },
@@ -1002,7 +997,7 @@ export class StateDashboardService {
                 isActive: true,
                 status: ApplicationStatus.APPROVED,
                 startDate: { not: null, lte: endOfMonth },
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
                 OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
               },
               select: {
@@ -1043,7 +1038,7 @@ export class StateDashboardService {
             const assignmentCounts = await this.prisma.mentorAssignment.findMany({
               where: {
                 isActive: true,
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
               },
               select: {
                 student: { select: { institutionId: true } },
@@ -1071,7 +1066,7 @@ export class StateDashboardService {
             const visitsThisMonth = await this.prisma.facultyVisitLog.findMany({
               where: {
                 visitDate: { gte: startOfMonth },
-                application: { student: { isActive: true, user: { active: true }, Institution: { isActive: true } } },
+                application: { student: { user: { active: true }, Institution: { isActive: true } } },
               },
               select: {
                 application: {
@@ -1096,7 +1091,7 @@ export class StateDashboardService {
                 isActive: true,
                 status: ApplicationStatus.APPROVED,
                 startDate: { not: null, lte: now },
-                student: { isActive: true, user: { active: true }, Institution: { isActive: true } },
+                student: { user: { active: true }, Institution: { isActive: true } },
                 OR: [{ endDate: { gte: startOfMonth } }, { endDate: null }],
               },
               select: {

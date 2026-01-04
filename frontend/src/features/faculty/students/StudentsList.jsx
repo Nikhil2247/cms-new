@@ -52,13 +52,13 @@ const StudentsList = React.memo(({
       render: (_, record) => (
         <div>
           <Text strong style={{ color: token.colorPrimary }}>
-            {record.student?.name || "N/A"}
+            {record.student?.user?.name || record.student?.name || "N/A"}
           </Text>
           <Text className="block text-sm" style={{ color: token.colorTextSecondary }}>
-            Roll No: {record.student?.rollNumber || "N/A"}
+            Roll No: {record.student?.user?.rollNumber || record.student?.rollNumber || "N/A"}
           </Text>
           <Text className="block text-sm" style={{ color: token.colorTextSecondary }}>
-            {record.student?.branchName || "N/A"}
+            {record.student?.user?.branchName || record.student?.branchName || "N/A"}
           </Text>
           <div className="flex items-center mt-1">
             <Tag color="blue" size="small">
@@ -81,12 +81,12 @@ const StudentsList = React.memo(({
         <div>
           <div className="flex items-center mb-1">
             <PhoneOutlined className="mr-1" style={{ color: token.colorTextTertiary }} />
-            <Text className="text-sm">{record.student?.contact || "N/A"}</Text>
+            <Text className="text-sm">{record.student?.user?.phoneNo || record.student?.contact || "N/A"}</Text>
           </div>
           <div className="flex items-center">
             <MailOutlined className="mr-1" style={{ color: token.colorTextTertiary }} />
             <Text className="text-sm" style={{ color: token.colorPrimary }}>
-              {record.student?.email || "N/A"}
+              {record.student?.user?.email || record.student?.email || "N/A"}
             </Text>
           </div>
         </div>
@@ -270,18 +270,22 @@ const StudentsList = React.memo(({
       title: "Status",
       key: "status",
       width: "10%",
-      render: (_, record) => (
-        <div className="text-center">
-          <Tag color={record.isActive ? "green" : "red"} className="mb-1">
-            {record.isActive ? "Active" : "Inactive"}
-          </Tag>
-          {record.assignmentReason && (
-            <Tooltip title={record.assignmentReason}>
-              <InfoCircleOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
-            </Tooltip>
-          )}
-        </div>
-      ),
+      // Use User SOT pattern: prefer user.active, fallback to isActive
+      render: (_, record) => {
+        const activeStatus = record.user?.active ?? record.isActive;
+        return (
+          <div className="text-center">
+            <Tag color={activeStatus ? "green" : "red"} className="mb-1">
+              {activeStatus ? "Active" : "Inactive"}
+            </Tag>
+            {record.assignmentReason && (
+              <Tooltip title={record.assignmentReason}>
+                <InfoCircleOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
+              </Tooltip>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Actions",

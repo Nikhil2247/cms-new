@@ -35,7 +35,7 @@ const MixedStudentChart = () => {
       const branchCounts = {};
 
       students.forEach((student) => {
-        const branch = student.branchName?.trim();
+        const branch = (student.user?.branchName || student.branchName)?.trim();
         if (branch) {
           branchCounts[branch] = (branchCounts[branch] || 0) + 1;
         }

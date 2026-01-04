@@ -38,9 +38,8 @@ export class DocumentsService {
         where: { userId },
         select: {
           id: true,
-          rollNumber: true,
           user: {
-            select: { name: true, role: true, institutionId: true },
+            select: { name: true, role: true, institutionId: true, rollNumber: true },
           },
         },
       });
@@ -60,7 +59,7 @@ export class DocumentsService {
       // Upload to MinIO with organized folder structure
       const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
         institutionName: institution?.name || 'default',
-        rollNumber: student.rollNumber || student.id,
+        rollNumber: student.user?.rollNumber || student.id,
         documentType: 'document',
         customName: metadata.type,
       });

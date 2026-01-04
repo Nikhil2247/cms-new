@@ -45,7 +45,7 @@ export class StateReportsService {
     };
 
     const dateFilter: Prisma.InternshipApplicationWhereInput = {
-      student: { institutionId, isActive: true },
+      student: { institutionId, user: { active: true } },
       isSelfIdentified: true,
     };
 
@@ -57,15 +57,15 @@ export class StateReportsService {
     }
 
     const [totalStudents, totalApplications, approvedApplications, completedApplications, facultyVisits, monthlyReports] = await Promise.all([
-      this.prisma.student.count({ where: { institutionId, isActive: true } }),
+      this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
       this.prisma.internshipApplication.count({ where: dateFilter }),
       this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.APPROVED } }),
       this.prisma.internshipApplication.count({ where: { ...dateFilter, status: ApplicationStatus.COMPLETED } }),
       this.prisma.facultyVisitLog.count({
-        where: { application: { student: { institutionId, isActive: true } } },
+        where: { application: { student: { institutionId, user: { active: true } } } },
       }),
       this.prisma.monthlyReport.count({
-        where: { student: { institutionId, isActive: true } },
+        where: { student: { institutionId, user: { active: true } } },
       }),
     ]);
 
@@ -116,7 +116,7 @@ export class StateReportsService {
 
     if (institutionId) {
       const where: Prisma.MonthlyReportWhereInput = {
-        student: { institutionId, isActive: true },
+        student: { institutionId, user: { active: true } },
         reportMonth: targetMonth,
         reportYear: targetYear,
       };
@@ -266,7 +266,7 @@ export class StateReportsService {
     const baseStats = await this.stateReportService.getFacultyVisitStats(month, year);
 
     const where: Prisma.FacultyVisitLogWhereInput = {
-      ...(institutionId ? { application: { student: { institutionId, isActive: true } } } : {}),
+      ...(institutionId ? { application: { student: { institutionId, user: { active: true } } } } : {}),
       ...(facultyId ? { facultyId } : {}),
       ...((fromDate || toDate)
         ? { visitDate: { ...(fromDate ? { gte: fromDate } : {}), ...(toDate ? { lte: toDate } : {}) } }
@@ -333,7 +333,7 @@ export class StateReportsService {
       cacheKey,
       async () => {
         const totalStudents = await this.prisma.student.count({
-          where: { isActive: true, Institution: { isActive: true } },
+          where: { user: { active: true }, Institution: { isActive: true } },
         });
 
         return {
@@ -376,7 +376,7 @@ export class StateReportsService {
         const endDate = new Date(targetYear, targetMonth, 0);
 
         const studentFilter: Prisma.StudentWhereInput = {
-          isActive: true,
+          user: { active: true },
           Institution: { isActive: true },
           ...(institutionId ? { institutionId } : {}),
         };

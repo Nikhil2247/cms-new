@@ -79,19 +79,19 @@ export class PrincipalService {
           unassignedStudentsCount,
         ] = await Promise.all([
           this.prisma.student.count({ where: { institutionId } }),
-          this.prisma.student.count({ where: { institutionId, isActive: true, user: { active: true } } }),
+          this.prisma.student.count({ where: { institutionId, user: { active: true } } }),
           this.prisma.user.count({ where: { institutionId, role: { in: [Role.TEACHER, Role.PRINCIPAL] } } }),
           this.prisma.user.count({
             where: { institutionId, role: { in: [Role.TEACHER, Role.PRINCIPAL] }, active: true }
           }),
           // Count all self-identified internships
           this.prisma.internshipApplication.count({
-            where: { student: { institutionId, isActive: true, user: { active: true } }, isSelfIdentified: true }
+            where: { student: { institutionId, user: { active: true } }, isSelfIdentified: true }
           }),
           // Count ongoing self-identified internships (auto-approved, in progress)
           this.prisma.internshipApplication.count({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
@@ -100,14 +100,14 @@ export class PrincipalService {
           // Count completed self-identified internships
           this.prisma.internshipApplication.count({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               internshipPhase: InternshipPhase.COMPLETED,
             }
           }),
           this.prisma.monthlyReport.count({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               reportMonth: currentMonth,
               reportYear: currentYear,
               status: 'SUBMITTED',
@@ -130,7 +130,7 @@ export class PrincipalService {
           this.prisma.facultyVisitLog.count({
             where: {
               application: {
-                student: { institutionId, isActive: true, user: { active: true } },
+                student: { institutionId, user: { active: true } },
                 isSelfIdentified: true,
                 status: ApplicationStatus.JOINED,
                 internshipPhase: InternshipPhase.ACTIVE,
@@ -140,7 +140,7 @@ export class PrincipalService {
           // Count students with active internships (for faculty visit expected calculation)
           this.prisma.internshipApplication.count({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
@@ -158,7 +158,7 @@ export class PrincipalService {
                 },
               },
               students: {
-                where: { isActive: true, user: { active: true } },
+                where: { user: { active: true } },
                 select: {
                   id: true,
                   internshipApplications: {
@@ -178,14 +178,14 @@ export class PrincipalService {
           this.prisma.internshipApplication.count({
             where: {
               isSelfIdentified: true,
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               joiningLetterUrl: { not: null, notIn: [''] },
             },
           }),
           // Get unique partner company names
           this.prisma.internshipApplication.findMany({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
               companyName: { not: null, notIn: [''] },
@@ -196,7 +196,7 @@ export class PrincipalService {
           // Count students with active internships but no mentor assigned
           this.prisma.internshipApplication.count({
             where: {
-              student: { institutionId, isActive: true, user: { active: true } },
+              student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
               status: ApplicationStatus.JOINED,
               internshipPhase: InternshipPhase.ACTIVE,
@@ -316,8 +316,7 @@ export class PrincipalService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
+              user: { select: { name: true, rollNumber: true } },
             },
           },
         },
@@ -333,8 +332,7 @@ export class PrincipalService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
+              user: { select: { name: true, rollNumber: true } },
             },
           },
         },
@@ -454,13 +452,13 @@ export class PrincipalService {
 
     const where: Prisma.StudentWhereInput = {
       institutionId: principal.institutionId,
-      isActive: true,
+      user: { active: true },
     };
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { rollNumber: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { rollNumber: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
@@ -488,6 +486,7 @@ export class PrincipalService {
         skip,
         take: limit,
         include: {
+          user: { select: { name: true, rollNumber: true, branchName: true } },
           batch: { select: { id: true, name: true } },
           branch: { select: { id: true, name: true } },
           mentorAssignments: {
@@ -711,11 +710,11 @@ export class PrincipalService {
 
       return {
         id: student.id,
-        name: student.name,
-        rollNumber: student.rollNumber,
+        name: student.user?.name,
+        rollNumber: student.user?.rollNumber,
         batch: student.batch?.name || 'N/A',
         batchId: student.batchId,
-        department: student.branch?.name || student.branchName || 'N/A',
+        department: student.branch?.name || student.user?.branchName || 'N/A',
         departmentId: student.branchId,
         internshipStatus,
         reportsSubmitted: submittedReports,
@@ -942,9 +941,9 @@ export class PrincipalService {
 
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { rollNumber: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { user: { name: { contains: search, mode: 'insensitive' } } },
+        { user: { rollNumber: { contains: search, mode: 'insensitive' } } },
+        { user: { email: { contains: search, mode: 'insensitive' } } },
       ];
     }
 
@@ -958,7 +957,7 @@ export class PrincipalService {
 
     // Convert isActive string to boolean (query params come as strings)
     if (isActive !== undefined && isActive !== '') {
-      where.isActive = isActive === 'true' || isActive === true;
+      where.user = { active: isActive === 'true' || isActive === true };
     }
 
     // Filter by mentor assignment status
@@ -1322,8 +1321,8 @@ export class PrincipalService {
       userId: student.userId,
       email: student.user?.email,
       name: student.user?.name,
-      rollNumber: student.rollNumber,
-      wasActive: student.isActive,
+      rollNumber: student.user?.rollNumber,
+      wasActive: student.user?.active,
     };
 
     // Soft delete - deactivate student and user, deactivate related assignments
@@ -1333,10 +1332,10 @@ export class PrincipalService {
         where: { studentId, isActive: true },
         data: { isActive: false, deactivatedAt: new Date() },
       }),
-      // Deactivate the student record
+      // Deactivate the student record via user relation
       this.prisma.student.update({
         where: { id: studentId },
-        data: { isActive: false },
+        data: { user: { update: { active: false } } },
       }),
       // Deactivate the user account
       this.prisma.user.update({
@@ -1837,8 +1836,7 @@ export class PrincipalService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
+            user: { select: { name: true, rollNumber: true } },
           },
         },
         mentor: {
@@ -1899,7 +1897,7 @@ export class PrincipalService {
           },
           student: {
             institutionId: { not: principal.institutionId },
-            isActive: true,
+            user: { active: true },
           },
           isActive: true,
         },
@@ -1907,11 +1905,7 @@ export class PrincipalService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
-              email: true,
-              contact: true,
-              branchName: true,
+              user: { select: { name: true, rollNumber: true, email: true, phoneNo: true, branchName: true } },
               currentSemester: true,
               institutionId: true,
               Institution: {
@@ -2094,7 +2088,7 @@ export class PrincipalService {
     // Build where clause for students
     const studentWhere: Prisma.StudentWhereInput = {
       institutionId,
-      isActive: true,
+      user: { active: true },
     };
 
     if (query.batchId && query.batchId !== 'all') {
@@ -2117,8 +2111,7 @@ export class PrincipalService {
       },
       select: {
         id: true,
-        name: true,
-        rollNumber: true,
+        user: { select: { name: true, rollNumber: true } },
         batch: { select: { id: true, name: true } },
         branch: { select: { id: true, name: true } },
         internshipApplications: {
@@ -2267,8 +2260,8 @@ export class PrincipalService {
         if (status !== 'approved') {
           monthData.students.push({
             id: student.id,
-            name: student.name,
-            rollNumber: student.rollNumber,
+            name: student.user?.name,
+            rollNumber: student.user?.rollNumber,
             batch: student.batch?.name || 'N/A',
             department: student.branch?.name || 'N/A',
             mentor: mentor?.name || null,
@@ -2333,7 +2326,7 @@ export class PrincipalService {
       application: {
         student: {
           institutionId,
-          isActive: true,
+          user: { active: true },
         },
       },
     };
@@ -2366,7 +2359,7 @@ export class PrincipalService {
           application: {
             include: {
               student: {
-                select: { id: true, name: true, rollNumber: true },
+                select: { id: true, user: { select: { name: true, rollNumber: true } } },
               },
             },
           },
@@ -2420,8 +2413,8 @@ export class PrincipalService {
         facultyId: log.faculty.id,
         facultyName: log.faculty.name,
         studentId: log.application.student.id,
-        studentName: log.application.student.name,
-        studentRollNumber: log.application.student.rollNumber,
+        studentName: log.application.student.user?.name,
+        studentRollNumber: log.application.student.user?.rollNumber,
         internshipTitle: (log.application as any).jobProfile || 'N/A',
         visitDate: log.visitDate,
         visitType: visitTypeMap[log.visitType] || log.visitType,
@@ -2520,7 +2513,7 @@ export class PrincipalService {
       application: {
         student: {
           institutionId: principal.institutionId,
-          isActive: true,
+          user: { active: true },
         },
       },
     };
@@ -2533,7 +2526,7 @@ export class PrincipalService {
         orderBy: { visitDate: 'desc' },
         include: {
           faculty: { select: { id: true, name: true, email: true } },
-          application: { include: { student: { select: { id: true, name: true, rollNumber: true } } } },
+          application: { include: { student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } } } },
         },
       }),
       this.prisma.facultyVisitLog.count({ where }),
@@ -2568,7 +2561,7 @@ export class PrincipalService {
         take: limit,
         orderBy: { updatedAt: 'desc' },
         include: {
-          student: { select: { id: true, name: true, rollNumber: true } },
+          student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
           application: { select: { id: true } },
         },
       }),
@@ -2689,7 +2682,7 @@ export class PrincipalService {
     ] = await Promise.all([
       // Total active students count
       this.prisma.student.count({
-        where: { institutionId, isActive: true },
+        where: { institutionId, user: { active: true } },
       }),
 
       // Batches with active student counts
@@ -2697,7 +2690,7 @@ export class PrincipalService {
         where: { institutionId },
         select: {
           name: true,
-          _count: { select: { students: { where: { isActive: true } } } },
+          _count: { select: { students: { where: { user: { active: true } } } } },
         },
       }),
 
@@ -2829,7 +2822,7 @@ export class PrincipalService {
       this.prisma.internshipApplication.groupBy({
         by: ['status'],
         where: {
-          student: { institutionId, isActive: true, user: { active: true } },
+          student: { institutionId, user: { active: true } },
           isSelfIdentified: true,
         },
         _count: { status: true },
@@ -2837,7 +2830,7 @@ export class PrincipalService {
       // Active internships with company details - limited to prevent memory issues
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId, isActive: true, user: { active: true } },
+          student: { institutionId, user: { active: true } },
           isSelfIdentified: true,
           status: { in: ['APPROVED', 'SELECTED', 'JOINED'] },
         },
@@ -2927,11 +2920,11 @@ export class PrincipalService {
     // Run queries in parallel (self-identified internships only, active students)
     const [totalStudents, completedApplications] = await Promise.all([
       this.prisma.student.count({
-        where: { institutionId, isActive: true },
+        where: { institutionId, user: { active: true } },
       }),
       this.prisma.internshipApplication.findMany({
         where: {
-          student: { institutionId, isActive: true },
+          student: { institutionId, user: { active: true } },
           isSelfIdentified: true,
           status: 'COMPLETED',
         },
@@ -2982,7 +2975,7 @@ export class PrincipalService {
       // Only count assignments for active students to match totalStudents count
       this.prisma.mentorAssignment.findMany({
         where: {
-          student: { institutionId, isActive: true },
+          student: { institutionId, user: { active: true } },
           isActive: true,
         },
         select: {
@@ -2992,7 +2985,7 @@ export class PrincipalService {
       }),
       // Total students
       this.prisma.student.count({
-        where: { institutionId, isActive: true },
+        where: { institutionId, user: { active: true } },
       }),
     ]);
 
@@ -3055,7 +3048,7 @@ export class PrincipalService {
             mentorId: { in: localMentorIdsArray },
             student: {
               institutionId: { not: institutionId },
-              isActive: true,
+              user: { active: true },
             },
             isActive: true,
           },
@@ -3302,7 +3295,7 @@ export class PrincipalService {
     const unassignedStudents = await this.prisma.student.findMany({
       where: {
         institutionId,
-        isActive: true,
+        user: { active: true },
         id: { notIn: Array.from(assignedStudentIds) },
       },
       select: { id: true },
@@ -3605,6 +3598,7 @@ export class PrincipalService {
       include: {
         student: {
           include: {
+            user: { select: { name: true, rollNumber: true } },
             batch: { select: { id: true, name: true } },
             branch: { select: { id: true, name: true } },
             internshipApplications: {
@@ -3661,7 +3655,7 @@ export class PrincipalService {
         application: {
           include: {
             student: {
-              select: { id: true, name: true, rollNumber: true },
+              select: { id: true, user: { select: { name: true, rollNumber: true } } },
             },
           },
         },
@@ -3738,8 +3732,8 @@ export class PrincipalService {
       return {
         id: a.student.id,
         applicationId: app?.id || null,
-        name: a.student.name,
-        rollNumber: a.student.rollNumber,
+        name: a.student.user?.name,
+        rollNumber: a.student.user?.rollNumber,
         batch: a.student.batch?.name || 'N/A',
         department: a.student.branch?.name || 'N/A',
         internshipTitle: (app as any)?.jobProfile || null,
@@ -3763,8 +3757,8 @@ export class PrincipalService {
       visitType: v.visitType,
       visitDuration: v.visitDuration,
       visitLocation: v.visitLocation,
-      studentName: v.application.student.name,
-      studentRollNumber: v.application.student.rollNumber,
+      studentName: v.application.student.user?.name,
+      studentRollNumber: v.application.student.user?.rollNumber,
       companyName: (v.application as any).companyName || 'N/A',
       internshipTitle: (v.application as any).jobProfile || 'N/A',
       studentPerformance: v.studentPerformance,
@@ -3816,12 +3810,12 @@ export class PrincipalService {
     ] = await Promise.all([
       // Total active students
       this.prisma.student.count({
-        where: { institutionId, isActive: true },
+        where: { institutionId, user: { active: true } },
       }),
       // Total active students with ongoing internships
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId, isActive: true },
+          student: { institutionId, user: { active: true } },
           isSelfIdentified: true,
           status: ApplicationStatus.JOINED,
           internshipPhase: InternshipPhase.ACTIVE,
@@ -3832,7 +3826,7 @@ export class PrincipalService {
         where: {
           student: {
             institutionId,
-            isActive: true,
+            user: { active: true },
           },
           isActive: true,
         },
@@ -3933,7 +3927,7 @@ export class PrincipalService {
     const activeStudents = await this.prisma.student.count({
       where: {
         institutionId,
-        isActive: true,
+        user: { active: true },
       },
     });
 
@@ -3942,14 +3936,14 @@ export class PrincipalService {
       // Count students with active mentor assignments
       this.prisma.mentorAssignment.count({
         where: {
-          student: { institutionId, isActive: true },
+          student: { institutionId, user: { active: true } },
           isActive: true,
         },
       }),
       // Count joining letters uploaded (non-empty joiningLetterUrl)
       this.prisma.internshipApplication.count({
         where: {
-          student: { institutionId, isActive: true },
+          student: { institutionId, user: { active: true } },
           isSelfIdentified: true,
           joiningLetterUrl: { not: null, notIn: [''] },
         },
@@ -3994,20 +3988,20 @@ export class PrincipalService {
         this.prisma.student.count({
           where: {
             institutionId,
-            isActive: true,
+            user: { active: true },
           },
         }),
         // Mentor assignments (current snapshot)
         this.prisma.mentorAssignment.count({
           where: {
-            student: { institutionId, isActive: true },
+            student: { institutionId, user: { active: true } },
             isActive: true,
           },
         }),
         // Joining letters uploaded
         this.prisma.internshipApplication.count({
           where: {
-            student: { institutionId, isActive: true },
+            student: { institutionId, user: { active: true } },
             isSelfIdentified: true,
             joiningLetterUrl: { not: null, notIn: [''] },
           },
@@ -4160,7 +4154,7 @@ export class PrincipalService {
 
     const overdueReportsWhere: Prisma.StudentWhereInput = {
       institutionId,
-      isActive: true,
+      user: { active: true },
       internshipApplications: {
         some: {
           isSelfIdentified: true,
@@ -4180,7 +4174,7 @@ export class PrincipalService {
 
     const missingVisitsWhere: Prisma.StudentWhereInput = {
       institutionId,
-      isActive: true,
+      user: { active: true },
       internshipApplications: {
         some: {
           isSelfIdentified: true,
@@ -4198,7 +4192,7 @@ export class PrincipalService {
 
     const unassignedStudentsWhere: Prisma.StudentWhereInput = {
       institutionId,
-      isActive: true,
+      user: { active: true },
       internshipApplications: {
         some: {
           isSelfIdentified: true,
@@ -4234,7 +4228,7 @@ export class PrincipalService {
         where: urgentGrievancesWhere,
         include: {
           student: {
-            select: { id: true, name: true, rollNumber: true },
+            select: { id: true, user: { select: { name: true, rollNumber: true } } },
           },
         },
         orderBy: { submittedDate: 'asc' },
@@ -4245,8 +4239,7 @@ export class PrincipalService {
         where: overdueReportsWhere,
         select: {
           id: true,
-          name: true,
-          rollNumber: true,
+          user: { select: { name: true, rollNumber: true } },
           mentorAssignments: {
             where: { isActive: true },
             take: 1,
@@ -4262,8 +4255,7 @@ export class PrincipalService {
         where: missingVisitsWhere,
         select: {
           id: true,
-          name: true,
-          rollNumber: true,
+          user: { select: { name: true, rollNumber: true } },
           internshipApplications: {
             where: {
               isSelfIdentified: true,
@@ -4287,8 +4279,7 @@ export class PrincipalService {
         where: unassignedStudentsWhere,
         select: {
           id: true,
-          name: true,
-          rollNumber: true,
+          user: { select: { name: true, rollNumber: true } },
           batch: { select: { id: true, name: true } },
           branch: { select: { id: true, name: true } },
         },
@@ -4300,18 +4291,17 @@ export class PrincipalService {
       this.prisma.student.findMany({
         where: {
           institutionId,
-          isActive: true,
+          user: { active: true },
           internshipApplications: {
             some: { isSelfIdentified: true },
           },
         },
         select: {
           id: true,
-          name: true,
-          rollNumber: true,
+          user: { select: { name: true, rollNumber: true } },
           branch: { select: { id: true, name: true } },
           mentorAssignments: {
-            where: { isActive: true },
+            where: { student: { user: { active: true } } },
             take: 1,
             select: {
               mentor: { select: { id: true, name: true } },
@@ -4327,7 +4317,7 @@ export class PrincipalService {
             },
           },
         },
-        orderBy: { name: 'asc' },
+        orderBy: { user: { name: 'asc' } },
       }),
     ]);
 
@@ -4358,23 +4348,23 @@ export class PrincipalService {
           status: g.status,
           submittedDate: g.submittedDate,
           studentId: g.student.id,
-          studentName: g.student.name,
-          rollNumber: g.student.rollNumber,
+          studentName: g.student.user?.name,
+          rollNumber: g.student.user?.rollNumber,
           daysPending: Math.floor((now.getTime() - new Date(g.submittedDate).getTime()) / (1000 * 60 * 60 * 24)),
           priority: 'urgent',
         })),
         overdueReports: overdueReports.map(s => ({
           studentId: s.id,
-          studentName: s.name,
-          rollNumber: s.rollNumber,
+          studentName: s.user?.name,
+          rollNumber: s.user?.rollNumber,
           mentorName: s.mentorAssignments[0]?.mentor?.name || null,
           daysOverdue: now.getDate() - 5,
           priority: 'high',
         })),
         missingVisits: missingVisits.map(s => ({
           studentId: s.id,
-          studentName: s.name,
-          rollNumber: s.rollNumber,
+          studentName: s.user?.name,
+          rollNumber: s.user?.rollNumber,
           lastVisitDate: s.internshipApplications[0]?.facultyVisitLogs[0]?.visitDate || null,
           daysSinceLastVisit: s.internshipApplications[0]?.facultyVisitLogs[0]?.visitDate
             ? Math.floor((now.getTime() - new Date(s.internshipApplications[0].facultyVisitLogs[0].visitDate).getTime()) / (1000 * 60 * 60 * 24))
@@ -4382,15 +4372,15 @@ export class PrincipalService {
         })),
         unassignedStudents: unassignedStudents.map(s => ({
           studentId: s.id,
-          studentName: s.name,
-          rollNumber: s.rollNumber,
+          studentName: s.user?.name,
+          rollNumber: s.user?.rollNumber,
           batchName: s.batch?.name || null,
           branchName: s.branch?.name || null,
         })),
         pendingJoiningLetters: pendingJoiningLetters.map(s => ({
           studentId: s.id,
-          studentName: s.name,
-          rollNumber: s.rollNumber,
+          studentName: s.user.name,
+          rollNumber: s.user.rollNumber,
           branchName: s.branch?.name || null,
           mentorId: s.mentorAssignments[0]?.mentor?.id || null,
           mentorName: s.mentorAssignments[0]?.mentor?.name || null,
@@ -4422,7 +4412,7 @@ export class PrincipalService {
         // Fetch all applications and calculate counts using JavaScript
         // This avoids MongoDB count query issues with null/undefined/empty string handling
         const applications = await this.prisma.internshipApplication.findMany({
-          where: { isSelfIdentified: true, student: { institutionId, isActive: true } },
+          where: { isSelfIdentified: true, student: { institutionId, user: { active: true } } },
           select: {
             joiningLetterUrl: true,
             reviewedAt: true,
@@ -4554,9 +4544,7 @@ export class PrincipalService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
-              email: true,
+              user: { select: { name: true, rollNumber: true, email: true } },
               batch: { select: { name: true } },
               branch: { select: { name: true } },
             },
@@ -4599,9 +4587,9 @@ export class PrincipalService {
         startDate: app.startDate,
         // Flattened student fields for frontend
         studentId: app.student.id,
-        studentName: app.student.name,
-        studentRollNumber: app.student.rollNumber,
-        studentEmail: app.student.email,
+        studentName: app.student.user?.name,
+        studentRollNumber: app.student.user?.rollNumber,
+        studentEmail: app.student.user?.email,
         studentBatch: app.student.batch?.name,
         studentBranch: app.student.branch?.name,
       };
@@ -4661,7 +4649,7 @@ export class PrincipalService {
       },
       include: {
         student: {
-          select: { name: true, rollNumber: true },
+          select: { user: { select: { name: true, rollNumber: true } } },
         },
       },
     });
@@ -4674,8 +4662,8 @@ export class PrincipalService {
       message: 'Joining letter verified successfully',
       data: {
         applicationId: updated.id,
-        studentName: updated.student.name,
-        rollNumber: updated.student.rollNumber,
+        studentName: updated.student.user?.name,
+        rollNumber: updated.student.user?.rollNumber,
         verifiedAt: updated.reviewedAt,
       },
     };
@@ -4730,7 +4718,7 @@ export class PrincipalService {
       },
       include: {
         student: {
-          select: { name: true, rollNumber: true },
+          select: { user: { select: { name: true, rollNumber: true } } },
         },
       },
     });
@@ -4743,8 +4731,8 @@ export class PrincipalService {
       message: 'Joining letter rejected',
       data: {
         applicationId: updated.id,
-        studentName: updated.student.name,
-        rollNumber: updated.student.rollNumber,
+        studentName: updated.student.user?.name,
+        rollNumber: updated.student.user?.rollNumber,
         rejectedAt: updated.reviewedAt,
         remarks: updated.reviewRemarks,
       },
@@ -4778,8 +4766,12 @@ export class PrincipalService {
         companyName: true,
         student: {
           select: {
-            name: true,
-            rollNumber: true,
+            user: {
+              select: {
+                name: true,
+                rollNumber: true,
+              },
+            },
           },
         },
       },
@@ -4790,8 +4782,8 @@ export class PrincipalService {
     return recentActivity.map(a => ({
       applicationId: a.id,
       action: (a.reviewRemarks && a.reviewRemarks.toLowerCase().includes('reject')) ? 'REJECTED' : 'VERIFIED',
-      studentName: a.student.name,
-      rollNumber: a.student.rollNumber,
+      studentName: a.student.user?.name,
+      rollNumber: a.student.user?.rollNumber,
       companyName: a.companyName,
       timestamp: a.reviewedAt,
       remarks: a.reviewRemarks,
@@ -4837,7 +4829,7 @@ export class PrincipalService {
         student: { institutionId: principal.institutionId },
       },
       include: {
-        student: { select: { id: true, name: true, rollNumber: true } },
+        student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
       },
     });
 
@@ -4868,7 +4860,7 @@ export class PrincipalService {
       data: updateData,
       include: {
         student: {
-          select: { id: true, name: true, rollNumber: true },
+          select: { id: true, user: { select: { name: true, rollNumber: true } } },
         },
       },
     });
@@ -4966,10 +4958,7 @@ export class PrincipalService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            email: true,
-            contact: true,
+            user: { select: { name: true, rollNumber: true, email: true, phoneNo: true } },
             batch: { select: { name: true } },
             branch: { select: { name: true } },
           },
@@ -5004,7 +4993,7 @@ export class PrincipalService {
       },
       include: {
         student: {
-          select: { id: true, name: true, rollNumber: true },
+          select: { id: true, user: { select: { name: true, rollNumber: true } } },
         },
       },
     });
@@ -5027,7 +5016,7 @@ export class PrincipalService {
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Internship application deleted for student: ${application.student.name} (${application.student.rollNumber})`,
+      description: `Internship application deleted for student: ${application.student.user?.name} (${application.student.user?.rollNumber})`,
       category: AuditCategory.ADMINISTRATIVE,
       severity: AuditSeverity.MEDIUM,
       institutionId: principal.institutionId,
@@ -5112,6 +5101,9 @@ export class PrincipalService {
         id: studentId,
         institutionId: principal.institutionId,
       },
+      include: {
+        user: { select: { rollNumber: true } },
+      },
     });
 
     if (!student) {
@@ -5121,7 +5113,7 @@ export class PrincipalService {
     // Upload to MinIO
     const uploadResult = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName: principal.Institution?.name || 'default',
-      rollNumber: student.rollNumber || student.id,
+      rollNumber: student.user?.rollNumber || student.id,
       documentType: 'document',
       customName: type,
     });
@@ -5144,7 +5136,7 @@ export class PrincipalService {
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Principal uploaded document for student ${student.rollNumber}: ${file.originalname} (${type})`,
+      description: `Principal uploaded document for student ${student.user?.rollNumber}: ${file.originalname} (${type})`,
       category: AuditCategory.PROFILE_MANAGEMENT,
       severity: AuditSeverity.MEDIUM,
       institutionId: principal.institutionId,
@@ -5153,12 +5145,11 @@ export class PrincipalService {
         fileName: document.fileName,
         type: document.type,
         studentId: student.id,
-        studentRollNumber: student.rollNumber,
+        studentRollNumber: student.user?.rollNumber,
       },
     }).catch(() => {}); // Non-blocking
 
-    this.logger.log(`Document uploaded by principal for student ${student.rollNumber}: ${document.id}`);
-
+    this.logger.log(`Document uploaded by principal for student ${student.user?.rollNumber}: ${document.id}`);
     return {
       id: document.id,
       url: document.fileUrl,
@@ -5186,6 +5177,7 @@ export class PrincipalService {
         id: studentId,
         institutionId: principal.institutionId,
       },
+      include: { user: { select: { rollNumber: true } } },
     });
 
     if (!student) {
@@ -5229,7 +5221,7 @@ export class PrincipalService {
       userId: principalId,
       userName: principal.name,
       userRole: principal.role,
-      description: `Principal deleted document for student ${student.rollNumber}: ${document.fileName}`,
+      description: `Principal deleted document for student ${student.user?.rollNumber}: ${document.fileName}`,
       category: AuditCategory.PROFILE_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: principal.institutionId,
@@ -5241,7 +5233,7 @@ export class PrincipalService {
       },
     }).catch(() => {}); // Non-blocking
 
-    this.logger.log(`Document deleted by principal for student ${student.rollNumber}: ${documentId}`);
+    this.logger.log(`Document deleted by principal for student ${student.user?.rollNumber}: ${documentId}`);
 
     return { success: true, message: 'Document deleted successfully' };
   }

@@ -134,10 +134,10 @@ const CompletionFeedbackModal = ({
     <div className="flex flex-col">
       <span className="font-medium text-text-primary">{app.internshipTitle} <span className="text-xs text-text-secondary font-normal">({app.internshipDuration})</span></span>
       <span className="text-xs text-primary font-medium mt-0.5">
-        Student: {app.student?.name} ({app.student?.rollNumber})
+        Student: {app.student?.user?.name || app.student?.name} ({app.student?.user?.rollNumber || app.student?.rollNumber})
       </span>
       <span className="text-xs text-text-tertiary">
-        Branch: {app.student?.branchName}
+        Branch: {app.student?.user?.branchName || app.student?.branchName}
       </span>
     </div>
   );

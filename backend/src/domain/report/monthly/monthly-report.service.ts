@@ -84,7 +84,7 @@ export class MonthlyReportService {
         },
         include: {
           student: {
-            select: { id: true, name: true, rollNumber: true },
+            select: { id: true, user: { select: { name: true, rollNumber: true } } },
           },
           application: { select: { id: true } },
         },
@@ -157,7 +157,7 @@ export class MonthlyReportService {
             },
             include: {
               student: {
-                select: { id: true, name: true, rollNumber: true },
+                select: { id: true, user: { select: { name: true, rollNumber: true } } },
               },
               application: { select: { id: true } },
             },
@@ -190,7 +190,7 @@ export class MonthlyReportService {
     const report = await this.prisma.monthlyReport.findUnique({
       where: { id },
       include: {
-        student: { select: { id: true, name: true, rollNumber: true } },
+        student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
         application: { select: { id: true } },
       },
     });

@@ -191,13 +191,12 @@ export class ReportGeneratorService {
     // Default to active students with active user accounts
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
-      where.isActive = isActiveValue;
+      where.user = { active: isActiveValue };
       this.logger.debug(
         `Student directory filter: isActive=${isActiveValue} (raw: ${String(filters?.isActive)})`,
       );
     } else {
       // By default, only show active students with active user accounts
-      where.isActive = true;
       where.user = { active: true };
     }
 
@@ -217,6 +216,8 @@ export class ReportGeneratorService {
             email: true,
             phoneNo: true,
             active: true,
+            rollNumber: true,
+            branchName: true,
           }
         },
         branch: { select: { id: true, name: true } },
@@ -297,13 +298,13 @@ export class ReportGeneratorService {
 
       return {
         // Core student info
-        rollNumber: student.rollNumber,
-        name: student.name,
-        email: student.email ?? student.user?.email ?? '',
-        phoneNumber: student.contact ?? student.user?.phoneNo ?? '',
+        rollNumber: student.user.rollNumber,
+        name: student.user.name,
+        email: student.user.email ?? '',
+        phoneNumber: student.user.phoneNo ?? '',
 
         // Academic info
-        branchName: student.branch?.name ?? student.branchName ?? '',
+        branchName: student.branch?.name ?? student.user.branchName ?? '',
         currentYear: student.currentYear,
         currentSemester: student.currentSemester,
 
@@ -324,8 +325,8 @@ export class ReportGeneratorService {
 
         // Status info
         clearanceStatus: student.clearanceStatus,
-        isActive: student.isActive && (student.user?.active ?? false),
-        studentActive: student.isActive,
+        isActive: student.user?.active ?? false,
+        studentActive: student.user?.active ?? false,
         userActive: student.user?.active ?? false,
 
         // Timestamps
@@ -368,9 +369,8 @@ export class ReportGeneratorService {
     // Default to active students with active user accounts
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
-      studentWhere.isActive = isActiveValue;
+      studentWhere.user = { active: isActiveValue };
     } else {
-      studentWhere.isActive = true;
       studentWhere.user = { active: true };
     }
 
@@ -412,12 +412,8 @@ export class ReportGeneratorService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            branchName: true,
             institutionId: true,
-            isActive: true,
-            user: { select: { active: true } },
+            user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
           },
         },
         mentor: { select: { id: true, name: true } },
@@ -442,9 +438,9 @@ export class ReportGeneratorService {
       }
 
       return {
-        studentName: application.student.name,
-        rollNumber: application.student.rollNumber,
-        branch: application.student.branchName,
+        studentName: application.student.user?.name,
+        rollNumber: application.student.user?.rollNumber,
+        branch: application.student.user?.branchName,
         companyName: application.companyName,
         companyCity,
         jobProfile: application.jobProfile,
@@ -457,8 +453,8 @@ export class ReportGeneratorService {
         reportsSubmitted: application._count.monthlyReports,
         location: application.companyAddress,
         isSelfIdentified: application.isSelfIdentified,
-        isActive: application.student.isActive,
-        userActive: (application.student as any).user?.active ?? true,
+        isActive: application.student.user?.active ?? false,
+        userActive: application.student.user?.active ?? true,
       };
     });
   }
@@ -484,10 +480,9 @@ export class ReportGeneratorService {
     // Default to active students only, unless explicitly filtering for inactive
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
-      studentFilter.isActive = isActiveValue;
+      studentFilter.user = { active: isActiveValue };
     } else {
       // By default, only show visits for active students with active accounts
-      studentFilter.isActive = true;
       studentFilter.user = { active: true };
     }
 
@@ -544,7 +539,7 @@ export class ReportGeneratorService {
           select: {
             id: true,
             companyName: true,
-            student: { select: { id: true, name: true, rollNumber: true, isActive: true } },
+            student: { select: { id: true, user: { select: { name: true, rollNumber: true, active: true } } } },
           },
         },
       },
@@ -559,9 +554,9 @@ export class ReportGeneratorService {
       facultyName: visit.faculty.name,
       facultyDesignation: visit.faculty.designation,
       facultyActive: visit.faculty.active,
-      studentName: visit.application.student.name,
-      rollNumber: visit.application.student.rollNumber,
-      studentActive: visit.application.student.isActive,
+      studentName: visit.application.student.user?.name,
+      rollNumber: visit.application.student.user?.rollNumber,
+      studentActive: visit.application.student.user?.active,
       companyName: visit.application.companyName,
       visitDate: visit.visitDate,
       visitType: visit.visitType,
@@ -597,10 +592,9 @@ export class ReportGeneratorService {
     // Default to active students only, unless explicitly filtering for inactive
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
-      studentFilter.isActive = isActiveValue;
+      studentFilter.user = { active: isActiveValue };
     } else {
       // By default, only show reports for active students with active accounts
-      studentFilter.isActive = true;
       studentFilter.user = { active: true };
     }
 
@@ -619,10 +613,7 @@ export class ReportGeneratorService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            isActive: true,
-            user: { select: { active: true } },
+            user: { select: { name: true, rollNumber: true, active: true } },
           },
         },
         application: {
@@ -640,16 +631,16 @@ export class ReportGeneratorService {
     this.warnOnLargeResultSet(reports.length, 'MonthlyReport');
 
     return reports.map((report) => ({
-      studentName: report.student.name,
-      rollNumber: report.student.rollNumber,
+      studentName: report.student.user?.name,
+      rollNumber: report.student.user?.rollNumber,
       companyName: report.application.companyName ?? '',
       month: report.reportMonth,
       year: report.reportYear,
       status: report.status,
       submittedAt: report.submittedAt,
       reportFileUrl: report.reportFileUrl,
-      isActive: report.student.isActive,
-      userActive: (report.student as any).user?.active ?? true,
+      isActive: report.student.user?.active ?? false,
+      userActive: report.student.user?.active ?? true,
     }));
   }
 
@@ -690,7 +681,6 @@ export class ReportGeneratorService {
       this.prisma.student.count({
         where: {
           institutionId,
-          isActive: true,
           user: { active: true },
         },
       }),
@@ -708,7 +698,7 @@ export class ReportGeneratorService {
           isActive: true,
           isSelfIdentified: true,
           internshipPhase: 'ACTIVE' as any,
-          student: { institutionId, isActive: true, user: { active: true } },
+          student: { institutionId, user: { active: true } },
         },
       }),
       this.prisma.internshipApplication.count({
@@ -716,7 +706,7 @@ export class ReportGeneratorService {
           isActive: true,
           isSelfIdentified: true,
           internshipPhase: 'COMPLETED' as any,
-          student: { institutionId, isActive: true, user: { active: true } },
+          student: { institutionId, user: { active: true } },
         },
       }),
       Promise.resolve(0),
@@ -724,7 +714,7 @@ export class ReportGeneratorService {
       this.prisma.internshipApplication.count({
         where: {
           isActive: true,
-          student: { institutionId, isActive: true, user: { active: true } },
+          student: { institutionId, user: { active: true } },
         },
       }),
       this.prisma.branch.findMany({
@@ -733,7 +723,7 @@ export class ReportGeneratorService {
           _count: {
             select: {
               students: {
-                where: { isActive: true, user: { active: true } },
+                where: { user: { active: true } },
               },
             },
           },
@@ -819,14 +809,14 @@ export class ReportGeneratorService {
     // Handle explicit isActive filter override
     const isActiveValue = this.parseBooleanLike(filters?.isActive);
     if (isActiveValue !== undefined) {
-      where.isActive = isActiveValue;
+      where.user = { active: isActiveValue };
     }
 
     // Fetch students with their internship applications and monthly reports
     const students = await this.prisma.student.findMany({
       where,
       include: {
-        user: { select: { active: true } },
+        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
         branch: { select: { name: true } },
         internshipApplications: {
           where: {
@@ -868,9 +858,9 @@ export class ReportGeneratorService {
       else if (complianceScore >= 50) complianceLevel = 'medium';
 
       return {
-        rollNumber: student.rollNumber,
-        name: student.name,
-        branchName: student.branch?.name ?? student.branchName,
+        rollNumber: student.user?.rollNumber,
+        name: student.user?.name,
+        branchName: student.branch?.name ?? student.user?.branchName,
         mentorName,
         joiningReportStatus: activeApplications.length > 0 ? 'Submitted' : 'Not Started',
         monthlyReportsSubmitted: submittedReports.length,
@@ -878,8 +868,8 @@ export class ReportGeneratorService {
         lastReportDate: lastReport?.submittedAt ?? null,
         complianceScore,
         complianceLevel,
-        isActive: student.isActive,
-        userActive: (student as any).user?.active ?? true,
+        isActive: student.user?.active ?? false,
+        userActive: student.user?.active ?? true,
       };
     });
 
@@ -955,15 +945,15 @@ export class ReportGeneratorService {
       }
     }
 
-    // Handle account status filter - checks BOTH User.active AND Student.isActive for students
+    // Handle account status filter - checks User.active
     const accountActive = this.parseBooleanLike(filters?.isActive);
     if (accountActive !== undefined) {
       where.active = accountActive;
-      // For students, also filter by Student.isActive
+      // For students, also check that Student record exists
       if (accountActive === true) {
         where.OR = [
           { role: { not: 'STUDENT' } }, // Non-students just need User.active
-          { role: 'STUDENT', Student: { isActive: true } }, // Students need both User.active AND Student.isActive
+          { role: 'STUDENT', Student: { isNot: null } }, // Students need User.active AND Student record
         ];
       }
     }
@@ -972,7 +962,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
-        Student: { select: { isActive: true } }, // Include Student.isActive for accurate reporting
+        Student: { select: { id: true } }, // Include Student relation for accurate reporting
       },
       take,
       skip,
@@ -1000,10 +990,10 @@ export class ReportGeneratorService {
         }
       }
 
-      // For students: check BOTH User.active AND Student.isActive
+      // For students: check User.active AND Student record exists
       // For non-students: only check User.active
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
       // isActive is true only when BOTH conditions are met (for students)
       const isActive = user.role === 'STUDENT'
         ? (userActive && studentActive === true)
@@ -1026,7 +1016,7 @@ export class ReportGeneratorService {
         passwordChangedAt: user.passwordChangedAt,
         daysSinceLastLogin,
         daysSinceCreation,
-        isActive, // Combined: User.active AND (for students) Student.isActive
+        isActive, // Combined: User.active AND (for students) Student record exists
         userActive, // User account active status
         studentActive, // Student record active status (null for non-students)
         status,
@@ -1057,14 +1047,14 @@ export class ReportGeneratorService {
       userFilter.institutionId = filters.institutionId;
     }
 
-    // Filter by active users only by default (both User.active AND Student.isActive for students)
+    // Filter by active users only by default (User.active and Student record exists for students)
     const accountActive = this.parseBooleanLike(filters?.isActive);
     if (accountActive !== undefined) {
       userFilter.active = accountActive;
       if (accountActive === true) {
         userFilter.OR = [
           { role: { not: 'STUDENT' } },
-          { role: 'STUDENT', Student: { isActive: true } },
+          { role: 'STUDENT', Student: { isNot: null } },
         ];
       }
     } else {
@@ -1072,7 +1062,7 @@ export class ReportGeneratorService {
       userFilter.active = true;
       userFilter.OR = [
         { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isActive: true } },
+        { role: 'STUDENT', Student: { isNot: null } },
       ];
     }
 
@@ -1113,7 +1103,7 @@ export class ReportGeneratorService {
             role: true,
             active: true,
             Institution: { select: { name: true } },
-            Student: { select: { isActive: true } },
+            Student: { select: { id: true } },
           },
         },
       },
@@ -1133,7 +1123,7 @@ export class ReportGeneratorService {
       // User active status
       const userActive = session.user.active;
       const studentActive = session.user.role === 'STUDENT'
-        ? ((session.user as any).Student?.isActive ?? false)
+        ? ((session.user as any).Student ? true : false)
         : null;
       const isUserActive = session.user.role === 'STUDENT'
         ? (userActive && studentActive === true)
@@ -1153,7 +1143,7 @@ export class ReportGeneratorService {
         isActive: isSessionActive, // Session active status
         isUserActive, // User account active status (combined)
         userActive, // User.active
-        studentActive, // Student.isActive (null for non-students)
+        studentActive, // Student record exists (null for non-students)
         expiresAt: session.expiresAt,
       };
     });
@@ -1176,23 +1166,23 @@ export class ReportGeneratorService {
 
     // Default to active users only, unless explicitly filtering for inactive
     // This makes sense for "never logged in" report - we want to identify active users who haven't logged in
-    // For students, we also check Student.isActive
+    // For students, we also check that Student record exists
     const accountActive = this.parseBooleanLike(filters?.isActive);
     if (accountActive !== undefined) {
       where.active = accountActive;
-      // For students, also filter by Student.isActive when filtering for active users
+      // For students, also filter by Student record existence when filtering for active users
       if (accountActive === true) {
         where.OR = [
           { role: { not: 'STUDENT' } }, // Non-students just need User.active
-          { role: 'STUDENT', Student: { isActive: true } }, // Students need both
+          { role: 'STUDENT', Student: { isNot: null } }, // Students need User.active AND Student record
         ];
       }
     } else {
-      // Default to active users only (both User.active AND Student.isActive for students)
+      // Default to active users only (User.active AND Student record exists for students)
       where.active = true;
       where.OR = [
         { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isActive: true } },
+        { role: 'STUDENT', Student: { isNot: null } },
       ];
     }
 
@@ -1220,7 +1210,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
-        Student: { select: { isActive: true } }, // Include Student.isActive
+        Student: { select: { id: true } }, // Include Student relation
       },
       take,
       skip,
@@ -1233,7 +1223,7 @@ export class ReportGeneratorService {
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
       const isActive = user.role === 'STUDENT'
         ? (userActive && studentActive === true)
         : userActive;
@@ -1248,7 +1238,7 @@ export class ReportGeneratorService {
         accountCreatedAt: user.createdAt,
         daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
         hasChangedPassword: user.hasChangedDefaultPassword,
-        isActive, // Combined: User.active AND (for students) Student.isActive
+        isActive, // Combined: User.active AND (for students) Student record exists
         userActive,
         studentActive,
       };
@@ -1272,22 +1262,22 @@ export class ReportGeneratorService {
 
     // Default to active users only, unless explicitly filtering for inactive
     // Security concern: We want to identify active users with default passwords
-    // For students, we also check Student.isActive
+    // For students, we also check that Student record exists
     const accountActive = this.parseBooleanLike(filters?.isActive);
     if (accountActive !== undefined) {
       where.active = accountActive;
       if (accountActive === true) {
         where.OR = [
           { role: { not: 'STUDENT' } },
-          { role: 'STUDENT', Student: { isActive: true } },
+          { role: 'STUDENT', Student: { isNot: null } },
         ];
       }
     } else {
-      // Default to active users only (both User.active AND Student.isActive for students)
+      // Default to active users only (User.active AND Student record exists for students)
       where.active = true;
       where.OR = [
         { role: { not: 'STUDENT' } },
-        { role: 'STUDENT', Student: { isActive: true } },
+        { role: 'STUDENT', Student: { isNot: null } },
       ];
     }
 
@@ -1312,7 +1302,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
-        Student: { select: { isActive: true } },
+        Student: { select: { id: true } },
       },
       take,
       skip,
@@ -1325,7 +1315,7 @@ export class ReportGeneratorService {
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
       const isActive = user.role === 'STUDENT'
         ? (userActive && studentActive === true)
         : userActive;
@@ -1362,7 +1352,7 @@ export class ReportGeneratorService {
 
     // Default to active users only, unless explicitly filtering for inactive
     // This report identifies active user accounts that haven't been used recently
-    // For students, we also check Student.isActive
+    // For students, we also check that Student record exists
     const accountActive = this.parseBooleanLike(filters?.isActive);
     if (accountActive !== undefined) {
       where.active = accountActive;
@@ -1371,19 +1361,19 @@ export class ReportGeneratorService {
           {
             OR: [
               { role: { not: 'STUDENT' } },
-              { role: 'STUDENT', Student: { isActive: true } },
+              { role: 'STUDENT', Student: { isNot: null } },
             ],
           },
         ];
       }
     } else {
-      // Default to active users only (both User.active AND Student.isActive for students)
+      // Default to active users only (User.active AND Student record exists for students)
       where.active = true;
       where.AND = [
         {
           OR: [
             { role: { not: 'STUDENT' } },
-            { role: 'STUDENT', Student: { isActive: true } },
+            { role: 'STUDENT', Student: { isNot: null } },
           ],
         },
       ];
@@ -1426,7 +1416,7 @@ export class ReportGeneratorService {
       where,
       include: {
         Institution: { select: { name: true } },
-        Student: { select: { isActive: true } },
+        Student: { select: { id: true } },
       },
       take,
       skip,
@@ -1439,7 +1429,7 @@ export class ReportGeneratorService {
 
     return users.map((user) => {
       const userActive = user.active;
-      const studentActive = user.role === 'STUDENT' ? ((user as any).Student?.isActive ?? false) : null;
+      const studentActive = user.role === 'STUDENT' ? ((user as any).Student ? true : false) : null;
       const isActive = user.role === 'STUDENT'
         ? (userActive && studentActive === true)
         : userActive;

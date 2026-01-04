@@ -109,7 +109,8 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     // If no internship data, check if student has active status
     if (!internship) {
       // Fall back to checking student's hasActiveInternship flag or similar
-      return student.hasActiveInternship || student.isActive || false;
+      // Use User SOT pattern: prefer user.active, fallback to isActive
+      return student.hasActiveInternship || (student.user?.active ?? student.isActive) || false;
     }
 
     // Get dates from internship or application level

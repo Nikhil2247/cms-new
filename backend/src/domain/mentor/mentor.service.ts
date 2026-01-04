@@ -41,7 +41,7 @@ export class MentorService {
       this.logger.log(`Assigning mentor ${mentorId} to student ${studentId}`);
 
       const [student, mentor] = await Promise.all([
-        this.prisma.student.findUnique({ where: { id: studentId } }),
+        this.prisma.student.findUnique({ where: { id: studentId }, include: { user: { select: { name: true } } } }),
         this.prisma.user.findUnique({ where: { id: mentorId } }),
       ]);
 
@@ -107,7 +107,7 @@ export class MentorService {
         category: AuditCategory.ADMINISTRATIVE,
         severity: AuditSeverity.MEDIUM,
         institutionId: student.institutionId,
-        description: `Mentor ${mentor.name} assigned to student ${student.name}`,
+        description: `Mentor ${mentor.name} assigned to student ${student.user?.name}`,
         newValues: {
           mentorId,
           studentId,

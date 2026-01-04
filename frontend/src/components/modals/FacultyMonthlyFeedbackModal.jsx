@@ -30,8 +30,8 @@ const FacultyMonthlyFeedbackModal = ({
         .filter((app) => app.internshipPhase === "ACTIVE" || app.status === "SELECTED" || app.status === "ACTIVE")
         .map((app) => ({
           ...app,
-          studentName: student.name,
-          studentRollNumber: student.rollNumber,
+          studentName: student?.user?.name || student.name,
+          studentRollNumber: student?.user?.rollNumber || student.rollNumber,
           studentId: student.id,
         }));
     });

@@ -43,8 +43,8 @@ const AssignedStudentsList = ({
 
     const search = searchText.toLowerCase();
     return students.filter(student => {
-      const name = (student.name || student.student?.name || '').toLowerCase();
-      const rollNumber = (student.rollNumber || student.student?.rollNumber || '').toLowerCase();
+      const name = (student?.user?.name || student.student?.user?.name || '').toLowerCase();
+      const rollNumber = (student?.user?.rollNumber || student.student?.user?.rollNumber || '').toLowerCase();
       const company = getCompanyName(student).toLowerCase();
 
       return name.includes(search) || rollNumber.includes(search) || company.includes(search);
@@ -269,13 +269,13 @@ const AssignedStudentsList = ({
       width: 150,
       ellipsis: true,
       sorter: (a, b) => {
-        const nameA = (a.name || a.student?.name || '').toLowerCase();
-        const nameB = (b.name || b.student?.name || '').toLowerCase();
+        const nameA = (a?.user?.name || a.student?.user?.name || '').toLowerCase();
+        const nameB = (b?.user?.name || b.student?.user?.name || '').toLowerCase();
         return nameA.localeCompare(nameB);
       },
       render: (_, student) => {
-        const name = student.name || student.student?.name || 'N/A';
-        const rollNumber = student.rollNumber || student.student?.rollNumber || 'N/A';
+        const name = student?.user?.name || student.student?.user?.name || 'N/A';
+        const rollNumber = student?.user?.rollNumber || student.student?.user?.rollNumber || 'N/A';
         const isExternal = student.isExternalStudent || false;
         const institution = student.student?.Institution || student.Institution;
 

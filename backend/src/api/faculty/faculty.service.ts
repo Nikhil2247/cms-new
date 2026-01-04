@@ -233,7 +233,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
-              student: { isActive: true },
+              student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
@@ -245,7 +245,7 @@ export class FacultyService {
             where: {
               application: {
                 studentId: { in: studentIds },
-                student: { isActive: true },
+                student: { user: { active: true } },
                 isActive: true,
                 isSelfIdentified: true,
                 startDate: { lte: new Date() }, // Only count if internship has started
@@ -257,7 +257,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
-              student: { isActive: true },
+              student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
               status: ApplicationStatus.APPLIED,
@@ -268,7 +268,7 @@ export class FacultyService {
             where: {
               facultyId,
               application: {
-                student: { isActive: true },
+                student: { user: { active: true } },
                 isActive: true,
                 startDate: { lte: new Date() }, // Only count visits for started internships
               },
@@ -291,7 +291,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
-              student: { isActive: true },
+              student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
@@ -302,7 +302,7 @@ export class FacultyService {
           this.prisma.internshipApplication.count({
             where: {
               studentId: { in: studentIds },
-              student: { isActive: true },
+              student: { user: { active: true } },
               isActive: true,
               isSelfIdentified: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
@@ -318,7 +318,7 @@ export class FacultyService {
               gte: new Date(),
             },
             application: {
-              student: { isActive: true },
+              student: { user: { active: true } },
               isActive: true,
               startDate: { lte: new Date() }, // Only show visits for started internships
             },
@@ -331,8 +331,7 @@ export class FacultyService {
                 student: {
                   select: {
                     id: true,
-                    name: true,
-                    rollNumber: true,
+                    user: { select: { name: true, rollNumber: true } },
                   },
                 },
               },
@@ -384,17 +383,17 @@ export class FacultyService {
       mentorId: facultyId,
       isActive: true,
       student: {
-        isActive: true,
+        user: { active: true },
       },
     };
 
     if (search) {
       where.student = {
-        isActive: true,
+        user: { active: true },
         OR: [
-          { name: { contains: search, mode: 'insensitive' } },
-          { rollNumber: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { rollNumber: { contains: search, mode: 'insensitive' } } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
         ],
       };
     }
@@ -484,6 +483,7 @@ export class FacultyService {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
       include: {
+        user: { select: { name: true, rollNumber: true } },
         internshipApplications: {
           where: {
             isActive: true,
@@ -551,8 +551,8 @@ export class FacultyService {
 
     return {
       studentId,
-      studentName: student.name,
-      rollNumber: student.rollNumber,
+      studentName: student.user?.name,
+      rollNumber: student.user?.rollNumber,
       overallProgress: Math.round(overallProgress),
       currentInternship: currentApplication,
       monthlyReports: currentApplication?.monthlyReports || [],
@@ -574,10 +574,8 @@ export class FacultyService {
             student: {
               select: {
                 id: true,
-                name: true,
-                rollNumber: true,
-                email: true,
                 profileImage: true,
+                user: { select: { name: true, rollNumber: true, email: true } },
               },
             },
           },
@@ -630,8 +628,7 @@ export class FacultyService {
               student: {
                 select: {
                   id: true,
-                  name: true,
-                  rollNumber: true,
+                  user: { select: { name: true, rollNumber: true } },
                 },
               },
             },
@@ -795,7 +792,9 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true,
+            student: {
+              include: { user: { select: { name: true, rollNumber: true } } },
+            },
           },
         },
       },
@@ -820,7 +819,7 @@ export class FacultyService {
         visitLogId: visitLog.id,
         applicationId: application.id,
         studentId: visitLog.application.student.id,
-        studentName: visitLog.application.student.name,
+        studentName: visitLog.application.student.user?.name,
         visitType,
         visitLocation,
         visitDate: visitLog.visitDate,
@@ -845,9 +844,11 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true
-          }
-        }
+            student: {
+              include: { user: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
@@ -957,7 +958,9 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true,
+            student: {
+              include: { user: { select: { name: true } } },
+            },
           },
         },
       },
@@ -998,9 +1001,11 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true
-          }
-        }
+            student: {
+              include: { user: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
@@ -1017,7 +1022,7 @@ export class FacultyService {
       visitLogId: id,
       applicationId: visitLog.applicationId,
       studentId: visitLog.application.studentId,
-      studentName: visitLog.application.student.name,
+      studentName: visitLog.application.student.user?.name,
       visitType: visitLog.visitType,
       visitLocation: visitLog.visitLocation,
       visitDate: visitLog.visitDate,
@@ -1110,8 +1115,7 @@ export class FacultyService {
               student: {
                 select: {
                   id: true,
-                  name: true,
-                  rollNumber: true,
+                  user: { select: { name: true, rollNumber: true } },
                 },
               },
             },
@@ -1171,7 +1175,9 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true,
+            student: {
+              include: { user: { select: { name: true } } },
+            },
           },
         },
       },
@@ -1198,7 +1204,7 @@ export class FacultyService {
         isApproved: reviewDto.isApproved,
         reviewComments: reviewDto.reviewComments,
         studentId: updated.application?.studentId,
-        studentName: updated.application?.student?.name,
+        studentName: updated.application?.student?.user?.name,
       },
     }).catch(() => {});
 
@@ -1241,10 +1247,7 @@ export class FacultyService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
-              email: true,
-              contact: true,
+              user: { select: { name: true, rollNumber: true, email: true, phoneNo: true } },
             },
           },
         },
@@ -1273,7 +1276,9 @@ export class FacultyService {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
       include: {
-        student: true,
+        student: {
+          include: { user: { select: { name: true } } },
+        },
       },
     });
 
@@ -1318,7 +1323,7 @@ export class FacultyService {
       userId: approvalDto.facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Self-identified internship ${approvalDto.status.toLowerCase()}: ${application.student?.name} at ${application.companyName}`,
+      description: `Self-identified internship ${approvalDto.status.toLowerCase()}: ${application.student?.user?.name} at ${application.companyName}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -1326,7 +1331,7 @@ export class FacultyService {
       newValues: {
         status: newStatus,
         studentId: application.studentId,
-        studentName: application.student?.name,
+        studentName: application.student?.user?.name,
         companyName: application.companyName,
         reviewRemarks: approvalDto.reviewRemarks,
       },
@@ -1402,7 +1407,9 @@ export class FacultyService {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
       include: {
-        student: true,
+        student: {
+          include: { user: { select: { name: true } } },
+        },
       },
     });
 
@@ -1466,7 +1473,9 @@ export class FacultyService {
       where: { id },
       data: updateData,
       include: {
-        student: true,
+        student: {
+          include: { user: { select: { name: true } } },
+        },
       },
     });
 
@@ -1481,7 +1490,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Internship application updated for student: ${application.student?.name}`,
+      description: `Internship application updated for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -1504,7 +1513,11 @@ export class FacultyService {
   async deleteInternship(id: string, facultyId: string) {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
-      include: { student: true },
+      include: {
+        student: {
+          include: { user: { select: { name: true } } },
+        },
+      },
     });
 
     if (!application) {
@@ -1524,7 +1537,7 @@ export class FacultyService {
     const deletedInfo = {
       applicationId: id,
       studentId: application.studentId,
-      studentName: application.student?.name,
+      studentName: application.student?.user?.name,
       companyName: application.companyName,
       status: application.status,
       wasActive: application.isActive,
@@ -1547,7 +1560,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Internship application deactivated for student: ${application.student?.name}`,
+      description: `Internship application deactivated for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
@@ -1572,7 +1585,13 @@ export class FacultyService {
     const report = await this.prisma.monthlyReport.findUnique({
       where: { id },
       include: {
-        application: { include: { student: true } },
+        application: {
+          include: {
+            student: {
+              include: { user: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
@@ -1611,7 +1630,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Monthly report approved: ${report.monthName} ${report.reportYear} for ${report.application?.student?.name}`,
+      description: `Monthly report approved: ${report.monthName} ${report.reportYear} for ${report.application?.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -1620,7 +1639,7 @@ export class FacultyService {
         status: 'APPROVED',
         remarks,
         studentId: report.studentId,
-        studentName: report.application?.student?.name,
+        studentName: report.application?.student?.user?.name,
       },
     }).catch(() => {});
 
@@ -1640,7 +1659,13 @@ export class FacultyService {
     const report = await this.prisma.monthlyReport.findUnique({
       where: { id },
       include: {
-        application: { include: { student: true } },
+        application: {
+          include: {
+            student: {
+              include: { user: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
@@ -1677,7 +1702,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Monthly report rejected: ${report.monthName} ${report.reportYear} for ${report.application?.student?.name}`,
+      description: `Monthly report rejected: ${report.monthName} ${report.reportYear} for ${report.application?.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -1686,7 +1711,7 @@ export class FacultyService {
         status: 'REJECTED',
         reason,
         studentId: report.studentId,
-        studentName: report.application?.student?.name,
+        studentName: report.application?.student?.user?.name,
       },
     }).catch(() => {});
 
@@ -1706,7 +1731,13 @@ export class FacultyService {
     const report = await this.prisma.monthlyReport.findUnique({
       where: { id },
       include: {
-        application: { include: { student: true } },
+        application: {
+          include: {
+            student: {
+              include: { user: { select: { name: true } } },
+            },
+          },
+        },
       },
     });
 
@@ -1725,7 +1756,7 @@ export class FacultyService {
       reportYear: report.reportYear,
       monthName: report.monthName,
       studentId: report.studentId,
-      studentName: report.application?.student?.name,
+      studentName: report.application?.student?.user?.name,
       status: report.status,
     };
 
@@ -1744,7 +1775,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Monthly report deleted: ${report.monthName} ${report.reportYear} for ${report.application?.student?.name}`,
+      description: `Monthly report deleted: ${report.monthName} ${report.reportYear} for ${report.application?.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
@@ -1825,9 +1856,7 @@ export class FacultyService {
           student: {
             select: {
               id: true,
-              name: true,
-              rollNumber: true,
-              email: true,
+              user: { select: { name: true, rollNumber: true, email: true } },
             },
           },
         },
@@ -1851,7 +1880,11 @@ export class FacultyService {
   async verifyJoiningLetter(id: string, remarks: string, facultyId: string) {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
-      include: { student: true },
+      include: {
+        student: {
+          include: { user: { select: { name: true } } },
+        },
+      },
     });
 
     if (!application) {
@@ -1894,14 +1927,14 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Joining letter verified for student: ${application.student?.name}`,
+      description: `Joining letter verified for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
       newValues: {
         applicationId: id,
         studentId: application.studentId,
-        studentName: application.student?.name,
+        studentName: application.student?.user?.name,
         remarks,
       },
     }).catch(() => {});
@@ -1921,7 +1954,11 @@ export class FacultyService {
   async rejectJoiningLetter(id: string, reason: string, facultyId: string) {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
-      include: { student: true },
+      include: {
+        student: {
+          include: { user: { select: { name: true } } },
+        },
+      },
     });
 
     if (!application) {
@@ -1964,14 +2001,14 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Joining letter rejected for student: ${application.student?.name}`,
+      description: `Joining letter rejected for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
       newValues: {
         applicationId: id,
         studentId: application.studentId,
-        studentName: application.student?.name,
+        studentName: application.student?.user?.name,
         reason,
       },
     }).catch(() => {});
@@ -1991,7 +2028,11 @@ export class FacultyService {
   async deleteJoiningLetter(id: string, facultyId: string) {
     const application = await this.prisma.internshipApplication.findUnique({
       where: { id },
-      include: { student: true },
+      include: {
+        student: {
+          include: { user: { select: { name: true } } },
+        },
+      },
     });
 
     if (!application) {
@@ -2016,7 +2057,7 @@ export class FacultyService {
     const deletedInfo = {
       applicationId: id,
       studentId: application.studentId,
-      studentName: application.student?.name,
+      studentName: application.student?.user?.name,
       joiningLetterUrl: application.joiningLetterUrl,
     };
 
@@ -2042,7 +2083,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Joining letter deleted for student: ${application.student?.name}`,
+      description: `Joining letter deleted for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
@@ -2067,7 +2108,9 @@ export class FacultyService {
       include: {
         application: {
           include: {
-            student: true,
+            student: {
+              include: { user: { select: { name: true } } },
+            },
           },
         },
       },
@@ -2098,7 +2141,7 @@ export class FacultyService {
 
     return {
       url: report.reportFileUrl,
-      fileName: `monthly_report_${report.application?.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`,
+      fileName: `monthly_report_${report.application?.student?.user?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`,
     };
   }
 
@@ -2204,13 +2247,17 @@ export class FacultyService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            institutionId: true,
             Institution: {
               select: {
                 id: true,
                 name: true,
+              },
+            },
+            user: {
+              select: {
+                name: true,
+                rollNumber: true,
+                institutionId: true,
               },
             },
           },
@@ -2243,6 +2290,7 @@ export class FacultyService {
 
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
+      include: { user: true },
     });
 
     if (!student) {
@@ -2250,27 +2298,30 @@ export class FacultyService {
     }
 
     const oldValues = {
-      name: student.name,
-      email: student.email,
-      contact: student.contact,
-      isActive: student.isActive,
+      name: student.user?.name,
+      email: student.user?.email,
+      phoneNo: student.user?.phoneNo,
+      active: student.user?.active,
     };
 
-    // Build update data - only include fields that are provided
+    // Build update data for Student model
     const updateData: any = {};
+    // Build update data for User model (fields that moved to User)
+    const userUpdateData: any = {};
 
-    // Personal info
-    if (updateDto.name !== undefined) updateData.name = updateDto.name;
-    if (updateDto.email !== undefined) updateData.email = updateDto.email;
+    // Personal info - most fields are now on User model
+    if (updateDto.name !== undefined) userUpdateData.name = updateDto.name;
+    if (updateDto.email !== undefined) userUpdateData.email = updateDto.email;
     if (updateDto.profileImage !== undefined) updateData.profileImage = updateDto.profileImage;
-    if (updateDto.contact !== undefined) updateData.contact = updateDto.contact;
-    if (updateDto.rollNumber !== undefined) updateData.rollNumber = updateDto.rollNumber;
-    if (updateDto.dob !== undefined) updateData.dob = updateDto.dob || null; // dob is stored as String in schema
+    if (updateDto.contact !== undefined) userUpdateData.phoneNo = updateDto.contact;
+    if (updateDto.rollNumber !== undefined) userUpdateData.rollNumber = updateDto.rollNumber;
+    if (updateDto.dob !== undefined) userUpdateData.dob = updateDto.dob || null;
     if (updateDto.gender !== undefined) updateData.gender = updateDto.gender;
     if (updateDto.category !== undefined) updateData.category = updateDto.category;
     if (updateDto.admissionType !== undefined) updateData.admissionType = updateDto.admissionType;
+    if (updateDto.branchName !== undefined) userUpdateData.branchName = updateDto.branchName;
 
-    // Academic info
+    // Academic info - these remain on Student
     if (updateDto.currentYear !== undefined) updateData.currentYear = updateDto.currentYear;
     if (updateDto.currentSemester !== undefined) updateData.currentSemester = updateDto.currentSemester;
     if (updateDto.batchId !== undefined) updateData.batchId = updateDto.batchId;
@@ -2290,9 +2341,18 @@ export class FacultyService {
     if (updateDto.tehsil !== undefined) updateData.tehsil = updateDto.tehsil;
     if (updateDto.pinCode !== undefined) updateData.pinCode = updateDto.pinCode;
 
-    // Status
-    if (updateDto.isActive !== undefined) updateData.isActive = updateDto.isActive;
+    // Status - active is now on User model
+    if (updateDto.isActive !== undefined) userUpdateData.active = updateDto.isActive;
 
+    // Update User model first if there are user fields to update
+    if (Object.keys(userUpdateData).length > 0 && student.userId) {
+      await this.prisma.user.update({
+        where: { id: student.userId },
+        data: userUpdateData,
+      });
+    }
+
+    // Update Student model
     const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: updateData,
@@ -2300,6 +2360,7 @@ export class FacultyService {
         batch: true,
         branch: true,
         Institution: true,
+        user: true,
       },
     });
 
@@ -2314,7 +2375,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Student profile updated by faculty: ${student.name}`,
+      description: `Student profile updated by faculty: ${student.user?.name}`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -2351,6 +2412,7 @@ export class FacultyService {
 
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
+      include: { user: { select: { name: true } } },
     });
 
     if (!student) {
@@ -2378,13 +2440,13 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Document uploaded for student: ${student.name} (${documentType})`,
+      description: `Document uploaded for student: ${student.user?.name} (${documentType})`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.LOW,
       institutionId: faculty?.institutionId || undefined,
       newValues: {
         studentId,
-        studentName: student.name,
+        studentName: student.user?.name,
         documentType,
         documentUrl,
       },
@@ -2420,26 +2482,27 @@ export class FacultyService {
 
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
+      include: { user: { select: { id: true, name: true, active: true } } },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
 
-    const oldStatus = student.isActive;
+    const oldStatus = student.user?.active;
 
-    // Update student status
-    const updated = await this.prisma.student.update({
-      where: { id: studentId },
-      data: { isActive },
-    });
-
-    // Also update the associated user account status if userId exists
+    // Update user account status (active status is now on User model)
+    let updated = student;
     if (student.userId) {
       await this.prisma.user.update({
         where: { id: student.userId },
         data: { active: isActive },
       });
+      // Refetch student with updated user data
+      updated = await this.prisma.student.findUnique({
+        where: { id: studentId },
+        include: { user: true },
+      }) as any;
     }
 
     // Get faculty for audit
@@ -2453,19 +2516,19 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Student ${isActive ? 'activated' : 'deactivated'} by faculty: ${student.name}${student.userId ? ' (user account also updated)' : ''}`,
+      description: `Student ${isActive ? 'activated' : 'deactivated'} by faculty: ${student.user?.name}${student.userId ? ' (user account updated)' : ''}`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
-      oldValues: { isActive: oldStatus },
-      newValues: { isActive },
+      oldValues: { active: oldStatus },
+      newValues: { active: isActive },
     }).catch(() => {});
 
     await this.cache.invalidateByTags(['students', `student:${studentId}`, 'users', `user:${student.userId}`]);
 
     return {
       success: true,
-      message: `Student ${isActive ? 'activated' : 'deactivated'} successfully${student.userId ? ' (user account also updated)' : ''}`,
+      message: `Student ${isActive ? 'activated' : 'deactivated'} successfully${student.userId ? ' (user account updated)' : ''}`,
       data: updated,
     };
   }
@@ -2481,8 +2544,7 @@ export class FacultyService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
+            user: { select: { name: true, rollNumber: true } },
           },
         },
       },
@@ -2523,8 +2585,7 @@ export class FacultyService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
+            user: { select: { name: true, rollNumber: true } },
           },
         },
       },
@@ -2541,14 +2602,14 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Joining letter uploaded for student: ${application.student?.name}`,
+      description: `Joining letter uploaded for student: ${application.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.LOW,
       institutionId: faculty?.institutionId || undefined,
       newValues: {
         applicationId,
         studentId: application.student?.id,
-        studentName: application.student?.name,
+        studentName: application.student?.user?.name,
         joiningLetterUrl,
       },
     }).catch(() => {});

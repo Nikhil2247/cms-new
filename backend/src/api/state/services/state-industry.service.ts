@@ -39,7 +39,7 @@ export class StateIndustryService {
         isSelfIdentified: true,
         status: ApplicationStatus.APPROVED,
         companyName: { not: '' },
-        student: { isActive: true, user: { active: true } },
+        student: { user: { active: true } },
       },
       select: {
         companyName: true,
@@ -156,7 +156,7 @@ export class StateIndustryService {
 
     const selfIdWhere: any = {
       isSelfIdentified: true,
-      student: { isActive: true, user: { active: true } },
+      student: { user: { active: true } },
     };
     if (search) {
       selfIdWhere.companyName = { contains: search, mode: 'insensitive' };
@@ -179,11 +179,10 @@ export class StateIndustryService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            branchName: true,
-            email: true,
             institutionId: true,
+            user: {
+              select: { name: true, rollNumber: true, branchName: true, email: true },
+            },
             Institution: {
               select: { id: true, name: true, code: true, city: true },
             },
@@ -248,10 +247,10 @@ export class StateIndustryService {
         const inst = company.institutionMap.get(student.institutionId);
         inst.students.push({
           id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          branch: student.branchName,
-          email: student.email,
+          name: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          branch: student.user?.branchName,
+          email: student.user?.email,
           jobProfile: app.jobProfile,
           stipend: app.stipend,
           status: app.status,
@@ -259,7 +258,7 @@ export class StateIndustryService {
           isSelfIdentified: true,
         });
 
-        const branch = student.branchName || 'Unknown';
+        const branch = student.user?.branchName || 'Unknown';
         inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
       }
     });
@@ -364,7 +363,7 @@ export class StateIndustryService {
       where: {
         isSelfIdentified: true,
         companyName: { not: '' },
-        student: { isActive: true, user: { active: true } },
+        student: { user: { active: true } },
       },
       select: {
         id: true,
@@ -384,12 +383,10 @@ export class StateIndustryService {
         student: {
           select: {
             id: true,
-            name: true,
-            rollNumber: true,
-            branchName: true,
-            email: true,
-            contact: true,
             institutionId: true,
+            user: {
+              select: { name: true, rollNumber: true, branchName: true, email: true, phoneNo: true },
+            },
             Institution: {
               select: { id: true, name: true, code: true, city: true, district: true },
             },
@@ -432,11 +429,11 @@ export class StateIndustryService {
         globalStudentSet.add(student.id);
         inst.students.push({
           id: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          branch: student.branchName,
-          email: student.email,
-          contact: student.contact,
+          name: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          branch: student.user?.branchName,
+          email: student.user?.email,
+          contact: student.user?.phoneNo,
           jobProfile: app.jobProfile,
           stipend: app.stipend,
           duration: app.internshipDuration,
@@ -447,7 +444,7 @@ export class StateIndustryService {
           hasJoined: !!app.joiningDate,
         });
 
-        const branch = student.branchName || 'Unknown';
+        const branch = student.user?.branchName || 'Unknown';
         inst.branchWise[branch] = (inst.branchWise[branch] || 0) + 1;
       }
     });

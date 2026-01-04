@@ -128,9 +128,10 @@ const MentorOverviewTab = memo(({ institutionId }) => {
         const mentors = mentorsResponse?.data || [];
 
         // Calculate student breakdown for discrepancy display
+        // Use User SOT pattern: prefer user.active, fallback to isActive
         const totalStudents = students.length;
-        const activeStudents = students.filter(s => s.isActive === true);
-        const inactiveStudents = students.filter(s => s.isActive !== true);
+        const activeStudents = students.filter(s => (s.user?.active ?? s.isActive) === true);
+        const inactiveStudents = students.filter(s => (s.user?.active ?? s.isActive) !== true);
         const studentsWithMentor = activeStudents.filter(s =>
           s.mentorAssignments?.some(ma => ma.isActive === true)
         );
@@ -794,7 +795,7 @@ const StudentDetailModal = memo(({ visible, student, onClose, institutionId }) =
           {getImageUrl(student.profileImage) ? (
             <Image
               src={getImageUrl(student.profileImage)}
-              alt={student.name}
+              alt={student?.user?.name}
               width={64}
               height={64}
               className="rounded-full object-cover"
@@ -811,15 +812,15 @@ const StudentDetailModal = memo(({ visible, student, onClose, institutionId }) =
             />
           )}
           <div>
-            <Text className="text-xl font-bold text-text-primary block">{student.name}</Text>
-            <Text className="text-text-tertiary font-mono">{student.rollNumber}</Text>
+            <Text className="text-xl font-bold text-text-primary block">{student?.user?.name}</Text>
+            <Text className="text-text-tertiary font-mono">{student?.user?.rollNumber}</Text>
           </div>
         </div>
         <Descriptions bordered column={2} size="small" title={<Text className="text-xs uppercase font-bold text-text-tertiary">Basic Information</Text>} className="rounded-xl overflow-hidden bg-background-tertiary/20">
-          <Descriptions.Item label="Name"><Text strong>{student.name}</Text></Descriptions.Item>
-          <Descriptions.Item label="Roll Number"><Text code>{student.rollNumber}</Text></Descriptions.Item>
-          <Descriptions.Item label="Email">{student.email}</Descriptions.Item>
-          <Descriptions.Item label="Branch">{student.branchName}</Descriptions.Item>
+          <Descriptions.Item label="Name"><Text strong>{student?.user?.name}</Text></Descriptions.Item>
+          <Descriptions.Item label="Roll Number"><Text code>{student?.user?.rollNumber}</Text></Descriptions.Item>
+          <Descriptions.Item label="Email">{student?.user?.email}</Descriptions.Item>
+          <Descriptions.Item label="Branch">{student?.user?.branchName}</Descriptions.Item>
           <Descriptions.Item label="Mentor">
             {mentor ? (
               <Space size={4}>
@@ -1120,7 +1121,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
     Modal.confirm({
       title: 'Remove Mentor',
       icon: <ExclamationCircleOutlined />,
-      content: `Are you sure you want to remove the mentor from ${student.name}?`,
+      content: `Are you sure you want to remove the mentor from ${student.user?.name || student.name}?`,
       okText: 'Remove',
       okType: 'danger',
       onOk: async () => {
@@ -1142,7 +1143,7 @@ const InstituteDetailView = ({ defaultTab = null }) => {
       icon: <ExclamationCircleOutlined className="text-warning" />,
       content: (
         <div>
-          <p>Are you sure you want to deactivate <strong>{student.name}</strong>?</p>
+          <p>Are you sure you want to deactivate <strong>{student.user?.name || student.name}</strong>?</p>
           <p className="text-text-tertiary text-sm mt-2">
             The student will no longer be able to access the system. All associated data including reports, internship applications, and mentor assignments will be preserved.
           </p>

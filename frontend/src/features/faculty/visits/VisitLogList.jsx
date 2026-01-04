@@ -94,7 +94,7 @@ const VisitLogList = React.memo(() => {
 
   const filteredLogs = useMemo(() => {
     return visitLogsList?.filter(log => {
-      const studentName = log.application?.student?.name || '';
+      const studentName = log.application?.student?.user?.name || log.application?.student?.name || '';
       const companyName = log.application?.internship?.industry?.companyName || '';
       const matchesSearch = !searchText ||
         studentName.toLowerCase().includes(searchText.toLowerCase()) ||
@@ -129,8 +129,8 @@ const VisitLogList = React.memo(() => {
       width: 180,
       render: (_, record) => (
         <div>
-          <div className="font-medium">{record.application?.student?.name || '-'}</div>
-          <div className="text-xs text-gray-500">{record.application?.student?.rollNumber}</div>
+          <div className="font-medium">{record.application?.student?.user?.name || record.application?.student?.name || '-'}</div>
+          <div className="text-xs text-gray-500">{record.application?.student?.user?.rollNumber || record.application?.student?.rollNumber}</div>
         </div>
       ),
     },
@@ -286,8 +286,8 @@ const VisitLogList = React.memo(() => {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <Text className="text-xs uppercase tracking-wider" style={{ color: token.colorPrimary }}>Visit Log</Text>
-                  <Title level={5} className="!mb-0 !mt-1">{selectedLog.application?.student?.name || 'Unknown Student'}</Title>
-                  <Text type="secondary" className="text-xs">{selectedLog.application?.student?.rollNumber}</Text>
+                  <Title level={5} className="!mb-0 !mt-1">{selectedLog.application?.student?.user?.name || selectedLog.application?.student?.name || 'Unknown Student'}</Title>
+                  <Text type="secondary" className="text-xs">{selectedLog.application?.student?.user?.rollNumber || selectedLog.application?.student?.rollNumber}</Text>
                 </div>
                 <Space direction="vertical" align="end" size={4}>
                   <Tag color={selectedLog.status?.toUpperCase() === 'COMPLETED' ? 'success' : selectedLog.status?.toUpperCase() === 'DRAFT' ? 'orange' : 'blue'}>

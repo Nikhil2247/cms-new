@@ -208,7 +208,7 @@ const AllStudents = () => {
   // Handle active state toggle
   const handleActiveStateToggle = async () => {
     if (!selectedStudent) return;
-    const newStatus = !selectedStudent.isActive;
+    const newStatus = !selectedStudent?.user?.active;
 
     try {
       await dispatch(
@@ -218,7 +218,7 @@ const AllStudents = () => {
         })
       ).unwrap();
       message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
-      setSelectedStudent(prev => ({ ...prev, isActive: newStatus }));
+      setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: newStatus } }));
       handleRefresh();
     } catch (error) {
       message.error(error || 'Failed to update student status');
@@ -394,13 +394,13 @@ const AllStudents = () => {
               <div>{displayStudent.admissionType || 'N/A'}</div>
 
               <div className="text-gray-500">Roll Number</div>
-              <div>{displayStudent.rollNumber || 'N/A'}</div>
+              <div>{displayStudent?.user?.rollNumber || 'N/A'}</div>
 
               <div className="text-gray-500">Batch</div>
               <div>{displayStudent.batchName || displayStudent.batch?.name || 'N/A'}</div>
 
               <div className="text-gray-500">Branch</div>
-              <div>{displayStudent.branchName || displayStudent.branch?.name || 'N/A'}</div>
+              <div>{displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name || 'N/A'}</div>
 
               <div className="text-gray-500">Year / Semester</div>
               <div>
@@ -414,10 +414,10 @@ const AllStudents = () => {
           <Card title="Contact Information" className="shadow-sm border-0" size="small">
             <div className="grid grid-cols-2 gap-y-3">
               <div className="text-gray-500">Email</div>
-              <div className="truncate">{displayStudent.email || 'N/A'}</div>
+              <div className="truncate">{displayStudent?.user?.email || 'N/A'}</div>
 
               <div className="text-gray-500">Contact</div>
-              <div>{displayStudent.contact || displayStudent.phoneNo || 'N/A'}</div>
+              <div>{displayStudent?.user?.phoneNo || 'N/A'}</div>
 
               <div className="text-gray-500">Address</div>
               <div>{displayStudent.address || 'N/A'}</div>
@@ -777,7 +777,7 @@ const AllStudents = () => {
                           }
                           title={
                             <Text className="font-semibold !text-sm !text-gray-600">
-                              {student.name}
+                              {student?.user?.name}
                             </Text>
                           }
                           description={
@@ -787,15 +787,15 @@ const AllStudents = () => {
                                   {student.category}
                                 </Tag>
                               )}
-                              {student.branchName && (
-                                <Tag color="blue" className="text-xs">{student.branchName}</Tag>
+                              {(student?.user?.branchName || student.branchName) && (
+                                <Tag color="blue" className="text-xs">{student?.user?.branchName || student.branchName}</Tag>
                               )}
-                              <Tag color={student.isActive ? 'success' : 'error'} className="text-xs">
-                                {student.isActive ? 'Active' : 'Inactive'}
+                              <Tag color={student?.user?.active ? 'success' : 'error'} className="text-xs">
+                                {student?.user?.active ? 'Active' : 'Inactive'}
                               </Tag>
                               <div className="mt-1 text-xs text-gray-500">
                                 <IdcardOutlined className="mr-1" />
-                                {student.rollNumber}
+                                {student?.user?.rollNumber}
                                 {student.currentYear && student.currentSemester && (
                                   <span className="ml-2">
                                     | Year {student.currentYear}, Sem {student.currentSemester}
@@ -900,15 +900,15 @@ const AllStudents = () => {
                         { type: 'divider' },
                         {
                           key: 'toggle',
-                          icon: selectedStudent?.isActive ? <StopOutlined /> : <PlayCircleOutlined />,
-                          label: selectedStudent?.isActive ? 'Deactivate Student' : 'Activate Student',
-                          danger: selectedStudent?.isActive,
+                          icon: selectedStudent?.user?.active ? <StopOutlined /> : <PlayCircleOutlined />,
+                          label: selectedStudent?.user?.active ? 'Deactivate Student' : 'Activate Student',
+                          danger: selectedStudent?.user?.active,
                           onClick: () => {
                             Modal.confirm({
-                              title: `${selectedStudent?.isActive ? 'Deactivate' : 'Activate'} Student`,
-                              content: `Are you sure you want to ${selectedStudent?.isActive ? 'deactivate' : 'activate'} ${selectedStudent?.name}? ${selectedStudent?.isActive ? 'This will also deactivate their user account.' : ''}`,
-                              okText: selectedStudent?.isActive ? 'Deactivate' : 'Activate',
-                              okButtonProps: { danger: selectedStudent?.isActive },
+                              title: `${selectedStudent?.user?.active ? 'Deactivate' : 'Activate'} Student`,
+                              content: `Are you sure you want to ${selectedStudent?.user?.active ? 'deactivate' : 'activate'} ${selectedStudent?.user?.name}? ${selectedStudent?.user?.active ? 'This will also deactivate their user account.' : ''}`,
+                              okText: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
+                              okButtonProps: { danger: selectedStudent?.user?.active },
                               onOk: handleActiveStateToggle,
                             });
                           },
@@ -933,16 +933,16 @@ const AllStudents = () => {
                   />
                   <div className="flex-grow text-center md:text-left">
                     <Title level={3} className="mb-0 text-blue-800">
-                      {displayStudent.name}
+                      {displayStudent?.user?.name}
                     </Title>
                     <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
                       <IdcardOutlined className="mr-2" />
-                      {displayStudent.rollNumber}
+                      {displayStudent?.user?.rollNumber}
                     </div>
                     <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                      {(displayStudent.branchName || displayStudent.branch?.name) && (
+                      {(displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name) && (
                         <Tag color="blue" className="px-3 py-1 rounded-full">
-                          {displayStudent.branchName || displayStudent.branch?.name}
+                          {displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name}
                         </Tag>
                       )}
                       {displayStudent.category && (
@@ -973,10 +973,10 @@ const AllStudents = () => {
                         </Tag>
                       )}
                       <Tag
-                        color={displayStudent.isActive ? 'success' : 'error'}
+                        color={displayStudent?.user?.active ? 'success' : 'error'}
                         className="px-3 py-1 rounded-full"
                       >
-                        {displayStudent.isActive ? (
+                        {displayStudent?.user?.active ? (
                           <><CheckCircleOutlined className="mr-1" /> Active</>
                         ) : (
                           <><StopOutlined className="mr-1" /> Inactive</>
@@ -1006,21 +1006,21 @@ const AllStudents = () => {
                     <MailOutlined className="text-blue-500 text-xl mr-3" />
                     <div>
                       <div className="text-xs text-gray-500">Email</div>
-                      <div className="text-sm font-medium">{displayStudent.email || 'N/A'}</div>
+                      <div className="text-sm font-medium">{displayStudent?.user?.email || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <PhoneOutlined className="text-green-500 text-xl mr-3" />
                     <div>
                       <div className="text-xs text-gray-500">Contact</div>
-                      <div className="text-sm font-medium">{displayStudent.contact || displayStudent.phoneNo || 'N/A'}</div>
+                      <div className="text-sm font-medium">{displayStudent?.user?.phoneNo || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <CalendarOutlined className="text-orange-500 text-xl mr-3" />
                     <div>
                       <div className="text-xs text-gray-500">Date of Birth</div>
-                      <div className="text-sm font-medium">{displayStudent.dob ? formatDate(displayStudent.dob) : 'N/A'}</div>
+                      <div className="text-sm font-medium">{displayStudent?.user?.dob ? formatDate(displayStudent?.user?.dob) : 'N/A'}</div>
                     </div>
                   </div>
                 </div>

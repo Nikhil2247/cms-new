@@ -209,7 +209,7 @@ const StudentProgressPage = () => {
           setActiveTab(tab);
           
           // Show a notification
-          toast.success(`Navigated to ${studentAssignment.student?.name}'s ${tab.replace('-', ' ')}`, {
+          toast.success(`Navigated to ${studentAssignment.student?.user?.name}'s ${tab.replace('-', ' ')}`, {
             duration: 3000,
           });
         }
@@ -236,8 +236,8 @@ const StudentProgressPage = () => {
           // Safely check if item and student exist
           if (!item || !item.student) return false;
 
-          const searchString = `${item.student.name || ""} ${
-            item.student.rollNumber || ""
+          const searchString = `${item.student?.user?.name || ""} ${
+            item.student?.user?.rollNumber || ""
           }`.toLowerCase();
           return searchString.includes(search.toLowerCase());
         });
@@ -247,7 +247,7 @@ const StudentProgressPage = () => {
       if (selectedBranch) {
         result = result.filter((item) => {
           if (!item || !item.student) return false;
-          const studentBranch = item.student.branchName || item.student.branch;
+          const studentBranch = item.student?.user?.branchName || item.student.branchName || item.student.branch;
           return studentBranch === selectedBranch;
         });
       }
@@ -285,7 +285,7 @@ const StudentProgressPage = () => {
       if (!Array.isArray(students)) return [];
 
       const branches = students
-        .map((item) => item?.student?.branchName || item?.student?.branch)
+        .map((item) => item?.student?.user?.branchName || item?.student?.branchName || item?.student?.branch)
         .filter(Boolean);
       return [...new Set(branches)].sort();
     } catch (err) {
@@ -673,15 +673,15 @@ const StudentProgressPage = () => {
                           />
                           <div className="min-w-0 flex-1">
                             <Text className={`font-bold block truncate leading-tight`} style={{ color: selected?.id === st.id ? token.colorPrimary : token.colorText }}>
-                              {st.student?.name}
+                              {st.student?.user?.name}
                             </Text>
                             <div className="flex items-center gap-2 mt-1">
                               <Text className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: token.colorTextTertiary }}>
-                                {st.student?.rollNumber}
+                                {st.student?.user?.rollNumber}
                               </Text>
                               <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
                               <Text className="text-[10px] font-bold uppercase tracking-wider truncate" style={{ color: token.colorTextTertiary }}>
-                                {st.student?.branchName}
+                                {st.student?.user?.branchName}
                               </Text>
                             </div>
                           </div>
@@ -731,24 +731,24 @@ const StudentProgressPage = () => {
                     <div className="flex-grow text-center md:text-left">
                       <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-2">
                         <Title level={3} className="!mb-0 text-2xl font-black" style={{ color: token.colorText }}>
-                          {selected.student?.name}
+                          {selected.student?.user?.name}
                         </Title>
                         <Tag className="rounded-full px-3 py-0.5 font-bold uppercase tracking-wider text-[10px]" style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary, borderColor: token.colorPrimaryBorder }}>
-                          {selected.student?.branchName}
+                          {selected.student?.user?.branchName}
                         </Tag>
                       </div>
-                      
+
                       <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-2 text-sm" style={{ color: token.colorTextSecondary }}>
                         <span className="flex items-center gap-1.5 font-medium">
-                          <IdcardOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.rollNumber}
+                          <IdcardOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.user?.rollNumber}
                         </span>
                         <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
                         <span className="flex items-center gap-1.5 font-medium">
-                          <MailOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.email}
+                          <MailOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.user?.email}
                         </span>
                         <span className="w-1 h-1 rounded-full opacity-30" style={{ backgroundColor: token.colorTextTertiary }} />
                         <span className="flex items-center gap-1.5 font-medium">
-                          <PhoneOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.contact}
+                          <PhoneOutlined style={{ color: token.colorTextTertiary }} /> {selected.student?.user?.phoneNo}
                         </span>
                       </div>
 
@@ -1116,7 +1116,7 @@ const StudentProgressPage = () => {
 
           {selected?.student && (
             <Alert
-              title={`Uploading report for: ${selected.student.name}`}
+              title={`Uploading report for: ${selected.student?.user?.name}`}
               type="success"
               showIcon
               className="mt-2"

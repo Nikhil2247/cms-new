@@ -27,14 +27,14 @@ export class StateReportService {
             totalFaculty,
           ] = await Promise.all([
             this.prisma.institution.count(),
-            this.prisma.student.count({ where: { isActive: true } }),
+            this.prisma.student.count({ where: { user: { active: true } } }),
             // Only count self-identified internships (active students with active users, active applications only)
             this.prisma.internshipApplication.count({
               where: {
                 isSelfIdentified: true,
                 isActive: true,
                 status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
-                student: { isActive: true, user: { active: true } },
+                student: { user: { active: true } },
               },
             }),
             this.prisma.user.count({
@@ -83,7 +83,7 @@ export class StateReportService {
             }),
             this.prisma.student.groupBy({
               by: ['institutionId'],
-              where: { isActive: true, user: { active: true } },
+              where: { user: { active: true } },
               _count: { id: true },
             }),
             this.prisma.user.groupBy({
@@ -99,7 +99,6 @@ export class StateReportService {
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
-                isActive: true,
                 user: { active: true },
                 internshipApplications: {
                   some: {
@@ -115,7 +114,6 @@ export class StateReportService {
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
-                isActive: true,
                 user: { active: true },
                 internshipApplications: {
                   some: {
@@ -131,7 +129,6 @@ export class StateReportService {
             this.prisma.student.groupBy({
               by: ['institutionId'],
               where: {
-                isActive: true,
                 user: { active: true },
                 monthlyReports: {
                   some: {
@@ -182,7 +179,7 @@ export class StateReportService {
           const baseWhere = {
             reportMonth: month,
             reportYear: year,
-            student: { isActive: true, user: { active: true } },
+            student: { user: { active: true } },
           };
 
           const [total, approved, pending, rejected, needsRevision] = await Promise.all([
@@ -245,7 +242,7 @@ export class StateReportService {
             },
             faculty: { active: true },
             application: {
-              student: { isActive: true, user: { active: true } },
+              student: { user: { active: true } },
             },
           };
 
@@ -300,7 +297,7 @@ export class StateReportService {
               isSelfIdentified: true,
               isActive: true,
               status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
-              student: { isActive: true, user: { active: true } },
+              student: { user: { active: true } },
               companyName: { not: null },
             },
             _count: { id: true },
@@ -341,7 +338,7 @@ export class StateReportService {
               isSelfIdentified: true,
               isActive: true,
               status: ApplicationStatus.APPROVED,
-              student: { isActive: true, user: { active: true } },
+              student: { user: { active: true } },
             },
             select: {
               joiningLetterUrl: true,
@@ -431,7 +428,7 @@ export class StateReportService {
               isSelfIdentified: true,
               isActive: true,
               joiningLetterUrl: { not: '' },
-              student: { isActive: true, user: { active: true } },
+              student: { user: { active: true } },
             },
             select: {
               id: true,
@@ -441,8 +438,13 @@ export class StateReportService {
               reviewRemarks: true,
               student: {
                 select: {
-                  name: true,
-                  rollNumber: true,
+                  id: true,
+                  user: {
+                    select: {
+                      name: true,
+                      rollNumber: true,
+                    },
+                  },
                   Institution: {
                     select: { name: true, code: true },
                   },
@@ -482,8 +484,8 @@ export class StateReportService {
                   a.internshipPhase === InternshipPhase.COMPLETED)
                   ? 'VERIFIED'
                   : 'REJECTED',
-              studentName: a.student!.name,
-              rollNumber: a.student!.rollNumber,
+              studentName: a.student!.user?.name,
+              rollNumber: a.student!.user?.rollNumber,
               institutionName: a.student!.Institution?.name,
               companyName: a.companyName,
               reviewedAt: a.reviewedAt,

@@ -220,9 +220,9 @@ const SelfIdentifiedApproval = () => {
       width: "20%",
       render: (_, record) => (
         <div>
-          <div className="font-semibold" style={{ color: token.colorPrimary }}>{record.student?.name}</div>
-          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.rollNumber}</div>
-          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.branchName}</div>
+          <div className="font-semibold" style={{ color: token.colorPrimary }}>{record.student?.user?.name || record.student?.name}</div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.user?.rollNumber || record.student?.rollNumber}</div>
+          <div className="text-xs" style={{ color: token.colorTextSecondary }}>{record.student?.user?.branchName || record.student?.branchName}</div>
         </div>
       ),
     },
@@ -613,16 +613,16 @@ const SelfIdentifiedApproval = () => {
                 <div className="p-4">
                   <Descriptions column={{ xs: 1, sm: 2 }} size="small">
                     <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Name</Text>}>
-                      <Text className="font-semibold" style={{ color: token.colorText }}>{selectedApplication.student?.name}</Text>
+                      <Text className="font-semibold" style={{ color: token.colorText }}>{selectedApplication.student?.user?.name || selectedApplication.student?.name}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Roll Number</Text>}>
-                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.rollNumber}</Text>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.user?.rollNumber || selectedApplication.student?.rollNumber}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Branch</Text>}>
-                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.branchName}</Text>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.user?.branchName || selectedApplication.student?.branchName}</Text>
                     </Descriptions.Item>
                     <Descriptions.Item label={<Text className="font-medium" style={{ color: token.colorTextTertiary }}>Email</Text>}>
-                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.email}</Text>
+                      <Text style={{ color: token.colorText }}>{selectedApplication.student?.user?.email || selectedApplication.student?.email}</Text>
                     </Descriptions.Item>
                   </Descriptions>
                 </div>
@@ -751,7 +751,7 @@ const SelfIdentifiedApproval = () => {
               <div className="p-4 rounded-xl border mt-2" style={{ backgroundColor: token.colorInfoBg, borderColor: token.colorInfoBorder }}>
                 <Text className="text-sm" style={{ color: token.colorTextSecondary }}>You are approving the internship for:</Text>
                 <div className="mt-2">
-                  <Text strong className="block" style={{ color: token.colorText }}>{selectedApplication.student?.name}</Text>
+                  <Text strong className="block" style={{ color: token.colorText }}>{selectedApplication.student?.user?.name || selectedApplication.student?.name}</Text>
                   <Text className="text-xs" style={{ color: token.colorTextTertiary }}>{selectedApplication.companyName}</Text>
                 </div>
               </div>

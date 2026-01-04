@@ -167,9 +167,9 @@ export class AuthService {
    * Validate student by roll number
    */
   async validateStudentByRollNumber(rollNumber: string, password: string, ipAddress?: string, userAgent?: string): Promise<any> {
-    // Find student by roll number (using findFirst since rollNumber is not unique)
+    // Find student by roll number (rollNumber is now on User model)
     const student = await this.prisma.student.findFirst({
-      where: { rollNumber },
+      where: { user: { rollNumber } },
       include: {
         user: {
           include: {
@@ -255,7 +255,7 @@ export class AuthService {
       ...result,
       institutionName: Institution?.name || null,
       institutionCode: Institution?.code || null,
-      rollNumber: student.rollNumber,
+      rollNumber: student.user?.rollNumber,
     };
   }
 

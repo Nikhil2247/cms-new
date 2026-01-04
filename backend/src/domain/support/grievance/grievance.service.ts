@@ -213,7 +213,7 @@ export class GrievanceService {
 
       // Skip cache temporarily for debugging
       const grievances = await this.prisma.grievance.findMany({
-        where: { student: { userId, isActive: true } },
+        where: { student: { userId, user: { active: true } } },
         include: this.getGrievanceListInclude(),
         orderBy: { createdAt: 'desc' },
       });
@@ -254,7 +254,7 @@ export class GrievanceService {
         async () => {
           return await this.prisma.grievance.findMany({
             where: {
-              student: { institutionId, isActive: true },
+              student: { institutionId, user: { active: true } },
             },
             include: this.getGrievanceListInclude(),
             orderBy: { createdAt: 'desc' },
@@ -276,8 +276,8 @@ export class GrievanceService {
     try {
       // Skip cache for now to ensure fresh data
       const whereClause = escalationLevel
-        ? { escalationLevel, student: { isActive: true } }
-        : { student: { isActive: true } };
+        ? { escalationLevel, student: { user: { active: true } } }
+        : { student: { user: { active: true } } };
 
       this.logger.log(`Fetching all grievances with filter: ${JSON.stringify(whereClause)}`);
 
@@ -311,7 +311,7 @@ export class GrievanceService {
           console.log('[GrievanceService.getGrievancesByFaculty] Cache miss, querying DB...');
           const grievances = await this.prisma.grievance.findMany({
             where: {
-              student: { isActive: true },
+              student: { user: { active: true } },
               OR: [
                 { assignedToId: facultyUserId },
                 { facultySupervisorId: facultyUserId },
@@ -859,8 +859,8 @@ export class GrievanceService {
   async getStatistics(institutionId?: string) {
     try {
       const whereClause = institutionId
-        ? { student: { institutionId, isActive: true } }
-        : { student: { isActive: true } };
+        ? { student: { institutionId, user: { active: true } } }
+        : { student: { user: { active: true } } };
 
       const [
         total,

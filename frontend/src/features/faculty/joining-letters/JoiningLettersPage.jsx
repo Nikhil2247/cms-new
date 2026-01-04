@@ -707,7 +707,7 @@ const JoiningLettersPage = () => {
                 option.label.toLowerCase().includes(input.toLowerCase())
               }
               options={students.map((s) => ({
-                label: `${s.student.name} (${s.student.rollNumber})`,
+                label: `${s.student?.user?.name || s.student.name} (${s.student?.user?.rollNumber || s.student.rollNumber})`,
                 value: s.student.id,
               }))}
               size="large"

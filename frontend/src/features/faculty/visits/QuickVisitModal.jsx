@@ -321,7 +321,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
                   const student = item.student || item;
                   return (
                     <Option key={student.id} value={student.id}>
-                      {student.name} {student.rollNumber ? `(${student.rollNumber})` : ''}
+                      {student?.user?.name || student.name} {(student?.user?.rollNumber || student.rollNumber) ? `(${student?.user?.rollNumber || student.rollNumber})` : ''}
                     </Option>
                   );
                 })}

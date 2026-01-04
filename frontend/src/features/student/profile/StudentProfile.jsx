@@ -305,13 +305,13 @@ export default function StudentProfile() {
     }
 
     form.setFieldsValue({
-      name: student.name,
-      email: student.email,
-      contact: student.contact,
+      name: student?.user?.name || student.name,
+      email: student?.user?.email || student.email,
+      contact: student?.user?.phoneNo || student.contact,
       parentName: student.parentName,
       parentContact: student.parentContact,
       address: student.address,
-      dob: student.dob ? student.dob.slice(0, 10) : null,
+      dob: student?.user?.dob ? student?.user?.dob.slice(0, 10) : (student.dob ? student.dob.slice(0, 10) : null),
       city: student.city,
       state: student.state,
       pinCode: student.pinCode,
@@ -320,7 +320,7 @@ export default function StudentProfile() {
       district: student.district,
       tenthper: student.tenthper,
       twelthper: student.twelthper,
-      rollNumber: student.rollNumber,
+      rollNumber: student?.user?.rollNumber || student.rollNumber,
       admissionType: student.admissionType,
       category: student.category,
       batchId: student.batch?.id,
@@ -458,11 +458,11 @@ export default function StudentProfile() {
               <div
                 className="absolute -bottom-1 -right-1 w-6 h-6 rounded-md flex items-center justify-center border-2"
                 style={{
-                  backgroundColor: student.isActive ? token.colorSuccess : token.colorError,
+                  backgroundColor: (student.user?.active ?? student.isActive) ? token.colorSuccess : token.colorError,
                   borderColor: token.colorBgContainer
                 }}
               >
-                {student.isActive ?
+                {(student.user?.active ?? student.isActive) ?
                   <CheckCircleOutlined style={{ color: '#fff', fontSize: '11px' }} /> :
                   <StopOutlined style={{ color: '#fff', fontSize: '11px' }} />
                 }
@@ -473,20 +473,20 @@ export default function StudentProfile() {
             <div className="flex-grow text-center sm:text-left">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mb-1">
                 <Title level={4} className="!mb-0 font-semibold" style={{ color: token.colorText }}>
-                  {student.name}
+                  {student?.user?.name || student.name}
                 </Title>
                 <Tag
                   className="rounded-md px-2 py-0 text-[10px] font-semibold uppercase m-0 border-0"
                   color="blue"
                 >
-                  {student.branchName}
+                  {student?.user?.branchName || student.branchName}
                 </Tag>
               </div>
 
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs mb-3" style={{ color: token.colorTextSecondary }}>
                 <span className="flex items-center gap-1.5">
                   <IdcardOutlined style={{ color: token.colorTextTertiary, fontSize: '12px' }} />
-                  {student.rollNumber}
+                  {student?.user?.rollNumber || student.rollNumber}
                 </span>
                 <span className="hidden sm:inline" style={{ color: token.colorTextTertiary }}>•</span>
                 <span className="flex items-center gap-1.5">
@@ -520,19 +520,19 @@ export default function StudentProfile() {
           <InfoCard
             icon={<MailOutlined className="text-base" />}
             label="Email"
-            value={student.email}
+            value={student?.user?.email || student.email}
             color={token.colorPrimary}
           />
           <InfoCard
             icon={<PhoneOutlined className="text-base" />}
             label="Phone"
-            value={student.contact}
+            value={student?.user?.phoneNo || student.contact}
             color={token.colorSuccess}
           />
           <InfoCard
             icon={<CalendarOutlined className="text-base" />}
             label="Date of Birth"
-            value={student.dob?.slice(0, 10)}
+            value={(student?.user?.dob || student.dob)?.slice(0, 10)}
             color={token.colorWarning} // Replaced hardcoded purple
           />
           <InfoCard
@@ -578,12 +578,12 @@ export default function StudentProfile() {
                         <div className="space-y-2">
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Roll Number</Text>
-                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.rollNumber}</Text>
+                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student?.user?.rollNumber || student.rollNumber}</Text>
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Branch</Text>
                             <Tag className="m-0 text-[10px] rounded-md border-0" color="blue">
-                              {student.branchName}
+                              {student?.user?.branchName || student.branchName}
                             </Tag>
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>

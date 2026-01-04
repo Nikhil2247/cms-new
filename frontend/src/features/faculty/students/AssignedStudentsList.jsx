@@ -109,7 +109,7 @@ const AssignedStudentsList = () => {
       return {
         ...student,
         assignmentId: item.id !== student.id ? item.id : null,
-        branchName: student.branchName || student.branch?.name || 'N/A',
+        branchName: student.user?.branchName || student.branchName || student.branch?.name || 'N/A',
         activeInternship: student.internshipApplications?.find(
           app => app.internshipPhase === 'ACTIVE' && !app.completionDate
         ),
@@ -127,9 +127,9 @@ const AssignedStudentsList = () => {
     return processedStudents.filter(student => {
       const matchSearch =
         !search ||
-        student.name?.toLowerCase().includes(search.toLowerCase()) ||
-        student.rollNumber?.toLowerCase().includes(search.toLowerCase()) ||
-        student.email?.toLowerCase().includes(search.toLowerCase());
+        student?.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+        student?.user?.rollNumber?.toLowerCase().includes(search.toLowerCase()) ||
+        student?.user?.email?.toLowerCase().includes(search.toLowerCase());
 
       return matchSearch;
     });
@@ -247,7 +247,7 @@ const AssignedStudentsList = () => {
     if (!selectedStudent) return;
 
     const studentId = selectedStudent.id;
-    const newStatus = selectedStudent.isActive === false ? true : false;
+    const newStatus = selectedStudent?.user?.active === false ? true : false;
     const previousList = [...students];
 
     setTogglingStatus(true);
@@ -256,7 +256,7 @@ const AssignedStudentsList = () => {
     dispatch(optimisticallyToggleStudentStatus({ studentId, isActive: newStatus }));
 
     // Update selected student locally
-    setSelectedStudent(prev => prev ? { ...prev, isActive: newStatus } : null);
+    setSelectedStudent(prev => prev ? { ...prev, user: { ...prev.user, active: newStatus } } : null);
 
     try {
       await dispatch(toggleStudentStatus({
@@ -267,7 +267,7 @@ const AssignedStudentsList = () => {
     } catch (error) {
       // Rollback on error
       dispatch(rollbackStudentOperation({ list: previousList }));
-      setSelectedStudent(prev => prev ? { ...prev, isActive: !newStatus } : null);
+      setSelectedStudent(prev => prev ? { ...prev, user: { ...prev.user, active: !newStatus } } : null);
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to update student status';
       message.error(errorMessage);
     } finally {
@@ -360,9 +360,9 @@ const AssignedStudentsList = () => {
     },
     {
       key: 'toggle',
-      icon: selectedStudent?.isActive === false ? <PlayCircleOutlined /> : <StopOutlined />,
-      label: selectedStudent?.isActive === false ? 'Activate Student' : 'Deactivate Student',
-      danger: selectedStudent?.isActive !== false,
+      icon: selectedStudent?.user?.active === false ? <PlayCircleOutlined /> : <StopOutlined />,
+      label: selectedStudent?.user?.active === false ? 'Activate Student' : 'Deactivate Student',
+      danger: selectedStudent?.user?.active !== false,
       onClick: handleToggleStatus,
     },
   ];
@@ -421,13 +421,13 @@ const AssignedStudentsList = () => {
               </div>
 
               <div className="text-gray-500">Roll Number</div>
-              <div>{selectedStudent.rollNumber || 'N/A'}</div>
+              <div>{selectedStudent?.user?.rollNumber || 'N/A'}</div>
 
               <div className="text-gray-500">Batch</div>
               <div>{selectedStudent.batchName || selectedStudent.batch?.name || 'N/A'}</div>
 
               <div className="text-gray-500">Branch</div>
-              <div>{selectedStudent.branchName || 'N/A'}</div>
+              <div>{selectedStudent?.user?.branchName || selectedStudent.branchName || 'N/A'}</div>
 
               <div className="text-gray-500">Year / Semester</div>
               <div>
@@ -444,10 +444,10 @@ const AssignedStudentsList = () => {
           <Card title="Contact Information" className="shadow-sm border-0" size="small">
             <div className="grid grid-cols-2 gap-y-3">
               <div className="text-gray-500">Email</div>
-              <div className="truncate">{selectedStudent.email || 'N/A'}</div>
+              <div className="truncate">{selectedStudent?.user?.email || 'N/A'}</div>
 
               <div className="text-gray-500">Contact</div>
-              <div>{selectedStudent.contact || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
+              <div>{selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
 
               <div className="text-gray-500">Address</div>
               <div>{selectedStudent.address || 'N/A'}</div>
@@ -828,18 +828,18 @@ const AssignedStudentsList = () => {
                         }
                         title={
                           <Text className="font-semibold !text-sm !text-gray-600">
-                            {student.name}
+                            {student?.user?.name}
                           </Text>
                         }
                         description={
                           <div>
-                            {student.branchName && (
-                              <Tag color="blue" className="text-xs">{student.branchName}</Tag>
+                            {(student?.user?.branchName || student.branchName) && (
+                              <Tag color="blue" className="text-xs">{student?.user?.branchName || student.branchName}</Tag>
                             )}
                             {getInternshipStatusTag(student)}
                             <div className="mt-1 text-xs text-gray-500">
                               <IdcardOutlined className="mr-1" />
-                              {student.rollNumber}
+                              {student?.user?.rollNumber}
                               {student.semester && (
                                 <span className="ml-2">| Sem {student.semester}</span>
                               )}
@@ -870,7 +870,7 @@ const AssignedStudentsList = () => {
                   <div className="flex-grow text-center md:text-left">
                     <div className="flex items-center justify-between">
                       <Title level={3} className="mb-0 text-blue-800">
-                        {selectedStudent.name}
+                        {selectedStudent?.user?.name}
                       </Title>
                       {/* Three-dot action menu */}
                       <Dropdown
@@ -888,12 +888,12 @@ const AssignedStudentsList = () => {
                     </div>
                     <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
                       <IdcardOutlined className="mr-2" />
-                      {selectedStudent.rollNumber}
+                      {selectedStudent?.user?.rollNumber}
                     </div>
                     <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                      {selectedStudent.branchName && (
+                      {(selectedStudent?.user?.branchName || selectedStudent.branchName) && (
                         <Tag color="blue" className="px-3 py-1 rounded-full">
-                          {selectedStudent.branchName}
+                          {selectedStudent?.user?.branchName || selectedStudent.branchName}
                         </Tag>
                       )}
                       {selectedStudent.category && (
@@ -923,14 +923,14 @@ const AssignedStudentsList = () => {
                     <MailOutlined className="text-blue-500 text-xl mr-3" />
                     <div>
                       <div className="text-xs text-gray-500">Email</div>
-                      <div className="text-sm font-medium truncate">{selectedStudent.email || 'N/A'}</div>
+                      <div className="text-sm font-medium truncate">{selectedStudent?.user?.email || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="flex items-center">
                     <PhoneOutlined className="text-green-500 text-xl mr-3" />
                     <div>
                       <div className="text-xs text-gray-500">Contact</div>
-                      <div className="text-sm font-medium">{selectedStudent.contact || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
+                      <div className="text-sm font-medium">{selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
                     </div>
                   </div>
                   <div className="flex items-center">

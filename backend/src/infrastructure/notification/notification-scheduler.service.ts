@@ -173,8 +173,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
 
         if (!existingReport) {
           const userId = app.student.user.id;
-          const userEmail = app.student.user.email || app.student.email;
-          const userName = app.student.user.name || app.student.name;
+          const userEmail = app.student.user.email ;
+          const userName = app.student.user.name ;
 
           await this.notificationService.create(
             userId,
@@ -253,8 +253,8 @@ export class NotificationSchedulerService implements OnModuleDestroy {
 
         if (!existingReport) {
           const userId = app.student.user.id;
-          const userEmail = app.student.user.email || app.student.email;
-          const userName = app.student.user.name || app.student.name;
+          const userEmail = app.student.user.email ;
+          const userName = app.student.user.name;
 
           await this.notificationService.create(
             userId,

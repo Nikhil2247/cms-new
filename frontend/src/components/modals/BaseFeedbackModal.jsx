@@ -209,7 +209,7 @@ const BaseFeedbackModal = ({
         {app.internship?.title || app.internshipTitle || 'N/A'}
       </span>
       <span className="text-xs text-text-secondary">
-        Student: {app.student?.name || app.studentName} ({app.student?.rollNumber || app.studentRollNumber})
+        Student: {app.student?.user?.name || app.student?.name || app.studentName} ({app.student?.user?.rollNumber || app.student?.rollNumber || app.studentRollNumber})
       </span>
       <span className="text-xs text-primary font-medium">
         Status: {app.status}

@@ -342,7 +342,7 @@ export class FacultyController {
     // Upload to MinIO with organized folder structure
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
-      rollNumber: application.student?.rollNumber || application.studentId,
+      rollNumber: application.student?.user?.rollNumber || application.studentId,
       documentType: 'joining-letter',
     });
 
@@ -506,7 +506,7 @@ export class FacultyController {
     // Upload to MinIO with organized folder structure
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
-      rollNumber: student.rollNumber || studentId,
+      rollNumber: student.user?.rollNumber || studentId,
       documentType: (body.type || 'other') as 'profile' | 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'document' | 'other',
     });
 

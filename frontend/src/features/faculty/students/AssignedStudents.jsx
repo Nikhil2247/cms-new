@@ -57,8 +57,8 @@ const AssignedStudents = React.memo(() => {
             ...student,
             // Keep reference to original wrapper if needed, or just student properties
             assignmentId: item.id !== student.id ? item.id : null,
-            // Ensure these fields exist for filtering/sorting
-            branchName: student.branchName || student.branch?.name || "N/A",
+            // Ensure these fields exist for filtering/sorting - user relation fields
+            branchName: student?.user?.branchName || student.branchName || student.branch?.name || "N/A",
             // Helper for active internship
             activeInternship: student.internshipApplications?.find(app => app.internshipPhase === 'ACTIVE' && !app.completionDate),
             // Helper for pending applications
@@ -76,11 +76,11 @@ const AssignedStudents = React.memo(() => {
   // Filtering
   const filteredStudents = useMemo(() => {
     return students.filter(st => {
-      const matchSearch = !searchText || 
-        st.name?.toLowerCase().includes(searchText.toLowerCase()) || 
-        st.rollNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
-        st.email?.toLowerCase().includes(searchText.toLowerCase());
-      
+      const matchSearch = !searchText ||
+        st?.user?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
+        st?.user?.rollNumber?.toLowerCase().includes(searchText.toLowerCase()) ||
+        st?.user?.email?.toLowerCase().includes(searchText.toLowerCase());
+
       const matchBranch = branchFilter === "all" || st.branchName === branchFilter;
 
       return matchSearch && matchBranch;

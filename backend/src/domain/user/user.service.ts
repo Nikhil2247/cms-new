@@ -109,7 +109,7 @@ export class UserService {
    */
   async enrollmentExists(enrollmentNumber: string): Promise<boolean> {
     const student = await this.prisma.student.findFirst({
-      where: { admissionNumber: enrollmentNumber, isActive: true },
+      where: { admissionNumber: enrollmentNumber, user: { active: true } },
       select: { id: true },
     });
     return !!student;
@@ -189,13 +189,8 @@ export class UserService {
       const student = await tx.student.create({
         data: {
           userId: user.id,
-          name: data.name,
-          email: data.email.toLowerCase(),
           admissionNumber: data.admissionNumber,
-          rollNumber: data.rollNumber,
-          contact: data.phoneNo,
           address: data.address,
-          dob: data.dateOfBirth,
           gender: data.gender,
           parentName: data.parentName,
           parentContact: data.parentContact,
@@ -204,9 +199,7 @@ export class UserService {
           currentSemester: data.currentSemester,
           batchId: data.batchId,
           branchId: data.branchId,
-          branchName: data.branchName,
           institutionId,
-          isActive: true,
         },
         include: {
           user: {
@@ -375,21 +368,31 @@ export class UserService {
     data: Partial<CreateStudentData>,
   ) {
     const student = await this.prisma.student.findFirst({
-      where: { id: studentId, institutionId, isActive: true },
+      where: { id: studentId, institutionId, user: { active: true } },
     });
 
     if (!student) {
       throw new NotFoundException('Student not found');
     }
 
+    // Update user fields (name, phoneNo, rollNumber are on User)
+    if (student.userId && (data.name || data.phoneNo || data.rollNumber)) {
+      await this.prisma.user.update({
+        where: { id: student.userId },
+        data: {
+          ...(data.name && { name: data.name }),
+          ...(data.phoneNo && { phoneNo: data.phoneNo }),
+          ...(data.rollNumber && { rollNumber: data.rollNumber }),
+        },
+      });
+    }
+
+    // Update student-specific fields
     const updated = await this.prisma.student.update({
       where: { id: studentId },
       data: {
-        name: data.name,
-        contact: data.phoneNo,
         address: data.address,
         gender: data.gender,
-        rollNumber: data.rollNumber,
         currentSemester: data.currentSemester,
       },
       include: {
@@ -398,14 +401,6 @@ export class UserService {
         branch: true,
       },
     });
-
-    // Update user record if name changed
-    if (data.name && student.userId) {
-      await this.prisma.user.update({
-        where: { id: student.userId },
-        data: { name: data.name },
-      });
-    }
 
     await this.cache.del(`student:${studentId}`);
     await this.cache.del(`students:${institutionId}`);
@@ -418,7 +413,7 @@ export class UserService {
       category: AuditCategory.PROFILE_MANAGEMENT,
       severity: AuditSeverity.LOW,
       institutionId,
-      description: `Student updated: ${updated.name}`,
+      description: `Student updated: ${updated.user?.name}`,
       changedFields: Object.keys(data).filter(k => data[k] !== undefined),
       newValues: data,
     }).catch(() => {});
@@ -431,7 +426,8 @@ export class UserService {
    */
   async deleteStudent(studentId: string, institutionId: string) {
     const student = await this.prisma.student.findFirst({
-      where: { id: studentId, institutionId, isActive: true },
+      where: { id: studentId, institutionId, user: { active: true } },
+      include: { user: { select: { name: true } } },
     });
 
     if (!student) {
@@ -441,7 +437,7 @@ export class UserService {
     await this.prisma.$transaction([
       this.prisma.student.update({
         where: { id: studentId },
-        data: { isActive: false },
+        data: { user: { update: { active: false } } },
       }),
       this.prisma.user.update({
         where: { id: student.userId },
@@ -460,9 +456,9 @@ export class UserService {
       category: AuditCategory.ADMINISTRATIVE,
       severity: AuditSeverity.HIGH,
       institutionId,
-      description: `Student deactivated: ${student.name || studentId}`,
-      oldValues: { isActive: true },
-      newValues: { isActive: false },
+      description: `Student deactivated: ${student.user?.name || studentId}`,
+      oldValues: { active: true },
+      newValues: { active: false },
     }).catch(() => {});
 
     return { success: true, message: 'Student deleted successfully' };

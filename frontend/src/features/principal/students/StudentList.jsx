@@ -138,13 +138,16 @@ const StudentList = () => {
   };
 
   const handleToggleStatus = async (record) => {
-    const newStatus = !record.isActive;
+    // Use User SOT pattern: prefer user.active, fallback to isActive
+    const currentStatus = record.user?.active ?? record.isActive;
+    const newStatus = !currentStatus;
     const actionText = newStatus ? 'activate' : 'deactivate';
     const previousList = [...list];
+    const studentName = record.user?.name || record.name;
 
     Modal.confirm({
       title: `${newStatus ? 'Activate' : 'Deactivate'} Student`,
-      content: `Are you sure you want to ${actionText} ${record.name}?`,
+      content: `Are you sure you want to ${actionText} ${studentName}?`,
       okText: newStatus ? 'Activate' : 'Deactivate',
       okType: newStatus ? 'primary' : 'danger',
       onOk: async () => {
@@ -175,7 +178,7 @@ const StudentList = () => {
 
     Modal.confirm({
       title: 'Reset Password',
-      content: `Are you sure you want to reset the password for ${record.name}? A new password will be generated.`,
+      content: `Are you sure you want to reset the password for ${record.user?.name || record.name}? A new password will be generated.`,
       okText: 'Reset Password',
       okType: 'primary',
       onOk: async () => {
@@ -266,10 +269,10 @@ const StudentList = () => {
     },
     {
       key: 'toggle',
-      label: record.isActive ? 'Deactivate' : 'Activate',
-      icon: record.isActive ? <StopOutlined /> : <CheckCircleOutlined />,
+      label: (record.user?.active ?? record.isActive) ? 'Deactivate' : 'Activate',
+      icon: (record.user?.active ?? record.isActive) ? <StopOutlined /> : <CheckCircleOutlined />,
       onClick: () => handleToggleStatus(record),
-      danger: record.isActive,
+      danger: (record.user?.active ?? record.isActive),
     },
     {
       type: 'divider',
@@ -293,8 +296,8 @@ const StudentList = () => {
         <div className="flex items-center gap-2">
           <ProfileAvatar profileImage={record.profileImage} />
           <div>
-            <div className="font-medium">{name}</div>
-            <div className="text-xs text-text-tertiary">{record.rollNumber}</div>
+            <div className="font-medium">{record.user?.name || name}</div>
+            <div className="text-xs text-text-tertiary">{record.user?.rollNumber || record.rollNumber}</div>
           </div>
         </div>
       ),
@@ -316,17 +319,22 @@ const StudentList = () => {
       dataIndex: 'email',
       key: 'email',
       ellipsis: true,
+      render: (email, record) => record.user?.email || email,
     },
     {
       title: 'Status',
       dataIndex: 'isActive',
       key: 'isActive',
       width: 100,
-      render: (isActive) => (
-        <Tag color={isActive ? 'success' : 'default'}>
-          {isActive ? 'Active' : 'Inactive'}
-        </Tag>
-      ),
+      // Use User SOT pattern: prefer user.active, fallback to isActive
+      render: (isActive, record) => {
+        const activeStatus = record.user?.active ?? isActive;
+        return (
+          <Tag color={activeStatus ? 'success' : 'default'}>
+            {activeStatus ? 'Active' : 'Inactive'}
+          </Tag>
+        );
+      },
     },
     {
       title: '',

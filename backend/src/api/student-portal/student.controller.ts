@@ -88,7 +88,7 @@ export class StudentController {
       file.buffer,
       file.originalname,
       institutionName,
-      profile.rollNumber || profile.id,
+      profile.user?.rollNumber || profile.id,
     );
 
     // Store the relative key (not full URL) in database
@@ -170,7 +170,7 @@ export class StudentController {
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
-      rollNumber: profile.rollNumber || profile.id,
+      rollNumber: profile.user?.rollNumber || profile.id,
       documentType: 'joining-letter',
     });
 
@@ -312,7 +312,7 @@ export class StudentController {
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
-      rollNumber: profile.rollNumber || profile.id,
+      rollNumber: profile.user?.rollNumber || profile.id,
       documentType: 'monthly-report',
       month: monthNames[reportMonth - 1],
       year: reportYear.toString(),
@@ -375,7 +375,7 @@ export class StudentController {
     // Upload to MinIO
     const result = await this.fileStorageService.uploadStudentDocument(file, {
       institutionName,
-      rollNumber: profile.rollNumber || profile.id,
+      rollNumber: profile.user?.rollNumber || profile.id,
       documentType: 'document',
       customName: documentDto.type || 'document',
     });

@@ -236,12 +236,12 @@ export class UserManagementService {
     }
 
     // Build student update data for synced fields (if user is a student)
+    // Note: User.active is the source of truth, no need to sync to Student
     const studentUpdateData: any = {};
     if (existingUser.Student) {
       if (dto.name) studentUpdateData.name = dto.name;
       if (dto.email) studentUpdateData.email = dto.email;
       if (dto.phoneNo !== undefined) studentUpdateData.contact = dto.phoneNo; // User.phoneNo -> Student.contact
-      if (dto.active !== undefined) studentUpdateData.isActive = dto.active; // User.active -> Student.isActive
     }
 
     // Use transaction to sync User and Student records
@@ -333,7 +333,7 @@ export class UserManagementService {
         where: { id: userId },
       });
     } else {
-      // Soft delete - deactivate user and keep Student profile in sync (if any)
+      // Soft delete - deactivate user (User.active is the source of truth)
       await this.prisma.$transaction([
         // If this user is a mentor, deactivate active mentor assignments
         this.prisma.mentorAssignment.updateMany({
@@ -343,11 +343,6 @@ export class UserManagementService {
         this.prisma.user.update({
           where: { id: userId },
           data: { active: false },
-        }),
-        // No-op if this user is not a student
-        this.prisma.student.updateMany({
-          where: { userId },
-          data: { isActive: false },
         }),
       ]);
     }
@@ -399,17 +394,10 @@ export class UserManagementService {
       try {
         switch (action) {
           case 'activate':
-            await this.prisma.$transaction([
-              this.prisma.user.update({
-                where: { id: userId },
-                data: { active: true },
-              }),
-              // No-op if not a student
-              this.prisma.student.updateMany({
-                where: { userId },
-                data: { isActive: true },
-              }),
-            ]);
+            await this.prisma.user.update({
+              where: { id: userId },
+              data: { active: true },
+            });
             break;
           case 'deactivate':
             await this.prisma.$transaction([
@@ -421,11 +409,6 @@ export class UserManagementService {
               this.prisma.user.update({
                 where: { id: userId },
                 data: { active: false },
-              }),
-              // No-op if not a student
-              this.prisma.student.updateMany({
-                where: { userId },
-                data: { isActive: false },
               }),
             ]);
             await this.tokenBlacklistService.invalidateUserTokens(userId);
@@ -440,11 +423,6 @@ export class UserManagementService {
               this.prisma.user.update({
                 where: { id: userId },
                 data: { active: false },
-              }),
-              // No-op if not a student
-              this.prisma.student.updateMany({
-                where: { userId },
-                data: { isActive: false },
               }),
             ]);
             await this.tokenBlacklistService.invalidateUserTokens(userId);

@@ -577,40 +577,58 @@ async function migrateStudents(mongoDb: any, prisma: PrismaClient, config: Migra
     processedUserIds.set(userId, newId);
 
     try {
+      // FIRST: Update User with Student data (User is Single Source of Truth)
+      // User stores: name, email, phoneNo, dob, rollNumber, branchId, branchName, institutionId, active
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          name: student.name || undefined,
+          email: student.email || undefined,
+          phoneNo: student.contact || undefined,
+          dob: student.dob || undefined,
+          rollNumber: student.rollNumber || undefined,
+          branchId: branchId || undefined,
+          branchName: student.branchName || undefined,
+          institutionId: institutionId || undefined,
+          active: student.isActive ?? true,
+        },
+      });
+
+      // THEN: Create Student record with ONLY student-specific fields
+      // Duplicate fields removed: name, email, contact, dob, rollNumber, branchName, isActive
       await prisma.student.create({
         data: {
           id: newId,
           userId: userId,
-          rollNumber: student.rollNumber,
+          profileImage: student.profilePicture || student.profileImage,
           admissionNumber: student.admissionNumber,
-          name: student.name,
-          email: student.email,
-          contact: student.contact,
-          gender: student.gender,
-          dob: student.dob,
+          // Address
           address: student.address,
           city: student.city,
           state: student.state,
           pinCode: student.pinCode,
           tehsil: student.tehsil,
           district: student.district,
+          // Family
           parentName: student.parentName,
           parentContact: student.parentContact,
           motherName: student.motherName,
-          institutionId: institutionId,
-          branchId: branchId,
-          branchName: student.branchName,
-          batchId: batchId,
+          // Demographics
+          gender: student.gender,
+          // Academic
           currentYear: student.currentYear,
           currentSemester: student.currentSemester,
           admissionType: student.admissionType,
           category: student.category,
           clearanceStatus: student.clearanceStatus || 'PENDING',
-          isActive: student.isActive ?? true,
-          profileImage: student.profilePicture || student.profileImage,
+          // Batch & Institution (keep FKs for direct queries)
+          batchId: batchId,
+          institutionId: institutionId,
+          branchId: branchId,
           createdAt: processDate(student.createdAt) || new Date(),
         },
       });
+
       stats.migrated++;
     } catch (error: any) {
       recordError(stats, student._id?.toString() || 'unknown', error.message);
@@ -2017,15 +2035,20 @@ async function main() {
       log('┌─────────────────────────────────────────────────────────────────────────────┐', 'cyan');
       log('│                         POST-MIGRATION STEPS                                 │', 'cyan');
       log('├─────────────────────────────────────────────────────────────────────────────┤', 'cyan');
-      log('│ Run the following script to fix branch data and sync User.branchName:       │', 'cyan');
+      log('│ Run the following script to fix branch data for Teachers:                   │', 'cyan');
       log('│                                                                              │', 'cyan');
       log('│   npx tsx prisma/post-migrate-fix-branches.ts                                │', 'cyan');
       log('│                                                                              │', 'cyan');
       log('│ This script will:                                                            │', 'cyan');
-      log('│   • Create branches from unique Student.branchName values                    │', 'cyan');
-      log('│   • Link Student.branchId to Branch records                                  │', 'cyan');
-      log('│   • Sync User.branchName from Student.branchName                             │', 'cyan');
-      log('│   • Normalize faculty branchName values                                      │', 'cyan');
+      log('│   • Create branches from unique branchName values (if not exists)            │', 'cyan');
+      log('│   • Set User.branchId for TEACHER role users                                 │', 'cyan');
+      log('│   • Normalize faculty branchName values (MECH→ME, CIVIL→CE, etc.)            │', 'cyan');
+      log('│                                                                              │', 'cyan');
+      log('│ NOTE: Student data has already been synced to User during migration:         │', 'cyan');
+      log('│   • User.name, email, phoneNo, dob, rollNumber synced from Student           │', 'cyan');
+      log('│   • User.branchId, branchName, institutionId synced from Student             │', 'cyan');
+      log('│   • User.active synced from Student.isActive                                 │', 'cyan');
+      log('│   • User is now the Single Source of Truth (SOT) for these fields            │', 'cyan');
       log('└─────────────────────────────────────────────────────────────────────────────┘', 'cyan');
     }
 

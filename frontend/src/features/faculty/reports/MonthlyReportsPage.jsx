@@ -88,7 +88,7 @@ const MonthlyReportsPage = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `monthly_report_${report.application?.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
+      link.download = `monthly_report_${report.application?.student?.user?.name || report.application?.student?.name || 'report'}_${report.reportMonth}_${report.reportYear}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -118,8 +118,8 @@ const MonthlyReportsPage = () => {
 
     if (searchText) {
       filtered = filtered.filter(r =>
-        r.application?.student?.name?.toLowerCase().includes(searchText.toLowerCase()) ||
-        r.application?.student?.rollNumber?.toLowerCase().includes(searchText.toLowerCase())
+        (r.application?.student?.user?.name || r.application?.student?.name)?.toLowerCase().includes(searchText.toLowerCase()) ||
+        (r.application?.student?.user?.rollNumber || r.application?.student?.rollNumber)?.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
@@ -141,8 +141,8 @@ const MonthlyReportsPage = () => {
           <div className="flex items-center gap-3">
             <ProfileAvatar profileImage={student?.profileImage} style={{ backgroundColor: token.colorPrimary }} />
             <div>
-              <div className="font-semibold" style={{ color: token.colorText }}>{student?.name || 'Unknown'}</div>
-              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.rollNumber}</div>
+              <div className="font-semibold" style={{ color: token.colorText }}>{student?.user?.name || student?.name || 'Unknown'}</div>
+              <div className="text-xs" style={{ color: token.colorTextTertiary }}>{student?.user?.rollNumber || student?.rollNumber}</div>
             </div>
           </div>
         );
@@ -466,10 +466,10 @@ const MonthlyReportsPage = () => {
               <div className="p-4">
                 <Descriptions column={1} size="small">
                   <Descriptions.Item label="Name">
-                    <Text strong>{selectedReport.application?.student?.name}</Text>
+                    <Text strong>{selectedReport.application?.student?.user?.name || selectedReport.application?.student?.name}</Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="Roll Number">
-                    {selectedReport.application?.student?.rollNumber}
+                    {selectedReport.application?.student?.user?.rollNumber || selectedReport.application?.student?.rollNumber}
                   </Descriptions.Item>
                   <Descriptions.Item label="Company">
                     {selectedReport.application?.internship?.industry?.companyName || selectedReport.application?.companyName || 'Self-Identified'}

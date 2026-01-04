@@ -79,9 +79,13 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
 
         form.setFieldsValue({
           ...student,
-          dob: student.dob ? dayjs(student.dob) : null,
-          dateOfBirth: student.dob ? dayjs(student.dob) : null,
-          contact: student.contact || student.phoneNo,
+          // User fields are now in student.user
+          name: student?.user?.name || student.name,
+          email: student?.user?.email || student.email,
+          rollNumber: student?.user?.rollNumber || student.rollNumber,
+          dob: student?.user?.dob ? dayjs(student?.user?.dob) : (student.dob ? dayjs(student.dob) : null),
+          dateOfBirth: student?.user?.dob ? dayjs(student?.user?.dob) : (student.dob ? dayjs(student.dob) : null),
+          contact: student?.user?.phoneNo || student.contact || student.phoneNo,
           profileImage: profileImageValue,
         });
       } else if (open && !isEditMode) {

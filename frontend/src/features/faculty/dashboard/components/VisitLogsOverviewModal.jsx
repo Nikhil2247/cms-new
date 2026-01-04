@@ -173,8 +173,8 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
 
       return {
         key: student.id || index,
-        studentName: student.name || 'Unknown',
-        rollNumber: student.rollNumber || student.collegeId || '',
+        studentName: student?.user?.name || student.name || 'Unknown',
+        rollNumber: student?.user?.rollNumber || student.rollNumber || student.collegeId || '',
         internship: internshipDisplay,
         internshipType,
         ...monthStatuses,

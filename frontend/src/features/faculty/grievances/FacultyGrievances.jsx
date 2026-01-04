@@ -308,9 +308,9 @@ export default function FacultyGrievances() {
       key: "student",
       render: (name, record) => (
         <Space orientation="vertical" size={0}>
-          <Text>{name || record.student?.name || "N/A"}</Text>
+          <Text>{name || record.student?.user?.name || record.student?.name || "N/A"}</Text>
           <Text type="secondary" className="text-xs">
-            {record.student?.rollNumber}
+            {record.student?.user?.rollNumber || record.student?.rollNumber}
           </Text>
         </Space>
       ),
@@ -632,13 +632,13 @@ export default function FacultyGrievances() {
                     <Text strong>{selectedGrievance.student?.user?.name || "N/A"}</Text>
                   </Descriptions.Item>
                   <Descriptions.Item label="Roll Number">
-                    {selectedGrievance.student?.rollNumber}
+                    {selectedGrievance.student?.user?.rollNumber || selectedGrievance.student?.rollNumber}
                   </Descriptions.Item>
                   <Descriptions.Item label="Email">
-                    {selectedGrievance.student?.user?.email}
+                    {selectedGrievance.student?.user?.email || selectedGrievance.student?.email}
                   </Descriptions.Item>
                   <Descriptions.Item label="Branch">
-                    {selectedGrievance.student?.branchName}
+                    {selectedGrievance.student?.user?.branchName || selectedGrievance.student?.branchName}
                   </Descriptions.Item>
                 </Descriptions>
               </Card>

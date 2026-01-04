@@ -263,7 +263,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
                   onChange={handleStudentSelect}
                   options={assignedStudents?.map(student => ({
                     value: student.id,
-                    label: `${student.name} (${student.rollNumber})`,
+                    label: `${student?.user?.name || student.name} (${student?.user?.rollNumber || student.rollNumber})`,
                   }))}
                 />
               </Form.Item>

@@ -82,11 +82,10 @@ export class BulkSelfInternshipService {
 
     // Fetch all ACTIVE students with ACTIVE users in the institution for validation
     const students = await this.prisma.student.findMany({
-      where: { institutionId, isActive: true, user: { active: true } },
+      where: { institutionId, user: { active: true } },
       select: {
         id: true,
-        user: { select: { email: true } },
-        rollNumber: true,
+        user: { select: { email: true, rollNumber: true } },
         admissionNumber: true,
       },
     });
@@ -96,7 +95,7 @@ export class BulkSelfInternshipService {
       students.map((s) => [s.user?.email?.toLowerCase(), s]),
     );
     const rollNumberToStudentMap = new Map(
-      students.filter((s) => s.rollNumber).map((s) => [s.rollNumber.toLowerCase(), s]),
+      students.filter((s) => s.user?.rollNumber).map((s) => [s.user!.rollNumber!.toLowerCase(), s]),
     );
     const enrollmentToStudentMap = new Map(
       students.filter((s) => s.admissionNumber).map((s) => [s.admissionNumber.toLowerCase(), s]),
@@ -302,11 +301,10 @@ export class BulkSelfInternshipService {
 
     // Fetch all ACTIVE students with ACTIVE users for processing
     const students = await this.prisma.student.findMany({
-      where: { institutionId, isActive: true, user: { active: true } },
+      where: { institutionId, user: { active: true } },
       select: {
         id: true,
-        user: { select: { email: true } },
-        rollNumber: true,
+        user: { select: { email: true, rollNumber: true } },
         admissionNumber: true,
       },
     });
@@ -315,7 +313,7 @@ export class BulkSelfInternshipService {
       students.map((s) => [s.user?.email?.toLowerCase(), s]),
     );
     const rollNumberToStudentMap = new Map(
-      students.filter((s) => s.rollNumber).map((s) => [s.rollNumber.toLowerCase(), s]),
+      students.filter((s) => s.user?.rollNumber).map((s) => [s.user!.rollNumber!.toLowerCase(), s]),
     );
     const enrollmentToStudentMap = new Map(
       students.filter((s) => s.admissionNumber).map((s) => [s.admissionNumber.toLowerCase(), s]),

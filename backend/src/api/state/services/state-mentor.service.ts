@@ -54,7 +54,7 @@ export class StateMentorService {
           }),
           // Get all active assignments to count unique students per mentor
           this.prisma.mentorAssignment.findMany({
-            where: { isActive: true, student: { isActive: true } },
+            where: { isActive: true, student: { user: { active: true } } },
             select: { mentorId: true, studentId: true },
           }),
           // Get all institutions from cached LookupService
@@ -117,7 +117,7 @@ export class StateMentorService {
         where: {
           mentor: { institutionId },
           isActive: true,
-          student: { isActive: true },
+          student: { user: { active: true } },
         },
         select: { mentorId: true, studentId: true },
       }),
@@ -156,7 +156,7 @@ export class StateMentorService {
     // Validate student exists
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      select: { id: true, institutionId: true, name: true },
+      select: { id: true, institutionId: true, user: { select: { name: true } } },
     });
 
     if (!student) {
@@ -225,14 +225,14 @@ export class StateMentorService {
       entityId: assignment.id,
       userId: assignedBy,
       userRole: Role.STATE_DIRECTORATE,
-      description: `Mentor ${mentor.name} assigned to student ${student.name} by State Directorate`,
+      description: `Mentor ${mentor.name} assigned to student ${student.user?.name} by State Directorate`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: student.institutionId || undefined,
       newValues: {
         assignmentId: assignment.id,
         studentId,
-        studentName: student.name,
+        studentName: student.user?.name,
         mentorId,
         mentorName: mentor.name,
         assignedBy,
@@ -251,7 +251,7 @@ export class StateMentorService {
 
     return {
       success: true,
-      message: `Mentor ${mentor.name} assigned to student ${student.name}`,
+      message: `Mentor ${mentor.name} assigned to student ${student.user?.name}`,
       assignment,
       isCrossInstitutionMentor,
     };
@@ -263,7 +263,7 @@ export class StateMentorService {
   async removeMentorFromStudent(studentId: string, removedBy: string) {
     const student = await this.prisma.student.findUnique({
       where: { id: studentId },
-      select: { id: true, institutionId: true, name: true },
+      select: { id: true, institutionId: true, user: { select: { name: true } } },
     });
 
     if (!student) {
@@ -315,7 +315,7 @@ export class StateMentorService {
             where: {
               isActive: true,
               student: {
-                isActive: true,
+                user: { active: true },
                 Institution: { isActive: true },
               },
             },
@@ -447,10 +447,7 @@ export class StateMentorService {
       select: {
         id: true,
         institutionId: true,
-        name: true,
-        email: true,
-        isActive: true,
-        user: { select: { id: true, active: true } },
+        user: { select: { id: true, name: true, email: true, active: true } },
       },
     });
 
@@ -459,7 +456,7 @@ export class StateMentorService {
     }
 
     // Check if already deactivated
-    if (student.isActive === false) {
+    if (student.user?.active === false) {
       throw new BadRequestException('Student is already deactivated');
     }
 
@@ -468,12 +465,6 @@ export class StateMentorService {
       // Delete/deactivate mentor assignments (these can be reassigned)
       await tx.mentorAssignment.deleteMany({
         where: { studentId },
-      });
-
-      // Deactivate the student record (soft delete)
-      await tx.student.update({
-        where: { id: studentId },
-        data: { isActive: false },
       });
 
       // Deactivate the associated user account if exists
@@ -492,19 +483,19 @@ export class StateMentorService {
       entityId: studentId,
       userId: deletedBy,
       userRole: Role.STATE_DIRECTORATE,
-      description: `Student ${student.name} (${student.email}) deactivated by State Directorate`,
+      description: `Student ${student.user?.name} (${student.user?.email}) deactivated by State Directorate`,
       category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.HIGH,
       institutionId: student.institutionId || undefined,
       oldValues: {
         studentId,
-        studentName: student.name,
-        studentEmail: student.email,
+        studentName: student.user?.name,
+        studentEmail: student.user?.email,
         institutionId: student.institutionId,
         wasActive: true,
       },
       newValues: {
-        isActive: false,
+        active: false,
       },
     }).catch(() => {});
 
@@ -517,7 +508,7 @@ export class StateMentorService {
 
     return {
       success: true,
-      message: `Student ${student.name} has been deactivated successfully`,
+      message: `Student ${student.user?.name} has been deactivated successfully`,
     };
   }
 

@@ -246,7 +246,7 @@ export class FacultyVisitService {
           faculty: { select: { id: true, name: true, designation: true } },
           application: {
             include: {
-              student: { select: { id: true, name: true, rollNumber: true } },
+              student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
             },
           },
         },
@@ -277,8 +277,8 @@ export class FacultyVisitService {
               facultyId,
               application: {
                 student: {
-                  isActive: true,
-                },
+              user: { active: true },
+            },
               },
             },
             include: {
@@ -287,9 +287,8 @@ export class FacultyVisitService {
                   student: {
                     select: {
                       id: true,
-                      name: true,
-                      rollNumber: true,
                       institutionId: true,
+                      user: { select: { name: true, rollNumber: true } },
                     },
                   },
                 },
@@ -318,7 +317,7 @@ export class FacultyVisitService {
               application: {
                 studentId,
                 student: {
-                  isActive: true,
+                  user: { active: true },
                 },
               },
             },
@@ -423,17 +422,17 @@ export class FacultyVisitService {
           const [totalVisits, pendingFollowUps, facultyStats] = await Promise.all([
             this.prisma.facultyVisitLog.count({
               where: {
-                application: { student: { institutionId, isActive: true } },
+                application: { student: { institutionId, user: { active: true } } },
               },
             }),
             this.prisma.facultyVisitLog.count({
               where: {
-                application: { student: { institutionId, isActive: true } },
+                application: { student: { institutionId, user: { active: true } } },
                 followUpRequired: true,
               },
             }),
             this.prisma.facultyVisitLog.findMany({
-              where: { application: { student: { institutionId, isActive: true } } },
+              where: { application: { student: { institutionId, user: { active: true } } } },
               select: { facultyId: true },
             }),
           ]);
@@ -572,7 +571,7 @@ export class FacultyVisitService {
               applicationId,
               application: {
                 student: {
-                  isActive: true,
+                  user: { active: true },
                 },
               },
             },
@@ -669,7 +668,7 @@ export class FacultyVisitService {
           faculty: { select: { id: true, name: true, designation: true } },
           application: {
             include: {
-              student: { select: { id: true, name: true, rollNumber: true } },
+              student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
             },
           },
         },
@@ -699,7 +698,7 @@ export class FacultyVisitService {
           applicationId,
           application: {
             student: {
-              isActive: true,
+              user: { active: true },
             },
           },
         },
