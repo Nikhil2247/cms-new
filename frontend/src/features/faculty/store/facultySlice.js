@@ -1469,33 +1469,22 @@ const facultySlice = createSlice({
         state.students.error = null;
       })
       .addCase(toggleStudentStatus.fulfilled, (state, action) => {
-        state.students.loading = false;
-        // Update the student in the list - handle nested structure
-        // Uses User SOT pattern - active status is on user object
-        const updatedStudent = action.payload.data;
-        // Backend may return active status as user.active or isActive
-        const newActiveStatus = updatedStudent?.user?.active ?? updatedStudent?.isActive;
-        if (updatedStudent?.id) {
-          const index = state.students.list.findIndex(s => {
-            const stud = s.student || s;
-            return stud.id === updatedStudent.id || s.id === updatedStudent.id;
-          });
-          if (index !== -1) {
-            const existing = state.students.list[index];
-            // Handle nested structure (s.student) vs flat structure
-            // Update both isActive and user.active for compatibility
-            if (existing.student) {
-              state.students.list[index] = {
-                ...existing,
-                student: {
-                  ...existing.student,
-                  isActive: newActiveStatus,
-                  user: existing.student.user ? { ...existing.student.user, active: newActiveStatus } : undefined,
-                },
-              };
-            } else {
-              state.students.list[index] = {
-                ...existing,
+        // Optimistic update already applied, just confirm with server response
+        // Payload: { studentId, success, active, message }
+        const { studentId, active: newActiveStatus } = action.payload;
+        const index = state.students.list.findIndex(s => {
+          const stud = s.student || s;
+          return stud.id === studentId || s.id === studentId;
+        });
+        if (index !== -1) {
+          const existing = state.students.list[index];
+          // Handle nested structure (s.student) vs flat structure
+          // Update both isActive and user.active for compatibility
+          if (existing.student) {
+            state.students.list[index] = {
+              ...existing,
+              student: {
+                ...existing.student,
                 isActive: newActiveStatus,
                 user: existing.student.user ? { ...existing.student.user, active: newActiveStatus } : undefined,
               },
@@ -1508,9 +1497,9 @@ const facultySlice = createSlice({
             };
           }
         }
-        // Invalidate cache to refresh student list
-        state.lastFetched.students = null;
-        state.lastFetched.studentsKey = null;
+        // No need to invalidate students cache - optimistic update already handled the change
+        // Only invalidate related caches that might be affected
+        state.lastFetched.dashboard = null;
       })
       .addCase(toggleStudentStatus.rejected, (state, action) => {
         // Rollback already handled in thunk, just set error
