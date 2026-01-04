@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, theme } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
 import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
@@ -9,6 +9,7 @@ import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
@@ -177,16 +178,18 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
       onCancel={handleClose}
       footer={null}
       width={900}
-      destroyOnHidden
-      className="student-modal"
+      centered
+      destroyOnClose
+      transitionName=""
+      maskTransitionName=""
     >
       {initialLoading || lookupLoading ? (
-        <div className="flex justify-center items-center py-12">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>
           <Spin size="large" />
         </div>
       ) : (
-        <Form form={form} layout="vertical" onFinish={onFinish} className="max-h-[70vh] overflow-y-auto px-2">
-          <Divider plain><span className="text-primary font-medium">Personal Information</span></Divider>
+        <Form form={form} layout="vertical" onFinish={onFinish} style={{ maxHeight: '70vh', overflowY: 'auto', padding: '0 8px' }}>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Personal Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -195,7 +198,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 label="Name"
                 rules={[{ required: true, message: 'Please enter full name' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter full name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter full name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -207,7 +210,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                   { type: 'email', message: 'Please enter valid email' }
                 ]}
               >
-                <Input prefix={<MailOutlined className="text-gray-400" />} placeholder="Enter email" />
+                <Input prefix={<MailOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter email" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -219,7 +222,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                   { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter contact number" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter contact number" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -228,12 +231,12 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 label="Roll Number"
                 rules={[{ required: true, message: 'Please enter roll number' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter roll number" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter roll number" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Academic Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Academic Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -305,7 +308,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Parent/Guardian Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Parent/Guardian Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -314,7 +317,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 label="Parent Name"
                 rules={[{ required: true, message: 'Please enter parent name' }]}
               >
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter parent name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter parent name" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -326,17 +329,17 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                   { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
                 ]}
               >
-                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter parent contact" />
+                <Input prefix={<PhoneOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter parent contact" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
               <Form.Item name="motherName" label="Mother Name">
-                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter mother name" />
+                <Input prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter mother name" />
               </Form.Item>
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Personal Details</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Personal Details</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -360,7 +363,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Address Information</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Address Information</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24} sm={12}>
@@ -381,7 +384,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 label="Address"
                 rules={[{ required: true, message: 'Please enter address' }]}
               >
-                <Input prefix={<HomeOutlined className="text-gray-400" />} placeholder="Enter address" />
+                <Input prefix={<HomeOutlined style={{ color: token.colorTextDisabled }} />} placeholder="Enter address" />
               </Form.Item>
             </Col>
             <Col xs={24} sm={12}>
@@ -422,7 +425,7 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
             </Col>
           </Row>
 
-          <Divider plain><span className="text-primary font-medium">Profile Image</span></Divider>
+          <Divider plain><span style={{ color: token.colorPrimary, fontWeight: 500 }}>Profile Image</span></Divider>
 
           <Row gutter={16}>
             <Col xs={24}>
@@ -433,17 +436,17 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
                 getValueFromEvent={normFile}
               >
                 <Upload beforeUpload={() => false} maxCount={1} accept="image/*" listType="picture">
-                  <Button icon={<UploadOutlined />} className="rounded-lg">Click to Upload</Button>
+                  <Button icon={<UploadOutlined />}>Click to Upload</Button>
                 </Upload>
               </Form.Item>
             </Col>
           </Row>
 
-          <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-white pb-2">
-            <Button onClick={handleClose} className="rounded-lg">
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, paddingTop: 16, borderTop: `1px solid ${token.colorBorderSecondary}`, marginTop: 16, position: 'sticky', bottom: 0, backgroundColor: token.colorBgContainer, paddingBottom: 8 }}>
+            <Button onClick={handleClose}>
               Cancel
             </Button>
-            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />} className="rounded-lg shadow-md shadow-primary/20">
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />}>
               {isEditMode ? 'Update Student' : 'Create Student'}
             </Button>
           </div>

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useSelector } from 'react-redux';
 import {
   Modal,
@@ -6,11 +6,12 @@ import {
   Typography,
   Tag,
   Empty,
+  Button,
+  theme
 } from 'antd';
 import {
-  selectFacultyWorkload,
-  selectFacultyWorkloadLoading,
-  selectMentorCoverage,
+  selectJoiningLettersByMentor,
+  selectJoiningLettersByMentorLoading,
 } from '../../store/principalSlice';
 
 const { Text } = Typography;
@@ -18,140 +19,29 @@ const { Text } = Typography;
 const JoiningLettersModal = ({
   visible,
   onClose,
-  alertsData = [],
-  complianceData = null,
 }) => {
-  const faculty = useSelector(selectFacultyWorkload);
-  const facultyLoading = useSelector(selectFacultyWorkloadLoading);
-  const mentorCoverage = useSelector(selectMentorCoverage);
+  const joiningLettersData = useSelector(selectJoiningLettersByMentor);
+  const loading = useSelector(selectJoiningLettersByMentorLoading);
+  const { token } = theme.useToken();
 
-  // Process faculty data with joining letter status
-  const facultyLetterData = useMemo(() => {
-    // Build a map of mentor data
-    const mentorMap = new Map();
-
-    // First, add all mentors from mentorCoverage.mentorLoadDistribution (this has assigned students count)
-    if (mentorCoverage?.mentorLoadDistribution) {
-      mentorCoverage.mentorLoadDistribution.forEach(mentor => {
-        const id = mentor.mentorId || mentor.id;
-        if (id) {
-          mentorMap.set(id, {
-            id,
-            name: mentor.mentorName || mentor.name || 'Unknown',
-            studentsWithInternship: mentor.assignedStudents || 0,
-            pendingLetters: 0, // Will be updated from alertsData
-          });
-        }
-      });
-    }
-
-    // Add/update from faculty workload data
-    if (faculty && faculty.length > 0) {
-      faculty.forEach(f => {
-        if (f.id) {
-          if (!mentorMap.has(f.id)) {
-            mentorMap.set(f.id, {
-              id: f.id,
-              name: f.name || 'Unknown',
-              studentsWithInternship: f.assignedCount || 0,
-              pendingLetters: 0,
-            });
-          } else {
-            const existing = mentorMap.get(f.id);
-            // Use the higher count between the two sources
-            existing.studentsWithInternship = Math.max(existing.studentsWithInternship, f.assignedCount || 0);
-          }
-        }
-      });
-    }
-
-    // Process alerts data to count pending letters per mentor
-    const pendingByMentor = new Map();
-    let unassignedPendingCount = 0;
-
-    alertsData.forEach(alert => {
-      const mentorId = alert.mentorId;
-      const mentorName = alert.mentorName;
-
-      if (!mentorId) {
-        // Student has no mentor assigned
-        unassignedPendingCount++;
-      } else {
-        if (!pendingByMentor.has(mentorId)) {
-          pendingByMentor.set(mentorId, {
-            count: 0,
-            name: mentorName || 'Unknown',
-          });
-        }
-        pendingByMentor.get(mentorId).count++;
-      }
-    });
-
-    // Update mentor data with pending counts from alerts
-    pendingByMentor.forEach((data, mentorId) => {
-      if (mentorMap.has(mentorId)) {
-        const mentor = mentorMap.get(mentorId);
-        mentor.pendingLetters = data.count;
-      } else {
-        // Mentor found in alerts but not in mentor coverage - add them
-        mentorMap.set(mentorId, {
-          id: mentorId,
-          name: data.name,
-          studentsWithInternship: data.count,
-          pendingLetters: data.count,
-        });
-      }
-    });
-
-    // Convert to array
-    const result = Array.from(mentorMap.values());
-
-    // Add "Not Assigned" row if there are unassigned students
-    if (unassignedPendingCount > 0) {
-      result.push({
-        id: 'unassigned',
-        name: 'Not Assigned',
-        studentsWithInternship: unassignedPendingCount,
-        pendingLetters: unassignedPendingCount,
-        isUnassigned: true,
-      });
-    }
-
-    // Sort: "Not Assigned" at top if has pending, then by pending count descending, then by students count
-    return result.sort((a, b) => {
-      // "Not Assigned" with pending items goes to top
-      if (a.isUnassigned && a.pendingLetters > 0) return -1;
-      if (b.isUnassigned && b.pendingLetters > 0) return 1;
-
-      // Then sort by pending letters descending
-      if (b.pendingLetters !== a.pendingLetters) {
-        return b.pendingLetters - a.pendingLetters;
-      }
-
-      // Then by students with internship descending
-      return b.studentsWithInternship - a.studentsWithInternship;
-    });
-  }, [faculty, mentorCoverage, alertsData]);
-
-  // Calculate totals
-  const totals = useMemo(() => {
-    const totalStudents = facultyLetterData.reduce((sum, f) => sum + f.studentsWithInternship, 0);
-    const totalPending = facultyLetterData.reduce((sum, f) => sum + f.pendingLetters, 0);
-    return { totalStudents, totalPending };
-  }, [facultyLetterData]);
+  const byMentor = joiningLettersData?.byMentor || [];
+  const totalStudents = joiningLettersData?.totalStudents || 0;
+  const totalPending = joiningLettersData?.totalPending || 0;
 
   const columns = [
     {
       title: 'Faculty Mentor',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'mentorName',
+      key: 'mentorName',
       render: (text, record) => (
         <Tag
-          color={record.isUnassigned ? 'error' : 'default'}
+          bordered={false}
           style={{
-            borderColor: record.isUnassigned ? '#fecaca' : '#e5e7eb',
-            color: record.isUnassigned ? '#dc2626' : '#374151',
+            color: record.isUnassigned ? token.colorError : token.colorText,
+            backgroundColor: record.isUnassigned ? token.colorErrorBg : 'transparent',
+            borderColor: record.isUnassigned ? token.colorErrorBorder : 'transparent',
             fontWeight: record.isUnassigned ? 600 : 400,
+            border: record.isUnassigned ? `1px solid ${token.colorErrorBorder}` : 'none',
           }}
         >
           {text}
@@ -159,14 +49,19 @@ const JoiningLettersModal = ({
       ),
     },
     {
-      title: 'Students with internship',
+      title: 'Students with Internship',
       dataIndex: 'studentsWithInternship',
       key: 'studentsWithInternship',
       align: 'center',
       render: (count, record) => (
         <Tag
-          color={record.isUnassigned ? 'orange' : 'blue'}
-          style={{ minWidth: '40px', textAlign: 'center' }}
+          bordered={false}
+          style={{
+            minWidth: '40px',
+            textAlign: 'center',
+            color: record.isUnassigned ? token.colorWarningText : token.colorPrimaryText,
+            backgroundColor: record.isUnassigned ? token.colorWarningBg : token.colorPrimaryBg,
+          }}
         >
           {count}
         </Tag>
@@ -174,22 +69,44 @@ const JoiningLettersModal = ({
       sorter: (a, b) => a.studentsWithInternship - b.studentsWithInternship,
     },
     {
-      title: 'Pending Total',
+      title: 'Pending',
       dataIndex: 'pendingLetters',
       key: 'pendingLetters',
       align: 'center',
       render: (count) => (
         <Tag
-          className={count > 0 ? 'bg-error-light' : 'bg-success-light'}
+          bordered={false}
           style={{
             minWidth: '40px',
             textAlign: 'center',
+            backgroundColor: count > 0 ? token.colorErrorBg : token.colorSuccessBg,
+            color: count > 0 ? token.colorErrorText : token.colorSuccessText,
           }}
         >
           {count}
         </Tag>
       ),
       sorter: (a, b) => a.pendingLetters - b.pendingLetters,
+    },
+    {
+      title: 'Total',
+      dataIndex: 'totalLetters',
+      key: 'totalLetters',
+      align: 'center',
+      render: (count) => (
+        <Tag
+          bordered={false}
+          style={{
+            minWidth: '40px',
+            textAlign: 'center',
+            backgroundColor: token.colorInfoBg,
+            color: token.colorInfoText,
+          }}
+        >
+          {count}
+        </Tag>
+      ),
+      sorter: (a, b) => a.totalLetters - b.totalLetters,
     },
   ];
 
@@ -198,50 +115,60 @@ const JoiningLettersModal = ({
       title="Joining Letters Overview"
       open={visible}
       onCancel={onClose}
+      centered
+      destroyOnClose
+      transitionName=""
+      maskTransitionName=""
       footer={[
-        <button
-          key="close"
-          onClick={onClose}
-          className="px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded transition-colors"
-        >
+        <Button key="close" onClick={onClose}>
           Close
-        </button>
+        </Button>
       ]}
       width={900}
       styles={{ body: { padding: '24px' } }}
     >
       {/* Summary Bar */}
       <div
-        className="flex items-center justify-between p-4 mb-6 rounded-lg bg-info-light border border-blue-100 dark:border-blue-800/20"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 16,
+          marginBottom: 24,
+          borderRadius: token.borderRadiusLG,
+          backgroundColor: token.colorInfoBg,
+          border: `1px solid ${token.colorInfoBorder}`,
+        }}
       >
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text strong>Total Students:</Text>
-          <Tag color="blue" style={{ fontSize: '14px', padding: '2px 12px' }}>
-            {totals.totalStudents}
+          <Tag bordered={false} style={{ fontSize: '14px', padding: '2px 12px', color: token.colorPrimaryText, backgroundColor: token.colorPrimaryBg }}>
+            {totalStudents}
           </Tag>
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text strong>Pending:</Text>
           <Tag
+            bordered={false}
             style={{
               fontSize: '14px',
               padding: '2px 12px',
-              backgroundColor: totals.totalPending > 0 ? '#fee2e2' : '#dcfce7',
-              color: totals.totalPending > 0 ? '#dc2626' : '#16a34a',
-              borderColor: totals.totalPending > 0 ? '#fecaca' : '#bbf7d0',
+              backgroundColor: totalPending > 0 ? token.colorErrorBg : token.colorSuccessBg,
+              color: totalPending > 0 ? token.colorErrorText : token.colorSuccessText,
+              border: `1px solid ${totalPending > 0 ? token.colorErrorBorder : token.colorSuccessBorder}`,
             }}
           >
-            {totals.totalPending}
+            {totalPending}
           </Tag>
         </div>
       </div>
 
       {/* Faculty Table */}
       <Table
-        dataSource={facultyLetterData}
+        dataSource={byMentor}
         columns={columns}
-        rowKey="id"
-        loading={facultyLoading}
+        rowKey="mentorId"
+        loading={loading}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
@@ -250,7 +177,7 @@ const JoiningLettersModal = ({
         }}
         size="small"
         locale={{
-          emptyText: <Empty description="No faculty data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          emptyText: <Empty description="No joining letter data available" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         }}
       />
     </Modal>
@@ -258,4 +185,3 @@ const JoiningLettersModal = ({
 };
 
 export default JoiningLettersModal;
-

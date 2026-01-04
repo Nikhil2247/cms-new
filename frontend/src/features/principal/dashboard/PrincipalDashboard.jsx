@@ -30,6 +30,7 @@ import {
   fetchMentorCoverage,
   fetchInternshipStats,
   fetchFacultyWorkload,
+  fetchJoiningLettersByMentor,
   selectDashboardStats,
   selectDashboardLoading,
   selectDashboardError,
@@ -312,7 +313,7 @@ const PrincipalDashboard = () => {
             }}
             onViewUnassigned={() => setUnassignedModal({ visible: true })}
             onViewCompanies={() => {
-              dispatch(fetchInternshipStats());
+              dispatch(fetchInternshipStats({ forceRefresh: true }));
               setCompaniesModal({ visible: true });
             }}
           />
@@ -330,8 +331,7 @@ const PrincipalDashboard = () => {
               setReportsModal({ visible: true });
             }}
             onViewJoiningLetters={() => {
-              dispatch(fetchFacultyWorkload());
-              dispatch(fetchMentorCoverage());
+              dispatch(fetchJoiningLettersByMentor({ forceRefresh: true }));
               setJoiningLettersModal({ visible: true });
             }}
             onViewVisits={() => {
@@ -379,6 +379,10 @@ const PrincipalDashboard = () => {
           onCancel={() => setAlertDetailModal({ visible: false, type: null, title: '', data: [] })}
           footer={null}
           width={800}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           <Table
             dataSource={alertDetailModal.data}
@@ -436,6 +440,10 @@ const PrincipalDashboard = () => {
             </Button>
           }
           width={700}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           <Table
             dataSource={dashboardStats?.studentsByBranch || []}
@@ -516,6 +524,10 @@ const PrincipalDashboard = () => {
             </Button>
           }
           width={800}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           <div className="mb-4 grid grid-cols-3 gap-4">
             <div className="text-center p-3 bg-success-light rounded-lg">
@@ -597,6 +609,10 @@ const PrincipalDashboard = () => {
             </Button>
           }
           width={900}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           <div className="mb-4 grid grid-cols-4 gap-3">
             <div className="text-center p-3 bg-info-light rounded-lg">
@@ -636,17 +652,12 @@ const PrincipalDashboard = () => {
                 title: 'Company Name',
                 dataIndex: 'name',
                 key: 'name',
-                width: '40%',
+                width: '50%',
                 render: (text, record) => (
                   <div>
                     <Text strong className="text-sm">{text || 'Unknown Company'}</Text>
-                    {record.industryType && (
-                      <Text type="secondary" className="block text-xs mt-0.5">
-                        🏢 {record.industryType}
-                      </Text>
-                    )}
                     {record.location && (
-                      <Text type="secondary" className="block text-xs">
+                      <Text type="secondary" className="block text-xs mt-0.5">
                         📍 {record.location}
                       </Text>
                     )}
@@ -657,7 +668,7 @@ const PrincipalDashboard = () => {
                 title: 'Students Placed',
                 dataIndex: 'count',
                 key: 'count',
-                width: '20%',
+                width: '25%',
                 align: 'center',
                 sorter: (a, b) => (a.count || 0) - (b.count || 0),
                 defaultSortOrder: 'descend',
@@ -668,26 +679,10 @@ const PrincipalDashboard = () => {
                 ),
               },
               {
-                title: 'Industry Type',
-                dataIndex: 'industryType',
-                key: 'industryType',
-                width: '25%',
-                render: (text) => (
-                  <Tag color="purple" className="text-xs">
-                    {text || 'Other'}
-                  </Tag>
-                ),
-                filters: internshipStats?.byIndustry?.map(ind => ({
-                  text: ind.type,
-                  value: ind.type,
-                })) || [],
-                onFilter: (value, record) => record.industryType === value,
-              },
-              {
                 title: 'Location',
                 dataIndex: 'location',
                 key: 'location',
-                width: '15%',
+                width: '25%',
                 render: (text) => (
                   <Text type="secondary" className="text-xs">
                     {text || '-'}
@@ -711,20 +706,6 @@ const PrincipalDashboard = () => {
               )
             }}
           />
-          
-          {/* Industry Breakdown */}
-          {internshipStats?.byIndustry && internshipStats.byIndustry.length > 0 && (
-            <div className="mt-4">
-              <Text strong className="block mb-2 text-sm">Industry Breakdown</Text>
-              <div className="flex flex-wrap gap-2">
-                {internshipStats.byIndustry.map((industry, index) => (
-                  <Tag key={index} color="geekblue" className="text-xs px-3 py-1">
-                    {industry.type}: <strong>{industry.count}</strong>
-                  </Tag>
-                ))}
-              </div>
-            </div>
-          )}
         </Modal>
 
         {/* Monthly Reports Modal */}
@@ -747,8 +728,6 @@ const PrincipalDashboard = () => {
         <JoiningLettersModal
           visible={joiningLettersModal.visible}
           onClose={() => setJoiningLettersModal({ visible: false })}
-          alertsData={[]}
-          complianceData={null}
         />
 
         {/* Unassigned Students Modal */}
@@ -767,6 +746,10 @@ const PrincipalDashboard = () => {
             </Button>
           }
           width={500}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           {(dashboardStats?.unassignedStudents || 0) === 0 ? (
             <div className="text-center py-8">
@@ -810,6 +793,10 @@ const PrincipalDashboard = () => {
             </Button>
           }
           width={500}
+          centered
+          destroyOnClose
+          transitionName=""
+          maskTransitionName=""
         >
           {(stats?.grievances?.total || 0) === 0 ? (
             <div className="text-center py-8">

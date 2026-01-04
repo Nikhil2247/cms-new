@@ -40,8 +40,8 @@ export class PrincipalController {
   @Throttle({ default: THROTTLE_PRESETS.dashboard })
   @Get('dashboard')
   @ApiOperation({ summary: 'Get principal dashboard overview' })
-  async getDashboard(@Request() req) {
-    return this.principalService.getDashboard(req.user.userId);
+  async getDashboard(@Request() req, @Query('refresh') refresh?: string) {
+    return this.principalService.getDashboard(req.user.userId, refresh === 'true');
   }
 
   @Throttle({ default: THROTTLE_PRESETS.mutation })
@@ -321,6 +321,12 @@ export class PrincipalController {
   @ApiOperation({ summary: 'Get joining letter statistics for institution' })
   async getJoiningLetterStats(@Request() req) {
     return this.principalService.getJoiningLetterStats(req.user.userId);
+  }
+
+  @Get('joining-letters/by-mentor')
+  @ApiOperation({ summary: 'Get joining letter stats grouped by mentor for dashboard' })
+  async getJoiningLettersByMentor(@Request() req) {
+    return this.principalService.getJoiningLettersByMentor(req.user.userId);
   }
 
   @Get('joining-letters')

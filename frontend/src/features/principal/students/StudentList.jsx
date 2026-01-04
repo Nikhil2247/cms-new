@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, message } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, message, theme } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStudents,
@@ -40,6 +40,7 @@ const { Option } = Select;
 
 const StudentList = () => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
   // Use memoized selectors from principalSelectors for better performance
   const list = useSelector(selectStudentsList);
   const loading = useSelector(selectStudentsLoading);
@@ -188,22 +189,22 @@ const StudentList = () => {
           Modal.success({
             title: 'Password Reset Successful',
             content: (
-              <div className="space-y-3 mt-4">
+              <div style={{ marginTop: 16 }}>
                 <p><strong>Name:</strong> {result.name || record.name}</p>
                 <p><strong>Email:</strong> {result.email || record.email}</p>
                 {result.newPassword ? (
                   <>
-                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                      <p className="text-sm text-gray-600 mb-1">New Password:</p>
-                      <p className="text-lg font-mono font-bold text-green-700 select-all">{result.newPassword}</p>
+                    <div style={{ padding: 12, backgroundColor: token.colorSuccessBg, border: `1px solid ${token.colorSuccessBorder}`, borderRadius: token.borderRadiusLG, marginTop: 12 }}>
+                      <p style={{ fontSize: 14, color: token.colorTextSecondary, marginBottom: 4 }}>New Password:</p>
+                      <p style={{ fontSize: 18, fontFamily: 'monospace', fontWeight: 'bold', color: token.colorSuccessText, userSelect: 'all' }}>{result.newPassword}</p>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2">
+                    <p style={{ fontSize: 12, color: token.colorTextDescription, marginTop: 8 }}>
                       Please share this password securely with the student. They will be required to change it on first login.
                     </p>
                   </>
                 ) : (
-                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                    <p className="text-sm text-blue-700">
+                  <div style={{ padding: 12, backgroundColor: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}`, borderRadius: token.borderRadiusLG, marginTop: 12 }}>
+                    <p style={{ fontSize: 14, color: token.colorInfoText }}>
                       A new password has been generated and sent to the student's email address.
                       They will be required to change it on first login.
                     </p>
@@ -293,11 +294,11 @@ const StudentList = () => {
       dataIndex: 'name',
       key: 'name',
       render: (name, record) => (
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ProfileAvatar profileImage={record.profileImage} />
           <div>
-            <div className="font-medium">{record.user?.name || name}</div>
-            <div className="text-xs text-text-tertiary">{record.user?.rollNumber || record.rollNumber}</div>
+            <div style={{ fontWeight: 500 }}>{record.user?.name || name}</div>
+            <div style={{ fontSize: 12, color: token.colorTextSecondary }}>{record.user?.rollNumber || record.rollNumber}</div>
           </div>
         </div>
       ),
@@ -330,7 +331,7 @@ const StudentList = () => {
       render: (isActive, record) => {
         const activeStatus = record.user?.active ?? isActive;
         return (
-          <Tag color={activeStatus ? 'success' : 'default'}>
+          <Tag color={activeStatus ? 'success' : 'default'} bordered={false}>
             {activeStatus ? 'Active' : 'Inactive'}
           </Tag>
         );
@@ -349,12 +350,12 @@ const StudentList = () => {
           <Button
             type="text"
             icon={<MoreOutlined style={{ fontSize: '18px' }} />}
-            className="flex items-center justify-center"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           />
         </Dropdown>
       ),
     },
-  ], [filters, list]);
+  ], [filters, list, token]);
 
   const handleSearch = useCallback((value) => {
     setSearchInput(value);
@@ -370,17 +371,17 @@ const StudentList = () => {
   }, []);
 
   return (
-    <div className="p-4 md:p-6 !space-y-4 md:space-y-6 bg-background-secondary min-h-screen">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold text-text-primary tracking-tight">Students</h1>
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 24, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 'bold', color: token.colorTextHeading, margin: 0, letterSpacing: '-0.025em' }}>Students</h1>
           {lastFetched && (
-            <span className="text-xs text-text-tertiary">
+            <span style={{ fontSize: 12, color: token.colorTextDescription }}>
               Updated {new Date(lastFetched).toLocaleTimeString()}
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Button
             icon={<ReloadOutlined spin={isRefreshing} />}
             onClick={handleRefresh}
@@ -393,28 +394,37 @@ const StudentList = () => {
             type="primary"
             icon={<PlusOutlined />}
             onClick={() => handleOpenModal()}
-            className="rounded-lg shadow-md shadow-primary/20 hover:shadow-lg transition-all"
           >
             Add Student
           </Button>
         </div>
       </div>
 
-      <Card className="rounded-xl border-border shadow-soft bg-surface p-4">
-        <div className="flex gap-4 flex-wrap">
+      <Card
+        style={{
+          borderRadius: token.borderRadiusLG,
+          border: `1px solid ${token.colorBorderSecondary}`,
+          boxShadow: token.boxShadowTertiary,
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+        }}
+        bodyStyle={{ padding: 16 }}
+      >
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <Search
             placeholder="Search by name or roll number"
             allowClear
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onSearch={handleSearch}
-            className="w-full md:w-[300px]"
-            prefix={<SearchOutlined className="text-text-tertiary" />}
+            style={{ width: '100%', maxWidth: 300 }}
+            prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
           />
           <Select
             placeholder="Branch"
             allowClear
-            className="w-full md:w-[200px]"
+            style={{ width: '100%', maxWidth: 200 }}
             onChange={(value) => handleFilterChange('branchId', value)}
           >
             {uniqueBranches.map(branch => (
@@ -424,7 +434,7 @@ const StudentList = () => {
           <Select
             placeholder="Batch/Year"
             allowClear
-            className="w-full md:w-[150px]"
+            style={{ width: '100%', maxWidth: 150 }}
             onChange={(value) => handleFilterChange('batchId', value)}
           >
             {uniqueBatches.map(batch => (
@@ -434,7 +444,7 @@ const StudentList = () => {
           <Select
             placeholder="Status"
             allowClear
-            className="w-full md:w-[150px]"
+            style={{ width: '100%', maxWidth: 150 }}
             onChange={(value) => handleFilterChange('isActive', value)}
           >
             <Option value="true">Active</Option>
@@ -443,7 +453,7 @@ const StudentList = () => {
         </div>
       </Card>
 
-      <div className="bg-surface rounded-xl border-border shadow-soft overflow-hidden">
+      <div style={{ backgroundColor: token.colorBgContainer, borderRadius: token.borderRadiusLG, border: `1px solid ${token.colorBorderSecondary}`, boxShadow: token.boxShadowTertiary, overflow: 'hidden' }}>
         <DataTable
           columns={columns}
           dataSource={list}

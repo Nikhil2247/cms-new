@@ -7,6 +7,8 @@ import {
   Tag,
   Select,
   Empty,
+  Button,
+  theme
 } from 'antd';
 import { CalendarOutlined } from '@ant-design/icons';
 import {
@@ -48,6 +50,7 @@ const FacultyVisitsModal = ({
   const faculty = useSelector(selectFacultyWorkload);
   const facultyLoading = useSelector(selectFacultyWorkloadLoading);
   const mentorCoverage = useSelector(selectMentorCoverage);
+  const { token } = theme.useToken();
 
   const monthOptions = useMemo(() => generateMonthOptions(), []);
   const [selectedMonth, setSelectedMonth] = useState(monthOptions[0]?.value);
@@ -191,11 +194,13 @@ const FacultyVisitsModal = ({
       key: 'name',
       render: (text, record) => (
         <Tag
-          color={record.isUnassigned ? 'error' : 'default'}
+          bordered={false}
           style={{
-            borderColor: record.isUnassigned ? '#fecaca' : '#e5e7eb',
-            color: record.isUnassigned ? '#dc2626' : '#374151',
+            color: record.isUnassigned ? token.colorError : token.colorText,
+            backgroundColor: record.isUnassigned ? token.colorErrorBg : 'transparent',
+            borderColor: record.isUnassigned ? token.colorErrorBorder : 'transparent',
             fontWeight: record.isUnassigned ? 600 : 400,
+            border: record.isUnassigned ? `1px solid ${token.colorErrorBorder}` : 'none',
           }}
         >
           {text}
@@ -209,8 +214,13 @@ const FacultyVisitsModal = ({
       align: 'center',
       render: (count, record) => (
         <Tag
-          color={record.isUnassigned ? 'orange' : 'blue'}
-          style={{ minWidth: '40px', textAlign: 'center' }}
+          bordered={false}
+          style={{ 
+            minWidth: '40px', 
+            textAlign: 'center',
+            color: record.isUnassigned ? token.colorWarningText : token.colorPrimaryText,
+            backgroundColor: record.isUnassigned ? token.colorWarningBg : token.colorPrimaryBg,
+          }}
         >
           {count}
         </Tag>
@@ -224,10 +234,12 @@ const FacultyVisitsModal = ({
       align: 'center',
       render: (count) => (
         <Tag
-          className={count > 0 ? 'bg-error-light' : 'bg-success-light'}
+          bordered={false}
           style={{
             minWidth: '40px',
             textAlign: 'center',
+            backgroundColor: count > 0 ? token.colorErrorBg : token.colorSuccessBg,
+            color: count > 0 ? token.colorErrorText : token.colorSuccessText,
           }}
         >
           {count}
@@ -242,21 +254,21 @@ const FacultyVisitsModal = ({
       title="Faculty Visits Overview"
       open={visible}
       onCancel={onClose}
+      centered
+      destroyOnClose
+      transitionName=""
+      maskTransitionName=""
       footer={[
-        <button
-          key="close"
-          onClick={onClose}
-          className="px-4 py-2 text-text-secondary hover:text-text-primary hover:bg-gray-100 rounded transition-colors"
-        >
+        <Button key="close" onClick={onClose}>
           Close
-        </button>
+        </Button>
       ]}
       width={900}
       styles={{ body: { padding: '24px' } }}
     >
       {/* Month Filter */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2 text-text-secondary">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: token.colorTextSecondary }}>
           <CalendarOutlined />
           <Text strong>Filter by Month:</Text>
         </div>
@@ -271,23 +283,33 @@ const FacultyVisitsModal = ({
 
       {/* Summary Bar */}
       <div
-        className="flex items-center justify-between p-4 mb-6 rounded-lg bg-info-light border border-blue-100 dark:border-blue-800/20"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: 16,
+          marginBottom: 24,
+          borderRadius: token.borderRadiusLG,
+          backgroundColor: token.colorInfoBg,
+          border: `1px solid ${token.colorInfoBorder}`,
+        }}
       >
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text strong>Total Students:</Text>
-          <Tag color="blue" style={{ fontSize: '14px', padding: '2px 12px' }}>
+          <Tag bordered={false} style={{ fontSize: '14px', padding: '2px 12px', color: token.colorPrimaryText, backgroundColor: token.colorPrimaryBg }}>
             {totals.totalStudents}
           </Tag>
         </div>
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text strong>Pending:</Text>
           <Tag
+            bordered={false}
             style={{
               fontSize: '14px',
               padding: '2px 12px',
-              backgroundColor: totals.totalPending > 0 ? '#fee2e2' : '#dcfce7',
-              color: totals.totalPending > 0 ? '#dc2626' : '#16a34a',
-              borderColor: totals.totalPending > 0 ? '#fecaca' : '#bbf7d0',
+              backgroundColor: totals.totalPending > 0 ? token.colorErrorBg : token.colorSuccessBg,
+              color: totals.totalPending > 0 ? token.colorErrorText : token.colorSuccessText,
+              border: `1px solid ${totals.totalPending > 0 ? token.colorErrorBorder : token.colorSuccessBorder}`,
             }}
           >
             {totals.totalPending}

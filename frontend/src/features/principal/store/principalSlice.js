@@ -56,10 +56,12 @@ const initialState = {
     stats: null,
     list: [],
     activity: [],
+    byMentor: null,
     pagination: null,
     loading: false,
     statsLoading: false,
     activityLoading: false,
+    byMentorLoading: false,
     actionLoading: false,
     actionError: null,
     error: null,
@@ -93,6 +95,7 @@ const initialState = {
     joiningLettersKey: null,
     joiningLetterActivity: null,
     joiningLetterActivityKey: null,
+    joiningLettersByMentor: null,
     internshipStats: null,
     facultyWorkload: null,
   },
@@ -104,12 +107,14 @@ export const fetchPrincipalDashboard = createAsyncThunk(
     try {
       const state = getState();
       const lastFetched = state.principal.lastFetched.dashboard;
+      const forceRefresh = params?.forceRefresh ?? false;
 
-      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
+      if (!forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
         return { cached: true };
       }
 
-      const response = await principalService.getDashboard();
+      // Pass forceRefresh to backend to also invalidate server-side cache
+      const response = await principalService.getDashboard(forceRefresh);
       return response;
     } catch (error) {
       const errorMessage = error.response?.data?.message ||
@@ -856,6 +861,29 @@ export const rejectJoiningLetter = createAsyncThunk(
                           error.message ||
                           'Failed to reject joining letter. Please try again.';
       console.error('Reject joining letter error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+export const fetchJoiningLettersByMentor = createAsyncThunk(
+  'principal/fetchJoiningLettersByMentor',
+  async (params = {}, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.principal.lastFetched.joiningLettersByMentor;
+
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DEFAULT)) {
+        return { cached: true };
+      }
+
+      const response = await principalService.getJoiningLettersByMentor();
+      return response;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to fetch joining letters by mentor. Please try again.';
+      console.error('Fetch joining letters by mentor error:', error);
       return rejectWithValue(errorMessage);
     }
   }
@@ -1651,6 +1679,22 @@ const principalSlice = createSlice({
         state.joiningLetters.actionLoading = false;
         state.joiningLetters.actionError = action.payload || 'Failed to reject joining letter';
       })
+      // Joining Letters by Mentor
+      .addCase(fetchJoiningLettersByMentor.pending, (state) => {
+        state.joiningLetters.byMentorLoading = true;
+        state.joiningLetters.error = null;
+      })
+      .addCase(fetchJoiningLettersByMentor.fulfilled, (state, action) => {
+        state.joiningLetters.byMentorLoading = false;
+        if (!action.payload.cached) {
+          state.joiningLetters.byMentor = action.payload;
+          state.lastFetched.joiningLettersByMentor = Date.now();
+        }
+      })
+      .addCase(fetchJoiningLettersByMentor.rejected, (state, action) => {
+        state.joiningLetters.byMentorLoading = false;
+        state.joiningLetters.error = action.payload;
+      })
       // Internship Stats (with company details)
       .addCase(fetchInternshipStats.pending, (state) => {
         state.internshipStats.loading = true;
@@ -1780,6 +1824,8 @@ export const selectJoiningLettersPagination = (state) => state.principal.joining
 export const selectJoiningLetterActivity = (state) => state.principal.joiningLetters.activity;
 export const selectJoiningLetterActivityLoading = (state) => state.principal.joiningLetters.activityLoading;
 export const selectJoiningLettersError = (state) => state.principal.joiningLetters.error;
+export const selectJoiningLettersByMentor = (state) => state.principal.joiningLetters.byMentor;
+export const selectJoiningLettersByMentorLoading = (state) => state.principal.joiningLetters.byMentorLoading;
 
 // Internship Stats selectors (with company details)
 export const selectInternshipStats = (state) => state.principal.internshipStats.data;

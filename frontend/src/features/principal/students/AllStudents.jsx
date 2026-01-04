@@ -18,6 +18,8 @@ import {
   Empty,
   Popconfirm,
   Dropdown,
+  theme,
+  Grid,
 } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -66,9 +68,12 @@ import { getPresignedUrl } from '../../../utils/imageUtils';
 
 const { Title, Text } = Typography;
 const { Option } = Select;
+const { useBreakpoint } = Grid;
 
 const AllStudents = () => {
   const dispatch = useDispatch();
+  const { token } = theme.useToken();
+  const screens = useBreakpoint();
   const students = useSelector(selectStudentsList);
   const loading = useSelector(selectStudentsLoading);
   const pagination = useSelector(selectStudentsPagination);
@@ -138,10 +143,10 @@ const AllStudents = () => {
 
   // Select first student when list changes
   useEffect(() => {
-    if (allStudents.length > 0 && !selectedStudent) {
+    if (allStudents.length > 0 && !selectedStudent && screens.md) {
       handleStudentSelect(allStudents[0]);
     }
-  }, [allStudents]);
+  }, [allStudents, screens.md]);
 
   // Load full student details when selected student changes
   const loadFullStudentDetails = async (studentId) => {
@@ -181,6 +186,15 @@ const AllStudents = () => {
     setSelectedStudent(student);
     setSelectedStudentFull(null);
     loadFullStudentDetails(student.id);
+    // On mobile, scroll to details
+    if (!screens.md) {
+      setTimeout(() => {
+        const element = document.getElementById('student-details-section');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 100);
+    }
   };
 
   const handleRefresh = () => {
@@ -207,8 +221,6 @@ const AllStudents = () => {
   };
 
   // Handle active state toggle
-  // Uses dedicated toggleStudentStatus thunk which also handles mentor assignments and internship applications
-  // Note: No need to call handleRefresh() - optimistic update already updates the local state
   const handleActiveStateToggle = async () => {
     if (!selectedStudent) return;
 
@@ -217,16 +229,13 @@ const AllStudents = () => {
         toggleStudentStatus({ studentId: selectedStudent.id })
       ).unwrap();
       message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
-      // Update local selected student state to reflect the change
       setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
-      // Also update the full student details if loaded
       setSelectedStudentFull(prev => prev ? { ...prev, user: { ...prev.user, active: result.active } } : null);
     } catch (error) {
       message.error(error || 'Failed to toggle student status');
     }
   };
 
-  // Handle clearance status change
   const handleClearanceStatusChange = async (newStatus) => {
     if (!selectedStudent) return;
 
@@ -245,7 +254,6 @@ const AllStudents = () => {
     }
   };
 
-  // Handle reset credential
   const handleResetCredential = async () => {
     const userId = selectedStudent?.userId || selectedStudent?.user?.id;
     if (!userId) {
@@ -269,14 +277,10 @@ const AllStudents = () => {
     }
   };
 
-  // Handle delete internship with optimistic update
   const handleDeleteInternship = async (applicationId) => {
     if (!applicationId) return;
-
-    // Store previous state for rollback
     const previousStudentFull = selectedStudentFull;
 
-    // Optimistic update - remove from UI immediately
     setSelectedStudentFull(prev => {
       if (!prev) return null;
       return {
@@ -292,7 +296,6 @@ const AllStudents = () => {
       await principalService.deleteInternship(applicationId);
       message.success('Internship application deleted successfully');
     } catch (error) {
-      // Rollback on error
       setSelectedStudentFull(previousStudentFull);
       message.error(error?.response?.data?.message || error?.message || 'Failed to delete internship');
     } finally {
@@ -300,7 +303,6 @@ const AllStudents = () => {
     }
   };
 
-  // Document upload
   const openUploadModal = () => {
     uploadForm.resetFields();
     setFileList([]);
@@ -336,7 +338,6 @@ const AllStudents = () => {
     try {
       const result = await dispatch(fetchStudentDocuments(studentId)).unwrap();
       setStudentDocuments(result || []);
-      // Load presigned URLs for documents
       loadDocumentUrls(result || []);
     } catch (error) {
       console.error('Failed to load documents:', error);
@@ -345,7 +346,6 @@ const AllStudents = () => {
     }
   };
 
-  // Load presigned URLs for documents
   const loadDocumentUrls = async (docs) => {
     const urls = {};
     for (const doc of docs) {
@@ -362,7 +362,6 @@ const AllStudents = () => {
     setDocumentUrls(urls);
   };
 
-  // Helper functions
   const getCategoryColor = (category) => {
     const colors = {
       GENERAL: 'blue',
@@ -378,46 +377,42 @@ const AllStudents = () => {
     return dayjs(dateString).format('DD MMM YYYY');
   };
 
-  // Get display student (use full details if available)
   const displayStudent = selectedStudentFull || selectedStudent;
-
-  // Get internship applications from full student details
   const internshipApplications = selectedStudentFull?.internshipApplications || [];
 
-  // Tab items
   const tabItems = [
     {
       key: '1',
       label: <span><UserOutlined /> Personal Info</span>,
       children: displayStudent && (
-        <div className="grid md:grid-cols-2 gap-6 p-4">
-          <Card title="Basic Information" className="shadow-sm border-0" size="small">
-            <div className="grid grid-cols-2 gap-y-3">
-              <div className="text-gray-500">Gender</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 24, padding: 16 }}>
+          <Card title="Basic Information" bordered={false} style={{ backgroundColor: token.colorBgLayout }} size="small">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
+              <div style={{ color: token.colorTextSecondary }}>Gender</div>
               <div>{displayStudent.gender || 'N/A'}</div>
 
-              <div className="text-gray-500">Category</div>
+              <div style={{ color: token.colorTextSecondary }}>Category</div>
               <div>
                 {displayStudent.category ? (
-                  <Tag color={getCategoryColor(displayStudent.category)}>
+                  <Tag color={getCategoryColor(displayStudent.category)} bordered={false}>
                     {displayStudent.category}
                   </Tag>
                 ) : 'N/A'}
               </div>
 
-              <div className="text-gray-500">Admission Type</div>
+              <div style={{ color: token.colorTextSecondary }}>Admission Type</div>
               <div>{displayStudent.admissionType || 'N/A'}</div>
 
-              <div className="text-gray-500">Roll Number</div>
+              <div style={{ color: token.colorTextSecondary }}>Roll Number</div>
               <div>{displayStudent?.user?.rollNumber || 'N/A'}</div>
 
-              <div className="text-gray-500">Batch</div>
+              <div style={{ color: token.colorTextSecondary }}>Batch</div>
               <div>{displayStudent.batchName || displayStudent.batch?.name || 'N/A'}</div>
 
-              <div className="text-gray-500">Branch</div>
+              <div style={{ color: token.colorTextSecondary }}>Branch</div>
               <div>{displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name || 'N/A'}</div>
 
-              <div className="text-gray-500">Year / Semester</div>
+              <div style={{ color: token.colorTextSecondary }}>Year / Semester</div>
               <div>
                 {displayStudent.currentYear && displayStudent.currentSemester
                   ? `Year ${displayStudent.currentYear} / Sem ${displayStudent.currentSemester}`
@@ -426,30 +421,30 @@ const AllStudents = () => {
             </div>
           </Card>
 
-          <Card title="Contact Information" className="shadow-sm border-0" size="small">
-            <div className="grid grid-cols-2 gap-y-3">
-              <div className="text-gray-500">Email</div>
-              <div className="truncate">{displayStudent?.user?.email || 'N/A'}</div>
+          <Card title="Contact Information" bordered={false} style={{ backgroundColor: token.colorBgLayout }} size="small">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
+              <div style={{ color: token.colorTextSecondary }}>Email</div>
+              <div style={{ wordBreak: 'break-all' }}>{displayStudent?.user?.email || 'N/A'}</div>
 
-              <div className="text-gray-500">Contact</div>
+              <div style={{ color: token.colorTextSecondary }}>Contact</div>
               <div>{displayStudent?.user?.phoneNo || 'N/A'}</div>
 
-              <div className="text-gray-500">Address</div>
+              <div style={{ color: token.colorTextSecondary }}>Address</div>
               <div>{displayStudent.address || 'N/A'}</div>
 
-              <div className="text-gray-500">City</div>
+              <div style={{ color: token.colorTextSecondary }}>City</div>
               <div>{displayStudent.city || 'N/A'}</div>
 
-              <div className="text-gray-500">State</div>
+              <div style={{ color: token.colorTextSecondary }}>State</div>
               <div>{displayStudent.state || 'N/A'}</div>
 
-              <div className="text-gray-500">Pin Code</div>
+              <div style={{ color: token.colorTextSecondary }}>Pin Code</div>
               <div>{displayStudent.pinCode || 'N/A'}</div>
 
-              <div className="text-gray-500">Parent Name</div>
+              <div style={{ color: token.colorTextSecondary }}>Parent Name</div>
               <div>{displayStudent.parentName || 'N/A'}</div>
 
-              <div className="text-gray-500">Parent Contact</div>
+              <div style={{ color: token.colorTextSecondary }}>Parent Contact</div>
               <div>{displayStudent.parentContact || 'N/A'}</div>
             </div>
           </Card>
@@ -460,21 +455,21 @@ const AllStudents = () => {
       key: '2',
       label: <span><FileTextOutlined /> Documents</span>,
       children: (
-        <div className="p-4">
+        <div style={{ padding: 16 }}>
           {studentDocuments?.length > 0 ? (
-            <div className="grid md:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
               {studentDocuments.map((doc) => (
                 <Card
                   key={doc.id}
                   hoverable
-                  className="shadow-sm hover:shadow-md transition-shadow border-0"
+                  style={{ borderRadius: token.borderRadiusLG, overflow: 'hidden', border: `1px solid ${token.colorBorderSecondary}` }}
                   cover={
-                    <div className="h-48 bg-gray-50 p-2 flex items-center justify-center">
+                    <div style={{ height: 160, backgroundColor: token.colorBgLayout, padding: 8, display: 'flex', alignItems: 'center', justifyItems: 'center', justifyContent: 'center' }}>
                       {documentUrls[doc.id] ? (
                         <img
                           src={documentUrls[doc.id]}
                           alt={doc.fileName}
-                          className="max-h-full max-w-full object-contain"
+                          style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
@@ -483,9 +478,9 @@ const AllStudents = () => {
                       ) : (
                         <Spin />
                       )}
-                      <div className="hidden flex-col items-center justify-center text-gray-400">
-                        <FileTextOutlined style={{ fontSize: '3rem' }} />
-                        <span className="mt-2 text-sm">Preview unavailable</span>
+                      <div style={{ display: 'none', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: token.colorTextDescription }}>
+                        <FileTextOutlined style={{ fontSize: 32 }} />
+                        <span style={{ marginTop: 8, fontSize: 12 }}>Preview unavailable</span>
                       </div>
                     </div>
                   }
@@ -495,22 +490,18 @@ const AllStudents = () => {
                     }
                   }}
                 >
-                  <div className="text-center">
-                    <div className="font-medium mb-2">
-                      {doc.type?.replaceAll('_', ' ')}
-                    </div>
-                    <div className="text-xs text-gray-500 truncate">
-                      {doc.fileName}
-                    </div>
-                  </div>
+                  <Card.Meta
+                    title={<div style={{ textAlign: 'center', fontSize: 14 }}>{doc.type?.replaceAll('_', ' ')}</div>}
+                    description={<div style={{ textAlign: 'center', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{doc.fileName}</div>}
+                  />
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg">
-              <FileTextOutlined style={{ fontSize: '2rem' }} className="mb-3 text-gray-400" />
+            <div style={{ textAlign: 'center', color: token.colorTextDescription, padding: 48, backgroundColor: token.colorBgLayout, borderRadius: token.borderRadiusLG }}>
+              <FileTextOutlined style={{ fontSize: 32, marginBottom: 12, color: token.colorTextDisabled }} />
               <div>No documents uploaded</div>
-              <Button type="link" onClick={openUploadModal} className="mt-2">
+              <Button type="link" onClick={openUploadModal}>
                 Upload a document
               </Button>
             </div>
@@ -522,40 +513,44 @@ const AllStudents = () => {
       key: '3',
       label: <span><BulbOutlined /> Placements</span>,
       children: (
-        <div className="p-4">
+        <div style={{ padding: 16 }}>
           {(displayStudent?.placements || []).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
               {(displayStudent.placements || []).map((placement, index) => (
                 <Card
                   key={placement.id || index}
-                  className={`shadow-sm border-l-4 ${
-                    placement.status === 'ACCEPTED' || placement.status === 'JOINED'
-                      ? 'border-l-green-500 bg-green-50'
-                      : placement.status === 'OFFERED'
-                      ? 'border-l-blue-500 bg-blue-50'
-                      : 'border-l-red-500 bg-red-50'
-                  }`}
+                  style={{
+                    borderRadius: token.borderRadiusLG,
+                    borderLeft: `4px solid ${
+                      placement.status === 'ACCEPTED' || placement.status === 'JOINED'
+                        ? token.colorSuccess
+                        : placement.status === 'OFFERED'
+                        ? token.colorPrimary
+                        : token.colorError
+                    }`,
+                    backgroundColor: token.colorBgContainer
+                  }}
                   size="small"
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="font-medium text-lg text-gray-800">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 600, fontSize: 16 }}>
                       {placement.companyName}
                     </div>
-                    <Tag color={placement.status === 'ACCEPTED' ? 'success' : 'default'}>
+                    <Tag color={placement.status === 'ACCEPTED' || placement.status === 'JOINED' ? 'success' : 'default'} bordered={false}>
                       {placement.status}
                     </Tag>
                   </div>
-                  <div className="space-y-1 text-sm">
-                    <div>Job Role: <span className="font-medium">{placement.jobRole || 'N/A'}</span></div>
-                    <div>Salary: <span className="font-medium">{placement.salary ? `₹ ${placement.salary} LPA` : 'N/A'}</span></div>
-                    <div>Offer Date: <span className="font-medium">{formatDate(placement.offerDate)}</span></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
+                    <div>Job Role: <span style={{ fontWeight: 500 }}>{placement.jobRole || 'N/A'}</span></div>
+                    <div>Salary: <span style={{ fontWeight: 500 }}>{placement.salary ? `₹ ${placement.salary} LPA` : 'N/A'}</span></div>
+                    <div>Offer Date: <span style={{ fontWeight: 500 }}>{formatDate(placement.offerDate)}</span></div>
                   </div>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="text-center text-gray-500 py-8 bg-gray-50 rounded-lg">
-              <BulbOutlined style={{ fontSize: '2rem' }} className="mb-3 text-gray-400" />
+            <div style={{ textAlign: 'center', color: token.colorTextDescription, padding: 48, backgroundColor: token.colorBgLayout, borderRadius: token.borderRadiusLG }}>
+              <BulbOutlined style={{ fontSize: 32, marginBottom: 12, color: token.colorTextDisabled }} />
               <div>No placement records available</div>
             </div>
           )}
@@ -567,105 +562,107 @@ const AllStudents = () => {
       label: (
         <span>
           <LaptopOutlined /> Internships
-          {loadingStudentDetails && <LoadingOutlined className="ml-2" />}
+          {loadingStudentDetails && <LoadingOutlined style={{ marginLeft: 8 }} />}
           {internshipApplications.length > 0 && (
-            <Tag color="blue" className="ml-2">{internshipApplications.length}</Tag>
+            <Tag color="blue" bordered={false} style={{ marginLeft: 8 }}>{internshipApplications.length}</Tag>
           )}
         </span>
       ),
       children: (
-        <div className="p-4">
+        <div style={{ padding: 16 }}>
           {loadingStudentDetails ? (
-            <div className="flex justify-center items-center py-12">
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 48 }}>
               <Spin tip="Loading internship details..." />
             </div>
           ) : internshipApplications.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
               {internshipApplications.map((app, index) => (
                 <Card
                   key={app.id || index}
-                  className={`shadow-sm border-l-4 ${
-                    app.status === 'JOINED' || app.internshipPhase === 'COMPLETED'
-                      ? 'border-l-green-500 bg-green-50'
-                      : app.internshipPhase === 'ACTIVE'
-                      ? 'border-l-blue-500 bg-blue-50'
-                      : 'border-l-orange-500 bg-orange-50'
-                  }`}
+                  style={{
+                    borderRadius: token.borderRadiusLG,
+                    borderLeft: `4px solid ${
+                      app.status === 'JOINED' || app.internshipPhase === 'COMPLETED'
+                        ? token.colorSuccess
+                        : app.internshipPhase === 'ACTIVE'
+                        ? token.colorPrimary
+                        : token.colorWarning
+                    }`,
+                    backgroundColor: token.colorBgContainer
+                  }}
                   size="small"
                 >
-                  <div className="flex justify-between items-start mb-3">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                     <div>
-                      <div className="font-semibold text-lg text-gray-800">
+                      <div style={{ fontWeight: 600, fontSize: 16 }}>
                         {app.companyName || app.internship?.industry?.companyName || 'Company'}
                       </div>
                       {app.jobProfile && (
-                        <div className="text-sm text-gray-600">{app.jobProfile}</div>
+                        <div style={{ fontSize: 13, color: token.colorTextSecondary }}>{app.jobProfile}</div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                       <Tag color={
                         app.internshipPhase === 'COMPLETED' ? 'success'
                         : app.internshipPhase === 'ACTIVE' ? 'processing'
                         : app.status === 'JOINED' ? 'blue'
                         : 'warning'
-                      }>
+                      } bordered={false}>
                         {app.internshipPhase || app.status}
                       </Tag>
                       {app.isSelfIdentified && (
-                        <Tag color="purple">Self Identified</Tag>
+                        <Tag color="purple" bordered={false}>Self Identified</Tag>
                       )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 13 }}>
                     {app.stipend && (
                       <div>
-                        <span className="text-gray-500">Stipend:</span>
-                        <span className="ml-1 font-medium">₹{app.stipend}/month</span>
+                        <span style={{ color: token.colorTextSecondary }}>Stipend:</span>
+                        <span style={{ marginLeft: 4, fontWeight: 500 }}>₹{app.stipend}/mo</span>
                       </div>
                     )}
                     {app.internshipDuration && (
                       <div>
-                        <span className="text-gray-500">Duration:</span>
-                        <span className="ml-1 font-medium">{app.internshipDuration} months</span>
+                        <span style={{ color: token.colorTextSecondary }}>Duration:</span>
+                        <span style={{ marginLeft: 4, fontWeight: 500 }}>{app.internshipDuration} mos</span>
                       </div>
                     )}
                     {app.startDate && (
                       <div>
-                        <span className="text-gray-500">Start:</span>
-                        <span className="ml-1 font-medium">{formatDate(app.startDate)}</span>
+                        <span style={{ color: token.colorTextSecondary }}>Start:</span>
+                        <span style={{ marginLeft: 4, fontWeight: 500 }}>{formatDate(app.startDate)}</span>
                       </div>
                     )}
                     {app.endDate && (
                       <div>
-                        <span className="text-gray-500">End:</span>
-                        <span className="ml-1 font-medium">{formatDate(app.endDate)}</span>
+                        <span style={{ color: token.colorTextSecondary }}>End:</span>
+                        <span style={{ marginLeft: 4, fontWeight: 500 }}>{formatDate(app.endDate)}</span>
                       </div>
                     )}
                   </div>
 
                   {app.companyAddress && (
-                    <div className="mt-2 text-xs text-gray-500">
-                      <span className="font-medium">Location:</span> {app.companyAddress}
+                    <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextDescription }}>
+                      <span style={{ fontWeight: 500 }}>Location:</span> {app.companyAddress}
                     </div>
                   )}
 
                   {app.facultyMentorName && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
-                      <span className="text-gray-500">Faculty Mentor:</span>
-                      <span className="ml-1 font-medium">{app.facultyMentorName}</span>
+                    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${token.colorBorderSecondary}`, fontSize: 12 }}>
+                      <span style={{ color: token.colorTextSecondary }}>Faculty Mentor:</span>
+                      <span style={{ marginLeft: 4, fontWeight: 500 }}>{app.facultyMentorName}</span>
                     </div>
                   )}
 
-                  {/* Delete Action */}
-                  <div className="mt-3 pt-2 border-t border-gray-200 flex justify-end">
+                  <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', justifyContent: 'flex-end' }}>
                     <Popconfirm
                       title="Delete Internship Application"
-                      description="Are you sure you want to delete this internship application? This action cannot be undone."
+                      description="Are you sure you want to delete this internship application?"
                       onConfirm={() => handleDeleteInternship(app.id)}
                       okText="Delete"
                       okButtonProps={{ danger: true, loading: deletingInternship === app.id }}
-                      cancelText="Cancel"
                     >
                       <Button
                         type="text"
@@ -682,7 +679,7 @@ const AllStudents = () => {
               ))}
             </div>
           ) : (
-            <Empty description="No internship applications yet" className="py-8" />
+            <Empty description="No internship applications yet" style={{ padding: 48 }} />
           )}
         </div>
       ),
@@ -690,77 +687,75 @@ const AllStudents = () => {
   ];
 
   return (
-    <div className="p-4">
-      {/* Header */}
-      <div className="flex flex-wrap justify-between items-center mb-4">
-        <div className="flex items-center gap-3">
-          <Title level={3} className="text-blue-800 !mb-0">
-            Student Management
-          </Title>
-        </div>
+    <div style={{ padding: 24, backgroundColor: token.colorBgLayout, minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <Title level={3} style={{ color: token.colorTextHeading, margin: 0 }}>
+          Student Management
+        </Title>
       </div>
 
       <Row gutter={[16, 16]}>
         {/* Students List - Left Column */}
-        <Col xs={24} sm={24} md={8} lg={6} xl={6}>
+        <Col xs={24} sm={24} md={8} lg={7} xl={6}>
           <Card
             title={
-              <div className="flex items-center text-blue-800">
-                <TeamOutlined className="mr-2" /> Students Directory
-                <Text type="secondary" className="ml-auto text-xs">
-                  {allStudents.length} of {pagination?.total || 0} students
+              <div style={{ display: 'flex', alignItems: 'center', color: token.colorPrimary }}>
+                <TeamOutlined style={{ marginRight: 8 }} /> Students Directory
+                <Text type="secondary" style={{ marginLeft: 'auto', fontSize: 12 }}>
+                  {allStudents.length} / {pagination?.total || 0}
                 </Text>
               </div>
             }
-            className="rounded-lg border-0"
+            bordered={false}
+            style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}
             styles={{
-              body: { padding: 0, overflowY: 'hidden' },
-              header: { borderBottom: '2px solid #e6f7ff', backgroundColor: '#f0f7ff' },
+              body: { padding: 0, overflowY: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' },
+              header: { backgroundColor: token.colorFillAlter, borderBottom: `1px solid ${token.colorBorderSecondary}` },
             }}
           >
-            <div
-              onScroll={handleScroll}
-              style={{ overflowY: 'auto', padding: '0.5rem' }}
-              className="hide-scrollbar max-h-[35vh] sm:max-h-[35vh] md:max-h-[calc(80vh-80px)]"
-            >
+            <div style={{ padding: 12, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
               <Input
                 placeholder="Search Student..."
-                className="mb-3 rounded-lg"
+                style={{ marginBottom: 12 }}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                prefix={<UserOutlined className="text-gray-400" />}
+                prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />}
                 allowClear
               />
 
               <Select
                 placeholder="Filter by Status"
-                className="mb-3 w-full"
+                style={{ width: '100%' }}
                 value={activeStatusFilter}
                 onChange={setActiveStatusFilter}
-                suffixIcon={<SettingOutlined />}
               >
                 <Option value="all">
-                  <div className="flex items-center">
-                    <TeamOutlined className="mr-2 text-blue-500" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <TeamOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
                     All Students
                   </div>
                 </Option>
                 <Option value="active">
-                  <div className="flex items-center">
-                    <CheckCircleOutlined className="mr-2 text-green-500" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <CheckCircleOutlined style={{ marginRight: 8, color: token.colorSuccess }} />
                     Active Only
                   </div>
                 </Option>
                 <Option value="inactive">
-                  <div className="flex items-center">
-                    <StopOutlined className="mr-2 text-red-500" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <StopOutlined style={{ marginRight: 8, color: token.colorError }} />
                     Inactive Only
                   </div>
                 </Option>
               </Select>
+            </div>
 
+            <div
+              onScroll={handleScroll}
+              style={{ overflowY: 'auto', padding: 8, flex: 1 }}
+            >
               {loading && allStudents.length === 0 ? (
-                <div className="flex justify-center items-center h-40">
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 160 }}>
                   <Spin size="small" tip="Loading students..." />
                 </div>
               ) : (
@@ -772,50 +767,44 @@ const AllStudents = () => {
                     renderItem={(student) => (
                       <List.Item
                         onClick={() => handleStudentSelect(student)}
-                        className={`cursor-pointer my-2 rounded-xl transition-all duration-300 ease-in-out ${
-                          selectedStudent?.id === student.id
-                            ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-indigo-100 border-l-4 border-l-blue-500 shadow-sm'
-                            : 'hover:bg-gray-100 hover:shadow-md hover:translate-x-1'
-                        }`}
+                        style={{
+                          cursor: 'pointer',
+                          margin: '4px 0',
+                          padding: '8px 12px',
+                          borderRadius: token.borderRadiusLG,
+                          backgroundColor: selectedStudent?.id === student.id ? token.colorPrimaryBg : 'transparent',
+                          borderLeft: `4px solid ${selectedStudent?.id === student.id ? token.colorPrimary : 'transparent'}`,
+                          transition: 'none'
+                        }}
                       >
                         <List.Item.Meta
-                          className="px-3 py-1"
                           avatar={
                             <ProfileAvatar
                               profileImage={student.profileImage}
-                              size={50}
-                              className={selectedStudent?.id === student.id
-                                ? 'border-2 border-blue-400'
-                                : 'border border-gray-200 hover:border-gray-300'
-                              }
+                              size={44}
+                              style={{ border: `1px solid ${selectedStudent?.id === student.id ? token.colorPrimary : token.colorBorderSecondary}` }}
                             />
                           }
                           title={
-                            <Text className="font-semibold !text-sm !text-gray-600">
+                            <Text style={{ fontWeight: 600, fontSize: 14 }}>
                               {student?.user?.name}
                             </Text>
                           }
                           description={
-                            <div>
-                              {student.category && (
-                                <Tag color={getCategoryColor(student.category)} className="text-xs">
-                                  {student.category}
-                                </Tag>
-                              )}
-                              {(student?.user?.branchName || student.branchName) && (
-                                <Tag color="blue" className="text-xs">{student?.user?.branchName || student.branchName}</Tag>
-                              )}
-                              <Tag color={student?.user?.active ? 'success' : 'error'} className="text-xs">
-                                {student?.user?.active ? 'Active' : 'Inactive'}
-                              </Tag>
-                              <div className="mt-1 text-xs text-gray-500">
-                                <IdcardOutlined className="mr-1" />
-                                {student?.user?.rollNumber}
-                                {student.currentYear && student.currentSemester && (
-                                  <span className="ml-2">
-                                    | Year {student.currentYear}, Sem {student.currentSemester}
-                                  </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                {student.category && (
+                                  <Tag color={getCategoryColor(student.category)} bordered={false} style={{ fontSize: 10, lineHeight: '16px', height: 18 }}>
+                                    {student.category}
+                                  </Tag>
                                 )}
+                                <Tag color={student?.user?.active ? 'success' : 'error'} bordered={false} style={{ fontSize: 10, lineHeight: '16px', height: 18 }}>
+                                  {student?.user?.active ? 'Active' : 'Inactive'}
+                                </Tag>
+                              </div>
+                              <div style={{ fontSize: 12, color: token.colorTextDescription }}>
+                                <IdcardOutlined style={{ marginRight: 4 }} />
+                                {student?.user?.rollNumber}
                               </div>
                             </div>
                           }
@@ -825,15 +814,14 @@ const AllStudents = () => {
                   />
 
                   {loadingMore && (
-                    <div className="flex justify-center items-center py-4">
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: 16 }}>
                       <Spin size="small" />
-                      <span className="ml-2 text-gray-500 text-sm">Loading more students...</span>
                     </div>
                   )}
 
                   {!hasMore && allStudents.length > 0 && (
-                    <div className="text-center py-4 text-gray-400 text-xs border-t border-gray-100">
-                      All {pagination?.total || allStudents.length} students loaded
+                    <div style={{ textAlign: 'center', padding: 16, color: token.colorTextDisabled, fontSize: 12 }}>
+                      All students loaded
                     </div>
                   )}
                 </>
@@ -843,28 +831,20 @@ const AllStudents = () => {
         </Col>
 
         {/* Student Details - Right Column */}
-        <Col xs={24} sm={24} md={16} lg={18} xl={18} style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+        <Col xs={24} sm={24} md={16} lg={17} xl={18}>
           {displayStudent ? (
-            <div className="space-y-4">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 120px)', overflowY: 'auto', paddingRight: 4 }}>
               {/* Profile Header */}
-              <Card className="border-0 rounded-lg shadow-sm relative">
-                {/* Action Menu - Top Right */}
-                <div className="absolute top-4 right-4 z-10">
+              <Card
+                bordered={false}
+                style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary, position: 'relative' }}
+              >
+                <div style={{ position: 'absolute', top: 16, right: 16 }}>
                   <Dropdown
                     menu={{
                       items: [
-                        {
-                          key: 'edit',
-                          icon: <EditOutlined />,
-                          label: 'Edit Profile',
-                          onClick: openEditModal,
-                        },
-                        {
-                          key: 'upload',
-                          icon: <UploadOutlined />,
-                          label: 'Add Document',
-                          onClick: openUploadModal,
-                        },
+                        { key: 'edit', icon: <EditOutlined />, label: 'Edit Profile', onClick: openEditModal },
+                        { key: 'upload', icon: <UploadOutlined />, label: 'Add Document', onClick: openUploadModal },
                         {
                           key: 'reset',
                           icon: <KeyOutlined />,
@@ -886,44 +866,22 @@ const AllStudents = () => {
                           icon: <ExclamationCircleOutlined />,
                           label: 'Clearance Status',
                           children: [
-                            {
-                              key: 'PENDING',
-                              icon: <ExclamationCircleOutlined className="text-orange-500" />,
-                              label: 'Pending',
-                              onClick: () => handleClearanceStatusChange('PENDING'),
-                            },
-                            {
-                              key: 'CLEARED',
-                              icon: <CheckCircleOutlined className="text-green-500" />,
-                              label: 'Cleared',
-                              onClick: () => handleClearanceStatusChange('CLEARED'),
-                            },
-                            {
-                              key: 'HOLD',
-                              icon: <StopOutlined className="text-red-500" />,
-                              label: 'Hold',
-                              onClick: () => handleClearanceStatusChange('HOLD'),
-                            },
-                            {
-                              key: 'REJECTED',
-                              icon: <ExclamationCircleOutlined className="text-red-600" />,
-                              label: 'Rejected',
-                              onClick: () => handleClearanceStatusChange('REJECTED'),
-                            },
+                            { key: 'PENDING', label: 'Pending', onClick: () => handleClearanceStatusChange('PENDING') },
+                            { key: 'CLEARED', label: 'Cleared', onClick: () => handleClearanceStatusChange('CLEARED') },
+                            { key: 'HOLD', label: 'Hold', onClick: () => handleClearanceStatusChange('HOLD') },
+                            { key: 'REJECTED', label: 'Rejected', onClick: () => handleClearanceStatusChange('REJECTED') },
                           ],
                         },
                         { type: 'divider' },
                         {
                           key: 'toggle',
                           icon: selectedStudent?.user?.active ? <StopOutlined /> : <PlayCircleOutlined />,
-                          label: selectedStudent?.user?.active ? 'Deactivate Student' : 'Activate Student',
+                          label: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
                           danger: selectedStudent?.user?.active,
                           onClick: () => {
                             Modal.confirm({
                               title: `${selectedStudent?.user?.active ? 'Deactivate' : 'Activate'} Student`,
-                              content: selectedStudent?.user?.active
-                                ? `Are you sure you want to deactivate ${selectedStudent?.user?.name}? This will also deactivate their mentor assignments and internship applications.`
-                                : `Are you sure you want to activate ${selectedStudent?.user?.name}? This will also reactivate their mentor assignments and internship applications.`,
+                              content: `Are you sure you want to ${selectedStudent?.user?.active ? 'deactivate' : 'activate'} ${selectedStudent?.user?.name}?`,
                               okText: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
                               okButtonProps: { danger: selectedStudent?.user?.active },
                               onOk: handleActiveStateToggle,
@@ -933,83 +891,39 @@ const AllStudents = () => {
                       ],
                     }}
                     trigger={['click']}
-                    placement="bottomRight"
                   >
-                    <Button
-                      type="text"
-                      icon={<MoreOutlined style={{ fontSize: '20px' }} />}
-                      className="hover:bg-gray-100 rounded-full"
-                    />
+                    <Button type="text" icon={<MoreOutlined style={{ fontSize: 20 }} />} />
                   </Dropdown>
                 </div>
-                <div className="flex flex-col md:flex-row items-center gap-6">
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 24 }}>
                   <ProfileAvatar
                     profileImage={displayStudent.profileImage}
                     size={90}
-                    className="border-4 border-white shadow-lg"
+                    style={{ border: `4px solid ${token.colorBgContainer}`, boxShadow: token.boxShadow }}
                   />
-                  <div className="flex-grow text-center md:text-left">
-                    <Title level={3} className="mb-0 text-blue-800">
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <Title level={3} style={{ margin: 0, color: token.colorTextHeading }}>
                       {displayStudent?.user?.name}
                     </Title>
-                    <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
-                      <IdcardOutlined className="mr-2" />
+                    <div style={{ display: 'flex', alignItems: 'center', color: token.colorTextSecondary, marginBottom: 8 }}>
+                      <IdcardOutlined style={{ marginRight: 8 }} />
                       {displayStudent?.user?.rollNumber}
                     </div>
-                    <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                      {(displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name) && (
-                        <Tag color="blue" className="px-3 py-1 rounded-full">
-                          {displayStudent?.user?.branchName || displayStudent.branchName || displayStudent.branch?.name}
-                        </Tag>
-                      )}
-                      {displayStudent.category && (
-                        <Tag color={getCategoryColor(displayStudent.category)} className="px-3 py-1 rounded-full">
-                          {displayStudent.category}
-                        </Tag>
-                      )}
-                      {/* {displayStudent.admissionType && (
-                        <Tag color="purple" className="px-3 py-1 rounded-full">
-                          {displayStudent.admissionType}
-                        </Tag>
-                      )} */}
-                      {/* {(displayStudent.batchName || displayStudent.batch?.name) && (
-                        <Tag color="cyan" className="px-3 py-1 rounded-full">
-                          {displayStudent.batchName || displayStudent.batch?.name}
-                        </Tag>
-                      )} */}
-                      {/* {displayStudent.currentYear && (
-                        <Tag color="orange" className="px-3 py-1 rounded-full">
-                          <CalendarOutlined className="mr-1" />
-                          Year {displayStudent.currentYear}
-                        </Tag>
-                      )}
-                      {displayStudent.currentSemester && (
-                        <Tag color="geekblue" className="px-3 py-1 rounded-full">
-                          <BookOutlined className="mr-1" />
-                          Semester {displayStudent.currentSemester}
-                        </Tag>
-                      )} */}
-                      <Tag
-                        color={displayStudent?.user?.active ? 'success' : 'error'}
-                        className="px-3 py-1 rounded-full"
-                      >
-                        {displayStudent?.user?.active ? (
-                          <><CheckCircleOutlined className="mr-1" /> Active</>
-                        ) : (
-                          <><StopOutlined className="mr-1" /> Inactive</>
-                        )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      <Tag color="blue" bordered={false}>{displayStudent?.user?.branchName || displayStudent.branchName}</Tag>
+                      <Tag color={getCategoryColor(displayStudent.category)} bordered={false}>{displayStudent.category}</Tag>
+                      <Tag color={displayStudent?.user?.active ? 'success' : 'error'} bordered={false}>
+                        {displayStudent?.user?.active ? 'Active' : 'Inactive'}
                       </Tag>
                       {displayStudent.clearanceStatus && (
                         <Tag
                           color={
                             displayStudent.clearanceStatus === 'CLEARED' ? 'success'
                             : displayStudent.clearanceStatus === 'PENDING' ? 'processing'
-                            : displayStudent.clearanceStatus === 'HOLD' ? 'warning'
-                            : 'error'
+                            : 'warning'
                           }
-                          className="px-3 py-1 rounded-full"
+                          bordered={false}
                         >
-                          <ExclamationCircleOutlined className="mr-1" />
                           {displayStudent.clearanceStatus}
                         </Tag>
                       )}
@@ -1018,63 +932,46 @@ const AllStudents = () => {
                 </div>
 
                 {/* Contact Quick Info */}
-                <div className="grid lg:grid-cols-3 gap-4 mt-6 p-3 rounded-lg shadow-sm bg-gray-50">
-                  <div className="flex items-center">
-                    <MailOutlined className="text-blue-500 text-xl mr-3" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginTop: 24, padding: 12, borderRadius: token.borderRadius, backgroundColor: token.colorFillAlter }}>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <MailOutlined style={{ color: token.colorPrimary, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Email</div>
-                      <div className="text-sm font-medium">{displayStudent?.user?.email || 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Email</div>
+                      <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>{displayStudent?.user?.email || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <PhoneOutlined className="text-green-500 text-xl mr-3" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <PhoneOutlined style={{ color: token.colorSuccess, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Contact</div>
-                      <div className="text-sm font-medium">{displayStudent?.user?.phoneNo || 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Contact</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{displayStudent?.user?.phoneNo || 'N/A'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center">
-                    <CalendarOutlined className="text-orange-500 text-xl mr-3" />
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <CalendarOutlined style={{ color: token.colorWarning, fontSize: 18, marginRight: 12 }} />
                     <div>
-                      <div className="text-xs text-gray-500">Date of Birth</div>
-                      <div className="text-sm font-medium">{displayStudent?.user?.dob ? formatDate(displayStudent?.user?.dob) : 'N/A'}</div>
+                      <div style={{ fontSize: 11, color: token.colorTextDescription }}>Date of Birth</div>
+                      <div style={{ fontSize: 13, fontWeight: 500 }}>{displayStudent?.user?.dob ? formatDate(displayStudent?.user?.dob) : 'N/A'}</div>
                     </div>
                   </div>
                 </div>
               </Card>
 
               {/* Detailed Information in Tabs */}
-              <Card className="rounded-lg !mt-3 shadow-sm" styles={{ body: { padding: 0 } }}>
+              <Card bordered={false} style={{ borderRadius: token.borderRadiusLG, boxShadow: token.boxShadowTertiary }} styles={{ body: { padding: 0 } }}>
                 <Tabs
                   defaultActiveKey="1"
                   items={tabItems}
-                  tabBarStyle={{ padding: '10px 16px 0', marginBottom: 0 }}
-                  className="student-tabs"
+                  style={{ padding: '0 16px' }}
                 />
               </Card>
             </div>
           ) : (
-            <Card className="min-h-[75vh] shadow-xl rounded-3xl bg-white/90 backdrop-blur-lg border-0 flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto py-16">
-                <div className="relative mb-8">
-                  <div className="w-24 h-24 bg-gradient-to-r from-gray-200 to-gray-300 rounded-3xl flex items-center justify-center mb-4 mx-auto">
-                    <UserOutlined className="text-gray-600 text-4xl" />
-                  </div>
-                  <div className="absolute -top-2 -right-2 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                    <SearchOutlined className="text-indigo-500 text-sm" />
-                  </div>
-                </div>
-                <Title level={4} className="text-gray-600 mb-4">
-                  Select a Student
-                </Title>
-                <Text className="text-gray-500 text-base block mb-6">
-                  Choose a student from the directory on the left to view detailed information and track progress.
-                </Text>
-                <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 rounded-2xl p-4 border-0">
-                  <Text className="text-indigo-700 text-sm">
-                    Tip: Use the search and filters to quickly find specific students
-                  </Text>
-                </Card>
+            <Card style={{ height: 'calc(100vh - 120px)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: token.borderRadiusLG, border: `1px dashed ${token.colorBorder}` }}>
+              <div style={{ textAlign: 'center', maxWidth: 400 }}>
+                <UserOutlined style={{ fontSize: 48, color: token.colorTextDisabled, marginBottom: 16 }} />
+                <Title level={4} style={{ color: token.colorTextSecondary }}>Select a Student</Title>
+                <Text type="secondary">Choose a student from the directory to view detailed information and track progress.</Text>
               </div>
             </Card>
           )}
@@ -1096,6 +993,7 @@ const AllStudents = () => {
         onCancel={() => setUploadModal(false)}
         onOk={() => uploadForm.submit()}
         confirmLoading={uploading}
+        centered
       >
         <Form form={uploadForm} layout="vertical" onFinish={handleUpload}>
           <Form.Item name="type" label="Document Type" rules={[{ required: true, message: 'Please select document type' }]}>
@@ -1121,9 +1019,8 @@ const AllStudents = () => {
               fileList={fileList}
               onRemove={() => setFileList([])}
               maxCount={1}
-              listType="picture"
             >
-              <Button icon={<UploadOutlined />} className="w-full">
+              <Button icon={<UploadOutlined />} style={{ width: '100%' }}>
                 Select File (Max 500KB)
               </Button>
             </Upload>

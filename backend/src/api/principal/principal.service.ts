@@ -38,7 +38,7 @@ export class PrincipalService {
   /**
    * Get Principal Dashboard - Institution-specific statistics
    */
-  async getDashboard(principalId: string) {
+  async getDashboard(principalId: string, forceRefresh = false) {
     const principal = await this.prisma.user.findUnique({
       where: { id: principalId },
       include: { Institution: true },
@@ -50,6 +50,11 @@ export class PrincipalService {
 
     const institutionId = principal.institutionId;
     const cacheKey = `principal:dashboard:${institutionId}`;
+
+    // Invalidate cache if force refresh is requested
+    if (forceRefresh) {
+      await this.cache.delete(cacheKey);
+    }
 
     return this.cache.getOrSet(
       cacheKey,
@@ -146,31 +151,24 @@ export class PrincipalService {
               internshipPhase: InternshipPhase.ACTIVE,
             },
           }),
-          // Students grouped by branch with internship counts
-          this.prisma.branch.findMany({
+          // Students grouped by branch with internship counts - query students directly
+          this.prisma.student.findMany({
             where: { institutionId },
             select: {
               id: true,
-              name: true,
-              _count: {
-                select: {
-                  students: true,
-                },
+              branchId: true,
+              branch: {
+                select: { id: true, name: true },
               },
-              students: {
-                where: { user: { active: true } },
-                select: {
-                  id: true,
-                  internshipApplications: {
-                    where: {
-                      isSelfIdentified: true,
-                      status: ApplicationStatus.JOINED,
-                      internshipPhase: { in: [InternshipPhase.ACTIVE, InternshipPhase.COMPLETED] },
-                    },
-                    select: { id: true },
-                    take: 1,
-                  },
+              user: {
+                select: { active: true },
+              },
+              internshipApplications: {
+                where: {
+                  isActive: true, // Count students with active internship applications
                 },
+                select: { id: true },
+                take: 1,
               },
             },
           }),
@@ -218,19 +216,47 @@ export class PrincipalService {
           ? Math.round((completedInternships / totalSelfIdentifiedInternships) * 100)
           : 0;
 
-        // Format students by branch data
-        const formattedStudentsByBranch = studentsByBranch.map((branch) => {
-          const activeStudents = branch.students.length;
-          const withInternship = branch.students.filter(
-            (s) => s.internshipApplications && s.internshipApplications.length > 0
-          ).length;
-          return {
-            branchId: branch.id,
-            branchName: branch.name,
-            totalStudents: branch._count.students,
-            activeStudents,
-            withInternship,
-          };
+        // Format students by branch data - group students by branchId
+        const branchMap = new Map<string, {
+          branchId: string;
+          branchName: string;
+          totalStudents: number;
+          activeStudents: number;
+          withInternship: number;
+        }>();
+
+        // Process each student and group by branch
+        for (const student of studentsByBranch) {
+          const branchKey = student.branchId || 'unassigned';
+          const branchName = student.branch?.name || 'Unassigned';
+
+          if (!branchMap.has(branchKey)) {
+            branchMap.set(branchKey, {
+              branchId: branchKey,
+              branchName,
+              totalStudents: 0,
+              activeStudents: 0,
+              withInternship: 0,
+            });
+          }
+
+          const branchData = branchMap.get(branchKey)!;
+          branchData.totalStudents += 1;
+
+          if (student.user?.active) {
+            branchData.activeStudents += 1;
+          }
+
+          if (student.internshipApplications && student.internshipApplications.length > 0) {
+            branchData.withInternship += 1;
+          }
+        }
+
+        // Convert map to array and sort by branch name (with Unassigned at the end)
+        const formattedStudentsByBranch = Array.from(branchMap.values()).sort((a, b) => {
+          if (a.branchId === 'unassigned') return 1;
+          if (b.branchId === 'unassigned') return -1;
+          return a.branchName.localeCompare(b.branchName);
         });
 
         return {
@@ -2918,12 +2944,12 @@ export class PrincipalService {
 
     // Run queries in parallel
     const [statusCounts, activeInternships] = await Promise.all([
-      // Status counts
+      // Status counts - only active internship applications
       this.prisma.internshipApplication.groupBy({
         by: ['status'],
         where: {
           student: { institutionId, user: { active: true } },
-          isSelfIdentified: true,
+          isActive: true,
         },
         _count: { status: true },
       }),
@@ -2931,8 +2957,7 @@ export class PrincipalService {
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId, user: { active: true } },
-          isSelfIdentified: true,
-          status: { in: ['APPROVED', 'SELECTED', 'JOINED'] },
+          isActive: true,
         },
         select: {
           companyName: true,
@@ -2974,7 +2999,6 @@ export class PrincipalService {
     const companyMap = new Map<string, { count: number; location?: string }>();
 
     activeInternships.forEach((app) => {
-      // Get company name from self-identified field
       const companyName = app.companyName || 'Unknown';
       const location = app.companyAddress;
 
@@ -4557,6 +4581,122 @@ export class PrincipalService {
       },
       { ttl: 5 * 60 * 1000 }, // 5 minute cache
     );
+  }
+
+  /**
+   * Get joining letter stats grouped by mentor for dashboard modal
+   */
+  async getJoiningLettersByMentor(principalId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal?.institutionId) {
+      throw new NotFoundException('Principal or institution not found');
+    }
+
+    const institutionId = principal.institutionId;
+
+    // Fetch all active internship applications with student's mentor assignment
+    const applications = await this.prisma.internshipApplication.findMany({
+      where: {
+        isActive: true,
+        student: { institutionId, user: { active: true } },
+      },
+      select: {
+        id: true,
+        joiningLetterUrl: true,
+        student: {
+          select: {
+            id: true,
+            mentorAssignments: {
+              where: { isActive: true },
+              select: {
+                mentorId: true,
+                mentor: {
+                  select: { id: true, name: true },
+                },
+              },
+              take: 1, // Get the active mentor assignment
+            },
+          },
+        },
+      },
+    });
+
+    // Group by mentor
+    const mentorMap = new Map<string, {
+      mentorId: string;
+      mentorName: string;
+      studentsWithInternship: number;
+      pendingLetters: number;
+      totalLetters: number;
+    }>();
+
+    let unassignedStats = {
+      mentorId: 'unassigned',
+      mentorName: 'Not Assigned',
+      studentsWithInternship: 0,
+      pendingLetters: 0,
+      totalLetters: 0,
+      isUnassigned: true,
+    };
+
+    for (const app of applications) {
+      const hasLetter = app.joiningLetterUrl && app.joiningLetterUrl !== '';
+      const activeMentorAssignment = app.student?.mentorAssignments?.[0];
+      const mentorId = activeMentorAssignment?.mentorId;
+      const mentorName = activeMentorAssignment?.mentor?.name;
+
+      if (!mentorId) {
+        // Unassigned student
+        unassignedStats.studentsWithInternship++;
+        unassignedStats.totalLetters++;
+        if (!hasLetter) {
+          unassignedStats.pendingLetters++;
+        }
+      } else {
+        if (!mentorMap.has(mentorId)) {
+          mentorMap.set(mentorId, {
+            mentorId,
+            mentorName: mentorName || 'Unknown',
+            studentsWithInternship: 0,
+            pendingLetters: 0,
+            totalLetters: 0,
+          });
+        }
+        const mentor = mentorMap.get(mentorId)!;
+        mentor.studentsWithInternship++;
+        mentor.totalLetters++;
+        if (!hasLetter) {
+          mentor.pendingLetters++;
+        }
+      }
+    }
+
+    // Convert to array and add unassigned if exists
+    const byMentor = Array.from(mentorMap.values());
+    if (unassignedStats.studentsWithInternship > 0) {
+      byMentor.unshift(unassignedStats);
+    }
+
+    // Sort by pending letters descending, then by students count
+    byMentor.sort((a, b) => {
+      if (b.pendingLetters !== a.pendingLetters) {
+        return b.pendingLetters - a.pendingLetters;
+      }
+      return b.studentsWithInternship - a.studentsWithInternship;
+    });
+
+    // Calculate totals
+    const totalStudents = applications.length;
+    const totalPending = applications.filter(a => !a.joiningLetterUrl || a.joiningLetterUrl === '').length;
+
+    return {
+      totalStudents,
+      totalPending,
+      byMentor,
+    };
   }
 
   /**

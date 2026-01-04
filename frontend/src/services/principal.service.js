@@ -7,8 +7,9 @@ import API from './api';
  */
 export const principalService = {
   // Dashboard
-  async getDashboard() {
-    const response = await API.get('/principal/dashboard');
+  async getDashboard(forceRefresh = false) {
+    const url = forceRefresh ? '/principal/dashboard?refresh=true' : '/principal/dashboard';
+    const response = await API.get(url);
     return response.data;
   },
 
@@ -195,6 +196,11 @@ export const principalService = {
     return response.data;
   },
 
+  async getJoiningLettersByMentor() {
+    const response = await API.get('/principal/joining-letters/by-mentor');
+    return response.data;
+  },
+
   async getJoiningLetters(params = {}) {
     const cleanParams = Object.fromEntries(
       Object.entries(params).filter(([, v]) => v != null && v !== '')
@@ -222,14 +228,8 @@ export const principalService = {
 
   // Internship Stats with Company Details
   async getInternshipStats() {
-    // STUBBED: Industry/internship functionality removed
-    return {
-      total: 0,
-      pending: 0,
-      approved: 0,
-      rejected: 0,
-      companies: []
-    };
+    const response = await API.get('/principal/internships/stats');
+    return response.data;
   },
 
   // Faculty Workload
