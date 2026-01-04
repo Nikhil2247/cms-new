@@ -882,3 +882,156 @@ export class UploadVisitDocumentDto {
   @MaxLength(50)
   documentType: string;
 }
+
+// ==================== Student Management DTOs ====================
+
+export class UpdateStudentDto {
+  @ApiPropertyOptional({ description: 'Student name' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  name?: string;
+
+  @ApiPropertyOptional({ description: 'Student email' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  email?: string;
+
+  @ApiPropertyOptional({ description: 'Profile image URL' })
+  @IsOptional()
+  @IsString()
+  profileImage?: string;
+
+  @ApiPropertyOptional({ description: 'Student contact number' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  contact?: string;
+
+  @ApiPropertyOptional({ description: 'Roll number' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  rollNumber?: string;
+
+  @ApiPropertyOptional({ description: 'Date of birth (stored as string)' })
+  @IsOptional()
+  @IsString()
+  dob?: string;
+
+  @ApiPropertyOptional({ description: 'Gender' })
+  @IsOptional()
+  @IsString()
+  gender?: string;
+
+  @ApiPropertyOptional({ description: 'Category' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ description: 'Admission type' })
+  @IsOptional()
+  @IsString()
+  admissionType?: string;
+
+  @ApiPropertyOptional({ description: 'Current year' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  currentYear?: number;
+
+  @ApiPropertyOptional({ description: 'Current semester' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  currentSemester?: number;
+
+  @ApiPropertyOptional({ description: 'Parent name' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  parentName?: string;
+
+  @ApiPropertyOptional({ description: 'Parent contact' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  parentContact?: string;
+
+  @ApiPropertyOptional({ description: 'Mother name' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  motherName?: string;
+
+  @ApiPropertyOptional({ description: 'Address' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  address?: string;
+
+  @ApiPropertyOptional({ description: 'City' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  city?: string;
+
+  @ApiPropertyOptional({ description: 'State' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  state?: string;
+
+  @ApiPropertyOptional({ description: 'District' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  district?: string;
+
+  @ApiPropertyOptional({ description: 'Tehsil' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  tehsil?: string;
+
+  @ApiPropertyOptional({ description: 'Pin code' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  pinCode?: string;
+
+  @ApiPropertyOptional({ description: 'Batch ID' })
+  @IsOptional()
+  @IsUUID()
+  batchId?: string;
+
+  @ApiPropertyOptional({ description: 'Branch ID' })
+  @IsOptional()
+  @IsUUID()
+  branchId?: string;
+
+  @ApiPropertyOptional({ description: 'Clearance status' })
+  @IsOptional()
+  @IsString()
+  clearanceStatus?: string;
+
+  @ApiPropertyOptional({ description: 'Is active' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+}
+
+export class UploadStudentDocumentDto {
+  @ApiProperty({ description: 'Document type (e.g., MARKSHEET_10TH, MARKSHEET_12TH, CASTE_CERTIFICATE, PHOTO, OTHER)' })
+  @IsString()
+  @MinLength(2)
+  @MaxLength(50)
+  type: string;
+}
+
+export class ToggleStudentStatusDto {
+  @ApiProperty({ description: 'New active status' })
+  @IsBoolean()
+  isActive: boolean;
+}

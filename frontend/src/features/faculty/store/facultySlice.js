@@ -667,6 +667,44 @@ export const createAssignment = createAsyncThunk(
   }
 );
 
+// ==================== Student Management Actions ====================
+
+export const updateStudent = createAsyncThunk(
+  'faculty/updateStudent',
+  async ({ id, data }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.updateStudent(id, data);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to update student');
+    }
+  }
+);
+
+export const uploadStudentDocument = createAsyncThunk(
+  'faculty/uploadStudentDocument',
+  async ({ studentId, file, type }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.uploadStudentDocument(studentId, file, type);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to upload document');
+    }
+  }
+);
+
+export const toggleStudentStatus = createAsyncThunk(
+  'faculty/toggleStudentStatus',
+  async ({ studentId, isActive }, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.toggleStudentStatus(studentId, isActive);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle student status');
+    }
+  }
+);
+
 // Faculty Grievances
 export const fetchFacultyGrievances = createAsyncThunk(
   'faculty/fetchFacultyGrievances',
@@ -835,6 +873,51 @@ const facultySlice = createSlice({
       const { list, total } = action.payload;
       state.visitLogs.list = list;
       state.visitLogs.total = total;
+    },
+    // Optimistic update: Update student in list immediately
+    optimisticallyUpdateStudent: (state, action) => {
+      const { studentId, updates } = action.payload;
+      const index = state.students.list.findIndex(s => {
+        const stud = s.student || s;
+        return stud.id === studentId || s.id === studentId;
+      });
+      if (index !== -1) {
+        const student = state.students.list[index];
+        const actualStudent = student.student || student;
+        // Update the student data
+        if (student.student) {
+          state.students.list[index] = {
+            ...student,
+            student: { ...actualStudent, ...updates },
+          };
+        } else {
+          state.students.list[index] = { ...student, ...updates };
+        }
+      }
+    },
+    // Optimistic update: Toggle student status immediately
+    optimisticallyToggleStudentStatus: (state, action) => {
+      const { studentId, isActive } = action.payload;
+      const index = state.students.list.findIndex(s => {
+        const stud = s.student || s;
+        return stud.id === studentId || s.id === studentId;
+      });
+      if (index !== -1) {
+        const student = state.students.list[index];
+        if (student.student) {
+          state.students.list[index] = {
+            ...student,
+            student: { ...student.student, isActive },
+          };
+        } else {
+          state.students.list[index] = { ...student, isActive };
+        }
+      }
+    },
+    // Rollback: Restore students state on error
+    rollbackStudentOperation: (state, action) => {
+      const { list } = action.payload;
+      state.students.list = list;
     },
   },
   extraReducers: (builder) => {
@@ -1302,6 +1385,92 @@ const facultySlice = createSlice({
       .addCase(updateGrievanceStatus.fulfilled, (state) => {
         state.lastFetched.grievances = null; // Invalidate cache
       })
+
+      // ==================== Student Management ====================
+      .addCase(updateStudent.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(updateStudent.fulfilled, (state, action) => {
+        state.students.loading = false;
+        // Update the student in the list - handle nested structure
+        const updatedStudent = action.payload.data;
+        if (updatedStudent?.id) {
+          const index = state.students.list.findIndex(s => {
+            const stud = s.student || s;
+            return stud.id === updatedStudent.id || s.id === updatedStudent.id;
+          });
+          if (index !== -1) {
+            const existing = state.students.list[index];
+            // Handle nested structure (s.student) vs flat structure
+            if (existing.student) {
+              state.students.list[index] = {
+                ...existing,
+                student: { ...existing.student, ...updatedStudent },
+              };
+            } else {
+              state.students.list[index] = { ...existing, ...updatedStudent };
+            }
+          }
+        }
+        // Invalidate cache to refresh student list
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+      })
+      .addCase(updateStudent.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+
+      .addCase(uploadStudentDocument.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(uploadStudentDocument.fulfilled, (state) => {
+        state.students.loading = false;
+        // Invalidate cache to refresh student list
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+      })
+      .addCase(uploadStudentDocument.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
+
+      .addCase(toggleStudentStatus.pending, (state) => {
+        state.students.loading = true;
+        state.students.error = null;
+      })
+      .addCase(toggleStudentStatus.fulfilled, (state, action) => {
+        state.students.loading = false;
+        // Update the student in the list - handle nested structure
+        const updatedStudent = action.payload.data;
+        if (updatedStudent?.id) {
+          const index = state.students.list.findIndex(s => {
+            const stud = s.student || s;
+            return stud.id === updatedStudent.id || s.id === updatedStudent.id;
+          });
+          if (index !== -1) {
+            const existing = state.students.list[index];
+            // Handle nested structure (s.student) vs flat structure
+            if (existing.student) {
+              state.students.list[index] = {
+                ...existing,
+                student: { ...existing.student, isActive: updatedStudent.isActive },
+              };
+            } else {
+              state.students.list[index] = { ...existing, isActive: updatedStudent.isActive };
+            }
+          }
+        }
+        // Invalidate cache to refresh student list
+        state.lastFetched.students = null;
+        state.lastFetched.studentsKey = null;
+      })
+      .addCase(toggleStudentStatus.rejected, (state, action) => {
+        state.students.loading = false;
+        state.students.error = action.payload;
+      })
       ;
   },
 });
@@ -1316,6 +1485,9 @@ export const {
   rollbackJoiningLetterOperation,
   optimisticallyDeleteVisitLog,
   rollbackVisitLogOperation,
+  optimisticallyUpdateStudent,
+  optimisticallyToggleStudentStatus,
+  rollbackStudentOperation,
 } = facultySlice.actions;
 
 // Selectors

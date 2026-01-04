@@ -4899,6 +4899,69 @@ export class PrincipalService {
     return application;
   }
 
+  /**
+   * Delete internship application (soft delete - sets isActive to false)
+   */
+  async deleteInternship(principalId: string, applicationId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal?.institutionId) {
+      throw new NotFoundException('Principal or institution not found');
+    }
+
+    const application = await this.prisma.internshipApplication.findFirst({
+      where: {
+        id: applicationId,
+        isSelfIdentified: true,
+        student: { institutionId: principal.institutionId },
+      },
+      include: {
+        student: {
+          select: { id: true, name: true, rollNumber: true },
+        },
+      },
+    });
+
+    if (!application) {
+      throw new NotFoundException('Internship application not found');
+    }
+
+    // Soft delete - set isActive to false
+    const updated = await this.prisma.internshipApplication.update({
+      where: { id: applicationId },
+      data: { isActive: false },
+    });
+
+    // Log the deletion
+    this.auditService.log({
+      action: AuditAction.INTERNSHIP_DELETE,
+      entityType: 'InternshipApplication',
+      entityId: applicationId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Internship application deleted for student: ${application.student.name} (${application.student.rollNumber})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      oldValues: { isActive: true, companyName: application.companyName },
+      newValues: { isActive: false },
+    }).catch(() => {}); // Non-blocking
+
+    await this.cache.invalidateByTags([
+      `institution:${principal.institutionId}`,
+      'internships',
+      `student:${application.student.id}`,
+    ]);
+
+    return {
+      success: true,
+      message: 'Internship application deleted successfully',
+    };
+  }
+
   // ==================== Student Document Management ====================
 
   /**

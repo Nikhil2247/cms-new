@@ -16,7 +16,7 @@ import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
-import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiConsumes, ApiResponse } from '@nestjs/swagger';
 import { PrincipalService } from './principal.service';
 import { JwtAuthGuard } from '../../core/auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../core/auth/guards/roles.guard';
@@ -390,6 +390,13 @@ export class PrincipalController {
     @Body() data: { applicationIds: string[]; status: string; remarks?: string },
   ) {
     return this.principalService.bulkUpdateInternshipStatus(req.user.userId, data);
+  }
+
+  @Delete('internships/:id')
+  @ApiOperation({ summary: 'Delete internship application' })
+  @ApiResponse({ status: 200, description: 'Internship deleted successfully' })
+  async deleteInternship(@Request() req, @Param('id') applicationId: string) {
+    return this.principalService.deleteInternship(req.user.userId, applicationId);
   }
 
   // ==================== Student Documents ====================

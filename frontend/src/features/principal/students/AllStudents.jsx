@@ -17,6 +17,7 @@ import {
   Tabs,
   Empty,
   Popconfirm,
+  Dropdown,
 } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -53,8 +54,11 @@ import {
   SettingOutlined,
   LoadingOutlined,
   KeyOutlined,
+  MoreOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { credentialsService } from '../../../services/credentials.service';
+import principalService from '../../../services/principal.service';
 import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
@@ -87,6 +91,7 @@ const AllStudents = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [resettingCredential, setResettingCredential] = useState(false);
+  const [deletingInternship, setDeletingInternship] = useState(null);
   const listRef = useRef(null);
   const PAGE_SIZE = 50;
 
@@ -260,6 +265,23 @@ const AllStudents = () => {
       message.error(error?.response?.data?.message || error?.message || 'Failed to reset credential');
     } finally {
       setResettingCredential(false);
+    }
+  };
+
+  // Handle delete internship
+  const handleDeleteInternship = async (applicationId) => {
+    setDeletingInternship(applicationId);
+    try {
+      await principalService.deleteInternship(applicationId);
+      message.success('Internship application deleted successfully');
+      // Reload student details to update the internship list
+      if (selectedStudent?.id) {
+        loadFullStudentDetails(selectedStudent.id);
+      }
+    } catch (error) {
+      message.error(error?.response?.data?.message || error?.message || 'Failed to delete internship');
+    } finally {
+      setDeletingInternship(null);
     }
   };
 
@@ -619,6 +641,28 @@ const AllStudents = () => {
                       <span className="ml-1 font-medium">{app.facultyMentorName}</span>
                     </div>
                   )}
+
+                  {/* Delete Action */}
+                  <div className="mt-3 pt-2 border-t border-gray-200 flex justify-end">
+                    <Popconfirm
+                      title="Delete Internship Application"
+                      description="Are you sure you want to delete this internship application? This action cannot be undone."
+                      onConfirm={() => handleDeleteInternship(app.id)}
+                      okText="Delete"
+                      okButtonProps={{ danger: true, loading: deletingInternship === app.id }}
+                      cancelText="Cancel"
+                    >
+                      <Button
+                        type="text"
+                        danger
+                        size="small"
+                        icon={<DeleteOutlined />}
+                        loading={deletingInternship === app.id}
+                      >
+                        Delete
+                      </Button>
+                    </Popconfirm>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -639,88 +683,6 @@ const AllStudents = () => {
             Student Management
           </Title>
         </div>
-        {selectedStudent && (
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              icon={<EditOutlined />}
-              onClick={openEditModal}
-              className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
-            >
-              Edit Profile
-            </Button>
-            <Button
-              type="primary"
-              icon={<UploadOutlined />}
-              onClick={openUploadModal}
-              className="bg-gradient-to-r from-blue-500 to-blue-700"
-            >
-              Add Document
-            </Button>
-            <Popconfirm
-              title="Reset Student Credential"
-              description={`Are you sure you want to reset the password for ${selectedStudent.name}?`}
-              onConfirm={handleResetCredential}
-              okText="Reset"
-              okButtonProps={{ danger: true, loading: resettingCredential }}
-              cancelText="Cancel"
-            >
-              <Button
-                icon={<KeyOutlined />}
-                loading={resettingCredential}
-                className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
-              >
-                Reset Credential
-              </Button>
-            </Popconfirm>
-            <Popconfirm
-              title={`Are you sure you want to ${selectedStudent.isActive ? 'deactivate' : 'activate'} ${selectedStudent.name}?`}
-              onConfirm={handleActiveStateToggle}
-              okText={selectedStudent.isActive ? 'Deactivate' : 'Activate'}
-              okButtonProps={{ danger: selectedStudent.isActive, type: 'primary' }}
-              cancelText="Cancel"
-            >
-              <Button
-                icon={selectedStudent.isActive ? <StopOutlined /> : <PlayCircleOutlined />}
-                className={selectedStudent.isActive
-                  ? 'bg-red-50 border-red-300 text-red-700 hover:bg-red-100'
-                  : 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
-                }
-              >
-                {selectedStudent.isActive ? 'Deactivate' : 'Activate'}
-              </Button>
-            </Popconfirm>
-            <Select
-              value={selectedStudent.clearanceStatus || 'PENDING'}
-              style={{ width: 140 }}
-              onChange={handleClearanceStatusChange}
-            >
-              <Option value="PENDING">
-                <div className="flex items-center">
-                  <ExclamationCircleOutlined className="mr-2 text-orange-500" />
-                  Pending
-                </div>
-              </Option>
-              <Option value="CLEARED">
-                <div className="flex items-center">
-                  <CheckCircleOutlined className="mr-2 text-green-500" />
-                  Cleared
-                </div>
-              </Option>
-              <Option value="HOLD">
-                <div className="flex items-center">
-                  <StopOutlined className="mr-2 text-red-500" />
-                  Hold
-                </div>
-              </Option>
-              <Option value="REJECTED">
-                <div className="flex items-center">
-                  <ExclamationCircleOutlined className="mr-2 text-red-600" />
-                  Rejected
-                </div>
-              </Option>
-            </Select>
-          </div>
-        )}
       </div>
 
       <Row gutter={[16, 16]}>
@@ -870,7 +832,99 @@ const AllStudents = () => {
           {displayStudent ? (
             <div className="space-y-4">
               {/* Profile Header */}
-              <Card className="border-0 rounded-lg shadow-sm">
+              <Card className="border-0 rounded-lg shadow-sm relative">
+                {/* Action Menu - Top Right */}
+                <div className="absolute top-4 right-4 z-10">
+                  <Dropdown
+                    menu={{
+                      items: [
+                        {
+                          key: 'edit',
+                          icon: <EditOutlined />,
+                          label: 'Edit Profile',
+                          onClick: openEditModal,
+                        },
+                        {
+                          key: 'upload',
+                          icon: <UploadOutlined />,
+                          label: 'Add Document',
+                          onClick: openUploadModal,
+                        },
+                        {
+                          key: 'reset',
+                          icon: <KeyOutlined />,
+                          label: resettingCredential ? 'Resetting...' : 'Reset Credential',
+                          disabled: resettingCredential,
+                          onClick: () => {
+                            Modal.confirm({
+                              title: 'Reset Student Credential',
+                              content: `Are you sure you want to reset the password for ${selectedStudent?.name}?`,
+                              okText: 'Reset',
+                              okButtonProps: { danger: true },
+                              onOk: handleResetCredential,
+                            });
+                          },
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'clearance',
+                          icon: <ExclamationCircleOutlined />,
+                          label: 'Clearance Status',
+                          children: [
+                            {
+                              key: 'PENDING',
+                              icon: <ExclamationCircleOutlined className="text-orange-500" />,
+                              label: 'Pending',
+                              onClick: () => handleClearanceStatusChange('PENDING'),
+                            },
+                            {
+                              key: 'CLEARED',
+                              icon: <CheckCircleOutlined className="text-green-500" />,
+                              label: 'Cleared',
+                              onClick: () => handleClearanceStatusChange('CLEARED'),
+                            },
+                            {
+                              key: 'HOLD',
+                              icon: <StopOutlined className="text-red-500" />,
+                              label: 'Hold',
+                              onClick: () => handleClearanceStatusChange('HOLD'),
+                            },
+                            {
+                              key: 'REJECTED',
+                              icon: <ExclamationCircleOutlined className="text-red-600" />,
+                              label: 'Rejected',
+                              onClick: () => handleClearanceStatusChange('REJECTED'),
+                            },
+                          ],
+                        },
+                        { type: 'divider' },
+                        {
+                          key: 'toggle',
+                          icon: selectedStudent?.isActive ? <StopOutlined /> : <PlayCircleOutlined />,
+                          label: selectedStudent?.isActive ? 'Deactivate Student' : 'Activate Student',
+                          danger: selectedStudent?.isActive,
+                          onClick: () => {
+                            Modal.confirm({
+                              title: `${selectedStudent?.isActive ? 'Deactivate' : 'Activate'} Student`,
+                              content: `Are you sure you want to ${selectedStudent?.isActive ? 'deactivate' : 'activate'} ${selectedStudent?.name}? ${selectedStudent?.isActive ? 'This will also deactivate their user account.' : ''}`,
+                              okText: selectedStudent?.isActive ? 'Deactivate' : 'Activate',
+                              okButtonProps: { danger: selectedStudent?.isActive },
+                              onOk: handleActiveStateToggle,
+                            });
+                          },
+                        },
+                      ],
+                    }}
+                    trigger={['click']}
+                    placement="bottomRight"
+                  >
+                    <Button
+                      type="text"
+                      icon={<MoreOutlined style={{ fontSize: '20px' }} />}
+                      className="hover:bg-gray-100 rounded-full"
+                    />
+                  </Dropdown>
+                </div>
                 <div className="flex flex-col md:flex-row items-center gap-6">
                   <ProfileAvatar
                     profileImage={displayStudent.profileImage}

@@ -34,6 +34,9 @@ import {
   VerifyJoiningLetterDto,
   RejectJoiningLetterDto,
   UploadVisitDocumentDto,
+  UpdateStudentDto,
+  UploadStudentDocumentDto,
+  ToggleStudentStatusDto,
 } from './dto';
 import {
   validateVisitDocument,
@@ -459,5 +462,66 @@ export class FacultyController {
       .replace(/-+/g, '_')
       .replace(/_+/g, '_')
       .substring(0, 100);
+  }
+
+  // ==================== Student Management ====================
+
+  @Put('students/:id')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @ApiOperation({ summary: 'Update student profile' })
+  @ApiResponse({ status: 200, description: 'Student updated successfully' })
+  async updateStudent(
+    @Param('id') studentId: string,
+    @Body() updateStudentDto: UpdateStudentDto,
+    @Req() req,
+  ) {
+    return this.facultyService.updateStudent(studentId, updateStudentDto, req.user.userId);
+  }
+
+  @Post('students/:id/documents')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  @ApiOperation({ summary: 'Upload student document' })
+  @ApiResponse({ status: 200, description: 'Document uploaded successfully' })
+  async uploadStudentDocument(
+    @Param('id') studentId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: UploadStudentDocumentDto,
+    @Req() req,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No file provided');
+    }
+
+    // Get student details for file path
+    const student = await this.facultyService.getStudentDetail(studentId, req.user.userId);
+
+    if (!student) {
+      throw new BadRequestException('Student not found');
+    }
+
+    // Get institution name for folder structure
+    const institutionName = student.Institution?.name || 'default';
+
+    // Upload to MinIO with organized folder structure
+    const result = await this.fileStorageService.uploadStudentDocument(file, {
+      institutionName,
+      rollNumber: student.rollNumber || studentId,
+      documentType: (body.type || 'other') as 'profile' | 'joining-letter' | 'monthly-report' | 'completion-certificate' | 'offer-letter' | 'noc' | 'document' | 'other',
+    });
+
+    return this.facultyService.saveStudentDocument(studentId, result.url, body.type, req.user.userId);
+  }
+
+  @Put('students/:id/toggle-status')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @ApiOperation({ summary: 'Toggle student active status' })
+  @ApiResponse({ status: 200, description: 'Student status toggled successfully' })
+  async toggleStudentStatus(
+    @Param('id') studentId: string,
+    @Body() body: ToggleStudentStatusDto,
+    @Req() req,
+  ) {
+    return this.facultyService.toggleStudentStatus(studentId, body.isActive, req.user.userId);
   }
 }

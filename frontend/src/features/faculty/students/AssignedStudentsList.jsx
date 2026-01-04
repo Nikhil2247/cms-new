@@ -12,11 +12,28 @@ import {
   Tabs,
   Empty,
   Timeline,
+  Upload,
+  message,
+  Tooltip,
+  Dropdown,
+  Modal,
+  Form,
+  Select,
+  Popconfirm,
 } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAssignedStudents,
   selectStudents,
+  uploadJoiningLetter,
+  uploadMonthlyReport,
+  updateStudent,
+  uploadStudentDocument,
+  toggleStudentStatus,
+  deleteInternship,
+  optimisticallyUpdateStudent,
+  optimisticallyToggleStudentStatus,
+  rollbackStudentOperation,
 } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import {
@@ -34,9 +51,20 @@ import {
   LaptopOutlined,
   EnvironmentOutlined,
   BankOutlined,
+  UploadOutlined,
+  EyeOutlined,
+  CalendarOutlined,
+  MoreOutlined,
+  EditOutlined,
+  StopOutlined,
+  PlayCircleOutlined,
+  DeleteOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import StudentDetailsModal from '../dashboard/components/StudentDetailsModal';
+import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
+import FacultyStudentModal from './FacultyStudentModal';
 
 const { Title, Text } = Typography;
 
@@ -50,6 +78,23 @@ const AssignedStudentsList = () => {
   const [search, setSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [visitModalVisible, setVisitModalVisible] = useState(false);
+  const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
+  const [uploadingReport, setUploadingReport] = useState(false);
+
+  // Document upload modal state
+  const [uploadDocumentModal, setUploadDocumentModal] = useState(false);
+  const [uploadForm] = Form.useForm();
+  const [fileList, setFileList] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
+
+  // Edit student modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingStudentId, setEditingStudentId] = useState(null);
+
+  // Delete internship state
+  const [deletingInternshipId, setDeletingInternshipId] = useState(null);
 
   // Initial fetch
   useEffect(() => {
@@ -104,6 +149,223 @@ const AssignedStudentsList = () => {
   const handleRefresh = useCallback(() => {
     dispatch(fetchAssignedStudents({ forceRefresh: true }));
   }, [dispatch]);
+
+  // Get active internship application for the selected student
+  const getActiveApplication = useCallback(() => {
+    if (!selectedStudent) return null;
+    return selectedStudent.activeInternship || selectedStudent.internshipApplications?.[0] || null;
+  }, [selectedStudent]);
+
+  // Handle visit log success
+  const handleVisitSuccess = useCallback(() => {
+    setVisitModalVisible(false);
+    handleRefresh();
+  }, [handleRefresh]);
+
+  // Handle joining letter upload
+  const handleJoiningLetterUpload = async (file) => {
+    const app = getActiveApplication();
+    if (!app?.id) {
+      message.error('No active internship application found');
+      return false;
+    }
+
+    setUploadingJoiningLetter(true);
+    try {
+      await dispatch(uploadJoiningLetter({ applicationId: app.id, file })).unwrap();
+      message.success('Joining letter uploaded successfully');
+      handleRefresh();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
+      message.error(errorMessage);
+    } finally {
+      setUploadingJoiningLetter(false);
+    }
+    return false;
+  };
+
+  // Handle monthly report upload
+  const handleReportUpload = async (file) => {
+    const app = getActiveApplication();
+    if (!app?.id) {
+      message.error('No active internship application found');
+      return false;
+    }
+
+    setUploadingReport(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('applicationId', app.id);
+      formData.append('reportMonth', dayjs().month() + 1);
+      formData.append('reportYear', dayjs().year());
+
+      await dispatch(uploadMonthlyReport(formData)).unwrap();
+      message.success('Monthly report uploaded successfully');
+      handleRefresh();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload report';
+      message.error(errorMessage);
+    } finally {
+      setUploadingReport(false);
+    }
+    return false;
+  };
+
+  // Handle document upload
+  const handleDocumentUpload = async () => {
+    try {
+      const values = await uploadForm.validateFields();
+      if (fileList.length === 0) {
+        message.error('Please select a file to upload');
+        return;
+      }
+
+      setUploading(true);
+      const file = fileList[0].originFileObj || fileList[0];
+
+      await dispatch(uploadStudentDocument({
+        studentId: selectedStudent.id,
+        file: file,
+        type: values.documentType
+      })).unwrap();
+      message.success('Document uploaded successfully');
+      setUploadDocumentModal(false);
+      uploadForm.resetFields();
+      setFileList([]);
+      handleRefresh();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload document';
+      message.error(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Handle activate/deactivate student with optimistic update
+  const handleToggleStatus = async () => {
+    if (!selectedStudent) return;
+
+    const studentId = selectedStudent.id;
+    const newStatus = selectedStudent.isActive === false ? true : false;
+    const previousList = [...students];
+
+    setTogglingStatus(true);
+
+    // Optimistic update - update UI immediately
+    dispatch(optimisticallyToggleStudentStatus({ studentId, isActive: newStatus }));
+
+    // Update selected student locally
+    setSelectedStudent(prev => prev ? { ...prev, isActive: newStatus } : null);
+
+    try {
+      await dispatch(toggleStudentStatus({
+        studentId,
+        isActive: newStatus
+      })).unwrap();
+      message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      // Rollback on error
+      dispatch(rollbackStudentOperation({ list: previousList }));
+      setSelectedStudent(prev => prev ? { ...prev, isActive: !newStatus } : null);
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to update student status';
+      message.error(errorMessage);
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
+
+  // Document type options
+  const documentTypeOptions = [
+    { value: 'MARKSHEET_10TH', label: '10th Marksheet' },
+    { value: 'MARKSHEET_12TH', label: '12th Marksheet' },
+    { value: 'CASTE_CERTIFICATE', label: 'Caste Certificate' },
+    { value: 'PHOTO', label: 'Photo' },
+    { value: 'OTHER', label: 'Other' },
+  ];
+
+  // Edit modal handlers
+  const openEditModal = () => {
+    // Get the student ID from the selected student
+    const studentId = selectedStudent?.id || selectedStudent?.student?.id;
+    console.log('Opening edit modal for student:', selectedStudent);
+    console.log('Student ID:', studentId);
+    setEditingStudentId(studentId);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditModalClose = () => {
+    setIsEditModalOpen(false);
+    setEditingStudentId(null);
+  };
+
+  const handleEditModalSuccess = (updatedData) => {
+    // Update the selected student with new data
+    if (updatedData && selectedStudent) {
+      setSelectedStudent(prev => prev ? { ...prev, ...updatedData } : null);
+    }
+    // Refresh list to ensure consistency
+    handleRefresh();
+  };
+
+  // Handle delete internship application
+  const handleDeleteInternship = async (internshipId) => {
+    if (!internshipId) return;
+
+    setDeletingInternshipId(internshipId);
+    try {
+      await dispatch(deleteInternship(internshipId)).unwrap();
+      message.success('Internship application deleted successfully');
+
+      // Update selected student - remove the deleted internship from the list
+      if (selectedStudent) {
+        setSelectedStudent(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            internshipApplications: (prev.internshipApplications || []).filter(
+              app => app.id !== internshipId
+            ),
+            activeInternship: prev.activeInternship?.id === internshipId ? null : prev.activeInternship,
+          };
+        });
+      }
+
+      // Refresh the list
+      handleRefresh();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete internship';
+      message.error(errorMessage);
+    } finally {
+      setDeletingInternshipId(null);
+    }
+  };
+
+  // Three-dot menu items
+  const getActionMenuItems = () => [
+    {
+      key: 'upload',
+      icon: <UploadOutlined />,
+      label: 'Upload Document',
+      onClick: () => setUploadDocumentModal(true),
+    },
+    {
+      key: 'edit',
+      icon: <EditOutlined />,
+      label: 'Edit Profile',
+      onClick: openEditModal,
+    },
+    {
+      type: 'divider',
+    },
+    {
+      key: 'toggle',
+      icon: selectedStudent?.isActive === false ? <PlayCircleOutlined /> : <StopOutlined />,
+      label: selectedStudent?.isActive === false ? 'Activate Student' : 'Deactivate Student',
+      danger: selectedStudent?.isActive !== false,
+      onClick: handleToggleStatus,
+    },
+  ];
 
   // Helper functions
   const formatDate = (dateString) => {
@@ -237,18 +499,39 @@ const AssignedStudentsList = () => {
                         <div className="text-sm text-gray-600">{app.jobProfile}</div>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <Tag color={
-                        app.internshipPhase === 'COMPLETED' ? 'success'
-                        : app.internshipPhase === 'ACTIVE' ? 'processing'
-                        : app.status === 'JOINED' ? 'blue'
-                        : 'warning'
-                      }>
-                        {app.internshipPhase || app.status}
-                      </Tag>
-                      {app.isSelfIdentified && (
-                        <Tag color="purple" icon={<BankOutlined />}>Self Identified</Tag>
-                      )}
+                    <div className="flex items-start gap-2">
+                      <div className="flex flex-col gap-1">
+                        <Tag color={
+                          app.internshipPhase === 'COMPLETED' ? 'success'
+                          : app.internshipPhase === 'ACTIVE' ? 'processing'
+                          : app.status === 'JOINED' ? 'blue'
+                          : 'warning'
+                        }>
+                          {app.internshipPhase || app.status}
+                        </Tag>
+                        {app.isSelfIdentified && (
+                          <Tag color="purple" icon={<BankOutlined />}>Self Identified</Tag>
+                        )}
+                      </div>
+                      {/* Delete Button */}
+                      <Popconfirm
+                        title="Delete Internship Application"
+                        description="Are you sure you want to delete this internship application? This action cannot be undone."
+                        icon={<ExclamationCircleOutlined className="text-red-500" />}
+                        onConfirm={() => handleDeleteInternship(app.id)}
+                        okText="Yes, Delete"
+                        cancelText="Cancel"
+                        okButtonProps={{ danger: true, loading: deletingInternshipId === app.id }}
+                      >
+                        <Button
+                          type="text"
+                          danger
+                          size="small"
+                          icon={<DeleteOutlined />}
+                          loading={deletingInternshipId === app.id}
+                          className="hover:bg-red-50"
+                        />
+                      </Popconfirm>
                     </div>
                   </div>
 
@@ -419,15 +702,65 @@ const AssignedStudentsList = () => {
           </Title>
         </div>
         {selectedStudent && (
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              type="primary"
-              icon={<UserOutlined />}
-              onClick={() => setDetailModalVisible(true)}
-              className="bg-gradient-to-r from-blue-500 to-blue-700"
-            >
-              View Application Details
-            </Button>
+          <div className="flex gap-1.5 flex-wrap">
+            <Tooltip title="View full application details">
+              <Button
+                size="small"
+                icon={<EyeOutlined />}
+                onClick={() => setDetailModalVisible(true)}
+                className="bg-blue-50 border-blue-300 text-blue-700 hover:bg-blue-100"
+              >
+                View Details
+              </Button>
+            </Tooltip>
+            <Tooltip title="Log a new visit for this student">
+              <Button
+                size="small"
+                type="primary"
+                icon={<CalendarOutlined />}
+                onClick={() => setVisitModalVisible(true)}
+                className="bg-gradient-to-r from-green-500 to-green-700"
+                disabled={!getActiveApplication()}
+              >
+                Log Visit
+              </Button>
+            </Tooltip>
+            <Tooltip title="Upload joining letter document">
+              <Upload
+                showUploadList={false}
+                beforeUpload={handleJoiningLetterUpload}
+                accept=".pdf,.jpg,.jpeg,.png"
+                disabled={!getActiveApplication()}
+              >
+                <Button
+                  size="small"
+                  icon={<UploadOutlined />}
+                  loading={uploadingJoiningLetter}
+                  className="bg-purple-50 border-purple-300 text-purple-700 hover:bg-purple-100"
+                  disabled={!getActiveApplication()}
+                >
+                  {getActiveApplication()?.joiningLetterUrl ? 'Replace Letter' : 'Joining Letter'}
+                </Button>
+              </Upload>
+            </Tooltip>
+            <Tooltip title="Upload monthly report for this student">
+              <Upload
+                showUploadList={false}
+                beforeUpload={handleReportUpload}
+                accept=".pdf,.doc,.docx"
+                disabled={!getActiveApplication()}
+              >
+                <Button
+                  size="small"
+                  icon={<FileTextOutlined />}
+                  loading={uploadingReport}
+                  className="bg-orange-50 border-orange-300 text-orange-700 hover:bg-orange-100"
+                  disabled={!getActiveApplication()}
+                >
+                  Report
+                </Button>
+              </Upload>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -535,9 +868,24 @@ const AssignedStudentsList = () => {
                     className="border-4 border-white shadow-lg"
                   />
                   <div className="flex-grow text-center md:text-left">
-                    <Title level={3} className="mb-0 text-blue-800">
-                      {selectedStudent.name}
-                    </Title>
+                    <div className="flex items-center justify-between">
+                      <Title level={3} className="mb-0 text-blue-800">
+                        {selectedStudent.name}
+                      </Title>
+                      {/* Three-dot action menu */}
+                      <Dropdown
+                        menu={{ items: getActionMenuItems() }}
+                        trigger={['click']}
+                        placement="bottomRight"
+                      >
+                        <Button
+                          type="text"
+                          icon={<MoreOutlined style={{ fontSize: '20px' }} />}
+                          className="hover:bg-gray-100 rounded-full"
+                          loading={togglingStatus}
+                        />
+                      </Dropdown>
+                    </div>
                     <div className="flex justify-center md:justify-start items-center text-gray-500 mb-1">
                       <IdcardOutlined className="mr-2" />
                       {selectedStudent.rollNumber}
@@ -640,6 +988,70 @@ const AssignedStudentsList = () => {
         onClose={() => setDetailModalVisible(false)}
         onRefresh={handleRefresh}
         loading={loading}
+      />
+
+      {/* Unified Visit Log Modal */}
+      <UnifiedVisitLogModal
+        visible={visitModalVisible}
+        onClose={() => setVisitModalVisible(false)}
+        onSuccess={handleVisitSuccess}
+        selectedStudent={selectedStudent}
+        students={[{ student: selectedStudent, ...selectedStudent?._original }]}
+      />
+
+      {/* Upload Document Modal */}
+      <Modal
+        title="Upload Document"
+        open={uploadDocumentModal}
+        onCancel={() => {
+          setUploadDocumentModal(false);
+          uploadForm.resetFields();
+          setFileList([]);
+        }}
+        onOk={handleDocumentUpload}
+        confirmLoading={uploading}
+        okText="Upload"
+      >
+        <Form form={uploadForm} layout="vertical">
+          <Form.Item
+            name="documentType"
+            label="Document Type"
+            rules={[{ required: true, message: 'Please select document type' }]}
+          >
+            <Select placeholder="Select document type" options={documentTypeOptions} />
+          </Form.Item>
+          <Form.Item
+            label="Select File"
+            required
+          >
+            <Upload
+              beforeUpload={(file) => {
+                const isUnderLimit = file.size / 1024 <= 500;
+                if (!isUnderLimit) {
+                  message.error('File must be less than 500KB.');
+                  return Upload.LIST_IGNORE;
+                }
+                setFileList([file]);
+                return false;
+              }}
+              fileList={fileList}
+              onRemove={() => setFileList([])}
+              maxCount={1}
+              listType="picture"
+            >
+              <Button icon={<UploadOutlined />}>Select File (Max 500KB)</Button>
+            </Upload>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit Student Modal */}
+      <FacultyStudentModal
+        open={isEditModalOpen}
+        onClose={handleEditModalClose}
+        studentId={editingStudentId}
+        studentData={selectedStudent}
+        onSuccess={handleEditModalSuccess}
       />
     </div>
   );

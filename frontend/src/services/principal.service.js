@@ -256,6 +256,11 @@ export const principalService = {
     return { success: false, message: 'Internship bulk operations are currently unavailable', updated: 0 };
   },
 
+  async deleteInternship(applicationId) {
+    const response = await API.delete(`/principal/internships/${applicationId}`);
+    return response.data;
+  },
+
   // Remove mentor from student
   async removeMentor(studentId) {
     const response = await API.delete(`/principal/students/${studentId}/mentor`);

@@ -2221,6 +2221,255 @@ export class FacultyService {
     return application;
   }
 
+  // ==================== Student Management ====================
+
+  /**
+   * Update student profile
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
+   */
+  async updateStudent(studentId: string, updateDto: any, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const oldValues = {
+      name: student.name,
+      email: student.email,
+      contact: student.contact,
+      isActive: student.isActive,
+    };
+
+    // Build update data - only include fields that are provided
+    const updateData: any = {};
+
+    // Personal info
+    if (updateDto.name !== undefined) updateData.name = updateDto.name;
+    if (updateDto.email !== undefined) updateData.email = updateDto.email;
+    if (updateDto.profileImage !== undefined) updateData.profileImage = updateDto.profileImage;
+    if (updateDto.contact !== undefined) updateData.contact = updateDto.contact;
+    if (updateDto.rollNumber !== undefined) updateData.rollNumber = updateDto.rollNumber;
+    if (updateDto.dob !== undefined) updateData.dob = updateDto.dob || null; // dob is stored as String in schema
+    if (updateDto.gender !== undefined) updateData.gender = updateDto.gender;
+    if (updateDto.category !== undefined) updateData.category = updateDto.category;
+    if (updateDto.admissionType !== undefined) updateData.admissionType = updateDto.admissionType;
+
+    // Academic info
+    if (updateDto.currentYear !== undefined) updateData.currentYear = updateDto.currentYear;
+    if (updateDto.currentSemester !== undefined) updateData.currentSemester = updateDto.currentSemester;
+    if (updateDto.batchId !== undefined) updateData.batchId = updateDto.batchId;
+    if (updateDto.branchId !== undefined) updateData.branchId = updateDto.branchId;
+    if (updateDto.clearanceStatus !== undefined) updateData.clearanceStatus = updateDto.clearanceStatus;
+
+    // Parent info
+    if (updateDto.parentName !== undefined) updateData.parentName = updateDto.parentName;
+    if (updateDto.parentContact !== undefined) updateData.parentContact = updateDto.parentContact;
+    if (updateDto.motherName !== undefined) updateData.motherName = updateDto.motherName;
+
+    // Address info
+    if (updateDto.address !== undefined) updateData.address = updateDto.address;
+    if (updateDto.city !== undefined) updateData.city = updateDto.city;
+    if (updateDto.state !== undefined) updateData.state = updateDto.state;
+    if (updateDto.district !== undefined) updateData.district = updateDto.district;
+    if (updateDto.tehsil !== undefined) updateData.tehsil = updateDto.tehsil;
+    if (updateDto.pinCode !== undefined) updateData.pinCode = updateDto.pinCode;
+
+    // Status
+    if (updateDto.isActive !== undefined) updateData.isActive = updateDto.isActive;
+
+    const updated = await this.prisma.student.update({
+      where: { id: studentId },
+      data: updateData,
+      include: {
+        batch: true,
+        branch: true,
+        Institution: true,
+      },
+    });
+
+    // Get faculty for audit
+    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+
+    // Audit student update
+    this.auditService.log({
+      action: AuditAction.STUDENT_PROFILE_UPDATE,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: facultyId,
+      userName: faculty?.name,
+      userRole: faculty?.role || Role.TEACHER,
+      description: `Student profile updated by faculty: ${student.name}`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: faculty?.institutionId || undefined,
+      oldValues,
+      newValues: updateDto,
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['students', `student:${studentId}`]);
+
+    return {
+      success: true,
+      message: 'Student updated successfully',
+      data: updated,
+    };
+  }
+
+  /**
+   * Save student document after upload
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
+   */
+  async saveStudentDocument(studentId: string, documentUrl: string, documentType: string, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    // Create document record
+    const document = await this.prisma.document.create({
+      data: {
+        studentId,
+        type: documentType as any,
+        fileName: documentType,
+        fileUrl: documentUrl,
+      },
+    });
+
+    // Get faculty for audit
+    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+
+    // Audit document upload
+    this.auditService.log({
+      action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
+      entityType: 'Document',
+      entityId: document.id,
+      userId: facultyId,
+      userName: faculty?.name,
+      userRole: faculty?.role || Role.TEACHER,
+      description: `Document uploaded for student: ${student.name} (${documentType})`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.LOW,
+      institutionId: faculty?.institutionId || undefined,
+      newValues: {
+        studentId,
+        studentName: student.name,
+        documentType,
+        documentUrl,
+      },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['students', `student:${studentId}`]);
+
+    return {
+      success: true,
+      message: 'Document uploaded successfully',
+      data: document,
+    };
+  }
+
+  /**
+   * Toggle student active status
+   * SECURITY: Requires facultyId to verify authorization via MentorAssignment
+   * Also toggles the associated user account status
+   */
+  async toggleStudentStatus(studentId: string, isActive: boolean, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const oldStatus = student.isActive;
+
+    // Update student status
+    const updated = await this.prisma.student.update({
+      where: { id: studentId },
+      data: { isActive },
+    });
+
+    // Also update the associated user account status if userId exists
+    if (student.userId) {
+      await this.prisma.user.update({
+        where: { id: student.userId },
+        data: { active: isActive },
+      });
+    }
+
+    // Get faculty for audit
+    const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
+
+    // Audit status toggle
+    this.auditService.log({
+      action: isActive ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'Student',
+      entityId: studentId,
+      userId: facultyId,
+      userName: faculty?.name,
+      userRole: faculty?.role || Role.TEACHER,
+      description: `Student ${isActive ? 'activated' : 'deactivated'} by faculty: ${student.name}${student.userId ? ' (user account also updated)' : ''}`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: faculty?.institutionId || undefined,
+      oldValues: { isActive: oldStatus },
+      newValues: { isActive },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['students', `student:${studentId}`, 'users', `user:${student.userId}`]);
+
+    return {
+      success: true,
+      message: `Student ${isActive ? 'activated' : 'deactivated'} successfully${student.userId ? ' (user account also updated)' : ''}`,
+      data: updated,
+    };
+  }
+
   /**
    * Upload joining letter for a student
    */

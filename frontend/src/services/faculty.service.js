@@ -40,6 +40,30 @@ export const facultyService = {
     return response.data;
   },
 
+  // Student Management
+  async updateStudent(studentId, data) {
+    const response = await API.put(`/faculty/students/${studentId}`, data);
+    return response.data;
+  },
+
+  async uploadStudentDocument(studentId, file, type) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', type);
+
+    const response = await API.post(`/faculty/students/${studentId}/documents`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+
+  async toggleStudentStatus(studentId, isActive) {
+    const response = await API.put(`/faculty/students/${studentId}/toggle-status`, { isActive });
+    return response.data;
+  },
+
   // Visit Logs
   async getVisitLogs(params = {}) {
     const queryParams = new URLSearchParams();
@@ -151,7 +175,8 @@ export const facultyService = {
   },
 
   async deleteInternship(internshipId) {
-    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
+    const response = await API.delete(`/faculty/internships/${internshipId}`);
+    return response.data;
   },
 
   // Joining Letter Management

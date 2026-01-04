@@ -1,0 +1,600 @@
+import React, { useEffect, useState } from 'react';
+import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, Avatar, Image } from 'antd';
+import { useDispatch, useSelector } from 'react-redux';
+import { updateStudent, fetchAssignedStudents, selectStudents } from '../store/facultySlice';
+import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, PlusOutlined } from '@ant-design/icons';
+import dayjs from 'dayjs';
+import { useLookup } from '../../shared/hooks/useLookup';
+import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
+import facultyService from '../../../services/faculty.service';
+
+const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStudentData, onSuccess }) => {
+  const dispatch = useDispatch();
+  const [form] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(false);
+
+  // Profile image state
+  const [profileImageUrl, setProfileImageUrl] = useState(null);
+  const [profileImageFile, setProfileImageFile] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
+
+  // Use faculty students state as fallback
+  const studentsState = useSelector(selectStudents);
+  const studentsList = studentsState?.list || [];
+
+  // Find student in the faculty's assigned students list if not provided via props
+  const foundStudent = studentId && !propStudentData ? studentsList.find(s => {
+    // Handle both nested structure (s.student) and flat structure
+    const stud = s.student || s;
+    const id = stud.id || s.id;
+    return id === studentId;
+  }) : null;
+
+  // Get the actual student object - prefer prop, then found, handle nested structure
+  const studentData = propStudentData || foundStudent?.student || foundStudent;
+  const isEditMode = !!studentId;
+
+  // Debug logging
+  console.log('FacultyStudentModal - studentId:', studentId);
+  console.log('FacultyStudentModal - propStudentData:', propStudentData);
+  console.log('FacultyStudentModal - studentData:', studentData);
+
+  // Use global lookup data
+  const { activeBatches, activeBranches, isLoading: lookupLoading } = useLookup({
+    include: ['batches', 'branches']
+  });
+
+  useEffect(() => {
+    if (open) {
+      const loadData = async () => {
+        setInitialLoading(true);
+        try {
+          // Only fetch students if editing and student not in list
+          if (studentId && !studentData) {
+            await dispatch(fetchAssignedStudents({ forceRefresh: true }));
+          }
+        } finally {
+          setInitialLoading(false);
+        }
+      };
+      loadData();
+    }
+  }, [dispatch, studentId, studentData, open]);
+
+  useEffect(() => {
+    const setFormValues = async () => {
+      if (open && studentData) {
+        // Load profile image URL from MinIO
+        if (studentData.profileImage) {
+          try {
+            let urlToDisplay = studentData.profileImage;
+
+            if (typeof urlToDisplay === 'string') {
+              // Logic to resolve presigned URL for MinIO
+              if (urlToDisplay.startsWith('http')) {
+                if (urlToDisplay.includes('minio') || urlToDisplay.includes('127.0.0.1:9000') || urlToDisplay.includes('cms-uploads')) {
+                  urlToDisplay = await getPresignedUrl(urlToDisplay);
+                }
+              } else {
+                // Relative path
+                const fullUrl = getImageUrl(urlToDisplay);
+                urlToDisplay = await getPresignedUrl(fullUrl);
+              }
+              setProfileImageUrl(urlToDisplay);
+            }
+          } catch (err) {
+            console.error('Failed to resolve profile image URL:', err);
+            // Fallback to basic URL generation if presigning fails
+            const fallbackUrl = studentData.profileImage.startsWith('http')
+              ? studentData.profileImage
+              : getImageUrl(studentData.profileImage);
+            setProfileImageUrl(fallbackUrl);
+          }
+        } else {
+          setProfileImageUrl(null);
+        }
+
+        // Set form values (without profileImage - we handle it separately)
+        form.setFieldsValue({
+          ...studentData,
+          dob: studentData.dob ? dayjs(studentData.dob) : null,
+          contact: studentData.contact || studentData.phoneNo,
+        });
+      } else if (open && !isEditMode) {
+        form.resetFields();
+        setProfileImageUrl(null);
+        setProfileImageFile(null);
+      }
+    };
+
+    setFormValues();
+  }, [studentData, form, open, isEditMode]);
+
+  const handleClose = () => {
+    form.resetFields();
+    setProfileImageUrl(null);
+    setProfileImageFile(null);
+    onClose();
+  };
+
+  // Handle profile image preview
+  const handlePreview = async () => {
+    if (profileImageUrl) {
+      setPreviewImage(profileImageUrl);
+      setPreviewOpen(true);
+    } else if (profileImageFile) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setPreviewImage(reader.result);
+        setPreviewOpen(true);
+      };
+      reader.readAsDataURL(profileImageFile);
+    }
+  };
+
+  // Handle profile image change
+  const handleImageChange = (info) => {
+    const file = info.file.originFileObj || info.file;
+    if (file) {
+      // Validate file size (max 500KB)
+      if (file.size > 500 * 1024) {
+        message.error('Image must be less than 500KB');
+        return;
+      }
+      setProfileImageFile(file);
+      // Create preview URL
+      const reader = new FileReader();
+      reader.onload = () => {
+        setProfileImageUrl(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Remove profile image
+  const handleRemoveImage = () => {
+    setProfileImageFile(null);
+    setProfileImageUrl(null);
+  };
+
+  const onFinish = async (values) => {
+    console.log('Form submitted with values:', values);
+    console.log('Student ID:', studentId);
+
+    if (!studentId) {
+      message.error('Student ID is missing');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const formattedValues = {
+        ...values,
+        dob: values.dob ? values.dob.format('YYYY-MM-DD') : null,
+      };
+
+      // Remove profileImage from form values - we handle it separately
+      delete formattedValues.profileImage;
+      // Remove dateOfBirth if it exists (we only use dob)
+      delete formattedValues.dateOfBirth;
+
+      // Upload profile image if a new file was selected
+      if (profileImageFile) {
+        setUploadingImage(true);
+        try {
+          const uploadResult = await facultyService.uploadStudentDocument(
+            studentId,
+            profileImageFile,
+            'PROFILE_IMAGE'
+          );
+          // Add the new profile image URL to the update data
+          if (uploadResult?.data?.fileUrl) {
+            formattedValues.profileImage = uploadResult.data.fileUrl;
+          }
+        } catch (uploadError) {
+          console.error('Profile image upload failed:', uploadError);
+          message.warning('Profile image upload failed, but other data will be saved');
+        } finally {
+          setUploadingImage(false);
+        }
+      }
+
+      console.log('Sending update request with:', { id: studentId, data: formattedValues });
+
+      // Use faculty updateStudent action
+      const result = await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
+      console.log('Update result:', result);
+      message.success('Student updated successfully');
+
+      // Pass the updated data to parent for optimistic update
+      const updatedData = result?.data || formattedValues;
+      handleClose();
+      onSuccess?.(updatedData);
+    } catch (error) {
+      console.error('Update error:', error);
+      message.error(error?.message || error || 'Operation failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFormSubmit = () => {
+    console.log('Manual form submit triggered');
+    form.submit();
+  };
+
+  const onFinishFailed = (errorInfo) => {
+    console.log('Form validation failed:', errorInfo);
+    message.error('Please fill in all required fields');
+  };
+
+  const normFile = (e) => {
+    if (Array.isArray(e)) {
+      return e;
+    }
+    return e?.fileList;
+  };
+
+  // Category options matching schema
+  const categoryOptions = [
+    { value: 'GENERAL', label: 'General' },
+    { value: 'OBC', label: 'OBC' },
+    { value: 'SC', label: 'SC' },
+    { value: 'ST', label: 'ST' },
+  ];
+
+  // Admission type options matching schema
+  const admissionTypeOptions = [
+    { value: 'FIRST_YEAR', label: 'First Year' },
+    { value: 'LEET', label: 'LEET' },
+  ];
+
+  // Gender options
+  const genderOptions = [
+    { value: 'Male', label: 'Male' },
+    { value: 'Female', label: 'Female' },
+    { value: 'Other', label: 'Other' },
+  ];
+
+  // Clearance status options
+  const clearanceStatusOptions = [
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'CLEARED', label: 'Cleared' },
+    { value: 'HOLD', label: 'Hold' },
+    { value: 'REJECTED', label: 'Rejected' },
+  ];
+
+  return (
+    <Modal
+      title="Edit Student"
+      open={open}
+      onCancel={handleClose}
+      footer={null}
+      width={900}
+      destroyOnHidden
+      className="student-modal"
+    >
+      {initialLoading || lookupLoading ? (
+        <div className="flex justify-center items-center py-12">
+          <Spin size="large" />
+        </div>
+      ) : (
+        <Form form={form} layout="vertical" onFinish={onFinish} onFinishFailed={onFinishFailed} className="max-h-[70vh] overflow-y-auto px-2">
+          <Divider plain><span className="text-primary font-medium">Personal Information</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="name"
+                label="Name"
+                rules={[{ required: true, message: 'Please enter full name' }]}
+              >
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter full name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="email"
+                label="Email"
+                rules={[
+                  { required: true, message: 'Please enter email' },
+                  { type: 'email', message: 'Please enter valid email' }
+                ]}
+              >
+                <Input prefix={<MailOutlined className="text-gray-400" />} placeholder="Enter email" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="contact"
+                label="Contact"
+                rules={[
+                  { required: true, message: 'Please enter contact number' },
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
+                ]}
+              >
+                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter contact number" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="rollNumber"
+                label="Roll Number"
+                rules={[{ required: true, message: 'Please enter roll number' }]}
+              >
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter roll number" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Academic Information</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="admissionType"
+                label="Admission Type"
+                rules={[{ required: true, message: 'Please select admission type' }]}
+              >
+                <Select placeholder="Select admission type" options={admissionTypeOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="category"
+                label="Category"
+                rules={[{ required: true, message: 'Please select category' }]}
+              >
+                <Select placeholder="Select category" options={categoryOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="batchId" label="Batch">
+                <Select placeholder="Select batch" allowClear>
+                  {activeBatches?.map(batch => (
+                    <Select.Option key={batch.id} value={batch.id}>
+                      {batch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="branchId" label="Branch">
+                <Select placeholder="Select branch" allowClear>
+                  {activeBranches?.map(branch => (
+                    <Select.Option key={branch.id} value={branch.id}>
+                      {branch.name}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="currentYear" label="Current Year">
+                <Select placeholder="Select year" allowClear>
+                  {[1, 2, 3, 4].map(year => (
+                    <Select.Option key={year} value={year}>
+                      Year {year}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="currentSemester" label="Current Semester">
+                <Select placeholder="Select semester" allowClear>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map(sem => (
+                    <Select.Option key={sem} value={sem}>
+                      Semester {sem}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Form.Item name="clearanceStatus" label="Clearance Status">
+                <Select placeholder="Select status" options={clearanceStatusOptions} allowClear />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Parent/Guardian Information</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="parentName"
+                label="Parent Name"
+                rules={[{ required: true, message: 'Please enter parent name' }]}
+              >
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter parent name" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="parentContact"
+                label="Parent Contact"
+                rules={[
+                  { required: true, message: 'Please enter parent contact' },
+                  { pattern: /^\+?[0-9]{10,15}$/, message: 'Please enter valid phone number (10-15 digits)' }
+                ]}
+              >
+                <Input prefix={<PhoneOutlined className="text-gray-400" />} placeholder="Enter parent contact" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="motherName" label="Mother Name">
+                <Input prefix={<UserOutlined className="text-gray-400" />} placeholder="Enter mother name" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Personal Details</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="gender"
+                label="Gender"
+                rules={[{ required: true, message: 'Please select gender' }]}
+              >
+                <Select placeholder="Select gender" options={genderOptions} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item name="dob" label="Date of Birth">
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format="DD/MM/YYYY"
+                  placeholder="Select date of birth"
+                  disabledDate={(current) => current && current > dayjs().endOf('day')}
+                />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Address Information</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="pinCode"
+                label="Pin Code"
+                rules={[
+                  { required: true, message: 'Please enter pin code' },
+                  { pattern: /^[0-9]{6}$/, message: 'Please enter valid 6-digit pin code' }
+                ]}
+              >
+                <Input placeholder="Enter pin code" maxLength={6} />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="address"
+                label="Address"
+                rules={[{ required: true, message: 'Please enter address' }]}
+              >
+                <Input prefix={<HomeOutlined className="text-gray-400" />} placeholder="Enter address" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="city"
+                label="City/Village"
+                rules={[{ required: true, message: 'Please enter city/village' }]}
+              >
+                <Input placeholder="Enter city/village" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="state"
+                label="State"
+                rules={[{ required: true, message: 'Please enter state' }]}
+              >
+                <Input placeholder="Enter state" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="tehsil"
+                label="Tehsil"
+                rules={[{ required: true, message: 'Please enter tehsil' }]}
+              >
+                <Input placeholder="Enter tehsil" />
+              </Form.Item>
+            </Col>
+            <Col xs={24} sm={12}>
+              <Form.Item
+                name="district"
+                label="District"
+                rules={[{ required: true, message: 'Please enter district' }]}
+              >
+                <Input placeholder="Enter district" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Divider plain><span className="text-primary font-medium">Profile Image</span></Divider>
+
+          <Row gutter={16}>
+            <Col xs={24}>
+              <div className="flex items-center gap-4">
+                {/* Current Profile Image Preview */}
+                {profileImageUrl && (
+                  <div className="relative group">
+                    <Image
+                      src={profileImageUrl}
+                      alt="Profile"
+                      width={100}
+                      height={100}
+                      className="rounded-lg object-cover border-2 border-gray-200"
+                      style={{ objectFit: 'cover' }}
+                      fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMIAAADDCAYAAADQvc6UAAABRWlDQ1BJQ0MgUHJvZmlsZQAAKJFjYGASSSwoyGFhYGDIzSspCnJ3UoiIjFJgf8LAwSDCIMogwMCcmFxc4BgQ4ANUwgCjUcG3awyMIPqyLsis7PPOq3QdDFcvjV3jOD1boQVTPQrgSkktTgbSf4A4LbmgqISBgTEFyFYuLykAsTuAbJEioKOA7DkgdjqEvQHEToKwj4DVhAQ5A9k3gGyB5IxEoBmML4BsnSQk8XQkNtReEOBxcfXxUQg1Mjc0dyHgXNJBSWpFCYh2zi+oLMpMzyhRcASGUqqCZ16yno6CkYGRAQMDKMwhqj/fAIcloxgHQqxAjIHBEugw5sUIsSQpBobtQPdLciLEVJYzMPBHMDBsayhILEqEO4DxG0txmrERhM29nYGBddr//5/DGRjYNRkY/l7////39v///y4Dmn+LgesAIpvN4AAAADhlWElmTU0AKgAAAAgAAYdpAAQAAAABAAAAGgAAAAAAAqACAAQAAAABAAAAwqADAAQAAAABAAAAwwAAAABtNcJRAAAA/klEQVR4Ae3XAQ0AAADCMPV/egQJ+9kAQdIAAAAAdKsUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQU8P8AhQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUKFChQoVKlSoUI0KKQNWv6+dZgAAAABJRU5ErkJggg=="
+                      preview={{
+                        mask: <span className="text-white text-xs">Preview</span>,
+                      }}
+                    />
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      className="absolute -top-2 -right-2 bg-white rounded-full shadow-md"
+                      onClick={handleRemoveImage}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <Upload
+                  beforeUpload={() => false}
+                  showUploadList={false}
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  maxCount={1}
+                >
+                  <Button
+                    icon={profileImageUrl ? <UploadOutlined /> : <PlusOutlined />}
+                    loading={uploadingImage}
+                    className="rounded-lg"
+                  >
+                    {profileImageUrl ? 'Change Image' : 'Upload Image'}
+                  </Button>
+                </Upload>
+
+                <span className="text-gray-400 text-xs">Max 500KB, JPG/PNG</span>
+              </div>
+            </Col>
+          </Row>
+
+          {/* Image Preview Modal */}
+          <Modal
+            open={previewOpen}
+            title="Profile Image Preview"
+            footer={null}
+            onCancel={() => setPreviewOpen(false)}
+          >
+            <img alt="Preview" style={{ width: '100%' }} src={previewImage} />
+          </Modal>
+
+          <div className="flex justify-end gap-3 pt-4 border-t mt-4 sticky bottom-0 bg-white pb-2">
+            <Button onClick={handleClose} className="rounded-lg">
+              Cancel
+            </Button>
+            <Button type="primary" htmlType="submit" loading={loading} icon={<SaveOutlined />} className="rounded-lg shadow-md shadow-primary/20">
+              Update Student
+            </Button>
+          </div>
+        </Form>
+      )}
+    </Modal>
+  );
+};
+
+export default FacultyStudentModal;
