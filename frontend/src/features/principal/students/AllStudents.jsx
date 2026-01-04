@@ -277,34 +277,6 @@ const AllStudents = () => {
     }
   };
 
-<<<<<<< Updated upstream
-  const handleDeleteInternship = async (applicationId) => {
-    if (!applicationId) return;
-    const previousStudentFull = selectedStudentFull;
-
-    setSelectedStudentFull(prev => {
-      if (!prev) return null;
-      return {
-        ...prev,
-        internshipApplications: (prev.internshipApplications || []).filter(
-          app => app.id !== applicationId
-        ),
-      };
-    });
-
-    setDeletingInternship(applicationId);
-    try {
-      await principalService.deleteInternship(applicationId);
-      message.success('Internship application deleted successfully');
-    } catch (error) {
-      setSelectedStudentFull(previousStudentFull);
-      message.error(error?.response?.data?.message || error?.message || 'Failed to delete internship');
-    } finally {
-      setDeletingInternship(null);
-    }
-  };
-=======
->>>>>>> Stashed changes
 
   const openUploadModal = () => {
     uploadForm.resetFields();
@@ -658,29 +630,6 @@ const AllStudents = () => {
                       <span style={{ marginLeft: 4, fontWeight: 500 }}>{app.facultyMentorName}</span>
                     </div>
                   )}
-<<<<<<< Updated upstream
-
-                  <div style={{ marginTop: 12, paddingTop: 8, borderTop: `1px solid ${token.colorBorderSecondary}`, display: 'flex', justifyContent: 'flex-end' }}>
-                    <Popconfirm
-                      title="Delete Internship Application"
-                      description="Are you sure you want to delete this internship application?"
-                      onConfirm={() => handleDeleteInternship(app.id)}
-                      okText="Delete"
-                      okButtonProps={{ danger: true, loading: deletingInternship === app.id }}
-                    >
-                      <Button
-                        type="text"
-                        danger
-                        size="small"
-                        icon={<DeleteOutlined />}
-                        loading={deletingInternship === app.id}
-                      >
-                        Delete
-                      </Button>
-                    </Popconfirm>
-                  </div>
-=======
->>>>>>> Stashed changes
                 </Card>
               ))}
             </div>
