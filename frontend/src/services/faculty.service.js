@@ -40,6 +40,15 @@ export const facultyService = {
     return response.data;
   },
 
+  /**
+   * Get unmasked contact details for a student.
+   * Used to reveal masked phone numbers, emails, etc.
+   */
+  async getUnmaskedContactDetails(studentId) {
+    const response = await API.get(`/faculty/students/${studentId}/unmasked-contact`);
+    return response.data;
+  },
+
   // Student Management
   async updateStudent(studentId, data) {
     const response = await API.put(`/faculty/students/${studentId}`, data);

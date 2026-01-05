@@ -33,6 +33,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import API from '../services/api';
 import { authService } from '../features/auth/services/auth.service';
 import MfaSetup from '../features/auth/components/MfaSetup';
+import MaskedField from './common/MaskedField';
 
 const { Title, Text } = Typography;
 
@@ -50,6 +51,23 @@ const UserProfile = ({ visible, onClose }) => {
   const [mfaLoading, setMfaLoading] = useState(false);
   const [showMfaSetup, setShowMfaSetup] = useState(false);
   const [disableCode, setDisableCode] = useState('');
+
+  // Unmasked data cache
+  const [unmaskedData, setUnmaskedData] = useState(null);
+
+  // Function to reveal masked contact details
+  const handleRevealContact = async (fieldName) => {
+    // If we already have unmasked data, return the specific field
+    if (unmaskedData) {
+      return unmaskedData[fieldName] || null;
+    }
+
+    // Fetch unmasked data from API
+    const response = await API.get('/auth/me/unmasked-contact');
+    const data = response.data;
+    setUnmaskedData(data);
+    return data[fieldName] || null;
+  };
 
   const fetchUserProfile = async () => {
     setFetchingProfile(true);
@@ -106,6 +124,7 @@ const UserProfile = ({ visible, onClose }) => {
       setUserData(null);
       setActiveTab('profile');
       setDisableCode('');
+      setUnmaskedData(null);
     }
   }, [visible]);
 
@@ -381,16 +400,35 @@ const UserProfile = ({ visible, onClose }) => {
                             Contact Information
                           </Text>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <InfoField
-                              icon={<MailOutlined />}
-                              label="Email"
-                              value={userData.email}
-                            />
-                            <InfoField
-                              icon={<PhoneOutlined />}
-                              label="Phone"
-                              value={userData.phoneNo}
-                            />
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-background-secondary flex items-center justify-center text-text-tertiary shrink-0 text-sm">
+                                <MailOutlined />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <Text className="text-xs text-text-tertiary block mb-0.5">Email</Text>
+                                <MaskedField
+                                  maskedValue={userData.email}
+                                  fieldName="email"
+                                  onReveal={handleRevealContact}
+                                  className="text-sm font-medium text-text-primary"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-background-secondary flex items-center justify-center text-text-tertiary shrink-0 text-sm">
+                                <PhoneOutlined />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <Text className="text-xs text-text-tertiary block mb-0.5">Phone</Text>
+                                <MaskedField
+                                  maskedValue={userData.phoneNo}
+                                  fieldName="phoneNo"
+                                  onReveal={handleRevealContact}
+                                  className="text-sm font-medium text-text-primary"
+                                  placeholder="Not provided"
+                                />
+                              </div>
+                            </div>
                             {userData.rollNumber && (
                               <InfoField
                                 icon={<IdcardOutlined />}

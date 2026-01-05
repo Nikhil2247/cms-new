@@ -174,6 +174,77 @@ export class FacultyService {
   }
 
   /**
+   * Get unmasked contact details for a student.
+   * This bypasses the security interceptor's masking for authorized faculty/principal.
+   * The response is marked with _unmasked: true to signal the interceptor to skip masking.
+   */
+  async getUnmaskedContactDetails(studentId: string, facultyId: string) {
+    // Verify faculty is assigned to this student
+    const isAuthorized = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        studentId,
+        mentorId: facultyId,
+        isActive: true,
+      },
+    });
+
+    if (!isAuthorized) {
+      throw new NotFoundException('Student not found or you are not the assigned mentor');
+    }
+
+    const student = await this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            dob: true,
+          },
+        },
+        internshipApplications: {
+          where: { isActive: true },
+          select: {
+            id: true,
+            companyEmail: true,
+            companyContact: true,
+            hrEmail: true,
+            hrContact: true,
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    const internship = student.internshipApplications[0];
+
+    // Return unmasked data - marked so interceptor can identify it
+    return {
+      _unmasked: true, // Signal to skip masking in response
+      studentId: student.id,
+      userId: student.user.id,
+      name: student.user.name,
+      email: student.user.email,
+      phoneNo: student.user.phoneNo,
+      dob: student.user.dob,
+      internship: internship ? {
+        companyEmail: internship.companyEmail,
+        companyContact: internship.companyContact,
+        hrEmail: internship.hrEmail,
+        hrContact: internship.hrContact,
+      } : null,
+    };
+  }
+
+  /**
    * Get faculty dashboard data with assigned students count and pending reviews
    */
   async getDashboard(facultyId: string) {

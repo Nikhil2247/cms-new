@@ -11,7 +11,6 @@ import {
   GlobalOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
 import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
 
 const { Text } = Typography;
@@ -77,43 +76,42 @@ const AssignedStudentsList = ({
   };
 
   /**
-   * Calculate total expected reports using monthly cycles.
-   * Returns total for entire internship period (not just as of today).
-   * Always calculates dynamically based on dates to reflect date changes.
+   * Get expected reports count from backend counter fields.
+   * Falls back to 0 if counter not available.
    */
-  const calculateExpectedReports = (internshipApp) => {
-    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
-
-    const startDate = new Date(internshipApp.startDate);
-    const endDate = new Date(internshipApp.endDate);
-
-    return getTotalExpectedCount(startDate, endDate);
+  const getExpectedReports = (internshipApp) => {
+    return internshipApp?.totalExpectedReports || 0;
   };
 
   /**
-   * Calculate total expected visits using monthly cycles.
-   * Returns total for entire internship period (not just as of today).
-   * Always calculates dynamically based on dates to reflect date changes.
+   * Get submitted reports count from backend counter fields.
+   * Falls back to 0 if counter not available.
    */
-  const calculateExpectedVisits = (internshipApp) => {
-    if (!internshipApp?.startDate || !internshipApp?.endDate) return 0;
-
-    const startDate = new Date(internshipApp.startDate);
-    const endDate = new Date(internshipApp.endDate);
-
-    return getTotalExpectedCount(startDate, endDate);
+  const getSubmittedReports = (internshipApp) => {
+    return internshipApp?.submittedReportsCount || 0;
   };
 
-  // Get visit status with done/expected
+  /**
+   * Get expected visits count from backend counter fields.
+   * Falls back to 0 if counter not available.
+   */
+  const getExpectedVisits = (internshipApp) => {
+    return internshipApp?.totalExpectedVisits || 0;
+  };
+
+  /**
+   * Get completed visits count from backend counter fields.
+   * Falls back to 0 if counter not available.
+   */
+  const getCompletedVisits = (internshipApp) => {
+    return internshipApp?.completedVisitsCount || 0;
+  };
+
+  // Get visit status with done/expected using backend counter fields
   const getVisitStatus = (student) => {
     const internshipApp = getInternshipApp(student);
-    const visits = student.visits ||
-                  student.visitLogs ||
-                  internshipApp?.facultyVisitLogs ||
-                  student.student?.facultyVisitLogs ||
-                  [];
-    const done = visits.length;
-    const expected = calculateExpectedVisits(internshipApp);
+    const done = getCompletedVisits(internshipApp);
+    const expected = getExpectedVisits(internshipApp);
 
     // Determine color based on completion
     let color = token.colorTextQuaternary; // grey - no progress
@@ -153,17 +151,18 @@ const AssignedStudentsList = ({
     );
   };
 
-  // Get report status with done/expected
+  // Get report status with done/expected using backend counter fields
   const getReportStatus = (student) => {
     const internshipApp = getInternshipApp(student);
+    const done = getSubmittedReports(internshipApp);
+    const expected = getExpectedReports(internshipApp);
+
+    // Get reports array to check for draft reports
     const reports = student.monthlyReports ||
                    student.reports ||
                    internshipApp?.monthlyReports ||
                    student.student?.monthlyReports ||
                    [];
-    const done = reports.length;
-    const expected = calculateExpectedReports(internshipApp);
-
     // Check for draft reports (with auto-approval, only DRAFT is pending)
     const pendingCount = reports.filter(r => r.status === 'DRAFT').length;
 
@@ -319,16 +318,6 @@ const AssignedStudentsList = ({
         const startDate = internshipApp?.startDate;
         const endDate = internshipApp?.endDate;
 
-        // Calculate duration in months
-        let duration = '';
-        if (startDate && endDate) {
-          const start = dayjs(startDate);
-          const end = dayjs(endDate);
-          const months = end.diff(start, 'month');
-          const days = end.diff(start, 'day') % 30;
-          duration = months > 0 ? `${months}m` : `${days}d`;
-        }
-
         return (
           <div style={{ maxWidth: 190 }}>
             <Text strong style={{ fontSize: 12, display: 'block' }} ellipsis={{ tooltip: getCompanyName(student) }}>
@@ -339,7 +328,6 @@ const AssignedStudentsList = ({
                 {startDate && dayjs(startDate).format('DD MMM')}
                 {startDate && endDate && ' - '}
                 {endDate && dayjs(endDate).format('DD MMM YY')}
-                {duration && <span style={{ color: token.colorPrimary, marginLeft: 4 }}>({duration})</span>}
               </div>
             )}
           </div>
@@ -354,8 +342,8 @@ const AssignedStudentsList = ({
       sorter: (a, b) => {
         const internshipAppA = getInternshipApp(a);
         const internshipAppB = getInternshipApp(b);
-        const visitsA = (a.visits || a.visitLogs || internshipAppA?.facultyVisitLogs || []).length;
-        const visitsB = (b.visits || b.visitLogs || internshipAppB?.facultyVisitLogs || []).length;
+        const visitsA = getCompletedVisits(internshipAppA);
+        const visitsB = getCompletedVisits(internshipAppB);
         return visitsA - visitsB;
       },
       render: (_, student) => getVisitStatus(student),
@@ -368,8 +356,8 @@ const AssignedStudentsList = ({
       sorter: (a, b) => {
         const internshipAppA = getInternshipApp(a);
         const internshipAppB = getInternshipApp(b);
-        const reportsA = (a.monthlyReports || internshipAppA?.monthlyReports || []).length;
-        const reportsB = (b.monthlyReports || internshipAppB?.monthlyReports || []).length;
+        const reportsA = getSubmittedReports(internshipAppA);
+        const reportsB = getSubmittedReports(internshipAppB);
         return reportsA - reportsB;
       },
       render: (_, student) => getReportStatus(student),

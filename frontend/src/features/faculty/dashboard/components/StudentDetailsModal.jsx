@@ -57,8 +57,10 @@ import {
 } from '../../store/facultySlice';
 import { openFileWithPresignedUrl } from '../../../../utils/imageUtils';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
+import MaskedField from '../../../../components/common/MaskedField';
 import { getTotalExpectedCount } from '../../../../utils/monthlyCycle';
 import UnifiedVisitLogModal from '../../visits/UnifiedVisitLogModal';
+import { facultyService } from '../../../../services/faculty.service';
 
 const { Text, Title } = Typography;
 const { TextArea } = Input;
@@ -81,14 +83,60 @@ const StudentDetailsModal = ({
   const [saving, setSaving] = useState(false);
   const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
   const [uploadingReport, setUploadingReport] = useState(false);
+  const [unmaskedData, setUnmaskedData] = useState(null);
 
-  // Reset state when modal opens/closes
+  // Function to reveal masked contact details
+  const handleRevealContact = async (fieldName) => {
+    // If we already have unmasked data, return the specific field
+    if (unmaskedData) {
+      return unmaskedData[fieldName] || unmaskedData.internship?.[fieldName] || null;
+    }
+
+    // Fetch unmasked data from API
+    const studentId = studentData?.id || studentData?.student?.id;
+    if (!studentId) return null;
+
+    const data = await facultyService.getUnmaskedContactDetails(studentId);
+    setUnmaskedData(data);
+    return data[fieldName] || data.internship?.[fieldName] || null;
+  };
+
+  // Watch start and end dates to auto-calculate duration
+  const watchedStartDate = Form.useWatch('startDate', editForm);
+  const watchedEndDate = Form.useWatch('endDate', editForm);
+
+  // Calculate duration text from dates
+  const calculateDurationText = (start, end) => {
+    if (!start || !end) return '';
+    const startDate = dayjs(start);
+    const endDate = dayjs(end);
+    if (!startDate.isValid() || !endDate.isValid() || endDate.isBefore(startDate)) return '';
+
+    const months = endDate.diff(startDate, 'month');
+    const days = endDate.diff(startDate.add(months, 'month'), 'day');
+
+    if (months > 0 && days > 0) return `${months} months ${days} days`;
+    if (months > 0) return `${months} month${months > 1 ? 's' : ''}`;
+    const totalDays = endDate.diff(startDate, 'day');
+    return `${totalDays} day${totalDays > 1 ? 's' : ''}`;
+  };
+
+  // Auto-update duration when dates change
+  useEffect(() => {
+    if (isEditingInternship && watchedStartDate && watchedEndDate) {
+      const duration = calculateDurationText(watchedStartDate, watchedEndDate);
+      editForm.setFieldValue('internshipDuration', duration);
+    }
+  }, [watchedStartDate, watchedEndDate, isEditingInternship, editForm]);
+
+  // Reset state when modal opens/closes or student changes
   useEffect(() => {
     if (visible) {
       setActiveTab('overview');
       setIsEditingInternship(false);
+      setUnmaskedData(null); // Reset unmasked data cache
     }
-  }, [visible]);
+  }, [visible, student?.id, student?.student?.id]);
 
   // Helper to get nested data
   const getStudentData = () => {
@@ -392,14 +440,24 @@ const StudentDetailsModal = ({
                     <MailOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
                     <div>
                       <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Email</Text>
-                      <Text className="text-sm break-all">{studentData?.user?.email || studentData?.email || 'N/A'}</Text>
+                      <MaskedField
+                        maskedValue={studentData?.user?.email || studentData?.email}
+                        fieldName="email"
+                        onReveal={handleRevealContact}
+                        className="text-sm break-all"
+                      />
                     </div>
                   </div>
                   <div className="flex items-start gap-2">
                     <PhoneOutlined className="mt-1" style={{ color: token.colorTextTertiary }} />
                     <div>
                       <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Phone</Text>
-                      <Text className="text-sm">{studentData?.user?.phoneNo || studentData?.phone || studentData?.mobileNumber || 'N/A'}</Text>
+                      <MaskedField
+                        maskedValue={studentData?.user?.phoneNo || studentData?.phone || studentData?.mobileNumber}
+                        fieldName="phoneNo"
+                        onReveal={handleRevealContact}
+                        className="text-sm"
+                      />
                     </div>
                   </div>
                   <Divider className="my-2" />
@@ -485,8 +543,8 @@ const StudentDetailsModal = ({
                       <Form.Item name="stipend" label="Stipend (₹/month)" className="mb-2">
                         <InputNumber className="w-full" placeholder="e.g., 15000" min={0} />
                       </Form.Item>
-                      <Form.Item name="internshipDuration" label="Duration Text" className="mb-2">
-                        <Input placeholder="e.g., 6 months" />
+                      <Form.Item name="internshipDuration" label="Duration (Auto-calculated)" className="mb-2">
+                        <Input placeholder="Select start & end dates" disabled />
                       </Form.Item>
                     </div>
 
@@ -562,13 +620,25 @@ const StudentDetailsModal = ({
                           {effectiveInternship?.companyContact && (
                             <div className="flex items-center gap-2">
                               <PhoneOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
-                              <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{effectiveInternship.companyContact}</Text>
+                              <MaskedField
+                                maskedValue={effectiveInternship.companyContact}
+                                fieldName="companyContact"
+                                onReveal={handleRevealContact}
+                                className="text-xs"
+                                style={{ color: token.colorTextSecondary }}
+                              />
                             </div>
                           )}
                           {effectiveInternship?.companyEmail && (
                             <div className="flex items-center gap-2">
                               <MailOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
-                              <Text className="text-xs" style={{ color: token.colorTextSecondary }}>{effectiveInternship.companyEmail}</Text>
+                              <MaskedField
+                                maskedValue={effectiveInternship.companyEmail}
+                                fieldName="companyEmail"
+                                onReveal={handleRevealContact}
+                                className="text-xs"
+                                style={{ color: token.colorTextSecondary }}
+                              />
                             </div>
                           )}
                         </div>
@@ -595,7 +665,12 @@ const StudentDetailsModal = ({
                               <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Contact</Text>
                               <div className="flex items-center gap-1">
                                 <PhoneOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
-                                <Text className="text-sm">{effectiveInternship.hrContact}</Text>
+                                <MaskedField
+                                  maskedValue={effectiveInternship.hrContact}
+                                  fieldName="hrContact"
+                                  onReveal={handleRevealContact}
+                                  className="text-sm"
+                                />
                               </div>
                             </div>
                           )}
@@ -604,7 +679,12 @@ const StudentDetailsModal = ({
                               <Text className="text-xs block" style={{ color: token.colorTextTertiary }}>Email</Text>
                               <div className="flex items-center gap-1">
                                 <MailOutlined className="text-xs" style={{ color: token.colorTextTertiary }} />
-                                <Text className="text-sm truncate" title={effectiveInternship.hrEmail}>{effectiveInternship.hrEmail}</Text>
+                                <MaskedField
+                                  maskedValue={effectiveInternship.hrEmail}
+                                  fieldName="hrEmail"
+                                  onReveal={handleRevealContact}
+                                  className="text-sm"
+                                />
                               </div>
                             </div>
                           )}

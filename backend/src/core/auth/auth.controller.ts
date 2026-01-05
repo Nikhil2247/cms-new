@@ -225,6 +225,15 @@ export class AuthController {
   }
 
   /**
+   * Get current user's unmasked contact details (own profile)
+   */
+  @Get('me/unmasked-contact')
+  @UseGuards(JwtAuthGuard)
+  async getOwnUnmaskedContact(@CurrentUser() user: any) {
+    return this.authService.getOwnUnmaskedContact(user.userId);
+  }
+
+  /**
    * Update current user profile
    */
   @Post('profile')

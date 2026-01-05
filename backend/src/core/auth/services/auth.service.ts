@@ -756,6 +756,37 @@ export class AuthService {
   }
 
   /**
+   * Get user's own unmasked contact details.
+   * Used for revealing masked data in the user's own profile.
+   */
+  async getOwnUnmaskedContact(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phoneNo: true,
+        dob: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Return with _unmasked flag to bypass security interceptor masking
+    return {
+      _unmasked: true,
+      userId: user.id,
+      name: user.name,
+      email: user.email,
+      phoneNo: user.phoneNo,
+      dob: user.dob,
+    };
+  }
+
+  /**
    * Update user profile
    * Syncs common fields to Student record if user is a student
    */

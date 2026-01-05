@@ -198,6 +198,25 @@ export class SecurityInterceptor implements NestInterceptor {
           return data;
         }
 
+        // Check if response is marked as unmasked (explicit bypass for authorized endpoints)
+        if (data._unmasked === true) {
+          // Remove the _unmasked flag but keep sensitive field removal active
+          const { _unmasked, ...cleanData } = data;
+          // Process with null role (admin mode) - skips PII masking but removes sensitive fields
+          try {
+            return this.processResponse(
+              cleanData,
+              null, // null role = skip PII masking
+              new WeakSet(),
+              0,
+              { keysProcessed: 0 },
+            );
+          } catch (error) {
+            this.logger.error(`[${requestId}] Error processing unmasked response: ${error.message}`);
+            return cleanData;
+          }
+        }
+
         try {
           const processedData = this.processResponse(
             data,

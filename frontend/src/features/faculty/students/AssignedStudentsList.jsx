@@ -62,6 +62,8 @@ import dayjs from 'dayjs';
 import StudentDetailsModal from '../dashboard/components/StudentDetailsModal';
 import UnifiedVisitLogModal from '../visits/UnifiedVisitLogModal';
 import FacultyStudentModal from './FacultyStudentModal';
+import MaskedField from '../../../components/common/MaskedField';
+import { facultyService } from '../../../services/faculty.service';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -92,6 +94,30 @@ const AssignedStudentsList = () => {
   // Edit student modal state
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingStudentId, setEditingStudentId] = useState(null);
+
+  // Unmasked data cache
+  const [unmaskedData, setUnmaskedData] = useState(null);
+
+  // Function to reveal masked contact details
+  const handleRevealContact = async (fieldName) => {
+    // If we already have unmasked data for this student, return the specific field
+    if (unmaskedData && unmaskedData.studentId === selectedStudent?.id) {
+      return unmaskedData[fieldName] || unmaskedData.internship?.[fieldName] || null;
+    }
+
+    // Fetch unmasked data from API
+    const studentId = selectedStudent?.id;
+    if (!studentId) return null;
+
+    const data = await facultyService.getUnmaskedContactDetails(studentId);
+    setUnmaskedData(data);
+    return data[fieldName] || data.internship?.[fieldName] || null;
+  };
+
+  // Reset unmasked data when selected student changes
+  useEffect(() => {
+    setUnmaskedData(null);
+  }, [selectedStudent?.id]);
 
   // Initial fetch
   useEffect(() => {
@@ -402,18 +428,30 @@ const AssignedStudentsList = () => {
                   : selectedStudent.semester ? `Sem ${selectedStudent.semester}` : 'N/A'}
               </div>
 
-              <div style={{ color: token.colorTextSecondary }}>CGPA</div>
-              <div>{selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'N/A'}</div>
+              {/* <div style={{ color: token.colorTextSecondary }}>CGPA</div>
+              <div>{selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'N/A'}</div> */}
             </div>
           </Card>
 
           <Card title="Contact Information" bordered={false} style={{ backgroundColor: token.colorBgLayout }} size="small">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', rowGap: 12 }}>
               <div style={{ color: token.colorTextSecondary }}>Email</div>
-              <div style={{ wordBreak: 'break-all' }}>{selectedStudent?.user?.email || 'N/A'}</div>
+              <div style={{ wordBreak: 'break-all' }}>
+                <MaskedField
+                  maskedValue={selectedStudent?.user?.email}
+                  fieldName="email"
+                  onReveal={handleRevealContact}
+                />
+              </div>
 
               <div style={{ color: token.colorTextSecondary }}>Contact</div>
-              <div>{selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
+              <div>
+                <MaskedField
+                  maskedValue={selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber}
+                  fieldName="phoneNo"
+                  onReveal={handleRevealContact}
+                />
+              </div>
 
               <div style={{ color: token.colorTextSecondary }}>Address</div>
               <div>{selectedStudent.address || 'N/A'}</div>
@@ -877,23 +915,35 @@ const AssignedStudentsList = () => {
                       <MailOutlined style={{ color: token.colorPrimary, fontSize: 18, marginRight: 12 }} />
                       <div>
                         <div style={{ fontSize: 11, color: token.colorTextDescription }}>Email</div>
-                        <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>{selectedStudent?.user?.email || 'N/A'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-all' }}>
+                          <MaskedField
+                            maskedValue={selectedStudent?.user?.email}
+                            fieldName="email"
+                            onReveal={handleRevealContact}
+                          />
+                        </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       <PhoneOutlined style={{ color: token.colorSuccess, fontSize: 18, marginRight: 12 }} />
                       <div>
                         <div style={{ fontSize: 11, color: token.colorTextDescription }}>Contact</div>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber || 'N/A'}</div>
+                        <div style={{ fontSize: 13, fontWeight: 500 }}>
+                          <MaskedField
+                            maskedValue={selectedStudent?.user?.phoneNo || selectedStudent.phone || selectedStudent.mobileNumber}
+                            fieldName="phoneNo"
+                            onReveal={handleRevealContact}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {/* <div style={{ display: 'flex', alignItems: 'center' }}>
                       <BulbOutlined style={{ color: token.colorWarning, fontSize: 18, marginRight: 12 }} />
                       <div>
                         <div style={{ fontSize: 11, color: token.colorTextDescription }}>CGPA</div>
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{selectedStudent.cgpa ? selectedStudent.cgpa.toFixed(2) : 'N/A'}</div>
                       </div>
-                    </div>
+                    </div> */}
                   </div>
                 </div>
               </Card>

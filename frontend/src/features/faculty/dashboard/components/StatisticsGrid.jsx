@@ -150,58 +150,34 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     return activeStudents.length > 0 ? activeStudents : students;
   }, [students, isInternshipActiveInCurrentMonth]);
 
-  // Calculate approved reports for current month
-  // Use ONLY counter fields from API - no fallback logic
-  const approvedReportsCount = useMemo(() => {
-    // Sum up submittedReportsCount from all students with active internships
-    return studentsActiveThisMonth.reduce((sum, student) => {
-      const apps = student.internshipApplications ||
-                   student.student?.internshipApplications ||
-                   [];
-      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
-      return sum + (activeApp?.submittedReportsCount || 0);
-    }, 0);
-  }, [studentsActiveThisMonth]);
+  // Count reports submitted in current month from monthlyReports array
+  const currentMonthReportsCount = useMemo(() => {
+    return monthlyReports.filter(report => {
+      const reportDate = dayjs(report.createdAt || report.submittedAt);
+      return reportDate.isValid() &&
+             (reportDate.isAfter(currentMonthStart) || reportDate.isSame(currentMonthStart, 'day')) &&
+             (reportDate.isBefore(currentMonthEnd) || reportDate.isSame(currentMonthEnd, 'day'));
+    }).length;
+  }, [monthlyReports, currentMonthStart, currentMonthEnd]);
+
+  // Count visits completed in current month from visitLogs array
+  const currentMonthVisitsCount = useMemo(() => {
+    return visitLogs.filter(visit => {
+      const visitDate = dayjs(visit.visitDate || visit.createdAt);
+      return visitDate.isValid() &&
+             (visitDate.isAfter(currentMonthStart) || visitDate.isSame(currentMonthStart, 'day')) &&
+             (visitDate.isBefore(currentMonthEnd) || visitDate.isSame(currentMonthEnd, 'day'));
+    }).length;
+  }, [visitLogs, currentMonthStart, currentMonthEnd]);
 
   // Total students (with breakdown)
   const totalStudents = stats.totalStudents || students.length || 0;
   const internalStudents = stats.internalStudents || 0;
   const externalStudents = stats.externalStudents || 0;
 
-  // Expected total for current month - students with active internships
-  // Use ONLY counter fields from API - no fallback logic
-  const expectedTotal = useMemo(() => {
-    // Get totalExpectedReports from counter fields only
-    return studentsActiveThisMonth.reduce((sum, student) => {
-      const apps = student.internshipApplications ||
-                   student.student?.internshipApplications ||
-                   [];
-      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
-      return sum + (activeApp?.totalExpectedReports || 0);
-    }, 0);
-  }, [studentsActiveThisMonth]);
-
-  // Calculate completed visits using ONLY counter fields - no fallback logic
-  const completedVisitsCount = useMemo(() => {
-    return studentsActiveThisMonth.reduce((sum, student) => {
-      const apps = student.internshipApplications ||
-                   student.student?.internshipApplications ||
-                   [];
-      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
-      return sum + (activeApp?.completedVisitsCount || 0);
-    }, 0);
-  }, [studentsActiveThisMonth]);
-
-  // Calculate expected visits using ONLY counter fields - no fallback logic
-  const expectedVisitsTotal = useMemo(() => {
-    return studentsActiveThisMonth.reduce((sum, student) => {
-      const apps = student.internshipApplications ||
-                   student.student?.internshipApplications ||
-                   [];
-      const activeApp = apps.find(app => app.status === 'JOINED' || app.internshipPhase === 'ACTIVE');
-      return sum + (activeApp?.totalExpectedVisits || 0);
-    }, 0);
-  }, [studentsActiveThisMonth]);
+  // Expected for current month = number of students with active internships this month
+  // Each student needs 1 report and 1 visit per month
+  const expectedThisMonth = studentsActiveThisMonth.length;
 
   // Get grievance stats from API
   const pendingGrievances = stats.pendingGrievances || 0;
@@ -221,7 +197,7 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
       iconColor: '#3b82f6',
       valueColor: '#3b82f6',
       subtitle: (() => {
-        const activeCount = stats.activeStudents || expectedTotal;
+        const activeCount = stats.activeStudents || expectedThisMonth;
         const inactiveCount = totalStudents - activeCount;
 
         return (
@@ -247,20 +223,20 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     },
     {
       title: 'Monthly Reports',
-      value: approvedReportsCount,
-      secondaryValue: expectedTotal,
+      value: currentMonthReportsCount,
+      secondaryValue: expectedThisMonth,
       icon: <FileTextOutlined />,
       iconBgColor: '#f3e8ff',
       iconColor: '#9333ea',
       valueColor: '#9333ea',
-      subtitle: `Approved - ${currentMonthName}`,
+      subtitle: `Submitted - ${currentMonthName}`,
       hasViewMore: true,
       onViewMore: () => setMonthlyReportsModalVisible(true),
     },
     {
       title: 'Visit Logs',
-      value: completedVisitsCount,
-      secondaryValue: expectedVisitsTotal,
+      value: currentMonthVisitsCount,
+      secondaryValue: expectedThisMonth,
       icon: <VideoCameraOutlined />,
       iconBgColor: '#d1fae5',
       iconColor: '#10b981',

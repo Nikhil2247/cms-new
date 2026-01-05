@@ -200,14 +200,10 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
             )}
           </div>
         );
-      case 'SCHEDULED':
-        return <CheckCircleOutlined style={{ color: '#3b82f6', fontSize: '18px' }} />;
       case 'missing':
         return <CloseCircleOutlined style={{ color: '#ef4444', fontSize: '18px' }} />;
       case 'na':
         return <Text type="secondary">N/A</Text>;
-      case 'future':
-        return <MinusOutlined style={{ color: '#d1d5db', fontSize: '14px' }} />;
       default:
         return <MinusOutlined style={{ color: '#d1d5db', fontSize: '14px' }} />;
     }
@@ -315,10 +311,6 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
         <div className="flex items-center !gap-2">
           <CheckCircleOutlined style={{ color: '#10b981' }} />
           <span>Completed (P=Physical, V=Virtual, T=Telephonic)</span>
-        </div>
-        <div className="flex items-center !gap-2">
-          <CheckCircleOutlined style={{ color: '#3b82f6' }} />
-          <span>Scheduled</span>
         </div>
         <div className="flex items-center !gap-2">
           <CloseCircleOutlined style={{ color: '#ef4444' }} />

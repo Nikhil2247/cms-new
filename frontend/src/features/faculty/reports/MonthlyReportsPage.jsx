@@ -241,49 +241,6 @@ const MonthlyReportsPage = () => {
     },
   ];
 
-  const tabItems = [
-    {
-      key: 'all',
-      label: (
-        <span className="flex items-center gap-2">
-          <FileTextOutlined />
-          All Reports
-          <Badge count={(reports || []).length} showZero className="ml-1" />
-        </span>
-      ),
-    },
-    {
-      key: 'submitted',
-      label: (
-        <span className="flex items-center gap-2">
-          <ClockCircleOutlined />
-          Submitted
-          <Badge count={submittedCount} className="ml-1" style={{ backgroundColor: token.colorInfo }} />
-        </span>
-      ),
-    },
-    {
-      key: 'approved',
-      label: (
-        <span className="flex items-center gap-2">
-          <CheckCircleOutlined />
-          Approved
-          <Badge count={approvedCount} showZero className="ml-1" style={{ backgroundColor: token.colorSuccess }} />
-        </span>
-      ),
-    },
-    {
-      key: 'draft',
-      label: (
-        <span className="flex items-center gap-2">
-          <FileTextOutlined />
-          Draft
-          <Badge count={draftCount} className="ml-1" />
-        </span>
-      ),
-    },
-  ];
-
   return (
     <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
       <div className="max-w-7xl mx-auto space-y-6">
@@ -380,12 +337,12 @@ const MonthlyReportsPage = () => {
             />
           </div>
 
-          <Tabs
+          {/* <Tabs
             activeKey={activeTab}
             onChange={setActiveTab}
             items={tabItems}
             className="!px-4"
-          />
+          /> */}
 
           <Table
             columns={columns}

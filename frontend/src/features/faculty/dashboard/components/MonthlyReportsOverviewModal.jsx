@@ -268,10 +268,10 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
           <CheckCircleOutlined style={{ color: '#3b82f6' }} />
           <span>Submitted</span>
         </div>
-        <div className="flex items-center !gap-2">
+        {/* <div className="flex items-center !gap-2">
           <CloseCircleOutlined style={{ color: '#f59e0b' }} />
           <span>Draft/Pending</span>
-        </div>
+        </div> */}
         <div className="flex items-center !gap-2">
           <CloseCircleOutlined style={{ color: '#ef4444' }} />
           <span>Missing/Rejected</span>

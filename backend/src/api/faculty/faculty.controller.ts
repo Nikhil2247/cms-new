@@ -98,6 +98,14 @@ export class FacultyController {
     return this.facultyService.getStudentProgress(studentId, req.user.userId);
   }
 
+  @Get('students/:id/unmasked-contact')
+  @Roles(Role.TEACHER, Role.PRINCIPAL)
+  @ApiOperation({ summary: 'Get unmasked contact details for a student (requires verification)' })
+  @ApiResponse({ status: 200, description: 'Unmasked contact details retrieved successfully' })
+  async getUnmaskedContactDetails(@Param('id') studentId: string, @Req() req) {
+    return this.facultyService.getUnmaskedContactDetails(studentId, req.user.userId);
+  }
+
   // Visit Logs
   @Get('visit-logs')
   @Roles(Role.TEACHER, Role.TEACHER)

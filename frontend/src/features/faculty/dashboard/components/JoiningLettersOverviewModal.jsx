@@ -144,23 +144,6 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
       },
     },
     {
-      title: 'Uploaded',
-      dataIndex: 'uploadedAt',
-      key: 'uploadedAt',
-      width: 100,
-      render: (date) => date ? dayjs(date).format('DD/MM/YY') : '-',
-    },
-    {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 100,
-      render: (status) => {
-        const config = getStatusConfig(status);
-        return <Tag color={config.color} icon={config.icon}>{config.label}</Tag>;
-      },
-    },
-    {
       title: 'Actions',
       key: 'actions',
       width: 150,
@@ -206,7 +189,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
         styles={{ body: { padding: '16px 24px', maxHeight: '70vh', overflowY: 'auto' } }}
       >
         {/* Stats Summary */}
-        <div className="flex gap-4 mb-4">
+        {/* <div className="flex gap-4 mb-4">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-200">
             <ClockCircleOutlined className="text-orange-500" />
             <Text className="text-sm"><strong>{stats.pending}</strong> Pending</Text>
@@ -219,7 +202,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
             <CloseCircleOutlined className="text-red-500" />
             <Text className="text-sm"><strong>{stats.rejected}</strong> Rejected</Text>
           </div>
-        </div>
+        </div> */}
 
         <Table
           columns={columns}
