@@ -1378,11 +1378,17 @@ const principalSlice = createSlice({
       })
       .addCase(assignMentor.fulfilled, (state, action) => {
         state.students.loading = false;
-        // Invalidate cache to trigger refresh
-        state.lastFetched.students = null;
-        state.lastFetched.studentsKey = null;
-        state.lastFetched.mentorAssignments = null;
-        state.lastFetched.mentorAssignmentsKey = null;
+        // Optimistic update: Add new assignments to state
+        const newAssignments = Array.isArray(action.payload) ? action.payload : [action.payload];
+        const newStudentIds = newAssignments.map(a => a.studentId);
+        // Remove old assignments for these students (reassignment case)
+        state.mentorAssignments = state.mentorAssignments.filter(
+          a => !newStudentIds.includes(a.studentId)
+        );
+        // Add new assignments
+        state.mentorAssignments = [...state.mentorAssignments, ...newAssignments];
+        // Keep cache valid - no need to refetch
+        state.lastFetched.mentorAssignments = Date.now();
       })
       .addCase(assignMentor.rejected, (state, action) => {
         state.students.loading = false;
@@ -1394,16 +1400,12 @@ const principalSlice = createSlice({
       })
       .addCase(removeMentorAssignment.fulfilled, (state, action) => {
         state.students.loading = false;
-        // Remove from mentorAssignments
+        // Optimistic update: Remove from mentorAssignments
         state.mentorAssignments = state.mentorAssignments.filter(
           a => a.studentId !== action.payload.studentId
         );
-        // Invalidate cache to trigger refresh
-        state.lastFetched.students = null;
-        state.lastFetched.studentsKey = null;
-        state.lastFetched.mentorAssignments = null;
-        state.lastFetched.mentorAssignmentsKey = null;
-        state.lastFetched.mentorStats = null;
+        // Keep cache valid - no need to refetch
+        state.lastFetched.mentorAssignments = Date.now();
       })
       .addCase(removeMentorAssignment.rejected, (state, action) => {
         state.students.loading = false;
@@ -1432,14 +1434,15 @@ const principalSlice = createSlice({
         state.students.loading = true;
         state.students.error = null;
       })
-      .addCase(bulkUnassignMentors.fulfilled, (state) => {
+      .addCase(bulkUnassignMentors.fulfilled, (state, action) => {
         state.students.loading = false;
-        // Invalidate cache to trigger refresh
-        state.lastFetched.students = null;
-        state.lastFetched.studentsKey = null;
-        state.lastFetched.mentorAssignments = null;
-        state.lastFetched.mentorAssignmentsKey = null;
-        state.lastFetched.mentorStats = null;
+        // Optimistic update: Remove unassigned students from mentorAssignments
+        const unassignedStudentIds = action.meta.arg.studentIds || [];
+        state.mentorAssignments = state.mentorAssignments.filter(
+          a => !unassignedStudentIds.includes(a.studentId)
+        );
+        // Keep cache valid - no need to refetch
+        state.lastFetched.mentorAssignments = Date.now();
       })
       .addCase(bulkUnassignMentors.rejected, (state, action) => {
         state.students.loading = false;

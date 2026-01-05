@@ -232,8 +232,8 @@ const MentorAssignment = () => {
       setSelectedStudents([]);
       setSelectedMentor(null);
       form.resetFields();
-      // Only refresh mentor assignments and stats - student data doesn't change
-      dispatch(fetchMentorAssignments({ forceRefresh: true }));
+      // Mentor assignments are updated optimistically in the slice
+      // Only refresh stats that need recalculation
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
@@ -248,8 +248,8 @@ const MentorAssignment = () => {
     try {
       await dispatch(removeMentorAssignment({ studentId })).unwrap();
       message.success('Mentor assignment removed');
-      // Only refresh mentor assignments and stats - student data doesn't change
-      dispatch(fetchMentorAssignments({ forceRefresh: true }));
+      // Mentor assignments are updated optimistically in the slice
+      // Only refresh stats that need recalculation
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
@@ -307,8 +307,8 @@ const MentorAssignment = () => {
       setEditingStudent(null);
       setNewMentorId(null);
       editForm.resetFields();
-      // Only refresh mentor assignments and stats - student data doesn't change
-      dispatch(fetchMentorAssignments({ forceRefresh: true }));
+      // Mentor assignments are updated optimistically in the slice
+      // Only refresh stats that need recalculation
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
@@ -336,8 +336,8 @@ const MentorAssignment = () => {
       await dispatch(bulkUnassignMentors({ studentIds: studentsToUnassign })).unwrap();
       message.success(`Removed mentor assignments from ${studentsToUnassign.length} student(s)`);
       setSelectedStudents([]);
-      // Only refresh mentor assignments and stats - student data doesn't change
-      dispatch(fetchMentorAssignments({ forceRefresh: true }));
+      // Mentor assignments are updated optimistically in the slice
+      // Only refresh stats that need recalculation
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
