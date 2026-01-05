@@ -232,9 +232,9 @@ const MentorAssignment = () => {
       setSelectedStudents([]);
       setSelectedMentor(null);
       form.resetFields();
+      // Only refresh mentor assignments and stats - student data doesn't change
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
-      dispatch(fetchStudents({ ...filters, forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
@@ -248,8 +248,9 @@ const MentorAssignment = () => {
     try {
       await dispatch(removeMentorAssignment({ studentId })).unwrap();
       message.success('Mentor assignment removed');
+      // Only refresh mentor assignments and stats - student data doesn't change
+      dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
-      dispatch(fetchStudents({ ...filters, forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
@@ -306,9 +307,9 @@ const MentorAssignment = () => {
       setEditingStudent(null);
       setNewMentorId(null);
       editForm.resetFields();
+      // Only refresh mentor assignments and stats - student data doesn't change
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
-      dispatch(fetchStudents({ ...filters, forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
@@ -335,9 +336,9 @@ const MentorAssignment = () => {
       await dispatch(bulkUnassignMentors({ studentIds: studentsToUnassign })).unwrap();
       message.success(`Removed mentor assignments from ${studentsToUnassign.length} student(s)`);
       setSelectedStudents([]);
+      // Only refresh mentor assignments and stats - student data doesn't change
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
-      dispatch(fetchStudents({ ...filters, forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
@@ -352,9 +353,9 @@ const MentorAssignment = () => {
     try {
       const result = await dispatch(autoAssignMentors()).unwrap();
       message.success(result.message || 'Auto-assignment completed');
+      // Only refresh mentor assignments and stats - student data doesn't change
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
-      dispatch(fetchStudents({ ...filters, forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
@@ -365,10 +366,10 @@ const MentorAssignment = () => {
   };
 
   const handleRefresh = () => {
+    // Refresh all data on manual refresh
     dispatch(fetchMentorAssignments({ forceRefresh: true }));
     dispatch(fetchMentorStats({ forceRefresh: true }));
     dispatch(fetchStudents({ ...filters, forceRefresh: true }));
-    // Refresh dashboard stats to update Un-assigned Students count
     dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
   };
 

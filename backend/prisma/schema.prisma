@@ -871,57 +871,6 @@ model FacultyVisitLog {
   @@map("faculty_visit_logs")
 }
 
-// State Directorate Analytics/Reports
-model StateReport {
-  id String @id @default(uuid())
-
-  reportType        ReportType
-  reportPeriod      String // e.g., "Q1 2024", "Annual 2024"
-  reportTitle       String?
-  reportDescription String?
-
-  // Coverage
-  institutionIds    String[] // Institutions covered in report
-  fromDate          DateTime?
-  toDate            DateTime?
-  // Aggregated Data
-  totalInternships  Int
-  totalApplications Int
-  totalPlacements   Int
-  institutionCount  Int
-  industryCount     Int
-  totalStudents     Int?
-  totalFaculty      Int?
-
-  // Performance metrics
-  applicationToPlacementRatio Float?
-  placementRate               Float? // Percentage
-  completionRate              Float? // Percentage
-  industryParticipationRate   Float? // Percentage
-  averageStipend              Float?
-  medianStipend               Float?
-
-  // Analytics
-  branchWiseData      Json? // Branch-wise statistics
-  institutionWiseData Json? // Institution-wise statistics
-  performanceMetrics  Json? // Various KPIs
-  industryWiseData    Json? // Industry participation data
-  geographicData      Json? // District/city-wise data
-  trendData           Json?
-  complianceData      Json? // Detailed compliance analysis
-  sections            Json? // Report sections with detailed analytics
-  selfIdentifiedData  Json? // Self-identified internship data
-  // File References
-  reportFileUrl       String?
-  generatedAt         DateTime @default(now())
-  generatedBy         String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("state_reports")
-}
-
 
 enum InternshipStatus {
   ACTIVE

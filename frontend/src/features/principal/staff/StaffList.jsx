@@ -3,6 +3,7 @@ import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown, Tab
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStaff,
+  fetchPrincipalDashboard,
   updateStaff,
   deleteStaff,
   resetUserPassword,
@@ -193,6 +194,8 @@ const StaffList = () => {
 
         try {
           await dispatch(deleteStaff(record.id)).unwrap();
+          // Refresh dashboard stats (staff/mentor count may change)
+          dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStaffOperation({ list: previousList }));

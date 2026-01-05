@@ -60,6 +60,7 @@ import principalService from "../../../services/principal.service";
 import analyticsService from "../../../services/analytics.service";
 import {
   fetchInternshipStats,
+  fetchPrincipalDashboard,
   selectInternshipStats,
 } from "../store/principalSlice";
 import { getTotalExpectedCount } from "../../../utils/monthlyCycle";
@@ -206,6 +207,25 @@ const SelfIdentifiedInternships = () => {
     }
   }, []);
 
+  // Optimistic update helper: Update mentor info for specific students
+  const updateInternshipsMentor = useCallback((studentIds, mentorData) => {
+    setInternships((prev) =>
+      prev.map((internship) => {
+        if (studentIds.includes(internship.studentId)) {
+          return {
+            ...internship,
+            mentorId: mentorData?.id || null,
+            mentorName: mentorData?.name || null,
+            mentorEmail: mentorData?.email || null,
+            mentorContact: mentorData?.phoneNo || null,
+            mentorDesignation: mentorData?.designation || null,
+          };
+        }
+        return internship;
+      })
+    );
+  }, []);
+
   // Initial fetch - only runs once
   useEffect(() => {
     if (hasFetched.current) return;
@@ -341,6 +361,9 @@ const SelfIdentifiedInternships = () => {
       return;
     }
 
+    // Get mentor data for optimistic update
+    const selectedMentor = mentors.find((m) => m.id === selectedMentorId);
+
     // For single record assignment
     if (singleAssignRecord) {
       if (!singleAssignRecord.studentId) {
@@ -356,6 +379,10 @@ const SelfIdentifiedInternships = () => {
           studentIds: [singleAssignRecord.studentId],
           academicYear: `${currentYear}-${currentYear + 1}`,
         });
+
+        // Optimistic update: Update local state instead of refetching
+        updateInternshipsMentor([singleAssignRecord.studentId], selectedMentor);
+
         toast.success(
           `Mentor ${
             singleAssignRecord.mentorName ? "changed" : "assigned"
@@ -364,7 +391,8 @@ const SelfIdentifiedInternships = () => {
         setAssignMentorVisible(false);
         setSelectedMentorId(null);
         setSingleAssignRecord(null);
-        fetchInternships();
+        // Refresh dashboard stats to update Un-assigned Students count
+        dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
       } catch (error) {
         console.error("Failed to assign mentor:", error);
         toast.error(error.message || "Failed to assign mentor");
@@ -395,13 +423,18 @@ const SelfIdentifiedInternships = () => {
         studentIds: selectedStudentIds,
         academicYear: `${currentYear}-${currentYear + 1}`,
       });
+
+      // Optimistic update: Update local state instead of refetching
+      updateInternshipsMentor(selectedStudentIds, selectedMentor);
+
       toast.success(
         `Mentor assigned to ${selectedStudentIds.length} student(s)`
       );
       setAssignMentorVisible(false);
       setSelectedMentorId(null);
       setSelectedRowKeys([]);
-      fetchInternships();
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       console.error("Failed to assign mentor:", error);
       toast.error(error.message || "Failed to assign mentor");
@@ -427,11 +460,16 @@ const SelfIdentifiedInternships = () => {
     try {
       setBulkActionLoading(true);
       await principalService.bulkUnassignMentors(selectedStudentIds);
+
+      // Optimistic update: Clear mentor info instead of refetching
+      updateInternshipsMentor(selectedStudentIds, null);
+
       toast.success(
         `Mentor unassigned from ${selectedStudentIds.length} student(s)`
       );
       setSelectedRowKeys([]);
-      fetchInternships();
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       console.error("Failed to unassign mentors:", error);
       toast.error(error.message || "Failed to unassign mentors");
@@ -462,8 +500,13 @@ const SelfIdentifiedInternships = () => {
       onOk: async () => {
         try {
           await principalService.bulkUnassignMentors([record.studentId]);
+
+          // Optimistic update: Clear mentor info instead of refetching
+          updateInternshipsMentor([record.studentId], null);
+
           toast.success("Mentor removed successfully");
-          fetchInternships();
+          // Refresh dashboard stats to update Un-assigned Students count
+          dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
         } catch (error) {
           console.error("Failed to remove mentor:", error);
           toast.error(error.message || "Failed to remove mentor");

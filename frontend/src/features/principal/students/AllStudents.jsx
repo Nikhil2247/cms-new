@@ -24,6 +24,7 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStudents,
+  fetchPrincipalDashboard,
   updateStudent,
   uploadStudentDocument,
   fetchStudentDocuments,
@@ -231,6 +232,8 @@ const AllStudents = () => {
       message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
       setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
       setSelectedStudentFull(prev => prev ? { ...prev, user: { ...prev.user, active: result.active } } : null);
+      // Refresh dashboard stats to update Active Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error || 'Failed to toggle student status');
     }

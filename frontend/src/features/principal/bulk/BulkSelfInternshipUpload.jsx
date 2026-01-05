@@ -26,13 +26,15 @@ import {
 import { bulkService } from '../../../services/bulk.service';
 import { stateService } from '../../../services/state.service';
 import { useNavigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchPrincipalDashboard } from '../store/principalSlice';
 import * as XLSX from 'xlsx';
 
 const { Step } = Steps;
 const { Dragger } = Upload;
 
 const BulkSelfInternshipUpload = () => {
+  const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const isStateDirectorate = user?.role === 'STATE_DIRECTORATE';
@@ -296,6 +298,11 @@ const BulkSelfInternshipUpload = () => {
         } else {
           message.success(`Successfully uploaded all ${result.success} internship records`);
         }
+      }
+
+      // Refresh dashboard stats if any records were uploaded successfully
+      if (result.success > 0) {
+        dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
       }
 
       // Always go to step 2 to show summary

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { Card, Upload, Button, message, Steps, Table, Alert, Space, Select, Divider } from 'antd';
+import { fetchPrincipalDashboard } from '../store/principalSlice';
 import { UploadOutlined, DownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, BankOutlined } from '@ant-design/icons';
 import { bulkService } from '../../../services/bulk.service';
 import { stateService } from '../../../services/state.service';
@@ -10,6 +11,7 @@ const { Step } = Steps;
 const { Dragger } = Upload;
 
 const BulkUpload = () => {
+  const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const isStateDirectorate = user?.role === 'STATE_DIRECTORATE';
 
@@ -252,6 +254,11 @@ const BulkUpload = () => {
         message.warning(`Uploaded ${result.success} ${uploadType}, ${result.failed} failed`);
       } else {
         message.success(`Successfully uploaded all ${result.success} ${uploadType}`);
+      }
+
+      // Refresh dashboard stats if any records were uploaded successfully
+      if (result.success > 0) {
+        dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
       }
 
       // Always go to step 2 to show summary
