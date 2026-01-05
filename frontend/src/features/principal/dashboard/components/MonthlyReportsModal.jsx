@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Modal,
   Table,
@@ -15,6 +15,7 @@ import {
   selectFacultyWorkload,
   selectFacultyWorkloadLoading,
   selectMentorCoverage,
+  fetchFacultyWorkload,
 } from '../../store/principalSlice';
 
 const { Text } = Typography;
@@ -47,6 +48,7 @@ const MonthlyReportsModal = ({
   alertsData = [],
   complianceData = null,
 }) => {
+  const dispatch = useDispatch();
   const faculty = useSelector(selectFacultyWorkload);
   const facultyLoading = useSelector(selectFacultyWorkloadLoading);
   const mentorCoverage = useSelector(selectMentorCoverage);
@@ -62,123 +64,51 @@ const MonthlyReportsModal = ({
     }
   }, [visible, monthOptions]);
 
-  // Process faculty data with report status
+  // Fetch data when month filter changes
+  const handleMonthChange = (value) => {
+    setSelectedMonth(value);
+    const option = monthOptions.find(opt => opt.value === value);
+    if (option) {
+      dispatch(fetchFacultyWorkload({ month: option.month, year: option.year, forceRefresh: true }));
+    }
+  };
+
+  // Process faculty data with report status - using new current month data
   const facultyReportData = useMemo(() => {
-    // Build a map of mentor data
-    const mentorMap = new Map();
+    if (!faculty || faculty.length === 0) return [];
 
-    // First, add all mentors from mentorCoverage.mentorLoadDistribution (this has assigned students count)
-    if (mentorCoverage?.mentorLoadDistribution) {
-      mentorCoverage.mentorLoadDistribution.forEach(mentor => {
-        const id = mentor.mentorId || mentor.id;
-        if (id) {
-          mentorMap.set(id, {
-            id,
-            name: mentor.mentorName || mentor.name || 'Unknown',
-            assignedStudents: mentor.assignedStudents || 0,
-            pendingReports: 0, // Will be updated from alertsData
-          });
-        }
-      });
-    }
+    // Map faculty data directly - now includes currentMonthReports and currentMonthExpectedReports
+    const result = faculty.map(f => ({
+      id: f.id,
+      name: f.name || 'Unknown',
+      assignedStudents: f.assignedCount || 0,
+      // Current month data
+      submittedReports: f.currentMonthReports || 0,
+      expectedReports: f.currentMonthExpectedReports || 0,
+      pendingReports: Math.max(0, (f.currentMonthExpectedReports || 0) - (f.currentMonthReports || 0)),
+      // Cumulative data for reference
+      totalReports: f.totalReports || 0,
+      completedReports: f.completedReports || 0,
+    }));
 
-    // Add/update from faculty workload data
-    if (faculty && faculty.length > 0) {
-      faculty.forEach(f => {
-        if (f.id) {
-          if (!mentorMap.has(f.id)) {
-            mentorMap.set(f.id, {
-              id: f.id,
-              name: f.name || 'Unknown',
-              assignedStudents: f.assignedCount || 0,
-              pendingReports: 0,
-            });
-          } else {
-            const existing = mentorMap.get(f.id);
-            // Use the higher count between the two sources
-            existing.assignedStudents = Math.max(existing.assignedStudents, f.assignedCount || 0);
-          }
-        }
-      });
-    }
-
-    // Process alerts data to count pending reports per mentor
-    const pendingByMentor = new Map();
-    let unassignedPendingCount = 0;
-    let unassignedStudentsList = [];
-
-    alertsData.forEach(alert => {
-      const mentorId = alert.mentorId;
-      const mentorName = alert.mentorName;
-
-      if (!mentorId) {
-        // Student has no mentor assigned
-        unassignedPendingCount++;
-        unassignedStudentsList.push(alert);
-      } else {
-        if (!pendingByMentor.has(mentorId)) {
-          pendingByMentor.set(mentorId, {
-            count: 0,
-            name: mentorName || 'Unknown',
-            students: []
-          });
-        }
-        pendingByMentor.get(mentorId).count++;
-        pendingByMentor.get(mentorId).students.push(alert);
-      }
-    });
-
-    // Update mentor data with pending counts from alerts
-    pendingByMentor.forEach((data, mentorId) => {
-      if (mentorMap.has(mentorId)) {
-        const mentor = mentorMap.get(mentorId);
-        mentor.pendingReports = data.count;
-      } else {
-        // Mentor found in alerts but not in mentor coverage - add them
-        mentorMap.set(mentorId, {
-          id: mentorId,
-          name: data.name,
-          assignedStudents: data.count, // At minimum, they have these students
-          pendingReports: data.count,
-        });
-      }
-    });
-
-    // Convert to array
-    const result = Array.from(mentorMap.values());
-
-    // Add "Not Assigned" row if there are unassigned students
-    if (unassignedPendingCount > 0) {
-      result.push({
-        id: 'unassigned',
-        name: 'Not Assigned',
-        assignedStudents: unassignedPendingCount,
-        pendingReports: unassignedPendingCount,
-        isUnassigned: true,
-      });
-    }
-
-    // Sort: "Not Assigned" at top if has pending, then by pending count descending, then by assigned count
+    // Sort: by pending count descending, then by assigned count
     return result.sort((a, b) => {
-      // "Not Assigned" with pending items goes to top
-      if (a.isUnassigned && a.pendingReports > 0) return -1;
-      if (b.isUnassigned && b.pendingReports > 0) return 1;
-
-      // Then sort by pending reports descending
+      // Sort by pending reports descending
       if (b.pendingReports !== a.pendingReports) {
         return b.pendingReports - a.pendingReports;
       }
-
       // Then by assigned students descending
       return b.assignedStudents - a.assignedStudents;
     });
-  }, [faculty, mentorCoverage, alertsData]);
+  }, [faculty]);
 
   // Calculate totals
   const totals = useMemo(() => {
     const totalStudents = facultyReportData.reduce((sum, f) => sum + f.assignedStudents, 0);
+    const totalSubmitted = facultyReportData.reduce((sum, f) => sum + f.submittedReports, 0);
+    const totalExpected = facultyReportData.reduce((sum, f) => sum + f.expectedReports, 0);
     const totalPending = facultyReportData.reduce((sum, f) => sum + f.pendingReports, 0);
-    return { totalStudents, totalPending };
+    return { totalStudents, totalSubmitted, totalExpected, totalPending };
   }, [facultyReportData]);
 
   // Get current month display name
@@ -192,34 +122,23 @@ const MonthlyReportsModal = ({
       title: 'Faculty Mentor',
       dataIndex: 'name',
       key: 'name',
-      render: (text, record) => (
-        <Tag
-          bordered={false}
-          style={{
-            color: record.isUnassigned ? token.colorError : token.colorText,
-            backgroundColor: record.isUnassigned ? token.colorErrorBg : 'transparent',
-            borderColor: record.isUnassigned ? token.colorErrorBorder : 'transparent',
-            fontWeight: record.isUnassigned ? 600 : 400,
-            border: record.isUnassigned ? `1px solid ${token.colorErrorBorder}` : 'none',
-          }}
-        >
-          {text}
-        </Tag>
+      render: (text) => (
+        <Text strong>{text}</Text>
       ),
     },
     {
-      title: 'Assigned Students with internship',
+      title: 'Assigned Students',
       dataIndex: 'assignedStudents',
       key: 'assignedStudents',
       align: 'center',
-      render: (count, record) => (
+      render: (count) => (
         <Tag
           bordered={false}
-          style={{ 
-            minWidth: '40px', 
+          style={{
+            minWidth: '40px',
             textAlign: 'center',
-            color: record.isUnassigned ? token.colorWarningText : token.colorPrimaryText,
-            backgroundColor: record.isUnassigned ? token.colorWarningBg : token.colorPrimaryBg,
+            color: token.colorPrimaryText,
+            backgroundColor: token.colorPrimaryBg,
           }}
         >
           {count}
@@ -228,23 +147,84 @@ const MonthlyReportsModal = ({
       sorter: (a, b) => a.assignedStudents - b.assignedStudents,
     },
     {
-      title: `Pending (${currentMonthDisplay.split(' ')[0]} ${currentMonthDisplay.split(' ')[1]})`,
+      title: `Submitted (${currentMonthDisplay})`,
+      dataIndex: 'submittedReports',
+      key: 'submittedReports',
+      align: 'center',
+      render: (count, record) => {
+        // Show NA if no expected reports for this month (not applicable)
+        if (record.expectedReports === 0 && record.assignedStudents > 0) {
+          return (
+            <Tag
+              bordered={false}
+              style={{
+                minWidth: '40px',
+                textAlign: 'center',
+                color: token.colorTextSecondary,
+                backgroundColor: token.colorBgContainerDisabled,
+              }}
+            >
+              NA
+            </Tag>
+          );
+        }
+        // Show 0/0 if no assigned students
+        if (record.assignedStudents === 0) {
+          return (
+            <Text style={{ color: token.colorTextSecondary }}>-</Text>
+          );
+        }
+        return (
+          <Text>
+            <span style={{ fontWeight: 600, color: token.colorSuccess }}>{count}</span>
+            <span style={{ color: token.colorTextSecondary }}> / {record.expectedReports}</span>
+          </Text>
+        );
+      },
+      sorter: (a, b) => a.submittedReports - b.submittedReports,
+    },
+    {
+      title: 'Pending',
       dataIndex: 'pendingReports',
       key: 'pendingReports',
       align: 'center',
-      render: (count) => (
-        <Tag
-          bordered={false}
-          style={{
-            minWidth: '40px',
-            textAlign: 'center',
-            backgroundColor: count > 0 ? token.colorErrorBg : token.colorSuccessBg,
-            color: count > 0 ? token.colorErrorText : token.colorSuccessText,
-          }}
-        >
-          {count}
-        </Tag>
-      ),
+      render: (count, record) => {
+        // Show NA if no expected reports for this month (not applicable)
+        if (record.expectedReports === 0 && record.assignedStudents > 0) {
+          return (
+            <Tag
+              bordered={false}
+              style={{
+                minWidth: '40px',
+                textAlign: 'center',
+                color: token.colorTextSecondary,
+                backgroundColor: token.colorBgContainerDisabled,
+              }}
+            >
+              NA
+            </Tag>
+          );
+        }
+        // Show dash if no assigned students
+        if (record.assignedStudents === 0) {
+          return (
+            <Text style={{ color: token.colorTextSecondary }}>-</Text>
+          );
+        }
+        return (
+          <Tag
+            bordered={false}
+            style={{
+              minWidth: '40px',
+              textAlign: 'center',
+              backgroundColor: count > 0 ? token.colorErrorBg : token.colorSuccessBg,
+              color: count > 0 ? token.colorErrorText : token.colorSuccessText,
+            }}
+          >
+            {count}
+          </Tag>
+        );
+      },
       sorter: (a, b) => a.pendingReports - b.pendingReports,
     },
   ];
@@ -274,7 +254,7 @@ const MonthlyReportsModal = ({
         </div>
         <Select
           value={selectedMonth}
-          onChange={setSelectedMonth}
+          onChange={handleMonthChange}
           options={monthOptions}
           style={{ width: 200 }}
           placeholder="Select Month"
@@ -292,12 +272,20 @@ const MonthlyReportsModal = ({
           borderRadius: token.borderRadiusLG,
           backgroundColor: token.colorInfoBg,
           border: `1px solid ${token.colorInfoBorder}`,
+          flexWrap: 'wrap',
+          gap: 16,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Text strong>Total Students:</Text>
           <Tag bordered={false} style={{ fontSize: '14px', padding: '2px 12px', color: token.colorPrimaryText, backgroundColor: token.colorPrimaryBg }}>
             {totals.totalStudents}
+          </Tag>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text strong>Submitted:</Text>
+          <Tag bordered={false} style={{ fontSize: '14px', padding: '2px 12px', color: token.colorSuccessText, backgroundColor: token.colorSuccessBg }}>
+            {totals.totalSubmitted} / {totals.totalExpected}
           </Tag>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

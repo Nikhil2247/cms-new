@@ -171,9 +171,9 @@ export const BasicStatisticsGrid = ({
 
 // Submission & Status Overview Grid (Second Row)
 export const SubmissionStatusGrid = ({
-  monthlyReports = { submitted: 0, total: 0, pending: 0 },
+  monthlyReports = { submitted: 0, total: 0, pending: 0, month: null, year: null },
   joiningLetters = { submitted: 0, total: 0, pendingPercent: 0 },
-  facultyVisits = { completed: 0, total: 0, pending: 0 },
+  facultyVisits = { completed: 0, total: 0, pending: 0, month: null, year: null },
   grievances = { total: 0, unaddressed: 0 },
   loading = false,
   onViewReports,
@@ -181,7 +181,18 @@ export const SubmissionStatusGrid = ({
   onViewVisits,
   onViewGrievances,
 }) => {
-  const currentMonth = new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  // Use month/year from API if available, otherwise use client's current date
+  const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const getMonthLabel = (month, year) => {
+    if (month && year) {
+      return `${MONTH_NAMES[month - 1]} ${year}`;
+    }
+    return new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  const reportsMonthLabel = getMonthLabel(monthlyReports.month, monthlyReports.year);
+  const visitsMonthLabel = getMonthLabel(facultyVisits.month, facultyVisits.year);
 
   const completionPercent = (submitted, total) => {
     if (total === 0) return 0;
@@ -190,7 +201,7 @@ export const SubmissionStatusGrid = ({
 
   const cards = [
     {
-      title: `Monthly Reports - ${currentMonth}`,
+      title: `Monthly Reports - ${reportsMonthLabel}`,
       value: monthlyReports.submitted,
       secondaryValue: monthlyReports.total,
       subtitle: (
@@ -221,7 +232,7 @@ export const SubmissionStatusGrid = ({
       onViewMore: onViewJoiningLetters,
     },
     {
-      title: `Faculty Visits - ${currentMonth}`,
+      title: `Faculty Visits - ${visitsMonthLabel}`,
       value: facultyVisits.completed,
       secondaryValue: facultyVisits.total,
       subtitle: (

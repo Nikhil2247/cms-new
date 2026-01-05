@@ -46,6 +46,7 @@ import {
   removeMentorAssignment,
   bulkUnassignMentors,
   autoAssignMentors,
+  fetchPrincipalDashboard,
 } from '../store/principalSlice';
 import {
   selectStaff,
@@ -234,6 +235,8 @@ const MentorAssignment = () => {
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
       dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error?.message || 'Failed to assign mentor');
     } finally {
@@ -247,6 +250,8 @@ const MentorAssignment = () => {
       message.success('Mentor assignment removed');
       dispatch(fetchMentorStats({ forceRefresh: true }));
       dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error?.message || 'Failed to remove assignment');
     }
@@ -304,6 +309,8 @@ const MentorAssignment = () => {
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
       dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error?.message || 'Failed to change mentor');
     } finally {
@@ -331,6 +338,8 @@ const MentorAssignment = () => {
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
       dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error?.message || 'Failed to bulk unassign');
     } finally {
@@ -346,6 +355,8 @@ const MentorAssignment = () => {
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
       dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+      // Refresh dashboard stats to update Un-assigned Students count
+      dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
       message.error(error?.message || 'Failed to auto-assign');
     } finally {
@@ -357,6 +368,8 @@ const MentorAssignment = () => {
     dispatch(fetchMentorAssignments({ forceRefresh: true }));
     dispatch(fetchMentorStats({ forceRefresh: true }));
     dispatch(fetchStudents({ ...filters, forceRefresh: true }));
+    // Refresh dashboard stats to update Un-assigned Students count
+    dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
   };
 
   const rowSelection = {

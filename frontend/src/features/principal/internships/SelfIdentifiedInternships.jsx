@@ -28,10 +28,6 @@ import {
   Timeline,
   Tabs,
   Badge,
-  Divider,
-  Form,
-  InputNumber,
-  Popconfirm,
   Dropdown,
 } from "antd";
 import {
@@ -42,7 +38,6 @@ import {
   ClockCircleOutlined,
   UserOutlined,
   ReloadOutlined,
-  DownloadOutlined,
   CalendarOutlined,
   EnvironmentOutlined,
   MailOutlined,
@@ -50,16 +45,9 @@ import {
   TeamOutlined,
   FileTextOutlined,
   BankOutlined,
-  DollarOutlined,
   RiseOutlined,
   FilePdfOutlined,
-  LinkOutlined,
-  EditOutlined,
-  SaveOutlined,
-  CloseOutlined,
   MoreOutlined,
-  CheckOutlined,
-  StopOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
 } from "@ant-design/icons";
@@ -83,15 +71,12 @@ const { RangePicker } = DatePicker;
 const SelfIdentifiedInternships = () => {
   const dispatch = useDispatch();
   const internshipStats = useSelector(selectInternshipStats);
-  const [form] = Form.useForm();
   const hasFetched = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [internships, setInternships] = useState([]);
   const [selectedInternship, setSelectedInternship] = useState(null);
   const [detailsVisible, setDetailsVisible] = useState(false);
-  const [editVisible, setEditVisible] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
   const [searchText, setSearchText] = useState("");
@@ -340,79 +325,6 @@ const SelfIdentifiedInternships = () => {
     setDetailsVisible(true);
   };
 
-  const handleEdit = (internship) => {
-    setSelectedInternship(internship);
-    form.setFieldsValue({
-      companyName: internship.companyName,
-      companyAddress: internship.companyAddress,
-      companyContact: internship.companyContact,
-      companyEmail: internship.companyEmail,
-      jobProfile: internship.jobProfile,
-      stipend: internship.stipend ? parseInt(internship.stipend) : null,
-      internshipDuration: internship.duration,
-      startDate: internship.startDate ? dayjs(internship.startDate) : null,
-      endDate: internship.endDate ? dayjs(internship.endDate) : null,
-      facultyMentorName: internship.mentorName,
-      facultyMentorEmail: internship.mentorEmail,
-      facultyMentorDesignation: internship.mentorDesignation,
-      status: internship.status,
-    });
-    setEditVisible(true);
-  };
-
-  const handleEditSubmit = async (values) => {
-    if (!selectedInternship) return;
-
-    try {
-      setEditLoading(true);
-      const updateData = {
-        ...values,
-        startDate: values.startDate?.toISOString(),
-        endDate: values.endDate?.toISOString(),
-      };
-
-      await principalService.updateInternship(
-        selectedInternship.id,
-        updateData
-      );
-      toast.success("Internship updated successfully");
-      setEditVisible(false);
-      fetchInternships();
-      dispatch(fetchInternshipStats());
-    } catch (error) {
-      console.error("Failed to update internship:", error);
-      toast.error(error.message || "Failed to update internship");
-    } finally {
-      setEditLoading(false);
-    }
-  };
-
-  const handleBulkStatusUpdate = async (status) => {
-    if (selectedRowKeys.length === 0) {
-      toast.error("Please select internships first");
-      return;
-    }
-
-    try {
-      setBulkActionLoading(true);
-      await principalService.bulkUpdateInternshipStatus(
-        selectedRowKeys,
-        status
-      );
-      toast.success(
-        `Updated ${selectedRowKeys.length} internship(s) to ${status}`
-      );
-      setSelectedRowKeys([]);
-      fetchInternships();
-      dispatch(fetchInternshipStats());
-    } catch (error) {
-      console.error("Failed to bulk update:", error);
-      toast.error(error.message || "Failed to update internships");
-    } finally {
-      setBulkActionLoading(false);
-    }
-  };
-
   const handleRefresh = () => {
     fetchInternships();
     fetchMentors();
@@ -581,32 +493,6 @@ const SelfIdentifiedInternships = () => {
       label: "Unassign Mentor",
       icon: <UserDeleteOutlined className="text-orange-500" />,
       action: "mentor",
-    },
-    { type: "divider" },
-    { type: "group", label: "Status Actions" },
-    {
-      key: "APPROVED",
-      label: "Mark as Active",
-      icon: <CheckCircleOutlined className="text-green-500" />,
-      action: "status",
-    },
-    {
-      key: "JOINED",
-      label: "Mark as Joined",
-      icon: <RiseOutlined className="text-blue-500" />,
-      action: "status",
-    },
-    {
-      key: "COMPLETED",
-      label: "Mark as Completed",
-      icon: <CheckOutlined className="text-purple-500" />,
-      action: "status",
-    },
-    {
-      key: "REJECTED",
-      label: "Mark as Rejected",
-      icon: <StopOutlined className="text-red-500" />,
-      action: "status",
     },
   ];
 
@@ -837,12 +723,6 @@ const SelfIdentifiedInternships = () => {
             icon: <EyeOutlined />,
             onClick: () => handleViewDetails(record),
           },
-          {
-            key: "edit",
-            label: "Edit Internship",
-            icon: <EditOutlined />,
-            onClick: () => handleEdit(record),
-          },
           ...(record.joiningLetterUrl
             ? [
                 {
@@ -859,7 +739,7 @@ const SelfIdentifiedInternships = () => {
                 {
                   key: "changeMentor",
                   label: "Change Mentor",
-                  icon: <EditOutlined />,
+                  icon: <TeamOutlined />,
                   onClick: () => handleSingleMentorAssign(record),
                 },
                 {
@@ -1539,178 +1419,6 @@ const SelfIdentifiedInternships = () => {
             </div>
           </div>
         )}
-      </Modal>
-
-      {/* Edit Modal */}
-      <Modal
-        title={
-          <div className="flex items-center gap-2 text-text-primary">
-            <EditOutlined className="text-warning" />
-            <span>Edit Internship Details</span>
-          </div>
-        }
-        open={editVisible}
-        onCancel={() => {
-          setEditVisible(false);
-          form.resetFields();
-        }}
-        width={800}
-        footer={null}
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          onFinish={handleEditSubmit}
-          className="mt-4"
-        >
-          {selectedInternship && (
-            <div className="p-3 rounded-lg bg-primary/5 mb-4">
-              <div className="flex items-center gap-3">
-                <ProfileAvatar
-                  size={40}
-                  profileImage={selectedInternship.studentProfileImage}
-                  className="bg-primary/10 text-primary"
-                />
-                <div>
-                  <Text className="font-bold text-text-primary block">
-                    {selectedInternship.studentName}
-                  </Text>
-                  <Text className="text-text-secondary text-sm">
-                    {selectedInternship.studentRollNumber}
-                  </Text>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Divider className="my-4">Company Information</Divider>
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="companyName"
-                label="Company Name"
-                rules={[
-                  { required: true, message: "Company name is required" },
-                ]}
-              >
-                <Input placeholder="Enter company name" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="jobProfile" label="Job Profile / Role">
-                <Input placeholder="Enter job profile" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="companyContact" label="Company Contact">
-                <Input placeholder="Enter contact number" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="companyEmail" label="Company Email">
-                <Input placeholder="Enter email" type="email" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Form.Item name="companyAddress" label="Company Address">
-            <Input.TextArea placeholder="Enter company address" rows={2} />
-          </Form.Item>
-
-          <Divider className="my-4">Internship Details</Divider>
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
-              <Form.Item name="stipend" label="Monthly Stipend (₹)">
-                <InputNumber
-                  placeholder="Enter stipend"
-                  className="w-full"
-                  min={0}
-                  formatter={(value) =>
-                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
-                  }
-                  parser={(value) => value.replace(/,/g, "")}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="internshipDuration" label="Duration">
-                <Input placeholder="e.g., 6 months" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="status" label="Status">
-                <Select placeholder="Select status">
-                  <Select.Option value="APPROVED">Active</Select.Option>
-                  <Select.Option value="JOINED">Ongoing</Select.Option>
-                  <Select.Option value="COMPLETED">Completed</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="startDate" label="Start Date">
-                <DatePicker className="w-full" format="DD/MM/YYYY" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="endDate" label="End Date">
-                <DatePicker className="w-full" format="DD/MM/YYYY" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider className="my-4">Faculty Mentor</Divider>
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="facultyMentorName" label="Mentor Name">
-                <Input placeholder="Enter mentor name" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="facultyMentorDesignation"
-                label="Mentor Designation"
-              >
-                <Input placeholder="Enter designation" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item name="facultyMentorEmail" label="Mentor Email">
-                <Input placeholder="Enter mentor email" type="email" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider className="my-4" />
-          <div className="flex justify-end gap-3">
-            <Button
-              onClick={() => {
-                setEditVisible(false);
-                form.resetFields();
-              }}
-              icon={<CloseOutlined />}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              loading={editLoading}
-              icon={<SaveOutlined />}
-              className="shadow-lg shadow-primary/20"
-            >
-              Save Changes
-            </Button>
-          </div>
-        </Form>
       </Modal>
 
       {/* Assign Mentor Modal */}

@@ -15,11 +15,8 @@ import {
   Descriptions,
   Rate,
   Modal,
-  Form,
   Select,
   DatePicker,
-  InputNumber,
-  Divider,
   Tooltip,
   Calendar,
   Spin,
@@ -30,7 +27,6 @@ import {
 import {
   UserOutlined,
   TeamOutlined,
-  SearchOutlined,
   CheckCircleOutlined,
   ReloadOutlined,
   CalendarOutlined,
@@ -41,11 +37,8 @@ import {
   VideoCameraOutlined,
   ScheduleOutlined,
   FileTextOutlined,
-  EditOutlined,
-  SaveOutlined,
   EyeOutlined,
   TableOutlined,
-  RiseOutlined,
   ClockCircleOutlined,
   WarningOutlined,
   IdcardOutlined,
@@ -82,12 +75,6 @@ const FacultyProgress = () => {
   // Report details modal
   const [reportDetailsVisible, setReportDetailsVisible] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
-
-  // Edit internship state
-  const [editVisible, setEditVisible] = useState(false);
-  const [editLoading, setEditLoading] = useState(false);
-  const [editStudent, setEditStudent] = useState(null);
-  const [editForm] = Form.useForm();
 
   // Fetch faculty list on mount
   useEffect(() => {
@@ -219,46 +206,6 @@ const FacultyProgress = () => {
     }
   };
 
-  // Handle edit internship
-  const handleEditInternship = (student) => {
-    setEditStudent(student);
-    const phase = student.internshipPhase || 'NOT_STARTED';
-    editForm.resetFields();
-    setTimeout(() => {
-      editForm.setFieldsValue({
-        companyName: student.companyName || '',
-        jobProfile: student.jobProfile || '',
-        stipend: student.stipend ? Number(student.stipend) : null,
-        internshipDuration: student.internshipDuration || '',
-        internshipPhase: phase,
-      });
-    }, 0);
-    setEditVisible(true);
-  };
-
-  const handleEditSubmit = async (values) => {
-    if (!editStudent?.applicationId) {
-      toast.error('No internship found for this student');
-      return;
-    }
-
-    try {
-      setEditLoading(true);
-      await principalService.updateInternship(editStudent.applicationId, values);
-      toast.success('Internship updated successfully');
-      setEditVisible(false);
-      editForm.resetFields();
-      if (selectedFaculty) {
-        fetchFacultyDetails(selectedFaculty.id);
-      }
-    } catch (error) {
-      console.error('Failed to update internship:', error);
-      toast.error(error.message || 'Failed to update internship');
-    } finally {
-      setEditLoading(false);
-    }
-  };
-
   const handleRefresh = () => {
     fetchFacultyList();
     if (selectedFaculty) {
@@ -371,21 +318,6 @@ const FacultyProgress = () => {
         <Text style={{ fontSize: 14, color: token.colorTextSecondary }}>{formatDate(date)}</Text>
       ) : (
         <Text style={{ fontSize: 12, color: token.colorTextDisabled, fontStyle: 'italic' }}>No visits</Text>
-      ),
-    },
-    {
-      title: 'Actions',
-      key: 'actions',
-      width: 80,
-      render: (_, record) => (
-        <Tooltip title="Edit Internship">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEditInternship(record)}
-            style={{ color: token.colorWarning }}
-          />
-        </Tooltip>
       ),
     },
   ];
@@ -831,10 +763,18 @@ const FacultyProgress = () => {
                         <CheckCircleOutlined style={{ marginRight: 4 }} />
                         {stats.totalVisits || 0} Total Visits
                       </Tag>
-                      <Tag color="purple" bordered={false} className="rounded-full">
-                        <RiseOutlined style={{ marginRight: 4 }} />
-                        {stats.visitsThisMonth || 0} This Month
-                      </Tag>
+                      <Tooltip title={`Monthly Reports for ${stats.currentMonth ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][stats.currentMonth - 1]} ${stats.currentYear}` : 'Current Month'}`}>
+                        <Tag color={stats.reportsPendingThisMonth > 0 ? 'orange' : 'purple'} bordered={false} className="rounded-full">
+                          <FileTextOutlined style={{ marginRight: 4 }} />
+                          Reports: {stats.reportsSubmittedThisMonth || 0}/{stats.reportsExpectedThisMonth || 0}
+                        </Tag>
+                      </Tooltip>
+                      <Tooltip title={`Faculty Visits for ${stats.currentMonth ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][stats.currentMonth - 1]} ${stats.currentYear}` : 'Current Month'}`}>
+                        <Tag color={stats.visitsPendingThisMonth > 0 ? 'orange' : 'cyan'} bordered={false} className="rounded-full">
+                          <CarOutlined style={{ marginRight: 4 }} />
+                          Visits: {stats.visitsCompletedThisMonth || 0}/{stats.visitsExpectedThisMonth || 0}
+                        </Tag>
+                      </Tooltip>
                       <Tag color="cyan" bordered={false} className="rounded-full">
                         <ClockCircleOutlined style={{ marginRight: 4 }} />
                         {stats.visitsLastMonth || 0} Last Month
@@ -900,92 +840,6 @@ const FacultyProgress = () => {
           )}
         </Col>
       </Row>
-
-      {/* Edit Internship Modal */}
-      <Modal
-        title="Edit Internship Details"
-        open={editVisible}
-        onCancel={() => {
-          setEditVisible(false);
-          editForm.resetFields();
-        }}
-        width={600}
-        footer={null}
-        centered
-        destroyOnClose
-        transitionName=""
-        maskTransitionName=""
-      >
-        <Form form={editForm} layout="vertical" onFinish={handleEditSubmit} style={{ marginTop: 16 }}>
-          {editStudent && (
-            <div style={{ padding: 16, borderRadius: token.borderRadiusLG, backgroundColor: token.colorInfoBg, border: `1px solid ${token.colorInfoBorder}`, marginBottom: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <ProfileAvatar size={48} profileImage={editStudent.profileImage} />
-                <div>
-                  <Text style={{ fontWeight: 'bold', display: 'block', fontSize: 16 }}>{editStudent.name}</Text>
-                  <Text style={{ color: token.colorTextSecondary, fontSize: 14 }}>{editStudent.rollNumber}</Text>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <Row gutter={16}>
-            <Col xs={24} md={12}>
-              <Form.Item
-                name="companyName"
-                label="Company Name"
-                rules={[{ required: true, message: 'Company name is required' }]}
-              >
-                <Input placeholder="Enter company name" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="jobProfile" label="Job Profile / Role">
-                <Input placeholder="Enter job profile" />
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Row gutter={16}>
-            <Col xs={24} md={8}>
-              <Form.Item name="stipend" label="Monthly Stipend (₹)">
-                <InputNumber
-                  placeholder="Enter stipend"
-                  style={{ width: '100%' }}
-                  min={0}
-                  formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                  parser={value => value.replace(/\$\s?|(,*)/g, '')}
-                />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="internshipDuration" label="Duration">
-                <Input placeholder="e.g., 6 months" />
-              </Form.Item>
-            </Col>
-            <Col xs={24} md={8}>
-              <Form.Item name="internshipPhase" label="Phase">
-                <Select placeholder="Select phase">
-                  <Select.Option value="NOT_STARTED">Not Started</Select.Option>
-                  <Select.Option value="ACTIVE">Active</Select.Option>
-                  <Select.Option value="COMPLETED">Completed</Select.Option>
-                  <Select.Option value="TERMINATED">Terminated</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
-          </Row>
-
-          <Divider style={{ margin: '16px 0' }} />
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-            <Button onClick={() => { setEditVisible(false); editForm.resetFields(); }}>
-              Cancel
-            </Button>
-            <Button type="primary" htmlType="submit" loading={editLoading} icon={<SaveOutlined />}>
-              Save Changes
-            </Button>
-          </div>
-        </Form>
-      </Modal>
 
       {/* Visit Report Details Modal */}
       <Modal

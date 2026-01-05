@@ -207,7 +207,6 @@ const idMaps: Record<string, Map<string, string>> = {
   notifications: new Map(),
   auditLogs: new Map(),
   grievances: new Map(),
-  technicalQueries: new Map(),
   supportTickets: new Map(),
   monthlyReports: new Map(),
   facultyVisitLogs: new Map(),
@@ -1238,51 +1237,6 @@ async function migrateGrievances(mongoDb: any, prisma: PrismaClient, config: Mig
   finishCollectionMigration(stats);
 }
 
-async function migrateTechnicalQueries(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
-  log('Migrating Technical Queries...', 'blue');
-  const queries = await mongoDb.collection('technical_queries').find({}).toArray();
-  const stats = startCollectionMigration('technicalQueries', queries.length);
-
-  if (config.dryRun) {
-    logWarning(`Dry run: Would migrate ${queries.length} technical queries`);
-    return;
-  }
-
-  for (const query of queries) {
-    const newId = convertId(query._id, 'technicalQueries');
-    const userId = getMappedId(query.userId, 'users');
-
-    if (!userId) {
-      stats.skipped++;
-      continue;
-    }
-
-    try {
-      await prisma.technicalQuery.create({
-        data: {
-          id: newId,
-          userId: userId,
-          title: query.title,
-          description: query.description,
-          status: query.status || 'OPEN',
-          priority: query.priority || 'MEDIUM',
-          resolution: query.resolution,
-          createdAt: processDate(query.createdAt) || new Date(),
-        },
-      });
-      stats.migrated++;
-    } catch (error: any) {
-      if (error.code === 'P2003') {
-        stats.skipped++;
-      } else {
-        stats.errors++;
-        if (config.verbose) logError(`Error migrating technical query: ${error.message}`);
-      }
-    }
-  }
-  finishCollectionMigration(stats);
-}
-
 async function migrateSupportTickets(mongoDb: any, prisma: PrismaClient, config: MigrationConfig) {
   log('Migrating Support Tickets (from Technical Queries)...', 'blue');
   const queries = await mongoDb.collection('technical_queries').find({}).toArray();
@@ -1311,7 +1265,7 @@ async function migrateSupportTickets(mongoDb: any, prisma: PrismaClient, config:
         select: { name: true, email: true, role: true }
       });
 
-      if (!user) {
+      if (!user || !user.role) {
         stats.skipped++;
         continue;
       }
@@ -1854,7 +1808,6 @@ async function main() {
     // Phase 8: Support data
     await migrateNotifications(mongoDb, prisma, config);
     await migrateGrievances(mongoDb, prisma, config);
-    await migrateTechnicalQueries(mongoDb, prisma, config);
     await migrateSupportTickets(mongoDb, prisma, config);
     await migrateAuditLogs(mongoDb, prisma, config);
 
@@ -1878,7 +1831,7 @@ async function main() {
       log('│   • User.branchId, branchName, institutionId synced from Student             │', 'cyan');
       log('│   • User.active synced from Student.isActive                                 │', 'cyan');
       log('│   • Branch records created and linked to Users/Students                      │', 'cyan');
-      log('│   • Technical queries migrated to Support Tickets                            │', 'cyan');
+      log('│   • Technical queries migrated to Support Tickets (TechnicalQuery removed)    │', 'cyan');
       log('│   • User is now the Single Source of Truth (SOT) for these fields            │', 'cyan');
       log('└─────────────────────────────────────────────────────────────────────────────┘', 'cyan');
     }

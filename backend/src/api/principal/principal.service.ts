@@ -15,6 +15,7 @@ import {
   getTotalExpectedCount,
   getExpectedReportsAsOfToday,
   getExpectedVisitsAsOfToday,
+  getMonthCycle,
   MONTHLY_CYCLE,
 } from '../../common/utils/monthly-cycle.util';
 import * as bcrypt from 'bcrypt';
@@ -66,6 +67,12 @@ export class PrincipalService {
         const currentMonth = now.getMonth() + 1; // 1-12
         const currentYear = now.getFullYear();
 
+        // Calculate current month boundaries for queries
+        const currentMonthStart = new Date(currentYear, currentMonth - 1, 1);
+        currentMonthStart.setHours(0, 0, 0, 0);
+        const currentMonthEnd = new Date(currentYear, currentMonth, 0); // Last day of current month
+        currentMonthEnd.setHours(23, 59, 59, 999);
+
         // Only count self-identified internships (auto-approved on submission)
         const [
           totalStudents,
@@ -75,11 +82,12 @@ export class PrincipalService {
           totalSelfIdentifiedInternships,
           ongoingInternships,
           completedInternships,
-          pendingMonthlyReports,
+          currentMonthReportsSubmitted,
+          currentMonthVisitsCompleted,
+          activeApplicationsForCurrentMonth,
           pendingGrievances,
           totalGrievances,
-          facultyVisitsCompleted,
-          studentsWithActiveInternships,
+          applicationCounters,
           studentsByBranch,
           joiningLetterApplications,
           partnerCompanyNames,
@@ -112,13 +120,41 @@ export class PrincipalService {
               internshipPhase: InternshipPhase.COMPLETED,
             }
           }),
+          // Count reports SUBMITTED for current month (status: APPROVED means submitted and auto-approved)
           this.prisma.monthlyReport.count({
             where: {
               student: { institutionId, user: { active: true } },
               reportMonth: currentMonth,
               reportYear: currentYear,
-              status: 'SUBMITTED',
+              status: { in: ['APPROVED', 'SUBMITTED'] },
             }
+          }),
+          // Count faculty visits COMPLETED in current month
+          this.prisma.facultyVisitLog.count({
+            where: {
+              application: {
+                student: { institutionId, user: { active: true } },
+                isSelfIdentified: true,
+              },
+              visitDate: {
+                gte: currentMonthStart,
+                lte: currentMonthEnd,
+              },
+            },
+          }),
+          // Get ALL active applications - we'll calculate overlap in code for robustness
+          // Only filter by isSelfIdentified and exclude rejected/withdrawn
+          this.prisma.internshipApplication.findMany({
+            where: {
+              student: { institutionId, user: { active: true } },
+              isSelfIdentified: true,
+              status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
+            },
+            select: {
+              id: true,
+              startDate: true,
+              endDate: true,
+            },
           }),
           // Pending grievances (PENDING or UNDER_REVIEW)
           this.prisma.grievance.count({
@@ -133,24 +169,19 @@ export class PrincipalService {
               student: { institutionId },
             }
           }),
-          // Count completed faculty visits for students with active internships
-          this.prisma.facultyVisitLog.count({
-            where: {
-              application: {
-                student: { institutionId, user: { active: true } },
-                isSelfIdentified: true,
-                status: ApplicationStatus.JOINED,
-                internshipPhase: InternshipPhase.ACTIVE,
-              },
-            },
-          }),
-          // Count students with active internships (for faculty visit expected calculation)
-          this.prisma.internshipApplication.count({
+          // Aggregate counter fields from active internship applications (for cumulative totals)
+          // Exclude rejected/withdrawn only
+          this.prisma.internshipApplication.aggregate({
             where: {
               student: { institutionId, user: { active: true } },
               isSelfIdentified: true,
-              status: ApplicationStatus.JOINED,
-              internshipPhase: InternshipPhase.ACTIVE,
+              status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
+            },
+            _sum: {
+              submittedReportsCount: true,
+              totalExpectedReports: true,
+              completedVisitsCount: true,
+              totalExpectedVisits: true,
             },
           }),
           // Students grouped by branch with internship counts - query students directly
@@ -193,14 +224,21 @@ export class PrincipalService {
             select: { companyName: true },
             distinct: ['companyName'],
           }),
-          // Count students with active internships but no mentor assigned
-          this.prisma.internshipApplication.count({
+          // Count students with self-identified internships (approved or active) but no active mentor assignment
+          // Uses MentorAssignment table (source of truth) instead of InternshipApplication.mentorId
+          // Includes APPROVED/SELECTED/JOINED status and NOT_STARTED/ACTIVE phase
+          this.prisma.student.count({
             where: {
-              student: { institutionId, user: { active: true } },
-              isSelfIdentified: true,
-              status: ApplicationStatus.JOINED,
-              internshipPhase: InternshipPhase.ACTIVE,
-              mentorId: null,
+              institutionId,
+              user: { active: true },
+              internshipApplications: {
+                some: {
+                  isSelfIdentified: true,
+                  status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
+                  internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
+                },
+              },
+              mentorAssignments: { none: { isActive: true } },
             },
           }),
         ]);
@@ -261,6 +299,34 @@ export class PrincipalService {
           return a.branchName.localeCompare(b.branchName);
         });
 
+        // Calculate expected counts for current month using simple date overlap
+        // Count ALL internships that overlap with current month (no 10-day rule for dashboard)
+        let currentMonthExpectedReports = 0;
+        let currentMonthExpectedVisits = 0;
+
+        for (const app of activeApplicationsForCurrentMonth) {
+          try {
+            const { startDate, endDate } = app;
+            if (!startDate || !endDate) continue;
+
+            // Simple overlap check: internship overlaps with current month if
+            // startDate <= currentMonthEnd AND endDate >= currentMonthStart
+            const internshipStart = new Date(startDate);
+            const internshipEnd = new Date(endDate);
+            internshipStart.setHours(0, 0, 0, 0);
+            internshipEnd.setHours(23, 59, 59, 999);
+
+            const overlapsCurrentMonth = internshipStart <= currentMonthEnd && internshipEnd >= currentMonthStart;
+            if (overlapsCurrentMonth) {
+              currentMonthExpectedReports++;
+              currentMonthExpectedVisits++;
+            }
+          } catch {
+            // Skip this application if any error
+            continue;
+          }
+        }
+
         return {
           institution: {
             id: principal.Institution?.id,
@@ -284,7 +350,7 @@ export class PrincipalService {
           },
           pending: {
             // Self-identified internships are auto-approved, so no pending approvals
-            monthlyReports: pendingMonthlyReports,
+            monthlyReports: Math.max(0, currentMonthExpectedReports - currentMonthReportsSubmitted),
             grievances: pendingGrievances,
             joiningLetters: pendingJoiningLetters,
           },
@@ -293,10 +359,31 @@ export class PrincipalService {
             total: totalGrievances,
             pending: pendingGrievances,
           },
-          // Faculty visits overview
+          // Monthly reports overview - CURRENT MONTH specific data
+          // Cards show "Monthly Reports - Jan 2026" so we show current month data
+          monthlyReports: {
+            submitted: currentMonthReportsSubmitted,
+            expected: currentMonthExpectedReports,
+            month: currentMonth,
+            year: currentYear,
+            // Also include cumulative totals for reference
+            cumulative: {
+              submitted: applicationCounters._sum.submittedReportsCount || 0,
+              expected: applicationCounters._sum.totalExpectedReports || 0,
+            },
+          },
+          // Faculty visits overview - CURRENT MONTH specific data
+          // Cards show "Faculty Visits - Jan 2026" so we show current month data
           facultyVisits: {
-            completed: facultyVisitsCompleted,
-            expected: studentsWithActiveInternships, // Each active internship expects at least one visit
+            completed: currentMonthVisitsCompleted,
+            expected: currentMonthExpectedVisits,
+            month: currentMonth,
+            year: currentYear,
+            // Also include cumulative totals for reference
+            cumulative: {
+              completed: applicationCounters._sum.completedVisitsCount || 0,
+              expected: applicationCounters._sum.totalExpectedVisits || 0,
+            },
           },
           // Joining letter stats (simple: total vs uploaded)
           joiningLetterStats: {
@@ -2184,6 +2271,7 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags([
       'mentors',
+      'principal', // Invalidate dashboard cache to update unassigned students count
       ...assignMentorDto.studentIds.map(studentId => `student:${studentId}`),
       `institution:${principal.institutionId}`,
     ]);
@@ -3293,6 +3381,7 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags([
       'mentors',
+      'principal', // Invalidate dashboard cache to update unassigned students count
       `student:${studentId}`,
       `institution:${principal.institutionId}`,
     ]);
@@ -3349,6 +3438,7 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags([
       'mentors',
+      'principal', // Invalidate dashboard cache to update unassigned students count
       ...studentIds.map(id => `student:${id}`),
       `institution:${principal.institutionId}`,
     ]);
@@ -3478,6 +3568,7 @@ export class PrincipalService {
 
     await this.cache.invalidateByTags([
       'mentors',
+      'principal', // Invalidate dashboard cache to update unassigned students count
       ...assignments.map(a => `student:${a.studentId}`),
       `institution:${institutionId}`,
     ]);
@@ -3506,6 +3597,17 @@ export class PrincipalService {
       throw new NotFoundException('Institution not found');
     }
 
+    // Use query params for month/year if provided, otherwise use current date
+    const now = new Date();
+    const selectedMonth = query.month ? parseInt(query.month, 10) : now.getMonth() + 1; // 1-12
+    const selectedYear = query.year ? parseInt(query.year, 10) : now.getFullYear();
+
+    // Calculate month boundaries for the selected month
+    const selectedMonthStart = new Date(selectedYear, selectedMonth - 1, 1);
+    selectedMonthStart.setHours(0, 0, 0, 0);
+    const selectedMonthEnd = new Date(selectedYear, selectedMonth, 0);
+    selectedMonthEnd.setHours(23, 59, 59, 999);
+
     const { search } = query;
 
     const where: any = {
@@ -3522,7 +3624,7 @@ export class PrincipalService {
       ];
     }
 
-    const [faculty, mentorAssignmentsList, visitCounts, reportCounts, internshipApps] = await Promise.all([
+    const [faculty, mentorAssignmentsList, visitCounts, reportCounts, internshipApps, currentMonthVisits, currentMonthReports] = await Promise.all([
       this.prisma.user.findMany({
         where,
         select: {
@@ -3535,15 +3637,35 @@ export class PrincipalService {
         },
         orderBy: { name: 'asc' },
       }),
-      // Get all mentor assignments to count unique students per mentor
+      // Get all mentor assignments with internship data for expected calculations
+      // Only filter by isSelfIdentified - date overlap check will determine if counted
       this.prisma.mentorAssignment.findMany({
         where: {
           student: { institutionId: principal.institutionId },
           isActive: true,
         },
-        select: { mentorId: true, studentId: true },
+        select: {
+          mentorId: true,
+          studentId: true,
+          student: {
+            select: {
+              internshipApplications: {
+                where: {
+                  isSelfIdentified: true,
+                  // Exclude rejected/withdrawn - only include active applications
+                  status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
+                },
+                take: 1,
+                select: {
+                  startDate: true,
+                  endDate: true,
+                },
+              },
+            },
+          },
+        },
       }),
-      // Get visit counts per faculty
+      // Get visit counts per faculty (cumulative)
       this.prisma.facultyVisitLog.groupBy({
         by: ['facultyId'],
         where: {
@@ -3551,7 +3673,7 @@ export class PrincipalService {
         },
         _count: { id: true },
       }),
-      // Get report counts per student (to map to mentor)
+      // Get report counts per student (to map to mentor) - cumulative
       this.prisma.monthlyReport.findMany({
         where: {
           application: {
@@ -3563,17 +3685,44 @@ export class PrincipalService {
           status: true,
         },
       }),
-      // Get internship applications for expected counts
+      // Get internship applications for cumulative expected counts
+      // Exclude rejected/withdrawn - include all active applications
       this.prisma.internshipApplication.findMany({
         where: {
           student: { institutionId: principal.institutionId },
-          status: 'APPROVED',
+          status: { notIn: [ApplicationStatus.REJECTED, ApplicationStatus.WITHDRAWN] },
           isActive: true,
         },
         select: {
           studentId: true,
           totalExpectedReports: true,
           totalExpectedVisits: true,
+        },
+      }),
+      // Selected month visits per faculty
+      this.prisma.facultyVisitLog.groupBy({
+        by: ['facultyId'],
+        where: {
+          faculty: { institutionId: principal.institutionId },
+          visitDate: {
+            gte: selectedMonthStart,
+            lte: selectedMonthEnd,
+          },
+        },
+        _count: { id: true },
+      }),
+      // Selected month reports (submitted/approved)
+      this.prisma.monthlyReport.findMany({
+        where: {
+          application: {
+            student: { institutionId: principal.institutionId },
+          },
+          reportMonth: selectedMonth,
+          reportYear: selectedYear,
+          status: { in: ['APPROVED', 'SUBMITTED'] },
+        },
+        select: {
+          studentId: true,
         },
       }),
     ]);
@@ -3616,7 +3765,7 @@ export class PrincipalService {
       }
     }
 
-    // Build expected counts map per mentor
+    // Build expected counts map per mentor (cumulative)
     const expectedCountsMap = new Map<string, { expectedReports: number; expectedVisits: number }>();
     for (const app of internshipApps) {
       const mentorId = studentToMentorMap.get(app.studentId);
@@ -3631,11 +3780,55 @@ export class PrincipalService {
       counts.expectedVisits += app.totalExpectedVisits || 0;
     }
 
+    // Build current month visit count map per faculty
+    const currentMonthVisitMap = new Map(currentMonthVisits.map(v => [v.facultyId, v._count.id]));
+
+    // Build current month report count map per mentor
+    const currentMonthReportMap = new Map<string, number>();
+    for (const report of currentMonthReports) {
+      const mentorId = studentToMentorMap.get(report.studentId);
+      if (!mentorId) continue;
+      currentMonthReportMap.set(mentorId, (currentMonthReportMap.get(mentorId) || 0) + 1);
+    }
+
+    // Build selected month EXPECTED counts per mentor
+    // Count ALL students whose internship overlaps with selected month (no 10-day rule for dashboard)
+    const selectedMonthExpectedMap = new Map<string, { expectedReports: number; expectedVisits: number }>();
+    for (const assignment of mentorAssignmentsList) {
+      const { mentorId, student } = assignment;
+      const app = student.internshipApplications?.[0];
+      if (!app || !app.startDate || !app.endDate) continue;
+
+      // Simple overlap check: internship overlaps with selected month if
+      // startDate <= selectedMonthEnd AND endDate >= selectedMonthStart
+      const internshipStart = new Date(app.startDate);
+      const internshipEnd = new Date(app.endDate);
+      internshipStart.setHours(0, 0, 0, 0);
+      internshipEnd.setHours(23, 59, 59, 999);
+
+      const overlapsSelectedMonth = internshipStart <= selectedMonthEnd && internshipEnd >= selectedMonthStart;
+
+      if (overlapsSelectedMonth) {
+        if (!selectedMonthExpectedMap.has(mentorId)) {
+          selectedMonthExpectedMap.set(mentorId, { expectedReports: 0, expectedVisits: 0 });
+        }
+        const counts = selectedMonthExpectedMap.get(mentorId)!;
+        counts.expectedReports++;
+        counts.expectedVisits++;
+      }
+    }
+
     return {
+      // Include selected month info at the top level
+      currentMonth: selectedMonth,
+      currentYear: selectedYear,
       faculty: faculty.map((f) => {
         const reportCounts = reportCountMap.get(f.id) || { pending: 0, completed: 0 };
         const expectedCounts = expectedCountsMap.get(f.id) || { expectedReports: 0, expectedVisits: 0 };
         const totalVisits = visitCountMap.get(f.id) || 0;
+        const selectedMonthExpected = selectedMonthExpectedMap.get(f.id) || { expectedReports: 0, expectedVisits: 0 };
+        const selectedMonthVisitsCount = currentMonthVisitMap.get(f.id) || 0;
+        const selectedMonthReportsCount = currentMonthReportMap.get(f.id) || 0;
 
         return {
           id: f.id,
@@ -3648,14 +3841,19 @@ export class PrincipalService {
           branchId: null,
           branchName: f.branchName ?? null,
           assignedCount: mentorStudentMap.get(f.id)?.size || 0,
-          // Visits
+          // Cumulative visits
           totalVisits,
           expectedVisits: expectedCounts.expectedVisits,
-          // Reports - completed means submitted/approved
+          // Cumulative reports
           pendingReports: reportCounts.pending,
           completedReports: reportCounts.completed,
           totalReports: reportCounts.pending + reportCounts.completed,
           expectedReports: expectedCounts.expectedReports,
+          // Selected month specific data
+          currentMonthVisits: selectedMonthVisitsCount,
+          currentMonthExpectedVisits: selectedMonthExpected.expectedVisits,
+          currentMonthReports: selectedMonthReportsCount,
+          currentMonthExpectedReports: selectedMonthExpected.expectedReports,
         };
       }),
     };
@@ -3788,10 +3986,53 @@ export class PrincipalService {
       },
     });
 
-    // Calculate stats
+    // Calculate current month info for queries
     const now = new Date();
     const thisMonth = now.getMonth();
     const thisYear = now.getFullYear();
+    const currentMonth = thisMonth + 1; // 1-indexed for database
+    const currentYear = thisYear;
+
+    // Get student IDs assigned to this faculty
+    const assignedStudentIds = mentorAssignments.map((a) => a.student.id);
+
+    // Get monthly reports for current month from assigned students
+    const currentMonthReports = assignedStudentIds.length > 0
+      ? await this.prisma.monthlyReport.count({
+          where: {
+            studentId: { in: assignedStudentIds },
+            reportMonth: currentMonth,
+            reportYear: currentYear,
+            status: { in: ['APPROVED', 'SUBMITTED'] },
+          },
+        })
+      : 0;
+
+    // Calculate expected reports for current month using getMonthCycle
+    let currentMonthExpectedReports = 0;
+    for (const assignment of mentorAssignments) {
+      const app = assignment.student.internshipApplications[0];
+      if (!app || app.status !== 'JOINED' || !app.startDate || !app.endDate) continue;
+
+      const monthCycle = getMonthCycle(currentYear, currentMonth, app.startDate, app.endDate);
+      if (monthCycle) {
+        currentMonthExpectedReports++;
+      }
+    }
+
+    // Calculate expected visits for current month using getMonthCycle
+    let currentMonthExpectedVisits = 0;
+    for (const assignment of mentorAssignments) {
+      const app = assignment.student.internshipApplications[0];
+      if (!app || app.status !== 'JOINED' || !app.startDate || !app.endDate) continue;
+
+      const monthCycle = getMonthCycle(currentYear, currentMonth, app.startDate, app.endDate);
+      if (monthCycle) {
+        currentMonthExpectedVisits++;
+      }
+    }
+
+    // Calculate stats
     const lastMonth = thisMonth === 0 ? 11 : thisMonth - 1;
     const lastMonthYear = thisMonth === 0 ? thisYear - 1 : thisYear;
     const nextMonth = thisMonth === 11 ? 0 : thisMonth + 1;
@@ -3905,6 +4146,17 @@ export class PrincipalService {
         visitsThisMonth,
         scheduledNextMonth,
         missedVisits,
+        // Current month stats
+        currentMonth,
+        currentYear,
+        // Monthly reports stats for current month
+        reportsSubmittedThisMonth: currentMonthReports,
+        reportsExpectedThisMonth: currentMonthExpectedReports,
+        reportsPendingThisMonth: Math.max(0, currentMonthExpectedReports - currentMonthReports),
+        // Faculty visits stats for current month
+        visitsCompletedThisMonth: visitsThisMonth,
+        visitsExpectedThisMonth: currentMonthExpectedVisits,
+        visitsPendingThisMonth: Math.max(0, currentMonthExpectedVisits - visitsThisMonth),
       },
       students,
       visits: transformedVisits,
@@ -4316,14 +4568,16 @@ export class PrincipalService {
       },
     };
 
+    // Students with self-identified internships (approved or active) but no active mentor assignment
+    // Includes APPROVED/SELECTED/JOINED status and NOT_STARTED/ACTIVE phase
     const unassignedStudentsWhere: Prisma.StudentWhereInput = {
       institutionId,
       user: { active: true },
       internshipApplications: {
         some: {
           isSelfIdentified: true,
-          status: ApplicationStatus.JOINED,
-          internshipPhase: InternshipPhase.ACTIVE,
+          status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.SELECTED, ApplicationStatus.JOINED] },
+          internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
         },
       },
       mentorAssignments: {
@@ -5033,192 +5287,42 @@ export class PrincipalService {
   }
 
   /**
-   * Update internship application details (Principal can edit all self-identified internship fields)
+   * Update internship application details
+   * STUBBED: Internship editing functionality removed from principal role
    */
   async updateInternship(
     principalId: string,
     applicationId: string,
-    data: {
-      companyName?: string;
-      companyAddress?: string;
-      companyContact?: string;
-      companyEmail?: string;
-      jobProfile?: string;
-      stipend?: number;
-      internshipDuration?: string;
-      startDate?: Date;
-      endDate?: Date;
-      facultyMentorName?: string;
-      facultyMentorContact?: string;
-      facultyMentorEmail?: string;
-      facultyMentorDesignation?: string;
-      status?: string;
-    }
+    data: any
   ) {
-    const principal = await this.prisma.user.findUnique({
-      where: { id: principalId },
-    });
-
-    if (!principal?.institutionId) {
-      throw new NotFoundException('Principal or institution not found');
-    }
-
-    // Verify the application belongs to this institution
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        id: applicationId,
-        isSelfIdentified: true,
-        student: { institutionId: principal.institutionId },
-      },
-      include: {
-        student: { select: { id: true, user: { select: { name: true, rollNumber: true } } } },
-      },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Internship application not found or not from your institution');
-    }
-
-    // Build update data
-    const updateData: any = {};
-    if (data.companyName !== undefined) updateData.companyName = data.companyName;
-    if (data.companyAddress !== undefined) updateData.companyAddress = data.companyAddress;
-    if (data.companyContact !== undefined) updateData.companyContact = data.companyContact;
-    if (data.companyEmail !== undefined) updateData.companyEmail = data.companyEmail;
-    if (data.jobProfile !== undefined) updateData.jobProfile = data.jobProfile;
-    if (data.stipend !== undefined) updateData.stipend = data.stipend !== null ? String(data.stipend) : null;
-    if (data.internshipDuration !== undefined) updateData.internshipDuration = data.internshipDuration;
-    if (data.startDate !== undefined) updateData.startDate = new Date(data.startDate);
-    if (data.endDate !== undefined) updateData.endDate = new Date(data.endDate);
-    if (data.facultyMentorName !== undefined) updateData.facultyMentorName = data.facultyMentorName;
-    if (data.facultyMentorContact !== undefined) updateData.facultyMentorContact = data.facultyMentorContact;
-    if (data.facultyMentorEmail !== undefined) updateData.facultyMentorEmail = data.facultyMentorEmail;
-    if (data.facultyMentorDesignation !== undefined) updateData.facultyMentorDesignation = data.facultyMentorDesignation;
-    if (data.status !== undefined) updateData.status = data.status;
-
-    // Update the application
-    const updated = await this.prisma.internshipApplication.update({
-      where: { id: applicationId },
-      data: updateData,
-      include: {
-        student: {
-          select: { id: true, user: { select: { name: true, rollNumber: true } } },
-        },
-      },
-    });
-
-    // Recalculate expected counts if dates were updated
-    // This ONLY updates expected counts, never touches submitted/completed counts
-    if (data.startDate !== undefined || data.endDate !== undefined) {
-      await this.expectedCycleService.recalculateExpectedCounts(applicationId);
-    }
-
-    // Clear related caches
-    await this.cache.invalidateByTags([
-      `institution:${principal.institutionId}`,
-      'internships',
-      `student:${application.student.id}`,
-    ]);
-
     return {
-      success: true,
-      message: 'Internship updated successfully',
-      data: updated,
+      success: false,
+      message: 'Internship editing is not available for principal role',
+      data: null,
     };
   }
 
   /**
    * Bulk update internship statuses
+   * STUBBED: Internship editing functionality removed from principal role
    */
   async bulkUpdateInternshipStatus(
     principalId: string,
     data: { applicationIds: string[]; status: string; remarks?: string }
   ) {
-    const principal = await this.prisma.user.findUnique({
-      where: { id: principalId },
-    });
-
-    if (!principal?.institutionId) {
-      throw new NotFoundException('Principal or institution not found');
-    }
-
-    if (!data.applicationIds || data.applicationIds.length === 0) {
-      throw new BadRequestException('applicationIds is required');
-    }
-
-    // Verify all applications belong to this institution
-    const applications = await this.prisma.internshipApplication.findMany({
-      where: {
-        id: { in: data.applicationIds },
-        isSelfIdentified: true,
-        student: { institutionId: principal.institutionId },
-      },
-      select: { id: true, student: { select: { id: true } } },
-    });
-
-    if (applications.length !== data.applicationIds.length) {
-      throw new NotFoundException('One or more applications not found or not from your institution');
-    }
-
-    // Update all applications
-    const result = await this.prisma.internshipApplication.updateMany({
-      where: { id: { in: data.applicationIds } },
-      data: {
-        status: data.status as ApplicationStatus,
-        reviewRemarks: data.remarks || `Status updated to ${data.status} by Principal`,
-        reviewedAt: new Date(),
-      },
-    });
-
-    // Clear caches
-    await this.cache.invalidateByTags([
-      `institution:${principal.institutionId}`,
-      'internships',
-      ...applications.map(a => `student:${a.student.id}`),
-    ]);
-
     return {
-      success: true,
-      message: `Updated ${result.count} internship(s)`,
-      count: result.count,
+      success: false,
+      message: 'Bulk internship status update is not available for principal role',
+      count: 0,
     };
   }
 
   /**
    * Get single internship details for editing
+   * STUBBED: Internship editing functionality removed from principal role
    */
   async getInternshipById(principalId: string, applicationId: string) {
-    const principal = await this.prisma.user.findUnique({
-      where: { id: principalId },
-    });
-
-    if (!principal?.institutionId) {
-      throw new NotFoundException('Principal or institution not found');
-    }
-
-    const application = await this.prisma.internshipApplication.findFirst({
-      where: {
-        id: applicationId,
-        isSelfIdentified: true,
-        student: { institutionId: principal.institutionId },
-      },
-      include: {
-        student: {
-          select: {
-            id: true,
-            user: { select: { name: true, rollNumber: true, email: true, phoneNo: true } },
-            batch: { select: { name: true } },
-            branch: { select: { name: true } },
-          },
-        },
-      },
-    });
-
-    if (!application) {
-      throw new NotFoundException('Internship application not found');
-    }
-
-    return application;
+    return null;
   }
 
   /**

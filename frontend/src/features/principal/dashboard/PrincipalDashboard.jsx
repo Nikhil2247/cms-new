@@ -123,7 +123,8 @@ const PrincipalDashboard = () => {
       internships: dashboardStats.internships || {},
       pending: dashboardStats.pending || {},
       grievances: dashboardStats.grievances || { total: 0, pending: 0 },
-      facultyVisits: dashboardStats.facultyVisits || { completed: 0, expected: 0 },
+      monthlyReports: dashboardStats.monthlyReports || { submitted: 0, expected: 0, month: null, year: null },
+      facultyVisits: dashboardStats.facultyVisits || { completed: 0, expected: 0, month: null, year: null },
       joiningLetterStats: dashboardStats.joiningLetterStats || { total: 0, uploaded: 0, pending: 0, uploadRate: 0 },
       partnerCompanies: dashboardStats.partnerCompanies || 0,
     };
@@ -174,7 +175,7 @@ const PrincipalDashboard = () => {
   }), [stats, mentorCoverage, dashboardStats]);
 
   // Memoized data for SubmissionStatusGrid
-  // Uses fields from dashboard API response
+  // Uses CURRENT MONTH specific data from dashboard API response
   const submissionStatusData = useMemo(() => {
     // Get joining letter stats directly from dashboard response
     const joiningStats = stats?.joiningLetterStats || {};
@@ -187,21 +188,31 @@ const PrincipalDashboard = () => {
       ? Math.round((joiningPending / joiningTotal) * 100)
       : 0;
 
-    // Monthly reports - API returns pending count in stats.pending.monthlyReports
-    // Submitted/total counts are tracked at application level, shown in the table
-    const reportsPending = stats?.pending?.monthlyReports || 0;
+    // Monthly reports - CURRENT MONTH data from dashboard API
+    // API returns: monthlyReports: { submitted, expected, month, year }
+    const reportsSubmitted = stats?.monthlyReports?.submitted ?? 0;
+    const reportsTotal = stats?.monthlyReports?.expected ?? 0;
+    const reportsPending = Math.max(0, reportsTotal - reportsSubmitted);
 
-    // Faculty visits - use facultyVisits object from dashboard API
-    // API returns: facultyVisits: { completed, expected }
+    // Faculty visits - CURRENT MONTH data from dashboard API
+    // API returns: facultyVisits: { completed, expected, month, year }
     const visitsCompleted = stats?.facultyVisits?.completed ?? 0;
     const visitsTotal = stats?.facultyVisits?.expected ?? 0;
     const visitsPending = Math.max(0, visitsTotal - visitsCompleted);
 
+    // Get month/year from API response for display (server's current month)
+    const reportMonth = stats?.monthlyReports?.month;
+    const reportYear = stats?.monthlyReports?.year;
+    const visitMonth = stats?.facultyVisits?.month;
+    const visitYear = stats?.facultyVisits?.year;
+
     return {
       monthlyReports: {
-        submitted: 0, // Not aggregated at dashboard level - shown per-student in table
-        total: 0,     // Not aggregated at dashboard level - shown per-student in table
+        submitted: reportsSubmitted,
+        total: reportsTotal,
         pending: reportsPending,
+        month: reportMonth,
+        year: reportYear,
       },
       joiningLetters: {
         submitted: joiningUploaded,
@@ -212,6 +223,8 @@ const PrincipalDashboard = () => {
         completed: visitsCompleted,
         total: visitsTotal,
         pending: visitsPending,
+        month: visitMonth,
+        year: visitYear,
       },
       grievances: {
         total: stats?.grievances?.total || 0,

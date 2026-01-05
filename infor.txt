@@ -1,127 +1,270 @@
- Comprehensive Bottleneck & Race Condition Analysis
-
-  I've completed an extensive analysis of your entire backend. Here's the consolidated report:
-
-  ---
-  🔴 CRITICAL ISSUES (Fix Immediately)
-
-  | Issue                                               | File                    | Lines        | Type           | Risk                        |
-  |-----------------------------------------------------|-------------------------|--------------|----------------|-----------------------------|
-  | Token Refresh Race - No rotation/invalidation       | token.service.ts        | 87-106       | Race Condition | Token multiplication attack |
-  | Fee Payment Race - No distributed lock              | fee.service.ts          | 27-125       | Race Condition | Payment corruption          |
-  | Mentor Assignment Race - Non-atomic operations      | state-mentor.service.ts | 182-215      | Race Condition | Multiple active mentors     |
-  | WebSocket Memory Leak - Unbounded rateLimitMap      | websocket.gateway.ts    | 345-363      | Memory Leak    | 2+ MB/day growth            |
-  | Sync File I/O Blocking - fs.readFileSync in backup  | backup.service.ts       | 99, 210, 458 | Performance    | Event loop blocked          |
-  | Missing Rate Limiting - 20+ controllers unprotected | All controllers         | -            | Security       | DoS vulnerability           |
-
-  ---
-  🟠 HIGH PRIORITY ISSUES
-
-  Race Conditions Found: 13
-
-  | Issue                                 | Location                                  | Impact                  |
-  |---------------------------------------|-------------------------------------------|-------------------------|
-  | Email uniqueness check-then-create    | principal.service.ts:1468-1488            | Duplicate users         |
-  | Internship application status updates | internship-application.service.ts:193-242 | Conflicting reviews     |
-  | Report processor no deduplication     | report.processor.ts:1-182                 | Duplicate reports       |
-  | Mail processor no idempotency         | mail.processor.ts:35-62                   | Duplicate emails        |
-  | Cache tag invalidation race           | lru-cache.service.ts:274-292              | Stale cache             |
-  | WebSocket token refresh non-atomic    | websocket.gateway.ts:253-339              | Role/room inconsistency |
-  | 7 concurrent cron jobs                | notification-scheduler.service.ts         | DB overload             |
-
-  Database Bottlenecks Found: 11
-
-  | Issue                          | Location                             | Impact                 |
-  |--------------------------------|--------------------------------------|------------------------|
-  | N+1 in getCategoriesWithCounts | faq.service.ts:356-385               | 6 queries → 1          |
-  | N+1 in getStatistics           | support-ticket.service.ts:631-637    | Multiple COUNT queries |
-  | Missing pagination             | state-reports.service.ts:169-198     | Full table load        |
-  | Deep nested includes           | faculty.service.ts:264-314           | Heavy JOINs            |
-  | 10+ sequential counts          | state-institution.service.ts:614-720 | Should be 1 groupBy    |
-
-  Memory Issues Found: 9
-
-  | Issue                        | Location                             | Impact           |
-  |------------------------------|--------------------------------------|------------------|
-  | Scheduled timeouts unbounded | notification-scheduler.service.ts:15 | 400 KB+ waste    |
-  | Large file buffering (500MB) | file-storage.service.ts:476-481      | OOM risk         |
-  | PDF buffer concat (2x size)  | pdf.service.ts:18-22                 | Memory spike     |
-  | Tag store unbounded          | lru-cache.service.ts:17              | 4 MB/week growth |
-  | Map/Set per request          | principal.service.ts:788-794         | 20 MB/request    |
-
-  ---
-  🟡 MEDIUM PRIORITY ISSUES
-
-  API Layer Issues: 10
-
-  | Issue                               | Location                      | Fix               |
-  |-------------------------------------|-------------------------------|-------------------|
-  | Token validation 3 DB calls/request | jwt-auth.guard.ts:40-65       | Cache token state |
-  | Audit logging blocks responses      | audit.interceptor.ts:62-115   | Fire-and-forget   |
-  | Full error stack logging            | logging.interceptor.ts:55-58  | Log only 500+     |
-  | Large response payloads             | state-institution.service.ts  | Use select()      |
-  | No circuit breaker on MinIO         | file-storage.service.ts:66-98 | Add timeout/retry |
-
-  Concurrency Issues: 8
-
-  | Issue                          | Location                            | Fix                   |
-  |--------------------------------|-------------------------------------|-----------------------|
-  | Session termination no version | session.service.ts:90-127           | Optimistic locking    |
-  | Backup schedule state race     | backup-scheduler.service.ts:256-311 | Add mutex             |
-  | Cron job overlap               | report-cleanup.scheduler.ts         | Add distributed lock  |
-  | Bulk processor concurrency:2   | bulk.processor.ts                   | Add job deduplication |
-
-  ---
-  📊 Summary Statistics
-
-  | Category             | Critical | High | Medium | Low | Total |
-  |----------------------|----------|------|--------|-----|-------|
-  | Race Conditions      | 3        | 7    | 3      | 1   | 14    |
-  | Database Bottlenecks | 2        | 5    | 4      | 1   | 12    |
-  | Memory Leaks         | 2        | 3    | 4      | 0   | 9     |
-  | API/Performance      | 1        | 4    | 5      | 0   | 10    |
-  | Concurrency/Locking  | 2        | 4    | 4      | 0   | 10    |
-  | Total                | 10       | 23   | 20     | 2   | 55    |
-
-  ---
-  🛠️ Recommended Fix Priority
-
-  Week 1 - Critical Fixes
-
-  1. Add distributed locks to fee/mentor operations
-  2. Implement token rotation in refresh endpoint
-  3. Fix WebSocket rateLimitMap cleanup
-  4. Replace sync file I/O with async
-  5. Add @Throttle to all controllers
-
-  Week 2 - High Priority
-
-  1. Wrap check-then-create patterns in transactions
-  2. Replace N+1 queries with groupBy
-  3. Add pagination to missing endpoints
-  4. Make audit logging fire-and-forget
-  5. Add job deduplication to processors
-
-  Week 3 - Medium Priority
-
-  1. Add optimistic locking to session/status updates
-  2. Implement cron job mutex pattern
-  3. Add circuit breakers to external calls
-  4. Reduce response payload sizes
-  5. Implement file streaming for downloads
-
-  ---
-  Quick Wins (< 30 min each)
-
-  | Fix                                            | Impact                | Effort |
-  |------------------------------------------------|-----------------------|--------|
-  | Add @Throttle decorator to controllers         | Prevents DoS          | 30 min |
-  | Remove await from audit logging                | Faster responses      | 15 min |
-  | Replace fs.readFileSync → fs.promises.readFile | Unblock event loop    | 20 min |
-  | Add rateLimitMap cleanup interval              | Stop memory leak      | 15 min |
-  | Use select() instead of include()              | 50% smaller responses | 1 hour |
-
-  Would you like me to start fixing any of these issues? I can prioritize based on:
-  1. Security first - Token refresh race, rate limiting
-  2. Stability first - Memory leaks, blocking I/O
-  3. Performance first - N+1 queries, caching improvements
+{
+    "currentMonth": 1,
+    "currentYear": 2026,
+    "faculty": [
+        {
+            "id": "7b88e00c-da92-4e56-a2b2-f7922a89f7d2",
+            "name": "Gujeet Kumar",
+            "email": "paras.ptk2@gmail.com",
+            "phoneNo": "8054776027",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 10,
+            "totalVisits": 0,
+            "expectedVisits": 48,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 48,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "1f07e43a-cfff-45b4-9d05-fab97e5a39af",
+            "name": "Harsukhpreet Singh",
+            "email": "harsukhpreet@gmail.com",
+            "phoneNo": "7696889004",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": "ECE",
+            "assignedCount": 0,
+            "totalVisits": 0,
+            "expectedVisits": 0,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 0,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "2bd0dc51-faa6-4e06-becf-924bd3405f49",
+            "name": "Hitesh Bergal",
+            "email": "gpctalwara.me@gmail.com",
+            "phoneNo": "9417433471",
+            "employeeId": null,
+            "designation": "Senior Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": "ME",
+            "assignedCount": 12,
+            "totalVisits": 0,
+            "expectedVisits": 61,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 61,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "2041de87-fc97-485c-b592-30e9104687a2",
+            "name": "Ketan khullar",
+            "email": "kketan62@gmail.com",
+            "phoneNo": "9779920730",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": "CSE",
+            "assignedCount": 13,
+            "totalVisits": 0,
+            "expectedVisits": 71,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 71,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "42502a70-5a89-4cdc-9d25-a4864c7ed8d7",
+            "name": "Pardeep Kaur",
+            "email": "pardeepgpcg@gmail.com",
+            "phoneNo": "6284141877",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": "ECE",
+            "assignedCount": 38,
+            "totalVisits": 1,
+            "expectedVisits": 190,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 190,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "7b037b73-a2c9-4919-9e77-104ac599d43b",
+            "name": "Rahul Kumar",
+            "email": "me.rahul8@gmail.com",
+            "phoneNo": "9463777331",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 18,
+            "totalVisits": 0,
+            "expectedVisits": 92,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 92,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "d52d2194-c598-4158-9cb1-23b30eaae048",
+            "name": "Rajan Sahota",
+            "email": "rajan.sahota@gmail.com",
+            "phoneNo": "9888169418",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 12,
+            "totalVisits": 0,
+            "expectedVisits": 68,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 68,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "9c0cdff6-58e7-48e6-b8b4-fddb661fcd10",
+            "name": "Sharandeep Singh",
+            "email": "sharan14419@gmail.com",
+            "phoneNo": "8054678211",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 14,
+            "totalVisits": 0,
+            "expectedVisits": 72,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 72,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "8e908cb0-2777-466d-b15b-773593dbe081",
+            "name": "Sonjit Rahul",
+            "email": "sonjitrahul786@gmail.com",
+            "phoneNo": "9878729221",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 9,
+            "totalVisits": 0,
+            "expectedVisits": 44,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 44,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "d4106f15-8848-44fc-9d10-9cf33b56b7b6",
+            "name": "Sukeeratpal singh",
+            "email": "sukeerats@gmail.com",
+            "phoneNo": "9779972700",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": "EE",
+            "assignedCount": 13,
+            "totalVisits": 0,
+            "expectedVisits": 66,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 66,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "57181daf-bbbe-451b-9baf-39f4cebec1ea",
+            "name": "Sukhwinder Singh",
+            "email": "sukh1.baghoria@gmail.com",
+            "phoneNo": "9501648500",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 14,
+            "totalVisits": 0,
+            "expectedVisits": 88,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 88,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        },
+        {
+            "id": "488055a5-60df-4f3f-9478-2206035a4428",
+            "name": "Sukhwinder Singh",
+            "email": "sukh227896@gmail.com",
+            "phoneNo": "9417246007",
+            "employeeId": null,
+            "designation": "Lecturer",
+            "profileImage": null,
+            "branchId": null,
+            "branchName": null,
+            "assignedCount": 14,
+            "totalVisits": 0,
+            "expectedVisits": 70,
+            "pendingReports": 0,
+            "completedReports": 0,
+            "totalReports": 0,
+            "expectedReports": 70,
+            "currentMonthVisits": 0,
+            "currentMonthExpectedVisits": 0,
+            "currentMonthReports": 0,
+            "currentMonthExpectedReports": 0
+        }
+    ]
+}
