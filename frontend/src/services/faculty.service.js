@@ -60,11 +60,8 @@ export const facultyService = {
     formData.append('file', file);
     formData.append('type', type);
 
-    const response = await API.post(`/faculty/students/${studentId}/documents`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post(`/faculty/students/${studentId}/documents`, formData);
     return response.data;
   },
 
@@ -111,11 +108,8 @@ export const facultyService = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('documentType', documentType);
-    const response = await API.post('/faculty/visit-logs/upload-document', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/faculty/visit-logs/upload-document', formData);
     return response.data;
   },
 
@@ -174,13 +168,15 @@ export const facultyService = {
     return response.data;
   },
 
-  // Internship Management - DEPRECATED: Industry/internship feature removed
+  // Internship Management
   async getStudentInternships(studentId) {
-    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
+    const response = await API.get(`/faculty/students/${studentId}/internships`);
+    return response.data;
   },
 
   async updateInternship(internshipId, data) {
-    throw new Error('Industry internship feature has been removed. Use self-identified internships instead.');
+    const response = await API.put(`/faculty/internships/${internshipId}`, data);
+    return response.data;
   },
 
   async deleteInternship(internshipId) {
@@ -221,11 +217,8 @@ export const facultyService = {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await API.post(`/faculty/joining-letters/${applicationId}/upload`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post(`/faculty/joining-letters/${applicationId}/upload`, formData);
     return response.data;
   },
 
@@ -247,11 +240,8 @@ export const facultyService = {
 
   // Upload monthly report for a student (multipart/form-data)
   async uploadMonthlyReport(formData) {
-    const response = await API.post('/faculty/monthly-reports/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/faculty/monthly-reports/upload', formData);
     return response.data;
   },
 

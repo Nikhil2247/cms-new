@@ -6,6 +6,7 @@ import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
+import principalService from '../../../services/principal.service';
 
 const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
   const dispatch = useDispatch();
@@ -78,15 +79,50 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
           }
         }
 
+        // Fetch unmasked contact details for edit form
+        let unmaskedEmail = student?.user?.email || student.email;
+        let unmaskedPhone = student?.user?.phoneNo || student.contact || student.phoneNo;
+
+        // Check if values are masked (contain asterisks)
+        const isMasked = (value) => value && typeof value === 'string' && value.includes('*');
+
+        if (studentId && (isMasked(unmaskedEmail) || isMasked(unmaskedPhone))) {
+          try {
+            const unmaskedData = await principalService.getUnmaskedContactDetails(studentId);
+            if (unmaskedData) {
+              unmaskedEmail = unmaskedData.email || unmaskedEmail;
+              unmaskedPhone = unmaskedData.phoneNo || unmaskedPhone;
+            }
+          } catch (err) {
+            console.error('Failed to fetch unmasked contact details:', err);
+          }
+        }
+
         form.setFieldsValue({
-          ...student,
-          // User fields are now in student.user
+          // Student-specific fields
+          admissionType: student.admissionType,
+          category: student.category,
+          batchId: student.batchId || student.batch?.id,
+          branchId: student.branchId || student.branch?.id,
+          currentYear: student.currentYear,
+          currentSemester: student.currentSemester,
+          clearanceStatus: student.clearanceStatus,
+          parentName: student.parentName,
+          parentContact: student.parentContact,
+          motherName: student.motherName,
+          gender: student.gender,
+          address: student.address,
+          city: student.city,
+          state: student.state,
+          district: student.district,
+          tehsil: student.tehsil,
+          pinCode: student.pinCode,
+          // User fields - use unmasked values
           name: student?.user?.name || student.name,
-          email: student?.user?.email || student.email,
+          email: unmaskedEmail,
           rollNumber: student?.user?.rollNumber || student.rollNumber,
+          contact: unmaskedPhone,
           dob: student?.user?.dob ? dayjs(student?.user?.dob) : (student.dob ? dayjs(student.dob) : null),
-          dateOfBirth: student?.user?.dob ? dayjs(student?.user?.dob) : (student.dob ? dayjs(student.dob) : null),
-          contact: student?.user?.phoneNo || student.contact || student.phoneNo,
           profileImage: profileImageValue,
         });
       } else if (open && !isEditMode) {

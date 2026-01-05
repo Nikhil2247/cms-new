@@ -385,11 +385,15 @@ const MentorAssignment = () => {
   const studentColumns = [
     {
       title: 'Roll Number',
-      dataIndex: 'rollNumber',
       key: 'rollNumber',
       width: 130,
-      sorter: (a, b) => (a.rollNumber || '').localeCompare(b.rollNumber || ''),
+      sorter: (a, b) => {
+        const rollA = a.user?.rollNumber || a.rollNumber || '';
+        const rollB = b.user?.rollNumber || b.rollNumber || '';
+        return rollA.localeCompare(rollB);
+      },
       sortDirections: ['ascend', 'descend'],
+      render: (_, record) => record.user?.rollNumber || record.rollNumber || 'N/A',
     },
     {
       title: 'Name',
@@ -944,9 +948,12 @@ const MentorAssignment = () => {
                 columns={[
                   {
                     title: 'Roll Number',
-                    dataIndex: 'rollNumber',
                     key: 'rollNumber',
-                    render: (text) => <Text className="font-medium text-text-primary">{text}</Text>,
+                    render: (_, record) => (
+                      <Text className="font-medium text-text-primary">
+                        {record.user?.rollNumber || record.rollNumber || 'N/A'}
+                      </Text>
+                    ),
                   },
                   {
                     title: 'Name',

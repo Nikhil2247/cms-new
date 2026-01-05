@@ -817,18 +817,6 @@ const AllStudents = () => {
                         },
                         { type: 'divider' },
                         {
-                          key: 'clearance',
-                          icon: <ExclamationCircleOutlined />,
-                          label: 'Clearance Status',
-                          children: [
-                            { key: 'PENDING', label: 'Pending', onClick: () => handleClearanceStatusChange('PENDING') },
-                            { key: 'CLEARED', label: 'Cleared', onClick: () => handleClearanceStatusChange('CLEARED') },
-                            { key: 'HOLD', label: 'Hold', onClick: () => handleClearanceStatusChange('HOLD') },
-                            { key: 'REJECTED', label: 'Rejected', onClick: () => handleClearanceStatusChange('REJECTED') },
-                          ],
-                        },
-                        { type: 'divider' },
-                        {
                           key: 'toggle',
                           icon: selectedStudent?.user?.active ? <StopOutlined /> : <PlayCircleOutlined />,
                           label: selectedStudent?.user?.active ? 'Deactivate' : 'Activate',
@@ -870,18 +858,6 @@ const AllStudents = () => {
                       <Tag color={displayStudent?.user?.active ? 'success' : 'error'} bordered={false}>
                         {displayStudent?.user?.active ? 'Active' : 'Inactive'}
                       </Tag>
-                      {displayStudent.clearanceStatus && (
-                        <Tag
-                          color={
-                            displayStudent.clearanceStatus === 'CLEARED' ? 'success'
-                            : displayStudent.clearanceStatus === 'PENDING' ? 'processing'
-                            : 'warning'
-                          }
-                          bordered={false}
-                        >
-                          {displayStudent.clearanceStatus}
-                        </Tag>
-                      )}
                     </div>
                   </div>
                 </div>

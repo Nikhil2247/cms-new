@@ -50,10 +50,12 @@ import {
   MoreOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
+  DownloadOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { openFileWithPresignedUrl } from "../../../utils/imageUtils";
 import principalService from "../../../services/principal.service";
 import analyticsService from "../../../services/analytics.service";
 import {
@@ -729,7 +731,7 @@ const SelfIdentifiedInternships = () => {
                   key: "joiningLetter",
                   label: "View Joining Letter",
                   icon: <FilePdfOutlined />,
-                  onClick: () => window.open(record.joiningLetterUrl, "_blank"),
+                  onClick: () => openFileWithPresignedUrl(record.joiningLetterUrl),
                 },
               ]
             : []),
@@ -1139,7 +1141,7 @@ const SelfIdentifiedInternships = () => {
                                     size="small"
                                     icon={<FilePdfOutlined />}
                                     onClick={() =>
-                                      window.open(r.reportFileUrl, "_blank")
+                                      openFileWithPresignedUrl(r.reportFileUrl)
                                     }
                                   >
                                     View
@@ -1245,7 +1247,7 @@ const SelfIdentifiedInternships = () => {
                 type="primary"
                 icon={<FilePdfOutlined />}
                 onClick={() =>
-                  window.open(selectedInternship.joiningLetterUrl, "_blank")
+                  openFileWithPresignedUrl(selectedInternship.joiningLetterUrl)
                 }
               >
                 View Joining Letter

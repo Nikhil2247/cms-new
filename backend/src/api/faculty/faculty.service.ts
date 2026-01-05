@@ -2415,8 +2415,21 @@ export class FacultyService {
     // Academic info - these remain on Student
     if (updateDto.currentYear !== undefined) updateData.currentYear = updateDto.currentYear;
     if (updateDto.currentSemester !== undefined) updateData.currentSemester = updateDto.currentSemester;
-    if (updateDto.batchId !== undefined) updateData.batchId = updateDto.batchId;
-    if (updateDto.branchId !== undefined) updateData.branchId = updateDto.branchId;
+    // Use Prisma relation connect syntax for batch and branch
+    if (updateDto.batchId !== undefined) {
+      if (updateDto.batchId) {
+        updateData.batch = { connect: { id: updateDto.batchId } };
+      } else {
+        updateData.batch = { disconnect: true };
+      }
+    }
+    if (updateDto.branchId !== undefined) {
+      if (updateDto.branchId) {
+        updateData.branch = { connect: { id: updateDto.branchId } };
+      } else {
+        updateData.branch = { disconnect: true };
+      }
+    }
     if (updateDto.clearanceStatus !== undefined) updateData.clearanceStatus = updateDto.clearanceStatus;
 
     // Parent info
@@ -2520,6 +2533,14 @@ export class FacultyService {
       },
     });
 
+    // If this is a profile image, update the student's profileImage field
+    if (documentType === 'profile' || documentType === 'PROFILE_IMAGE') {
+      await this.prisma.student.update({
+        where: { id: studentId },
+        data: { profileImage: documentUrl },
+      });
+    }
+
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
 
@@ -2548,6 +2569,7 @@ export class FacultyService {
     return {
       success: true,
       message: 'Document uploaded successfully',
+      fileUrl: documentUrl, // Include fileUrl directly for frontend
       data: document,
     };
   }

@@ -1233,6 +1233,47 @@ export class PrincipalService {
   }
 
   /**
+   * Get unmasked contact details for a student (for edit forms)
+   * Returns with _unmasked flag to bypass SecurityInterceptor masking
+   */
+  async getUnmaskedContactDetails(principalId: string, studentId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Institution not found');
+    }
+
+    const student = await this.prisma.student.findFirst({
+      where: {
+        id: studentId,
+        institutionId: principal.institutionId,
+      },
+      include: {
+        user: {
+          select: {
+            email: true,
+            phoneNo: true,
+            rollNumber: true,
+          },
+        },
+      },
+    });
+
+    if (!student) {
+      throw new NotFoundException('Student not found');
+    }
+
+    return {
+      _unmasked: true, // Flag to bypass SecurityInterceptor
+      email: student.user?.email,
+      phoneNo: student.user?.phoneNo,
+      rollNumber: student.user?.rollNumber,
+    };
+  }
+
+  /**
    * Create a new student - delegates to domain UserService
    */
   async createStudent(principalId: string, createStudentDto: CreateStudentDto) {
@@ -1334,52 +1375,96 @@ export class PrincipalService {
       delete updateData.departmentId;
     }
 
-    // Look up branch name if branchId is being updated
-    if (updateData.branchId) {
-      const branch = await this.prisma.branch.findUnique({
-        where: { id: updateData.branchId },
-        select: { name: true },
-      });
-      if (branch) {
-        updateData.branchName = branch.name;
-      }
-    }
-
     // Handle parentPhone -> parentContact mapping
     if (updateData.parentPhone !== undefined) {
       updateData.parentContact = updateData.parentPhone;
       delete updateData.parentPhone;
     }
 
-    // Handle phoneNo -> contact mapping for student model
+    // Handle phoneNo -> contact mapping
     if (updateData.phoneNo !== undefined) {
       updateData.contact = updateData.phoneNo;
       delete updateData.phoneNo;
     }
 
-    // Handle dateOfBirth -> dob mapping for student model
+    // Handle dateOfBirth -> dob mapping
     if (updateData.dateOfBirth !== undefined) {
       updateData.dob = updateData.dateOfBirth;
       delete updateData.dateOfBirth;
     }
 
-    // Remove fields not in Prisma schema
-    delete updateData.bloodGroup;
-    delete updateData.semesterId; // Not used, semester is managed through batch
-
-    // Build user update data for synced fields
+    // Build user update data for synced fields (these belong to User model, not Student)
     const userUpdateData: any = {};
-    if (updateData.name) userUpdateData.name = updateData.name;
-    if (updateData.email) userUpdateData.email = updateData.email;
-    if (updateData.contact) userUpdateData.phoneNo = updateData.contact; // Student.contact -> User.phoneNo
-    if (typeof updateData.isActive === 'boolean') userUpdateData.active = updateData.isActive;
+    if (updateData.name) {
+      userUpdateData.name = updateData.name;
+      delete updateData.name;
+    }
+    if (updateData.email) {
+      userUpdateData.email = updateData.email;
+      delete updateData.email;
+    }
+    if (updateData.contact) {
+      userUpdateData.phoneNo = updateData.contact;
+      delete updateData.contact;
+    }
+    if (updateData.rollNumber) {
+      userUpdateData.rollNumber = updateData.rollNumber;
+      delete updateData.rollNumber;
+    }
+    if (updateData.dob) {
+      userUpdateData.dob = updateData.dob;
+      delete updateData.dob;
+    }
+    if (typeof updateData.isActive === 'boolean') {
+      userUpdateData.active = updateData.isActive;
+      delete updateData.isActive;
+    }
+
+    // Handle relation fields - convert IDs to Prisma relation connect syntax
+    const studentUpdateData: any = { ...updateData };
+
+    // Handle batchId -> batch relation
+    if (studentUpdateData.batchId !== undefined) {
+      if (studentUpdateData.batchId) {
+        studentUpdateData.batch = { connect: { id: studentUpdateData.batchId } };
+      } else {
+        studentUpdateData.batch = { disconnect: true };
+      }
+      delete studentUpdateData.batchId;
+    }
+
+    // Handle branchId -> branch relation
+    if (studentUpdateData.branchId !== undefined) {
+      if (studentUpdateData.branchId) {
+        studentUpdateData.branch = { connect: { id: studentUpdateData.branchId } };
+      } else {
+        studentUpdateData.branch = { disconnect: true };
+      }
+      delete studentUpdateData.branchId;
+    }
+
+    // Handle institutionId -> Institution relation
+    if (studentUpdateData.institutionId !== undefined) {
+      if (studentUpdateData.institutionId) {
+        studentUpdateData.Institution = { connect: { id: studentUpdateData.institutionId } };
+      }
+      delete studentUpdateData.institutionId;
+    }
+
+    // Remove fields not in Prisma Student schema
+    delete studentUpdateData.bloodGroup;
+    delete studentUpdateData.semesterId;
+    delete studentUpdateData.branchName;
+    delete studentUpdateData.batchName;
+    delete studentUpdateData.institutionName;
+    delete studentUpdateData.departmentName;
 
     // Always use transaction to keep Student and User in sync
     if (student.userId && Object.keys(userUpdateData).length > 0) {
       const [updatedStudent] = await this.prisma.$transaction([
         this.prisma.student.update({
           where: { id: studentId },
-          data: updateData,
+          data: studentUpdateData,
           include: {
             user: true,
             batch: true,
@@ -1399,7 +1484,7 @@ export class PrincipalService {
 
     const updated = await this.prisma.student.update({
       where: { id: studentId },
-      data: updateData,
+      data: studentUpdateData,
       include: {
         user: true,
         batch: true,
@@ -5480,6 +5565,14 @@ export class PrincipalService {
       },
     });
 
+    // If this is a profile image, update the student's profileImage field
+    if (type === 'profile' || type === 'PROFILE_IMAGE') {
+      await this.prisma.student.update({
+        where: { id: studentId },
+        data: { profileImage: uploadResult.url },
+      });
+    }
+
     // Log audit
     this.auditService.log({
       action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
@@ -5506,6 +5599,7 @@ export class PrincipalService {
       id: document.id,
       url: document.fileUrl,
       filename: document.fileName,
+      fileUrl: uploadResult.url,
       type: document.type,
       uploadedAt: document.createdAt,
     };

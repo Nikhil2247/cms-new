@@ -29,9 +29,8 @@ export const studentService = {
   async uploadProfileImage(file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await API.post('/student/profile/image', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/student/profile/image', formData);
     return response.data;
   },
 
@@ -69,9 +68,8 @@ export const studentService = {
   async uploadJoiningLetter(applicationId, file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await API.put(`/student/applications/${applicationId}/joining-letter`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.put(`/student/applications/${applicationId}/joining-letter`, formData);
     return response.data;
   },
 
@@ -138,9 +136,8 @@ export const studentService = {
         formData.append(key, value);
       }
     });
-    const response = await API.post('/student/documents', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/student/documents', formData);
     return response.data;
   },
 

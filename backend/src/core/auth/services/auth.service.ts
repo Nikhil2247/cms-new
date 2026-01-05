@@ -50,8 +50,9 @@ export class AuthService {
         userAgent,
         newValues: { email, reason: 'account_locked', lockedUntil: lockoutStatus.lockedUntil },
       }).catch(() => {});
+      // Security: Don't reveal exact lockout duration to prevent timing attacks
       throw new ForbiddenException(
-        `Account is temporarily locked. Please try again in ${lockoutStatus.minutesRemaining} minutes.`,
+        'Account is temporarily locked due to multiple failed login attempts. Please try again later.',
       );
     }
 
@@ -136,14 +137,14 @@ export class AuthService {
       }).catch(() => {}); // Non-blocking
 
       if (newLockoutStatus.isLocked) {
+        // Security: Don't reveal exact lockout duration
         throw new ForbiddenException(
-          `Too many failed attempts. Account is locked for ${newLockoutStatus.minutesRemaining} minutes.`,
+          'Too many failed attempts. Account is temporarily locked. Please try again later.',
         );
       }
 
-      throw new UnauthorizedException(
-        `Invalid credentials. ${newLockoutStatus.remainingAttempts} attempts remaining.`,
-      );
+      // Security: Don't reveal remaining attempts to prevent brute force guidance
+      throw new UnauthorizedException('Invalid credentials');
     }
 
     // Reset failed attempts on successful login
@@ -566,7 +567,7 @@ export class AuthService {
 
     return {
       message: 'If the email exists, a password reset link has been sent',
-      // For development only - remove in production
+      // Return token in development for testing (no email service configured)
       resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined,
     };
   }
@@ -735,6 +736,7 @@ export class AuthService {
         lastLoginAt: true,
         loginCount: true,
         hasChangedDefaultPassword: true,
+        mfaEnabled: true,
         createdAt: true,
         institutionId: true,
         consent: true,
@@ -1240,7 +1242,7 @@ export class AuthService {
       userId: user.id,
       email: user.email,
       name: user.name,
-      // Return password only in development mode
+      // Return password in development for testing (no email service configured)
       newPassword: process.env.NODE_ENV === 'development' ? newPassword : undefined,
       message: 'Password reset successfully. User will be notified via email.',
     };

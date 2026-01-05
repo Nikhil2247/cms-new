@@ -234,6 +234,10 @@ const StudentDetailsModal = ({
   // Handle edit internship
   const handleEditInternship = () => {
     const app = effectiveInternship;
+    if (!app?.id) {
+      message.warning('No internship application found for this student.');
+      return;
+    }
     editForm.setFieldsValue({
       // Company Info
       companyName: app?.companyName,
@@ -261,6 +265,14 @@ const StudentDetailsModal = ({
   const handleSaveInternship = async () => {
     try {
       const values = await editForm.validateFields();
+
+      // Get the internship ID - check multiple possible sources
+      const internshipId = effectiveInternship?.id || internshipApp?.id;
+      if (!internshipId) {
+        message.error('No internship application found. Cannot save changes.');
+        return;
+      }
+
       setSaving(true);
 
       const updateData = {
@@ -278,7 +290,7 @@ const StudentDetailsModal = ({
         startDate: values.startDate?.toISOString(),
         endDate: values.endDate?.toISOString(),
         stipend: values.stipend,
-        internshipDuration: values.internshipDuration,
+        // Note: internshipDuration is not sent - it's auto-calculated from start/end dates
         jobProfile: values.jobProfile,
         // Notes
         notes: values.notes,
@@ -299,7 +311,7 @@ const StudentDetailsModal = ({
 
       // API call in background
       try {
-        const response = await dispatch(updateInternship({ internshipId: internshipApp.id, data: updateData })).unwrap();
+        const response = await dispatch(updateInternship({ internshipId, data: updateData })).unwrap();
         // Update with server response
         if (response?.data) {
           setLocalInternshipData(response.data);
@@ -328,9 +340,14 @@ const StudentDetailsModal = ({
 
   // Handle joining letter upload
   const handleJoiningLetterUpload = async (file) => {
+    const applicationId = effectiveInternship?.id || internshipApp?.id;
+    if (!applicationId) {
+      message.error('No internship application found. Cannot upload.');
+      return false;
+    }
     setUploadingJoiningLetter(true);
     try {
-      await dispatch(uploadJoiningLetter({ applicationId: internshipApp?.id, file })).unwrap();
+      await dispatch(uploadJoiningLetter({ applicationId, file })).unwrap();
       message.success('Joining letter uploaded successfully');
       onRefresh?.();
     } catch (error) {
@@ -344,8 +361,13 @@ const StudentDetailsModal = ({
 
   // Handle joining letter delete
   const handleDeleteJoiningLetter = async () => {
+    const applicationId = effectiveInternship?.id || internshipApp?.id;
+    if (!applicationId) {
+      message.error('No internship application found. Cannot delete.');
+      return;
+    }
     try {
-      await dispatch(deleteJoiningLetter(internshipApp?.id)).unwrap();
+      await dispatch(deleteJoiningLetter(applicationId)).unwrap();
       message.success('Joining letter deleted successfully');
       onRefresh?.();
     } catch (error) {
@@ -368,11 +390,16 @@ const StudentDetailsModal = ({
 
   // Handle monthly report upload
   const handleReportUpload = async (file) => {
+    const applicationId = effectiveInternship?.id || internshipApp?.id;
+    if (!applicationId) {
+      message.error('No internship application found. Cannot upload report.');
+      return false;
+    }
     setUploadingReport(true);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('applicationId', internshipApp?.id);
+      formData.append('applicationId', applicationId);
       formData.append('reportMonth', dayjs().month() + 1);
       formData.append('reportYear', dayjs().year());
 
@@ -480,7 +507,7 @@ const StudentDetailsModal = ({
                 title={
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-sm">Internship Details</span>
-                    {!isEditingInternship && (
+                    {!isEditingInternship && effectiveInternship?.id && (
                       <Button type="text" size="small" icon={<EditOutlined />} onClick={handleEditInternship} className="text-xs">Edit</Button>
                     )}
                   </div>
@@ -713,13 +740,13 @@ const StudentDetailsModal = ({
                 <div>
                   <Text className="font-medium">Joining Letter</Text>
                   <div className="text-xs mt-0.5">
-                    {internshipApp?.joiningLetterUrl ? (
+                    {effectiveInternship?.joiningLetterUrl ? (
                       <Space size={4}>
                         <CheckCircleOutlined style={{ color: token.colorSuccess }} />
                         <span style={{ color: token.colorSuccess }}>Uploaded</span>
                         <span style={{ color: token.colorTextTertiary }}>•</span>
-                        <a 
-                          onClick={(e) => { e.preventDefault(); handleViewDocument(internshipApp.joiningLetterUrl); }}
+                        <a
+                          onClick={(e) => { e.preventDefault(); handleViewDocument(effectiveInternship.joiningLetterUrl); }}
                           className="hover:underline"
                         >
                           View Document
@@ -731,31 +758,33 @@ const StudentDetailsModal = ({
                   </div>
                 </div>
               </div>
-              <Space>
-                <Upload
-                  showUploadList={false}
-                  beforeUpload={handleJoiningLetterUpload}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                >
-                  <Button
-                    size="small"
-                    icon={<UploadOutlined />}
-                    loading={uploadingJoiningLetter}
+              {effectiveInternship?.id && (
+                <Space>
+                  <Upload
+                    showUploadList={false}
+                    beforeUpload={handleJoiningLetterUpload}
+                    accept=".pdf,.jpg,.jpeg,.png"
                   >
-                    {internshipApp?.joiningLetterUrl ? 'Replace' : 'Upload'}
-                  </Button>
-                </Upload>
-                {internshipApp?.joiningLetterUrl && (
-                  <Popconfirm
-                    title="Delete joining letter?"
-                    onConfirm={handleDeleteJoiningLetter}
-                    okText="Delete"
-                    okButtonProps={{ danger: true }}
-                  >
-                    <Button size="small" danger icon={<DeleteOutlined />} />
-                  </Popconfirm>
-                )}
-              </Space>
+                    <Button
+                      size="small"
+                      icon={<UploadOutlined />}
+                      loading={uploadingJoiningLetter}
+                    >
+                      {effectiveInternship?.joiningLetterUrl ? 'Replace' : 'Upload'}
+                    </Button>
+                  </Upload>
+                  {effectiveInternship?.joiningLetterUrl && (
+                    <Popconfirm
+                      title="Delete joining letter?"
+                      onConfirm={handleDeleteJoiningLetter}
+                      okText="Delete"
+                      okButtonProps={{ danger: true }}
+                    >
+                      <Button size="small" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  )}
+                </Space>
+              )}
             </div>
           </Card>
         </div>

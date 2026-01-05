@@ -52,6 +52,7 @@ import {
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { openFileWithPresignedUrl } from "../../../../utils/imageUtils";
 import principalService from "../../../../services/principal.service";
 import analyticsService from "../../../../services/analytics.service";
 import {
@@ -108,7 +109,7 @@ const DashboardInternshipTable = () => {
 
       // Response structure: { students: [...], pagination, mentors, statusCounts }
       const students = response?.students || [];
-
+      // console.log(students);
       // Transform student progress data to internship format
       // Filter for students who have internship applications
       const internshipData = students
@@ -527,7 +528,7 @@ const DashboardInternshipTable = () => {
     {
       title: "Company",
       key: "company",
-      width: 200,
+      width: 220,
       render: (_, record) => (
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center shrink-0">
@@ -539,7 +540,15 @@ const DashboardInternshipTable = () => {
                 {record.companyName}
               </Text>
             </Tooltip>
-            {record.jobProfile && (
+            {record.companyAddress && (
+              <Tooltip title={record.companyAddress}>
+                <Text className="text-xs text-text-tertiary truncate block">
+                  <EnvironmentOutlined className="mr-1" />
+                  {record.companyAddress}
+                </Text>
+              </Tooltip>
+            )}
+            {!record.companyAddress && record.jobProfile && (
               <Text className="text-xs text-text-tertiary truncate block">
                 {record.jobProfile}
               </Text>
@@ -552,21 +561,36 @@ const DashboardInternshipTable = () => {
       title: "Duration",
       key: "duration",
       width: 150,
-      render: (_, record) => (
-        <div>
-          <Text className="text-sm text-text-primary block">
-            {record.duration || "N/A"}
-          </Text>
-          {record.startDate && (
-            <Text className="text-xs text-text-tertiary">
-              {dayjs(record.startDate).format("DD MMM")} -{" "}
-              {record.endDate
-                ? dayjs(record.endDate).format("DD MMM YY")
-                : "Ongoing"}
+      render: (_, record) => {
+        // Calculate duration from dates if not provided
+        const getDuration = () => {
+          if (record.duration) return record.duration;
+          if (!record.startDate || !record.endDate) return "N/A";
+          const start = dayjs(record.startDate);
+          const end = dayjs(record.endDate);
+          const months = end.diff(start, "month");
+          const days = end.diff(start.add(months, "month"), "day");
+          if (months > 0 && days > 0) return `${months}m ${days}d`;
+          if (months > 0) return `${months} month${months > 1 ? "s" : ""}`;
+          return `${end.diff(start, "day")} days`;
+        };
+
+        return (
+          <div>
+            <Text className="text-sm text-text-primary block">
+              {getDuration()}
             </Text>
-          )}
-        </div>
-      ),
+            {record.startDate && (
+              <Text className="text-xs text-text-tertiary">
+                {dayjs(record.startDate).format("DD MMM")} -{" "}
+                {record.endDate
+                  ? dayjs(record.endDate).format("DD MMM YY")
+                  : "Ongoing"}
+              </Text>
+            )}
+          </div>
+        );
+      },
     },
     {
       title: "Stipend",
@@ -581,6 +605,30 @@ const DashboardInternshipTable = () => {
           <Tag color="default" className="rounded-full">
             Unpaid
           </Tag>
+        ),
+    },
+    {
+      title: "Letter",
+      key: "joiningLetter",
+      width: 80,
+      align: "center",
+      render: (_, record) =>
+        record.joiningLetterUrl ? (
+          <Tooltip title="View Joining Letter">
+            <Button
+              type="text"
+              size="small"
+              icon={<FilePdfOutlined style={{ color: "#52c41a" }} />}
+              onClick={(e) => {
+                e.stopPropagation();
+                openFileWithPresignedUrl(record.joiningLetterUrl);
+              }}
+            />
+          </Tooltip>
+        ) : (
+          <Tooltip title="No joining letter uploaded">
+            <FilePdfOutlined style={{ color: "#d9d9d9" }} />
+          </Tooltip>
         ),
     },
     {
@@ -727,7 +775,7 @@ const DashboardInternshipTable = () => {
                   key: "joiningLetter",
                   label: "View Joining Letter",
                   icon: <FilePdfOutlined />,
-                  onClick: () => window.open(record.joiningLetterUrl, "_blank"),
+                  onClick: () => openFileWithPresignedUrl(record.joiningLetterUrl),
                 },
               ]
             : []),
@@ -1012,7 +1060,7 @@ const DashboardInternshipTable = () => {
                 type="primary"
                 icon={<FilePdfOutlined />}
                 onClick={() =>
-                  window.open(selectedInternship.joiningLetterUrl, "_blank")
+                  openFileWithPresignedUrl(selectedInternship.joiningLetterUrl)
                 }
               >
                 View Joining Letter
@@ -1116,7 +1164,35 @@ const DashboardInternshipTable = () => {
                     : "Ongoing"}
                 </Descriptions.Item>
                 <Descriptions.Item label="Duration">
-                  <Tag color="blue">{selectedInternship.duration || "N/A"}</Tag>
+                  <Tag color="blue">
+                    {selectedInternship.duration ||
+                      (selectedInternship.startDate && selectedInternship.endDate
+                        ? (() => {
+                            const start = dayjs(selectedInternship.startDate);
+                            const end = dayjs(selectedInternship.endDate);
+                            const months = end.diff(start, "month");
+                            const days = end.diff(start.add(months, "month"), "day");
+                            if (months > 0 && days > 0) return `${months}m ${days}d`;
+                            if (months > 0) return `${months} month${months > 1 ? "s" : ""}`;
+                            return `${end.diff(start, "day")} days`;
+                          })()
+                        : "N/A")}
+                  </Tag>
+                </Descriptions.Item>
+                <Descriptions.Item label="Joining Letter" span={3}>
+                  {selectedInternship.joiningLetterUrl ? (
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<FilePdfOutlined />}
+                      onClick={() => openFileWithPresignedUrl(selectedInternship.joiningLetterUrl)}
+                      style={{ padding: 0 }}
+                    >
+                      View Letter
+                    </Button>
+                  ) : (
+                    <Tag color="default">Not Uploaded</Tag>
+                  )}
                 </Descriptions.Item>
               </Descriptions>
             </div>

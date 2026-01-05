@@ -163,6 +163,7 @@ export class MfaService {
 
   /**
    * Verify MFA code (TOTP or backup code)
+   * Uses transaction for backup code to prevent race conditions
    */
   async verifyMfaCode(userId: string, code: string): Promise<boolean> {
     const user = await this.prisma.user.findUnique({
@@ -179,21 +180,36 @@ export class MfaService {
       return true;
     }
 
-    // Try backup code
+    // Try backup code with atomic transaction to prevent race conditions
     const hashedCode = crypto.createHash('sha256').update(code).digest('hex');
-    const backupCodeIndex = user.mfaBackupCodes.indexOf(hashedCode);
 
-    if (backupCodeIndex !== -1) {
-      // Remove used backup code
-      const updatedCodes = [...user.mfaBackupCodes];
+    // Use transaction to atomically check and remove backup code
+    const result = await this.prisma.$transaction(async (tx) => {
+      // Re-fetch user within transaction for consistency
+      const currentUser = await tx.user.findUnique({
+        where: { id: userId },
+        select: { mfaBackupCodes: true },
+      });
+
+      if (!currentUser) return false;
+
+      const backupCodeIndex = currentUser.mfaBackupCodes.indexOf(hashedCode);
+      if (backupCodeIndex === -1) return false;
+
+      // Remove used backup code atomically
+      const updatedCodes = [...currentUser.mfaBackupCodes];
       updatedCodes.splice(backupCodeIndex, 1);
 
-      await this.prisma.user.update({
+      await tx.user.update({
         where: { id: userId },
         data: { mfaBackupCodes: updatedCodes },
       });
 
-      this.logger.warn(`Backup code used for user ${userId}. ${updatedCodes.length} codes remaining.`);
+      return { success: true, remainingCodes: updatedCodes.length };
+    });
+
+    if (result && result.success) {
+      this.logger.warn(`Backup code used for user ${userId}. ${result.remainingCodes} codes remaining.`);
       return true;
     }
 
@@ -263,20 +279,40 @@ export class MfaService {
   /**
    * Verify TOTP code
    * Implements RFC 6238 TOTP algorithm
+   * Uses constant-time comparison to prevent timing attacks
    */
   private verifyTotp(secret: string, code: string, window = 1): boolean {
     const now = Math.floor(Date.now() / 1000);
     const counter = Math.floor(now / MFA_CONFIG.totpPeriod);
 
+    // Normalize code to 6 digits
+    const normalizedCode = code.padStart(MFA_CONFIG.totpDigits, '0');
+
     // Check current and adjacent time windows
     for (let i = -window; i <= window; i++) {
       const expectedCode = this.generateTotp(secret, counter + i);
-      if (expectedCode === code) {
+      // Use constant-time comparison to prevent timing attacks
+      if (this.timingSafeCompare(expectedCode, normalizedCode)) {
         return true;
       }
     }
 
     return false;
+  }
+
+  /**
+   * Constant-time string comparison to prevent timing attacks
+   */
+  private timingSafeCompare(a: string, b: string): boolean {
+    if (a.length !== b.length) {
+      // Still do comparison to maintain constant time
+      const dummy = Buffer.from(a);
+      crypto.timingSafeEqual(dummy, dummy);
+      return false;
+    }
+    const bufferA = Buffer.from(a);
+    const bufferB = Buffer.from(b);
+    return crypto.timingSafeEqual(bufferA, bufferB);
   }
 
   /**

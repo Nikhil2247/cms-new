@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, memo } from 'react';
 import {
   Card,
   Table,
@@ -54,6 +54,50 @@ const { Text, Title } = Typography;
 const { RangePicker } = DatePicker;
 const { useBreakpoint } = Grid;
 
+// Memoized faculty list item to prevent re-renders during search
+const FacultyListItem = memo(({ faculty, isSelected, onSelect, token }) => (
+  <List.Item
+    onClick={() => onSelect(faculty)}
+    style={{
+      cursor: 'pointer',
+      margin: '4px 0',
+      padding: '8px 12px',
+      borderRadius: token.borderRadiusLG,
+      backgroundColor: isSelected ? token.colorPrimaryBg : 'transparent',
+      borderLeft: `4px solid ${isSelected ? token.colorPrimary : 'transparent'}`,
+      transition: 'none'
+    }}
+  >
+    <List.Item.Meta
+      avatar={
+        <ProfileAvatar
+          profileImage={faculty.profileImage}
+          size={44}
+          style={{ border: `1px solid ${isSelected ? token.colorPrimary : token.colorBorderSecondary}` }}
+        />
+      }
+      title={
+        <Text style={{ fontWeight: 600, fontSize: 14 }}>
+          {faculty.name}
+        </Text>
+      }
+      description={
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <Tag color="blue" bordered={false} style={{ width: 'fit-content' }}>
+            {faculty.assignedCount || 0} Students
+          </Tag>
+          <div style={{ fontSize: 12, color: token.colorTextDescription }}>
+            <IdcardOutlined style={{ marginRight: 4 }} />
+            {faculty.designation || 'Faculty'}
+          </div>
+        </div>
+      }
+    />
+  </List.Item>
+));
+
+FacultyListItem.displayName = 'FacultyListItem';
+
 const FacultyProgress = () => {
   const { token } = theme.useToken();
   const screens = useBreakpoint();
@@ -64,7 +108,8 @@ const FacultyProgress = () => {
   const [selectedFaculty, setSelectedFaculty] = useState(null);
   const [facultyDetails, setFacultyDetails] = useState(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [inputValue, setInputValue] = useState(''); // Immediate input value
+  const [searchText, setSearchText] = useState(''); // Debounced search value
   const [activeTab, setActiveTab] = useState('students');
 
   // Visit view state (table vs calendar)
@@ -76,10 +121,39 @@ const FacultyProgress = () => {
   const [reportDetailsVisible, setReportDetailsVisible] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
 
+  // Debounced search - must be defined before effects that use it
+  const debouncedSearch = useMemo(
+    () => debounce((value) => {
+      setSearchText(value);
+    }, 300),
+    []
+  );
+
+  // Handle input change - update display immediately, debounce filter
+  const handleSearchChange = useCallback((e) => {
+    const value = e.target.value;
+    setInputValue(value); // Update input immediately for responsive UI
+    debouncedSearch(value); // Debounce the actual filter
+  }, [debouncedSearch]);
+
+  // Handle clear
+  const handleSearchClear = useCallback(() => {
+    setInputValue('');
+    setSearchText('');
+    debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
   // Fetch faculty list on mount
   useEffect(() => {
     fetchFacultyList();
   }, []);
+
+  // Cleanup debounce on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   // Fetch faculty list
   const fetchFacultyList = async () => {
@@ -131,14 +205,6 @@ const FacultyProgress = () => {
       }, 100);
     }
   };
-
-  // Debounced search
-  const debouncedSearch = useCallback(
-    debounce((value) => {
-      setSearchText(value);
-    }, 300),
-    []
-  );
 
   // Filtered faculty list
   const filteredFaculty = useMemo(() => {
@@ -670,8 +736,9 @@ const FacultyProgress = () => {
             <div style={{ padding: 12, borderBottom: `1px solid ${token.colorBorderSecondary}` }}>
               <Input
                 placeholder="Search Faculty..."
-                value={searchText}
-                onChange={(e) => debouncedSearch(e.target.value)}
+                value={inputValue}
+                onChange={handleSearchChange}
+                onClear={handleSearchClear}
                 prefix={<UserOutlined style={{ color: token.colorTextDisabled }} />}
                 allowClear
               />
@@ -689,44 +756,13 @@ const FacultyProgress = () => {
                   itemLayout="horizontal"
                   dataSource={filteredFaculty}
                   renderItem={(faculty) => (
-                    <List.Item
-                      onClick={() => handleFacultySelect(faculty)}
-                      style={{
-                        cursor: 'pointer',
-                        margin: '4px 0',
-                        padding: '8px 12px',
-                        borderRadius: token.borderRadiusLG,
-                        backgroundColor: selectedFaculty?.id === faculty.id ? token.colorPrimaryBg : 'transparent',
-                        borderLeft: `4px solid ${selectedFaculty?.id === faculty.id ? token.colorPrimary : 'transparent'}`,
-                        transition: 'none'
-                      }}
-                    >
-                      <List.Item.Meta
-                        avatar={
-                          <ProfileAvatar
-                            profileImage={faculty.profileImage}
-                            size={44}
-                            style={{ border: `1px solid ${selectedFaculty?.id === faculty.id ? token.colorPrimary : token.colorBorderSecondary}` }}
-                          />
-                        }
-                        title={
-                          <Text style={{ fontWeight: 600, fontSize: 14 }}>
-                            {faculty.name}
-                          </Text>
-                        }
-                        description={
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                            <Tag color="blue" bordered={false} style={{ width: 'fit-content' }}>
-                              {faculty.assignedCount || 0} Students
-                            </Tag>
-                            <div style={{ fontSize: 12, color: token.colorTextDescription }}>
-                              <IdcardOutlined style={{ marginRight: 4 }} />
-                              {faculty.designation || 'Faculty'}
-                            </div>
-                          </div>
-                        }
-                      />
-                    </List.Item>
+                    <FacultyListItem
+                      key={faculty.id}
+                      faculty={faculty}
+                      isSelected={selectedFaculty?.id === faculty.id}
+                      onSelect={handleFacultySelect}
+                      token={token}
+                    />
                   )}
                 />
               )}

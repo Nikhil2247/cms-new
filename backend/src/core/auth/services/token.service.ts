@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject, forwardRef, Logger, OnModuleInit } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
@@ -10,7 +10,10 @@ const REFRESH_LOCK_PREFIX = 'token:refresh:lock:';
 const REFRESH_LOCK_TTL = 10000; // 10 seconds
 
 @Injectable()
-export class TokenService {
+export class TokenService implements OnModuleInit {
+  private readonly logger = new Logger(TokenService.name);
+  private refreshSecret: string;
+
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
@@ -18,6 +21,43 @@ export class TokenService {
     private tokenBlacklistService: TokenBlacklistService,
     private cache: LruCacheService,
   ) {}
+
+  /**
+   * Validate JWT secrets on module initialization
+   * SECURITY: Ensures JWT_REFRESH_SECRET is configured separately in production
+   */
+  onModuleInit() {
+    const jwtSecret = this.configService.get<string>('JWT_SECRET');
+    const jwtRefreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET');
+    const nodeEnv = this.configService.get<string>('NODE_ENV', 'development');
+
+    if (!jwtRefreshSecret) {
+      if (nodeEnv === 'production') {
+        throw new Error(
+          'SECURITY ERROR: JWT_REFRESH_SECRET must be configured in production. ' +
+          'Using the same secret for access and refresh tokens is a security risk.'
+        );
+      }
+      this.logger.warn(
+        'WARNING: JWT_REFRESH_SECRET not configured. Using JWT_SECRET for refresh tokens. ' +
+        'This is insecure and will fail in production.'
+      );
+      this.refreshSecret = jwtSecret;
+    } else if (jwtRefreshSecret === jwtSecret) {
+      if (nodeEnv === 'production') {
+        throw new Error(
+          'SECURITY ERROR: JWT_REFRESH_SECRET must be different from JWT_SECRET in production.'
+        );
+      }
+      this.logger.warn(
+        'WARNING: JWT_REFRESH_SECRET is identical to JWT_SECRET. ' +
+        'Use different secrets for better security.'
+      );
+      this.refreshSecret = jwtRefreshSecret;
+    } else {
+      this.refreshSecret = jwtRefreshSecret;
+    }
+  }
 
   /**
    * Generate access token
@@ -32,36 +72,35 @@ export class TokenService {
 
   /**
    * Generate refresh token
+   * Uses separate refresh secret for security isolation
    */
   generateRefreshToken(payload: any): string {
     const exp = this.configService.get<string>('JWT_REFRESH_EXPIRATION', '7d') as any;
     return this.jwtService.sign(payload as any, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET') ||
-             this.configService.get<string>('JWT_SECRET'),
+      secret: this.refreshSecret,
       expiresIn: exp,
     });
   }
 
   /**
    * Verify token (supports both access and refresh tokens)
+   * Uses appropriate secret based on token type
    */
   verifyToken(token: string, isRefreshToken: boolean = false): any {
     try {
       const secret = isRefreshToken
-        ? this.configService.get<string>('JWT_REFRESH_SECRET') ||
-          this.configService.get<string>('JWT_SECRET')
+        ? this.refreshSecret
         : this.configService.get<string>('JWT_SECRET');
 
       return this.jwtService.verify(token, {
         secret,
       });
     } catch (error) {
+      // Generic error message to prevent information leakage
       if (error.name === 'TokenExpiredError') {
         throw new UnauthorizedException('Token has expired');
-      } else if (error.name === 'JsonWebTokenError') {
-        throw new UnauthorizedException('Invalid token');
       } else {
-        throw new UnauthorizedException('Token verification failed');
+        throw new UnauthorizedException('Invalid token');
       }
     }
   }

@@ -48,6 +48,11 @@ export const principalService = {
     return response.data;
   },
 
+  async getUnmaskedContactDetails(studentId) {
+    const response = await API.get(`/principal/students/${studentId}/unmasked-contact`);
+    return response.data;
+  },
+
   async createStudent(data, profileImage = null) {
     const formData = new FormData();
     Object.entries(data).forEach(([key, value]) => {
@@ -58,9 +63,8 @@ export const principalService = {
     if (profileImage) {
       formData.append('profileImage', profileImage);
     }
-    const response = await API.post('/principal/students', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/principal/students', formData);
     return response.data;
   },
 
@@ -75,9 +79,8 @@ export const principalService = {
         }
       });
       formData.append('profileImage', profileImage);
-      const response = await API.put(`/principal/students/${id}`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+      const response = await API.put(`/principal/students/${id}`, formData);
       return response.data;
     }
 
@@ -99,18 +102,16 @@ export const principalService = {
   async bulkUploadStudents(file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await API.post('/principal/students/bulk-upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/principal/students/bulk-upload', formData);
     return response.data;
   },
 
   async bulkUploadStaff(file) {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await API.post('/principal/staff/bulk-upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post('/principal/staff/bulk-upload', formData);
     return response.data;
   },
 
@@ -297,9 +298,8 @@ export const principalService = {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('type', type);
-    const response = await API.post(`/principal/students/${studentId}/documents`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    // Don't set Content-Type header - let Axios set it automatically with the correct boundary
+    const response = await API.post(`/principal/students/${studentId}/documents`, formData);
     return response.data;
   },
 

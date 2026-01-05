@@ -110,6 +110,12 @@ export class PrincipalController {
     return this.principalService.getStudentById(req.user.userId, id);
   }
 
+  @Get('students/:id/unmasked-contact')
+  @ApiOperation({ summary: 'Get unmasked contact details for a student' })
+  async getUnmaskedContactDetails(@Request() req, @Param('id') studentId: string) {
+    return this.principalService.getUnmaskedContactDetails(req.user.userId, studentId);
+  }
+
   @Post('students')
   @ApiOperation({ summary: 'Create new student' })
   async createStudent(@Request() req, @Body() createStudentDto: CreateStudentDto) {

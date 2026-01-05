@@ -278,7 +278,7 @@ const PrincipalDashboard = () => {
 
   return (
     <div className="p-4 md:p-6 bg-background-secondary min-h-screen">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header Section - Compact */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>

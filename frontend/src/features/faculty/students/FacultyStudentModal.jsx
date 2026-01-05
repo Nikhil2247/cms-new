@@ -6,7 +6,7 @@ import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined
 import dayjs from 'dayjs';
 import { useLookup } from '../../shared/hooks/useLookup';
 import { getImageUrl, getPresignedUrl } from '../../../utils/imageUtils';
-import facultyService from '../../../services/faculty.service';
+import { facultyService } from '../../../services/faculty.service';
 
 const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStudentData, onSuccess }) => {
   const dispatch = useDispatch();
@@ -93,11 +93,52 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           setProfileImageUrl(null);
         }
 
+        // Fetch unmasked contact details for edit form
+        let unmaskedEmail = studentData?.user?.email || studentData.email;
+        let unmaskedPhone = studentData?.user?.phoneNo || studentData.contact || studentData.phoneNo;
+
+        // Check if values are masked (contain asterisks)
+        const isMasked = (value) => value && typeof value === 'string' && value.includes('*');
+
+        if (studentId && (isMasked(unmaskedEmail) || isMasked(unmaskedPhone))) {
+          try {
+            const unmaskedData = await facultyService.getUnmaskedContactDetails(studentId);
+            if (unmaskedData) {
+              unmaskedEmail = unmaskedData.email || unmaskedEmail;
+              unmaskedPhone = unmaskedData.phoneNo || unmaskedPhone;
+            }
+          } catch (err) {
+            console.error('Failed to fetch unmasked contact details:', err);
+          }
+        }
+
         // Set form values (without profileImage - we handle it separately)
+        // Extract user fields and student fields properly
         form.setFieldsValue({
-          ...studentData,
+          // Student-specific fields
+          admissionType: studentData.admissionType,
+          category: studentData.category,
+          batchId: studentData.batchId || studentData.batch?.id,
+          branchId: studentData.branchId || studentData.branch?.id,
+          currentYear: studentData.currentYear,
+          currentSemester: studentData.currentSemester,
+          clearanceStatus: studentData.clearanceStatus,
+          parentName: studentData.parentName,
+          parentContact: studentData.parentContact,
+          motherName: studentData.motherName,
+          gender: studentData.gender,
+          address: studentData.address,
+          city: studentData.city,
+          state: studentData.state,
+          district: studentData.district,
+          tehsil: studentData.tehsil,
+          pinCode: studentData.pinCode,
+          // User fields - use unmasked values
+          name: studentData?.user?.name || studentData.name,
+          email: unmaskedEmail,
+          rollNumber: studentData?.user?.rollNumber || studentData.rollNumber,
+          contact: unmaskedPhone,
           dob: (studentData?.user?.dob || studentData.dob) ? dayjs(studentData?.user?.dob || studentData.dob) : null,
-          contact: studentData?.user?.phoneNo || studentData.contact || studentData.phoneNo,
         });
       } else if (open && !isEditMode) {
         form.resetFields();
@@ -107,7 +148,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
     };
 
     setFormValues();
-  }, [studentData, form, open, isEditMode]);
+  }, [studentData, form, open, isEditMode, studentId]);
 
   const handleClose = () => {
     form.resetFields();
@@ -181,11 +222,11 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           const uploadResult = await facultyService.uploadStudentDocument(
             studentId,
             profileImageFile,
-            'PROFILE_IMAGE'
+            'profile' // Use correct document type
           );
           // Add the new profile image URL to the update data
-          if (uploadResult?.data?.fileUrl) {
-            formattedValues.profileImage = uploadResult.data.fileUrl;
+          if (uploadResult?.fileUrl || uploadResult?.data?.fileUrl) {
+            formattedValues.profileImage = uploadResult.fileUrl || uploadResult.data.fileUrl;
           }
         } catch (uploadError) {
           console.error('Profile image upload failed:', uploadError);
