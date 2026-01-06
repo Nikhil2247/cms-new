@@ -48,6 +48,8 @@ import {
   MoreOutlined,
   UserAddOutlined,
   UserDeleteOutlined,
+  SearchOutlined,
+  FilterOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-hot-toast";
 import dayjs from "dayjs";
@@ -83,6 +85,7 @@ const DashboardInternshipTable = () => {
   const [filters, setFilters] = useState({
     status: "all",
     dateRange: null,
+    branch: "all",
   });
   const [pagination, setPagination] = useState({
     current: 1,
@@ -218,6 +221,11 @@ const DashboardInternshipTable = () => {
     dispatch(fetchInternshipStats());
   }, [fetchInternships, fetchMentors, dispatch]);
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setPagination((prev) => ({ ...prev, current: 1 }));
+  }, [searchText, filters.branch, filters.status, activeTab]);
+
   // Filter internships
   const filteredInternships = useMemo(() => {
     let filtered = [...internships];
@@ -248,6 +256,11 @@ const DashboardInternshipTable = () => {
       });
     }
 
+    // Branch (department) filter
+    if (filters.branch !== "all") {
+      filtered = filtered.filter((i) => i.studentDepartment === filters.branch);
+    }
+
     // Search filter
     if (searchText) {
       const search = searchText.toLowerCase();
@@ -262,6 +275,15 @@ const DashboardInternshipTable = () => {
 
     return filtered;
   }, [internships, activeTab, filters, searchText]);
+
+  // Get unique branches (departments) for filter dropdown
+  const branchOptions = useMemo(() => {
+    const branches = new Set();
+    internships.forEach((i) => {
+      if (i.studentDepartment) branches.add(i.studentDepartment);
+    });
+    return Array.from(branches).sort();
+  }, [internships]);
 
   // Status helpers - Self-identified internships are auto-approved
   const getStatusConfig = (status) => {
@@ -534,67 +556,97 @@ const DashboardInternshipTable = () => {
     {
       title: "Student",
       key: "student",
-      width: 220,
-      fixed: "left",
-      render: (_, record) => (
-        <div className="flex items-center gap-3">
-          <ProfileAvatar
-            profileImage={record.studentProfileImage}
-            className="bg-primary/10 text-primary"
-          />
-          <div className="min-w-0">
-            <Text className="block font-medium text-text-primary truncate">
-              {record.studentName}
-            </Text>
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
-              <span>{record.studentRollNumber}</span>
-              {record.studentBatch && (
-                <>
-                  <span>•</span>
-                  <span>{record.studentBatch}</span>
-                </>
-              )}
+      // width: 240,
+      render: (_, record) => {
+        const statusConfig = getStatusConfig(record.status);
+        return (
+          <div className="flex items-center gap-3">
+            <Badge
+              dot
+              color={
+                record.status === "COMPLETED"
+                  ? "default"
+                  : record.status === "JOINED"
+                  ? "processing"
+                  : record.status === "APPROVED" || record.status === "SELECTED"
+                  ? "success"
+                  : "warning"
+              }
+              offset={[-2, 28]}
+            >
+              <ProfileAvatar
+                profileImage={record.studentProfileImage}
+                className="bg-primary/10 text-primary"
+              />
+            </Badge>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <Text className="font-medium text-text-primary truncate">
+                  {record.studentName}
+                </Text>
+                <Tooltip title={statusConfig.text}>
+                  <Tag
+                    color={statusConfig.color}
+                    className="rounded-full text-xs px-1.5 py-0 leading-tight hidden sm:inline-flex"
+                  >
+                    {statusConfig.text}
+                  </Tag>
+                </Tooltip>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-text-tertiary">
+                <span>{record.studentRollNumber}</span>
+                {record.studentDepartment && (
+                  <>
+                    <span>•</span>
+                    <span>{record.studentDepartment}</span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       title: "Company",
       key: "company",
-      width: 220,
+      // width: 200,
+      responsive: ["sm"],
       render: (_, record) => (
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center shrink-0">
-            <BankOutlined className="text-secondary" />
+        <BankOutlined className="text-secondary" />
           </div>
-          <div className="min-w-0">
-            <Tooltip title={record.companyName}>
-              <Text className="block font-medium text-text-primary truncate">
-                {record.companyName}
-              </Text>
-            </Tooltip>
-            {record.companyAddress && (
-              <Tooltip title={record.companyAddress}>
-                <Text className="text-xs text-text-tertiary truncate block">
-                  <EnvironmentOutlined className="mr-1" />
-                  {record.companyAddress}
-                </Text>
-              </Tooltip>
-            )}
-            {!record.companyAddress && record.jobProfile && (
-              <Text className="text-xs text-text-tertiary truncate block">
-                {record.jobProfile}
-              </Text>
-            )}
+          <div className="min-w-0 max-w-[200px]">
+        <Tooltip title={record.companyName}>
+          <Text className="block font-medium text-text-primary truncate">
+            {record.companyName.length > 25 
+          ? `${record.companyName.substring(0, 25)}...` 
+          : record.companyName}
+          </Text>
+        </Tooltip>
+        {record.companyAddress && (
+          <Tooltip title={record.companyAddress}>
+            <Text className="text-xs text-text-tertiary truncate block">
+          <EnvironmentOutlined className="mr-1" />
+          {record.companyAddress}
+            </Text>
+          </Tooltip>
+        )}
+        {!record.companyAddress && record.jobProfile && (
+          <Text className="text-xs text-text-tertiary truncate block">
+            {record.jobProfile}
+          </Text>
+        )}
           </div>
         </div>
       ),
-    },
-    {
+        },
+        {
       title: "Duration",
       key: "duration",
-      width: 150,
+      // width: 130,
+      responsive: ["md"],
       render: (_, record) => {
         // Calculate duration from dates if not provided
         const getDuration = () => {
@@ -629,7 +681,8 @@ const DashboardInternshipTable = () => {
     {
       title: "Stipend",
       key: "stipend",
-      width: 100,
+      // width: 90,
+      responsive: ["lg"],
       render: (_, record) =>
         record.stipend ? (
           <Tag color="green" className="rounded-full">
@@ -644,8 +697,9 @@ const DashboardInternshipTable = () => {
     {
       title: "Letter",
       key: "joiningLetter",
-      width: 80,
+      // width: 70,
       align: "center",
+      responsive: ["lg"],
       render: (_, record) =>
         record.joiningLetterUrl ? (
           <Tooltip title="View Joining Letter">
@@ -668,7 +722,8 @@ const DashboardInternshipTable = () => {
     {
       title: "Reports",
       key: "reports",
-      width: 110,
+      // width: 100,
+      responsive: ["md"],
       render: (_, record) => {
         const submitted = record.reportsSubmitted || 0;
         const expectedNow = record.expectedReportsAsOfNow || 0;
@@ -694,33 +749,35 @@ const DashboardInternshipTable = () => {
         );
       },
     },
+    // {
+    //   title: "Completion",
+    //   key: "completion",
+    //   // width: 110,
+    //   responsive: ["sm"],
+    //   render: (_, record) => (
+    //     <div className="w-full">
+    //       <Progress
+    //         percent={record.completionPercentage}
+    //         size="small"
+    //         strokeColor={
+    //           record.completionPercentage >= 80
+    //             ? "#52c41a"
+    //             : record.completionPercentage >= 50
+    //             ? "#1890ff"
+    //             : record.completionPercentage >= 30
+    //             ? "#faad14"
+    //             : "#ff4d4f"
+    //         }
+    //         format={(percent) => <span className="text-xs">{percent}%</span>}
+    //       />
+    //     </div>
+    //   ),
+    // },
     {
-      title: "Completion",
-      key: "completion",
-      width: 120,
-      render: (_, record) => (
-        <div className="w-full">
-          <Progress
-            percent={record.completionPercentage}
-            size="small"
-            strokeColor={
-              record.completionPercentage >= 80
-                ? "#52c41a"
-                : record.completionPercentage >= 50
-                ? "#1890ff"
-                : record.completionPercentage >= 30
-                ? "#faad14"
-                : "#ff4d4f"
-            }
-            format={(percent) => <span className="text-xs">{percent}%</span>}
-          />
-        </div>
-      ),
-    },
-    {
-      title: "Faculty Visits",
+      title: "Visits",
       key: "facultyVisits",
-      width: 130,
+      // width: 100,
+      responsive: ["xl"],
       render: (_, record) => {
         const completed = record.facultyVisitsCount || 0;
         const expectedNow = record.expectedVisitsAsOfNow || 0;
@@ -753,7 +810,8 @@ const DashboardInternshipTable = () => {
     {
       title: "Mentor",
       key: "mentor",
-      width: 150,
+      // width: 140,
+      responsive: ["lg"],
       render: (_, record) =>
         record.mentorName ? (
           <div className="flex items-center gap-2">
@@ -773,28 +831,9 @@ const DashboardInternshipTable = () => {
         ),
     },
     {
-      title: "Status",
-      dataIndex: "status",
-      key: "status",
-      width: 120,
-      render: (status) => {
-        const config = getStatusConfig(status);
-        return (
-          <Tag
-            icon={config.icon}
-            color={config.color}
-            className="rounded-full px-3"
-          >
-            {config.text}
-          </Tag>
-        );
-      },
-    },
-    {
       title: "",
       key: "actions",
-      width: 50,
-      fixed: "right",
+      // width: 48,
       render: (_, record) => {
         const menuItems = [
           {
@@ -914,6 +953,48 @@ const DashboardInternshipTable = () => {
         </Tooltip>
       </div> */}
 
+      {/* Filter Bar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <Input
+          placeholder="Search by name, roll number, company..."
+          prefix={<SearchOutlined className="text-text-tertiary" />}
+          value={searchText}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
+          className="w-72"
+        />
+        <Select
+          placeholder="Filter by Branch"
+          value={filters.branch}
+          onChange={(value) => setFilters((prev) => ({ ...prev, branch: value }))}
+          className="w-44"
+          allowClear
+          onClear={() => setFilters((prev) => ({ ...prev, branch: "all" }))}
+        >
+          <Select.Option value="all">All Branches</Select.Option>
+          {branchOptions.map((branch) => (
+            <Select.Option key={branch} value={branch}>
+              {branch}
+            </Select.Option>
+          ))}
+        </Select>
+        {(searchText || filters.branch !== "all") && (
+          <Button
+            type="link"
+            onClick={() => {
+              setSearchText("");
+              setFilters((prev) => ({ ...prev, branch: "all" }));
+            }}
+            className="text-text-tertiary"
+          >
+            Clear filters
+          </Button>
+        )}
+        <Text className="ml-auto text-text-tertiary text-sm">
+          Showing {filteredInternships.length} of {internships.length} internships
+        </Text>
+      </div>
+
       {/* Table */}
       <Card
         className="rounded-2xl border-border shadow-sm"
@@ -921,13 +1002,13 @@ const DashboardInternshipTable = () => {
       >
         <Table
           columns={columns}
-          dataSource={internships}
+          dataSource={filteredInternships}
           rowKey="id"
           loading={loading}
-          scroll={{ x: 1600 }}
+          scroll={{ x: 'max-content' }}
           expandable={{
             expandedRowRender: (record) => (
-              <div className="p-4 bg-background-secondary/30 rounded-lg space-y-4">
+              <div className="bg-background-secondary/30 rounded-lg space-y-4">
                 <Row gutter={[24, 16]}>
                   {/* Monthly Reports Section */}
                   <Col xs={24} lg={14}>
@@ -1042,7 +1123,7 @@ const DashboardInternshipTable = () => {
           pagination={{
             current: pagination.current,
             pageSize: pagination.pageSize,
-            total: internships.length,
+            total: filteredInternships.length,
             showSizeChanger: true,
             showTotal: (total, range) =>
               `${range[0]}-${range[1]} of ${total} internships`,

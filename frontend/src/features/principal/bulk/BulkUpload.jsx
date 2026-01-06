@@ -71,42 +71,31 @@ const BulkUpload = () => {
     data.forEach((row, index) => {
       const errors = [];
 
-      // Normalize keys - match backend expected column names
+      // Normalize keys - match backend expected column names (maps to User + Student tables)
+      // User fields: name, email, phoneNo, rollNumber, dob
+      // Student fields: gender
       const name = row['Name'] || row['name'] || row['Student Name'];
       const email = row['Email'] || row['email'];
-      const phone = row['Phone'] || row['phone'] || row['Contact'];
-      const enrollmentNumber = row['Enrollment Number'] || row['enrollmentNumber'] || row['Admission Number'];
+      const phoneNo = row['Phone'] || row['phone'] || row['Contact'] || row['phoneNo'];
       const rollNumber = row['Roll Number'] || row['rollNumber'];
-      const batch = row['Batch'] || row['batch'] || row['Batch Name'];
-      const branch = row['Branch'] || row['branch'] || row['Department'];
-      const semester = row['Semester'] || row['semester'] || row['Current Semester'];
       const gender = row['Gender'] || row['gender'];
       const dateOfBirth = row['Date of Birth'] || row['DOB'] || row['dateOfBirth'];
 
-      // Required field validations (matching backend requirements)
+      // Required field validations
       if (!name || String(name).trim() === '') errors.push('Name is required');
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
-      if (!enrollmentNumber || String(enrollmentNumber).trim() === '') errors.push('Enrollment Number is required');
-      if (!batch || String(batch).trim() === '') errors.push('Batch is required');
 
       // Optional field validations
       if (gender && !['MALE', 'FEMALE', 'OTHER'].includes(String(gender).toUpperCase())) {
         errors.push('Gender must be MALE, FEMALE, or OTHER');
-      }
-      if (semester && (isNaN(Number(semester)) || Number(semester) < 1 || Number(semester) > 8)) {
-        errors.push('Semester must be between 1 and 8');
       }
 
       const record = {
         ...row,
         name,
         email,
-        phone,
-        enrollmentNumber,
+        phoneNo,
         rollNumber,
-        batch,
-        branch,
-        semester,
         gender,
         dateOfBirth,
         rowNumber: index + 2, // +2 because Excel starts at 1 and header is row 1
@@ -126,21 +115,23 @@ const BulkUpload = () => {
   const validateStaffData = (data) => {
     const valid = [];
     const invalid = [];
-    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR', 'PLACEMENT_OFFICER'];
+    // Match backend valid roles (maps to User model with TEACHER role)
+    const validRoles = ['TEACHER', 'FACULTY_SUPERVISOR'];
 
     data.forEach((row, index) => {
       const errors = [];
 
-      // Normalize keys - match backend expected column names
+      // Normalize keys - match backend BulkUserRowDto (maps to User table)
+      // User fields: name, email, phoneNo, role, designation
       const name = row['Name'] || row['name'] || row['Full Name'];
       const email = row['Email'] || row['email'];
-      const phone = row['Phone'] || row['phone'] || row['Contact'];
+      const phone = row['Phone'] || row['phone'] || row['Contact'] || row['phoneNo'];
       const role = row['Role'] || row['role'];
       const designation = row['Designation'] || row['designation'];
       const department = row['Department'] || row['department'];
       const employeeId = row['Employee ID'] || row['employeeId'] || row['Employee Id'];
 
-      // Required field validations (matching backend requirements)
+      // Required field validations (matching backend BulkUserRowDto)
       if (!name || String(name).trim() === '') errors.push('Name is required');
       if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) errors.push('Valid email is required');
       if (!role || String(role).trim() === '') {
@@ -282,12 +273,12 @@ const BulkUpload = () => {
     { title: 'Row', dataIndex: 'rowNumber', key: 'rowNumber', width: 70 },
     { title: 'Name', dataIndex: 'name', key: 'name' },
     { title: 'Email', dataIndex: 'email', key: 'email' },
-    {
-      title: uploadType === 'students' ? 'Enrollment No.' : 'Role',
-      dataIndex: uploadType === 'students' ? 'enrollmentNumber' : 'role',
-      key: 'id',
-    },
-    { title: uploadType === 'students' ? 'Batch' : 'Department', dataIndex: uploadType === 'students' ? 'batch' : 'department', key: 'extra' },
+    ...(uploadType === 'students'
+      ? [{ title: 'Roll Number', dataIndex: 'rollNumber', key: 'rollNumber' }]
+      : [
+          { title: 'Role', dataIndex: 'role', key: 'role' },
+          { title: 'Department', dataIndex: 'department', key: 'department' },
+        ]),
   ];
 
   const invalidColumns = [

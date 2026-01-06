@@ -18,20 +18,20 @@ export class BulkStudentRowDto {
   @IsOptional()
   phoneNo?: string;
 
-  @ApiProperty({ description: 'Enrollment/Admission number' })
+  @ApiProperty({ description: 'Enrollment/Admission number', required: false })
   @IsString()
-  @IsNotEmpty()
-  enrollmentNumber: string;
+  @IsOptional()
+  enrollmentNumber?: string;
 
   @ApiProperty({ description: 'Roll number', required: false })
   @IsString()
   @IsOptional()
   rollNumber?: string;
 
-  @ApiProperty({ description: 'Batch name (e.g., "2023-2026")' })
+  @ApiProperty({ description: 'Batch name (e.g., "2023-2026")', required: false })
   @IsString()
-  @IsNotEmpty()
-  batchName: string;
+  @IsOptional()
+  batchName?: string;
 
   @ApiProperty({ description: 'Branch/Department name', required: false })
   @IsString()

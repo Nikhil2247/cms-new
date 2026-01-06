@@ -442,7 +442,12 @@ const PrincipalDashboard = () => {
             <div className="flex items-center gap-2">
               <TeamOutlined className="text-primary" />
               <span>Students by Course</span>
-              <Badge count={stats?.students?.total || 0} style={{ backgroundColor: '#3b82f6' }} />
+              <Badge
+                count={stats?.students?.total || 0}
+                showZero
+                style={{ backgroundColor: '#3b82f6' }}
+                overflowCount={99999}
+              />
             </div>
           }
           open={studentsModal.visible}
@@ -458,6 +463,28 @@ const PrincipalDashboard = () => {
           transitionName=""
           maskTransitionName=""
         >
+          {/* Summary Stats */}
+          {(() => {
+            const branchData = dashboardStats?.studentsByBranch || [];
+            const totalWithInternship = branchData.reduce((sum, b) => sum + (b.withInternship || 0), 0);
+            return (
+              <div className="mb-4 grid grid-cols-3 gap-4">
+                <div className="text-center p-3 bg-info-light rounded-lg">
+                  <div className="text-xl font-bold text-info">{stats?.students?.total || 0}</div>
+                  <div className="text-xs text-text-tertiary">Total Students</div>
+                </div>
+                <div className="text-center p-3 bg-success-light rounded-lg">
+                  <div className="text-xl font-bold text-success">{stats?.students?.active || 0}</div>
+                  <div className="text-xs text-text-tertiary">Active Students</div>
+                </div>
+                <div className="text-center p-3 bg-purple-100 dark:bg-purple-900/20 rounded-lg">
+                  <div className="text-xl font-bold text-purple-600 dark:text-purple-400">{totalWithInternship}</div>
+                  <div className="text-xs text-text-tertiary">With Internship</div>
+                </div>
+              </div>
+            );
+          })()}
+
           <Table
             dataSource={dashboardStats?.studentsByBranch || []}
             rowKey={(record) => record.branchId || record.branch || record.id || Math.random()}
@@ -495,28 +522,33 @@ const PrincipalDashboard = () => {
                 key: 'withInternship',
                 align: 'center',
                 render: (val) => (
-                  <Tag color="purple">{val || 0}</Tag>
+                  <Tag color="purple">{typeof val === 'number' ? val : 0}</Tag>
                 ),
               },
             ]}
-            summary={() => (
-              <Table.Summary fixed>
-                <Table.Summary.Row>
-                  <Table.Summary.Cell index={0}>
-                    <Text strong>Total</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={1} align="center">
-                    <Text strong>{stats?.students?.total || 0}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={2} align="center">
-                    <Text strong>{stats?.students?.active || 0}</Text>
-                  </Table.Summary.Cell>
-                  <Table.Summary.Cell index={3} align="center">
-                    <Text strong>{stats?.internships?.ongoingInternships || 0}</Text>
-                  </Table.Summary.Cell>
-                </Table.Summary.Row>
-              </Table.Summary>
-            )}
+            summary={() => {
+              // Calculate totals from studentsByBranch data
+              const branchData = dashboardStats?.studentsByBranch || [];
+              const totalWithInternship = branchData.reduce((sum, b) => sum + (b.withInternship || 0), 0);
+              return (
+                <Table.Summary fixed>
+                  <Table.Summary.Row>
+                    <Table.Summary.Cell index={0}>
+                      <Text strong>Total</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={1} align="center">
+                      <Text strong>{stats?.students?.total || 0}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={2} align="center">
+                      <Text strong>{stats?.students?.active || 0}</Text>
+                    </Table.Summary.Cell>
+                    <Table.Summary.Cell index={3} align="center">
+                      <Text strong>{totalWithInternship}</Text>
+                    </Table.Summary.Cell>
+                  </Table.Summary.Row>
+                </Table.Summary>
+              );
+            }}
           />
         </Modal>
 
@@ -616,11 +648,6 @@ const PrincipalDashboard = () => {
           }
           open={companiesModal.visible}
           onCancel={() => setCompaniesModal({ visible: false })}
-          footer={
-            <Button onClick={() => { setCompaniesModal({ visible: false }); navigate('/app/internships'); }}>
-              View All Internships
-            </Button>
-          }
           width={900}
           centered
           destroyOnClose

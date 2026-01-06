@@ -121,7 +121,7 @@ export const menuConfig = {
     title: 'Internships',
     icon: <LaptopOutlined />,
     items: [
-      { key: 'all-internships', label: 'All Internships', icon: <LaptopOutlined />, path: '/app/internships' },
+      // { key: 'all-internships', label: 'All Internships', icon: <LaptopOutlined />, path: '/app/internships' },
       { key: 'faculty-progress', label: 'Faculty Progress', icon: <CarOutlined />, path: '/app/faculty-progress' },
       { key: 'student-grievances', label: 'Grievances', icon: <AlertOutlined />, path: '/app/grievances' },
     ],

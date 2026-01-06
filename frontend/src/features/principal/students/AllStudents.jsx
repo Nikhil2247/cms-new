@@ -16,7 +16,6 @@ import {
   Select,
   Tabs,
   Empty,
-  Popconfirm,
   Dropdown,
   theme,
   Grid,
@@ -60,9 +59,11 @@ import {
   KeyOutlined,
   MoreOutlined,
   DeleteOutlined,
+  BranchesOutlined,
 } from '@ant-design/icons';
 import { credentialsService } from '../../../services/credentials.service';
 import principalService from '../../../services/principal.service';
+import lookupService from '../../../services/lookup.service';
 import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
@@ -82,6 +83,8 @@ const AllStudents = () => {
   // Local state
   const [search, setSearch] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('active');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [branches, setBranches] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudentFull, setSelectedStudentFull] = useState(null);
   const [loadingStudentDetails, setLoadingStudentDetails] = useState(false);
@@ -111,8 +114,25 @@ const AllStudents = () => {
     if (search.trim()) params.search = search.trim();
     if (activeStatusFilter === 'active') params.isActive = true;
     if (activeStatusFilter === 'inactive') params.isActive = false;
+    if (branchFilter !== 'all') params.branchId = branchFilter;
     return params;
-  }, [search, activeStatusFilter]);
+  }, [search, activeStatusFilter, branchFilter]);
+
+  // Fetch branches on mount
+  useEffect(() => {
+    const loadBranches = async () => {
+      try {
+        const response = await lookupService.getBranches();
+        // Handle both { data: [...] } and direct array response
+        const branchList = Array.isArray(response) ? response : (response?.data || response?.branches || []);
+        setBranches(branchList);
+      } catch (error) {
+        console.error('Failed to load branches:', error);
+        setBranches([]);
+      }
+    };
+    loadBranches();
+  }, []);
 
   // Initial fetch and filter change
   useEffect(() => {
@@ -123,7 +143,7 @@ const AllStudents = () => {
       dispatch(fetchStudents(buildFilterParams(1)));
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [dispatch, search, activeStatusFilter]);
+  }, [dispatch, search, activeStatusFilter, branchFilter]);
 
   // Update allStudents when students list changes
   useEffect(() => {
@@ -705,6 +725,33 @@ const AllStudents = () => {
                     Inactive Only
                   </div>
                 </Option>
+              </Select>
+
+              <Select
+                placeholder="Filter by Branch"
+                style={{ width: '100%', marginTop: 12 }}
+                value={branchFilter}
+                onChange={setBranchFilter}
+                showSearch
+                optionFilterProp="children"
+                filterOption={(input, option) =>
+                  option?.children?.props?.children?.[1]?.toLowerCase().includes(input.toLowerCase())
+                }
+              >
+                <Option value="all">
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <BranchesOutlined style={{ marginRight: 8, color: token.colorPrimary }} />
+                    All Branches
+                  </div>
+                </Option>
+                {Array.isArray(branches) && branches.map((branch) => (
+                  <Option key={branch.id} value={branch.id}>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <BranchesOutlined style={{ marginRight: 8, color: token.colorTextSecondary }} />
+                      {branch.name}
+                    </div>
+                  </Option>
+                ))}
               </Select>
             </div>
 

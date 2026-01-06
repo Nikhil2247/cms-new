@@ -130,29 +130,16 @@ export class BulkStudentService {
         });
       }
 
-      if (!student.enrollmentNumber || student.enrollmentNumber.trim() === '') {
-        errors.push({
-          row: rowNumber,
-          field: 'enrollmentNumber',
-          value: student.enrollmentNumber,
-          error: 'Enrollment number is required',
-        });
-      }
-
-      if (!student.batchName || student.batchName.trim() === '') {
-        errors.push({
-          row: rowNumber,
-          field: 'batchName',
-          value: student.batchName,
-          error: 'Batch name is required',
-        });
-      } else if (!batchMap.has(student.batchName.trim().toLowerCase())) {
-        errors.push({
-          row: rowNumber,
-          field: 'batchName',
-          value: student.batchName,
-          error: `Batch "${student.batchName.trim()}" not found in the system. Available batches: ${batches.map(b => b.name).join(', ')}`,
-        });
+      // Optional: Validate batch if provided
+      if (student.batchName && student.batchName.trim() !== '') {
+        if (!batchMap.has(student.batchName.trim().toLowerCase())) {
+          errors.push({
+            row: rowNumber,
+            field: 'batchName',
+            value: student.batchName,
+            error: `Batch "${student.batchName.trim()}" not found in the system. Available batches: ${batches.map(b => b.name).join(', ')}`,
+          });
+        }
       }
 
       // Optional field validation
@@ -312,12 +299,9 @@ export class BulkStudentService {
       } else if (!this.isValidEmail(student.email)) {
         rowErrors.push('Invalid email format');
       }
-      if (!student.enrollmentNumber?.trim()) {
-        rowErrors.push('Enrollment number is required');
-      }
-      if (!student.batchName?.trim()) {
-        rowErrors.push('Batch name is required');
-      } else if (!batchMap.has(student.batchName.trim().toLowerCase())) {
+
+      // Optional: Validate batch if provided
+      if (student.batchName?.trim() && !batchMap.has(student.batchName.trim().toLowerCase())) {
         rowErrors.push(`Batch "${student.batchName}" not found`);
       }
 
@@ -325,7 +309,7 @@ export class BulkStudentService {
       if (student.email && existingEmailSet.has(student.email.toLowerCase())) {
         rowErrors.push('Email already exists in database');
       }
-      if (student.enrollmentNumber && existingEnrollmentSet.has(student.enrollmentNumber)) {
+      if (student.enrollmentNumber?.trim() && existingEnrollmentSet.has(student.enrollmentNumber)) {
         rowErrors.push('Enrollment number already exists in database');
       }
 
@@ -333,7 +317,7 @@ export class BulkStudentService {
       if (student.email && processedEmails.has(student.email.toLowerCase())) {
         rowErrors.push('Duplicate email in file');
       }
-      if (student.enrollmentNumber && processedEnrollments.has(student.enrollmentNumber)) {
+      if (student.enrollmentNumber?.trim() && processedEnrollments.has(student.enrollmentNumber)) {
         rowErrors.push('Duplicate enrollment number in file');
       }
 
@@ -430,10 +414,13 @@ export class BulkStudentService {
     batchMap: Map<string, string>,
     branchMap: Map<string, string>,
   ) {
-    // Get batch ID (normalize with trim and lowercase)
-    const batchId = batchMap.get(studentDto.batchName.trim().toLowerCase());
-    if (!batchId) {
-      throw new BadRequestException(`Batch "${studentDto.batchName.trim()}" not found`);
+    // Get batch ID (optional, normalize with trim and lowercase)
+    let batchId: string | undefined;
+    if (studentDto.batchName) {
+      batchId = batchMap.get(studentDto.batchName.trim().toLowerCase());
+      if (!batchId) {
+        throw new BadRequestException(`Batch "${studentDto.batchName.trim()}" not found`);
+      }
     }
 
     // Get branch ID (optional, normalize with trim and lowercase)
@@ -476,35 +463,17 @@ export class BulkStudentService {
         'Name': 'John Doe',
         'Email': 'john.doe@example.com',
         'Phone': '9876543210',
-        'Enrollment Number': 'EN2023001',
         'Roll Number': 'R2023001',
-        'Batch': '2023-2026',
-        'Branch': 'Computer Science',
-        'Semester': 1,
         'Date of Birth': '2005-01-15',
         'Gender': 'MALE',
-        'Address': '123 Main Street, City',
-        'Parent Name': 'Robert Doe',
-        'Parent Contact': '9876543211',
-        '10th %': 85.5,
-        '12th %': 88.0,
       },
       {
         'Name': 'Jane Smith',
         'Email': 'jane.smith@example.com',
         'Phone': '9876543212',
-        'Enrollment Number': 'EN2023002',
         'Roll Number': 'R2023002',
-        'Batch': '2023-2026',
-        'Branch': 'Electronics',
-        'Semester': 1,
         'Date of Birth': '2005-03-20',
         'Gender': 'FEMALE',
-        'Address': '456 Park Avenue, City',
-        'Parent Name': 'Michael Smith',
-        'Parent Contact': '9876543213',
-        '10th %': 90.0,
-        '12th %': 92.5,
       },
     ];
 
@@ -512,18 +481,9 @@ export class BulkStudentService {
       { Field: 'Name', Required: 'Yes', Description: 'Full name of the student', Example: 'John Doe' },
       { Field: 'Email', Required: 'Yes', Description: 'Valid email address (must be unique)', Example: 'john.doe@example.com' },
       { Field: 'Phone', Required: 'No', Description: 'Contact phone number', Example: '9876543210' },
-      { Field: 'Enrollment Number', Required: 'Yes', Description: 'Unique enrollment/admission number', Example: 'EN2023001' },
       { Field: 'Roll Number', Required: 'No', Description: 'Student roll number', Example: 'R2023001' },
-      { Field: 'Batch', Required: 'Yes', Description: 'Batch name (must exist in system)', Example: '2023-2026' },
-      { Field: 'Branch', Required: 'No', Description: 'Branch/Department name', Example: 'Computer Science' },
-      { Field: 'Semester', Required: 'No', Description: 'Current semester (1-8)', Example: '1' },
       { Field: 'Date of Birth', Required: 'No', Description: 'Date of birth (YYYY-MM-DD)', Example: '2005-01-15' },
       { Field: 'Gender', Required: 'No', Description: 'Gender: MALE, FEMALE, or OTHER', Example: 'MALE' },
-      { Field: 'Address', Required: 'No', Description: 'Residential address', Example: '123 Main Street' },
-      { Field: 'Parent Name', Required: 'No', Description: 'Parent/Guardian name', Example: 'Robert Doe' },
-      { Field: 'Parent Contact', Required: 'No', Description: 'Parent contact number', Example: '9876543211' },
-      { Field: '10th %', Required: 'No', Description: '10th grade percentage', Example: '85.5' },
-      { Field: '12th %', Required: 'No', Description: '12th grade percentage', Example: '88.0' },
     ];
 
     return ExcelUtils.createFromJson([
