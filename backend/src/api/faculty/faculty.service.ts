@@ -498,10 +498,12 @@ export class FacultyService {
                 include: {
                   monthlyReports: {
                     orderBy: { createdAt: 'desc' as const },
+                    where: { isDeleted: false },
                     take: 5,
                   },
                   facultyVisitLogs: {
                     orderBy: { visitDate: 'desc' as const },
+                    where: { isDeleted: false },
                     take: 5,
                   },
                 },
@@ -509,7 +511,7 @@ export class FacultyService {
               },
               _count: {
                 select: {
-                  monthlyReports: true,
+                  monthlyReports: { where: { isDeleted: false }  },
                 },
               },
             },
@@ -878,6 +880,11 @@ export class FacultyService {
       },
     });
 
+    // Increment visit count for the application if status is COMPLETED
+    if (visitLog.status === 'COMPLETED') {
+      await this.expectedCycleService.incrementVisitCount(application.id);
+    }
+
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
 
@@ -1114,6 +1121,11 @@ export class FacultyService {
         deletedAt: new Date(),
       },
     });
+
+    // Decrement visit count for the application if visit was COMPLETED
+    if (visitLog.status === 'COMPLETED' && visitLog.applicationId) {
+      await this.expectedCycleService.decrementVisitCount(visitLog.applicationId);
+    }
 
     // Get faculty for audit
     const userId = facultyId || visitLog.facultyId;
@@ -1859,6 +1871,11 @@ export class FacultyService {
       },
     });
 
+    // Decrement report count for the application
+    if (report.applicationId) {
+      await this.expectedCycleService.decrementReportCount(report.applicationId);
+    }
+
     // Get faculty for audit
     const faculty = await this.prisma.user.findUnique({ where: { id: facultyId } });
 
@@ -2436,6 +2453,9 @@ export class FacultyService {
         reportFileUrl: reportFileKey, // Store the key, not the full URL
       },
     });
+
+    // Increment report count for the application
+    await this.expectedCycleService.incrementReportCount(appId);
 
     await this.cache.invalidateByTags(['reports', `application:${appId}`]);
 

@@ -84,11 +84,21 @@ const AssignedStudentsList = ({
   };
 
   /**
-   * Get submitted reports count from backend counter fields.
-   * Falls back to 0 if counter not available.
+   * Get submitted reports count by counting non-deleted reports from the array.
+   * This ensures accuracy after soft-delete filtering.
    */
-  const getSubmittedReports = (internshipApp) => {
-    return internshipApp?.submittedReportsCount || 0;
+  const getSubmittedReports = (internshipApp, student) => {
+    // Get reports array from various possible locations
+    const reports = internshipApp?.monthlyReports ||
+                   student?.student?.monthlyReports ||
+                   student?.monthlyReports ||
+                   [];
+    // Count non-deleted, submitted reports (SUBMITTED, APPROVED, or any non-DRAFT status)
+    const submittedCount = reports.filter(r =>
+      !r.isDeleted && r.status !== 'DRAFT'
+    ).length;
+    // Use array count if available, otherwise fall back to counter field
+    return reports.length > 0 ? submittedCount : (internshipApp?.submittedReportsCount || 0);
   };
 
   /**
@@ -100,17 +110,27 @@ const AssignedStudentsList = ({
   };
 
   /**
-   * Get completed visits count from backend counter fields.
-   * Falls back to 0 if counter not available.
+   * Get completed visits count by counting non-deleted, completed visits from the array.
+   * This ensures accuracy after soft-delete filtering.
    */
-  const getCompletedVisits = (internshipApp) => {
-    return internshipApp?.completedVisitsCount || 0;
+  const getCompletedVisits = (internshipApp, student) => {
+    // Get visits array from various possible locations
+    const visits = internshipApp?.facultyVisitLogs ||
+                  student?.student?.facultyVisitLogs ||
+                  student?.facultyVisitLogs ||
+                  [];
+    // Count non-deleted, completed visits
+    const completedCount = visits.filter(v =>
+      !v.isDeleted && v.status === 'COMPLETED'
+    ).length;
+    // Use array count if available, otherwise fall back to counter field
+    return visits.length > 0 ? completedCount : (internshipApp?.completedVisitsCount || 0);
   };
 
   // Get visit status with done/expected using backend counter fields
   const getVisitStatus = (student) => {
     const internshipApp = getInternshipApp(student);
-    const done = getCompletedVisits(internshipApp);
+    const done = getCompletedVisits(internshipApp, student);
     const expected = getExpectedVisits(internshipApp);
 
     // Determine color based on completion
@@ -154,17 +174,17 @@ const AssignedStudentsList = ({
   // Get report status with done/expected using backend counter fields
   const getReportStatus = (student) => {
     const internshipApp = getInternshipApp(student);
-    const done = getSubmittedReports(internshipApp);
+    const done = getSubmittedReports(internshipApp, student);
     const expected = getExpectedReports(internshipApp);
 
     // Get reports array to check for draft reports
-    const reports = student.monthlyReports ||
-                   student.reports ||
-                   internshipApp?.monthlyReports ||
+    const reports = internshipApp?.monthlyReports ||
                    student.student?.monthlyReports ||
+                   student.monthlyReports ||
+                   student.reports ||
                    [];
-    // Check for draft reports (with auto-approval, only DRAFT is pending)
-    const pendingCount = reports.filter(r => r.status === 'DRAFT').length;
+    // Check for draft reports (with auto-approval, only DRAFT is pending) - filter out deleted
+    const pendingCount = reports.filter(r => !r.isDeleted && r.status === 'DRAFT').length;
 
     // Determine color based on completion
     let color = token.colorTextQuaternary; // grey - no progress
@@ -342,8 +362,8 @@ const AssignedStudentsList = ({
       sorter: (a, b) => {
         const internshipAppA = getInternshipApp(a);
         const internshipAppB = getInternshipApp(b);
-        const visitsA = getCompletedVisits(internshipAppA);
-        const visitsB = getCompletedVisits(internshipAppB);
+        const visitsA = getCompletedVisits(internshipAppA, a);
+        const visitsB = getCompletedVisits(internshipAppB, b);
         return visitsA - visitsB;
       },
       render: (_, student) => getVisitStatus(student),
@@ -356,8 +376,8 @@ const AssignedStudentsList = ({
       sorter: (a, b) => {
         const internshipAppA = getInternshipApp(a);
         const internshipAppB = getInternshipApp(b);
-        const reportsA = getSubmittedReports(internshipAppA);
-        const reportsB = getSubmittedReports(internshipAppB);
+        const reportsA = getSubmittedReports(internshipAppA, a);
+        const reportsB = getSubmittedReports(internshipAppB, b);
         return reportsA - reportsB;
       },
       render: (_, student) => getReportStatus(student),
