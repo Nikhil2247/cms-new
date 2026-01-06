@@ -146,6 +146,17 @@ const initialState = {
     error: null,
     detailsError: null,
   },
+  // Restore Center - for restoring soft-deleted items
+  restoreCenter: {
+    summary: { monthlyReports: 0, facultyVisits: 0, documents: 0, total: 0 },
+    items: [],
+    pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+    selectedType: 'monthly-reports',
+    loading: false,
+    summaryLoading: false,
+    restoring: {}, // Track restoring state per item ID
+    error: null,
+  },
   lastFetched: {
     dashboard: null,
     dashboardKey: null,
@@ -411,6 +422,19 @@ export const deletePrincipal = createAsyncThunk(
   }
 );
 
+// Toggle principal status (activate/deactivate)
+export const togglePrincipalStatus = createAsyncThunk(
+  'state/togglePrincipalStatus',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await stateService.togglePrincipalStatus(id);
+      return { id, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle principal status');
+    }
+  }
+);
+
 export const resetPrincipalPassword = createAsyncThunk(
   'state/resetPrincipalPassword',
   async (id, { rejectWithValue }) => {
@@ -528,6 +552,19 @@ export const resetStaffPassword = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to reset password');
+    }
+  }
+);
+
+// Toggle staff status (activate/deactivate)
+export const toggleStaffStatus = createAsyncThunk(
+  'state/toggleStaffStatus',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await stateService.toggleFacultyStatus(id);
+      return { id, ...response };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to toggle staff status');
     }
   }
 );
@@ -1109,6 +1146,60 @@ export const fetchCompanyDetails = createAsyncThunk(
   }
 );
 
+// ==================== RESTORE CENTER ====================
+
+// Fetch summary of deleted items counts
+export const fetchDeletedItemsSummary = createAsyncThunk(
+  'state/fetchDeletedItemsSummary',
+  async (institutionId, { rejectWithValue }) => {
+    try {
+      const response = await stateService.getDeletedItemsSummary(institutionId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch deleted items summary');
+    }
+  }
+);
+
+// Fetch deleted items by type with pagination
+export const fetchDeletedItems = createAsyncThunk(
+  'state/fetchDeletedItems',
+  async ({ type, params = {} }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.getDeletedItems(type, params);
+      return { ...response, type };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch deleted items');
+    }
+  }
+);
+
+// Restore a single deleted item
+export const restoreDeletedItem = createAsyncThunk(
+  'state/restoreDeletedItem',
+  async ({ type, id }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.restoreItem(type, id);
+      return { ...response, type, id };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to restore item');
+    }
+  }
+);
+
+// Bulk restore multiple deleted items
+export const bulkRestoreDeletedItems = createAsyncThunk(
+  'state/bulkRestoreDeletedItems',
+  async ({ type, ids }, { rejectWithValue }) => {
+    try {
+      const response = await stateService.bulkRestoreItems(type, ids);
+      return { ...response, type, ids };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to bulk restore items');
+    }
+  }
+);
+
 const stateSlice = createSlice({
   name: 'state',
   initialState,
@@ -1238,6 +1329,16 @@ const stateSlice = createSlice({
     clearSelectedCompany: (state) => {
       state.companiesOverview.selectedCompany = null;
       state.companiesOverview.selectedCompanyDetails = null;
+    },
+    // Restore Center reducers
+    setRestoreCenterType: (state, action) => {
+      state.restoreCenter.selectedType = action.payload;
+      // Reset items when switching type
+      state.restoreCenter.items = [];
+      state.restoreCenter.pagination = { page: 1, limit: 20, total: 0, totalPages: 0 };
+    },
+    clearRestoreCenterError: (state) => {
+      state.restoreCenter.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -1452,6 +1553,29 @@ const stateSlice = createSlice({
         state.principals.loading = false;
         state.principals.error = action.payload;
       })
+      // Toggle principal status
+      .addCase(togglePrincipalStatus.pending, (state) => {
+        state.principals.loading = true;
+        state.principals.error = null;
+      })
+      .addCase(togglePrincipalStatus.fulfilled, (state, action) => {
+        state.principals.loading = false;
+        const { id, active } = action.payload;
+        // Update principal in list with new status
+        const principalIndex = state.principals.list.findIndex(p => p.id === id);
+        if (principalIndex !== -1) {
+          state.principals.list[principalIndex] = {
+            ...state.principals.list[principalIndex],
+            active,
+          };
+        }
+        state.lastFetched.principals = null; // Invalidate cache
+        state.lastFetched.principalsKey = null;
+      })
+      .addCase(togglePrincipalStatus.rejected, (state, action) => {
+        state.principals.loading = false;
+        state.principals.error = action.payload;
+      })
       .addCase(resetPrincipalPassword.pending, (state) => {
         state.principals.loading = true;
         state.principals.error = null;
@@ -1554,6 +1678,29 @@ const stateSlice = createSlice({
         state.staff.loading = false;
       })
       .addCase(resetStaffPassword.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
+      })
+      // Toggle staff status
+      .addCase(toggleStaffStatus.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(toggleStaffStatus.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        const { id, active } = action.payload;
+        // Update staff in list with new status
+        const staffIndex = state.staff.list.findIndex(s => s.id === id);
+        if (staffIndex !== -1) {
+          state.staff.list[staffIndex] = {
+            ...state.staff.list[staffIndex],
+            active,
+          };
+        }
+        state.lastFetched.staff = null; // Invalidate cache
+        state.lastFetched.staffKey = null;
+      })
+      .addCase(toggleStaffStatus.rejected, (state, action) => {
         state.staff.loading = false;
         state.staff.error = action.payload;
       })
@@ -2141,6 +2288,105 @@ const stateSlice = createSlice({
       .addCase(fetchCompanyDetails.rejected, (state, action) => {
         state.companiesOverview.detailsLoading = false;
         state.companiesOverview.detailsError = action.payload || 'Failed to load company details';
+      })
+
+      // ==================== RESTORE CENTER ====================
+      .addCase(fetchDeletedItemsSummary.pending, (state) => {
+        state.restoreCenter.summaryLoading = true;
+        state.restoreCenter.error = null;
+      })
+      .addCase(fetchDeletedItemsSummary.fulfilled, (state, action) => {
+        state.restoreCenter.summaryLoading = false;
+        state.restoreCenter.summary = action.payload || { monthlyReports: 0, facultyVisits: 0, documents: 0, total: 0 };
+      })
+      .addCase(fetchDeletedItemsSummary.rejected, (state, action) => {
+        state.restoreCenter.summaryLoading = false;
+        state.restoreCenter.error = action.payload;
+      })
+      .addCase(fetchDeletedItems.pending, (state) => {
+        state.restoreCenter.loading = true;
+        state.restoreCenter.error = null;
+      })
+      .addCase(fetchDeletedItems.fulfilled, (state, action) => {
+        state.restoreCenter.loading = false;
+        state.restoreCenter.items = action.payload.items || action.payload.data || [];
+        state.restoreCenter.pagination = action.payload.pagination || {
+          page: 1,
+          limit: 20,
+          total: action.payload.total || 0,
+          totalPages: action.payload.totalPages || 0,
+        };
+      })
+      .addCase(fetchDeletedItems.rejected, (state, action) => {
+        state.restoreCenter.loading = false;
+        state.restoreCenter.error = action.payload;
+      })
+      .addCase(restoreDeletedItem.pending, (state, action) => {
+        // Track individual item restore state
+        const id = action.meta.arg.id;
+        state.restoreCenter.restoring[id] = true;
+      })
+      .addCase(restoreDeletedItem.fulfilled, (state, action) => {
+        const { id, type } = action.payload;
+        // Remove from restoring state
+        delete state.restoreCenter.restoring[id];
+        // Remove restored item from list
+        state.restoreCenter.items = state.restoreCenter.items.filter(item => item.id !== id);
+        // Update summary counts
+        if (type === 'monthly-reports' && state.restoreCenter.summary.monthlyReports > 0) {
+          state.restoreCenter.summary.monthlyReports--;
+          state.restoreCenter.summary.total--;
+        } else if (type === 'faculty-visits' && state.restoreCenter.summary.facultyVisits > 0) {
+          state.restoreCenter.summary.facultyVisits--;
+          state.restoreCenter.summary.total--;
+        } else if (type === 'documents' && state.restoreCenter.summary.documents > 0) {
+          state.restoreCenter.summary.documents--;
+          state.restoreCenter.summary.total--;
+        }
+        // Update pagination total
+        if (state.restoreCenter.pagination.total > 0) {
+          state.restoreCenter.pagination.total--;
+        }
+      })
+      .addCase(restoreDeletedItem.rejected, (state, action) => {
+        const id = action.meta.arg.id;
+        delete state.restoreCenter.restoring[id];
+        state.restoreCenter.error = action.payload;
+      })
+      .addCase(bulkRestoreDeletedItems.pending, (state, action) => {
+        // Track all items being restored
+        const ids = action.meta.arg.ids;
+        ids.forEach(id => {
+          state.restoreCenter.restoring[id] = true;
+        });
+      })
+      .addCase(bulkRestoreDeletedItems.fulfilled, (state, action) => {
+        const { ids, type, restoredCount } = action.payload;
+        // Clear restoring state for all ids
+        ids.forEach(id => {
+          delete state.restoreCenter.restoring[id];
+        });
+        // Remove restored items from list
+        state.restoreCenter.items = state.restoreCenter.items.filter(item => !ids.includes(item.id));
+        // Update summary counts based on actual restored count
+        const count = restoredCount || ids.length;
+        if (type === 'monthly-reports') {
+          state.restoreCenter.summary.monthlyReports = Math.max(0, state.restoreCenter.summary.monthlyReports - count);
+        } else if (type === 'faculty-visits') {
+          state.restoreCenter.summary.facultyVisits = Math.max(0, state.restoreCenter.summary.facultyVisits - count);
+        } else if (type === 'documents') {
+          state.restoreCenter.summary.documents = Math.max(0, state.restoreCenter.summary.documents - count);
+        }
+        state.restoreCenter.summary.total = Math.max(0, state.restoreCenter.summary.total - count);
+        // Update pagination total
+        state.restoreCenter.pagination.total = Math.max(0, state.restoreCenter.pagination.total - count);
+      })
+      .addCase(bulkRestoreDeletedItems.rejected, (state, action) => {
+        const ids = action.meta.arg.ids;
+        ids.forEach(id => {
+          delete state.restoreCenter.restoring[id];
+        });
+        state.restoreCenter.error = action.payload;
       });
   },
 });
@@ -2167,6 +2413,9 @@ export const {
   // Companies overview actions
   setSelectedCompany,
   clearSelectedCompany,
+  // Restore Center actions
+  setRestoreCenterType,
+  clearRestoreCenterError,
 } = stateSlice.actions;
 
 // ============= SELECTORS =============
@@ -2304,5 +2553,25 @@ export const selectCompaniesLoading = (state) => state.state?.companiesOverview?
 export const selectCompanyDetailsLoading = (state) => state.state?.companiesOverview?.detailsLoading ?? false;
 export const selectCompaniesError = (state) => state.state?.companiesOverview?.error ?? null;
 export const selectCompanyDetailsError = (state) => state.state?.companiesOverview?.detailsError ?? null;
+
+// Restore Center selectors
+export const selectRestoreCenter = (state) => state.state?.restoreCenter ?? {
+  summary: { monthlyReports: 0, facultyVisits: 0, documents: 0, total: 0 },
+  items: [],
+  pagination: { page: 1, limit: 20, total: 0, totalPages: 0 },
+  selectedType: 'monthly-reports',
+  loading: false,
+  summaryLoading: false,
+  restoring: {},
+  error: null,
+};
+export const selectRestoreCenterSummary = (state) => state.state?.restoreCenter?.summary ?? { monthlyReports: 0, facultyVisits: 0, documents: 0, total: 0 };
+export const selectRestoreCenterItems = (state) => state.state?.restoreCenter?.items ?? [];
+export const selectRestoreCenterPagination = (state) => state.state?.restoreCenter?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 };
+export const selectRestoreCenterSelectedType = (state) => state.state?.restoreCenter?.selectedType ?? 'monthly-reports';
+export const selectRestoreCenterLoading = (state) => state.state?.restoreCenter?.loading ?? false;
+export const selectRestoreCenterSummaryLoading = (state) => state.state?.restoreCenter?.summaryLoading ?? false;
+export const selectRestoreCenterRestoring = (state) => state.state?.restoreCenter?.restoring ?? {};
+export const selectRestoreCenterError = (state) => state.state?.restoreCenter?.error ?? null;
 
 export default stateSlice.reducer;

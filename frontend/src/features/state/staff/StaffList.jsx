@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined } from '@ant-design/icons';
-import { fetchStaff, deleteStaff, resetStaffPassword } from '../store/stateSlice';
+import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { fetchStaff, resetStaffPassword, toggleStaffStatus } from '../store/stateSlice';
 import StaffModal from './StaffModal';
 import { getImageUrl } from '../../../utils/imageUtils';
 import { useInstitutions } from '../../shared/hooks/useLookup';
@@ -29,8 +29,8 @@ const StaffList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingStaffId, setEditingStaffId] = useState(null);
-  const [deletingId, setDeletingId] = useState(null);
   const [resettingId, setResettingId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
 
   const loadStaff = useCallback((params = {}) => {
     dispatch(fetchStaff({
@@ -60,29 +60,6 @@ const StaffList = () => {
 
   const handleModalSuccess = () => {
     loadStaff({ forceRefresh: true });
-  };
-
-  const handleDelete = (id, name) => {
-    modal.confirm({
-      title: 'Deactivate Staff Member',
-      content: `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`,
-      okText: 'Deactivate',
-      okType: 'danger',
-      confirmLoading: deletingId === id,
-      onOk: async () => {
-        setDeletingId(id);
-        try {
-          await dispatch(deleteStaff(id)).unwrap();
-          message.success('Staff member deactivated successfully');
-          loadStaff({ forceRefresh: true });
-        } catch (error) {
-          message.error(error?.message || 'Failed to deactivate staff member');
-          throw error;
-        } finally {
-          setDeletingId(null);
-        }
-      },
-    });
   };
 
   const handleResetPassword = (id, name) => {
@@ -118,6 +95,34 @@ const StaffList = () => {
           throw error;
         } finally {
           setResettingId(null);
+        }
+      },
+    });
+  };
+
+  const handleToggleStatus = (id, name, isCurrentlyActive) => {
+    const action = isCurrentlyActive ? 'deactivate' : 'activate';
+    const actionPast = isCurrentlyActive ? 'deactivated' : 'activated';
+
+    modal.confirm({
+      title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
+      content: isCurrentlyActive
+        ? `Are you sure you want to deactivate ${name}? They will no longer be able to access the system. Their mentor assignments will also be deactivated but data will be preserved.`
+        : `Are you sure you want to activate ${name}? They will regain access to the system and their mentor assignments will be reactivated.`,
+      okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
+      okType: isCurrentlyActive ? 'danger' : 'primary',
+      confirmLoading: togglingId === id,
+      onOk: async () => {
+        setTogglingId(id);
+        try {
+          const result = await dispatch(toggleStaffStatus(id)).unwrap();
+          message.success(result.message || `Staff member ${actionPast} successfully`);
+          loadStaff({ forceRefresh: true });
+        } catch (error) {
+          message.error(error?.message || `Failed to ${action} staff member`);
+          throw error;
+        } finally {
+          setTogglingId(null);
         }
       },
     });
@@ -169,13 +174,6 @@ const StaffList = () => {
   const getRoleColor = (role) => {
     switch (role) {
       case 'TEACHER': return 'blue';
-      case 'FACULTY_SUPERVISOR': return 'green';
-      case 'PLACEMENT_OFFICER': return 'purple';
-      case 'ACCOUNTANT': return 'orange';
-      case 'ADMISSION_OFFICER': return 'cyan';
-      case 'EXAMINATION_OFFICER': return 'magenta';
-      case 'PMS_OFFICER': return 'geekblue';
-      case 'EXTRACURRICULAR_HEAD': return 'volcano';
       default: return 'default';
     }
   };
@@ -183,13 +181,6 @@ const StaffList = () => {
   const getRoleLabel = (role) => {
     const labels = {
       TEACHER: 'Teacher',
-      FACULTY_SUPERVISOR: 'Faculty Supervisor',
-      PLACEMENT_OFFICER: 'Placement Officer',
-      ACCOUNTANT: 'Accountant',
-      ADMISSION_OFFICER: 'Admission Officer',
-      EXAMINATION_OFFICER: 'Examination Officer',
-      PMS_OFFICER: 'PMS Officer',
-      EXTRACURRICULAR_HEAD: 'Extracurricular Head',
     };
     return labels[role] || role;
   };
@@ -257,6 +248,8 @@ const StaffList = () => {
       width: 80,
       align: 'center',
       render: (_, record) => {
+        const isActive = record.active !== false;
+
         const handleMenuClick = ({ key }) => {
           switch (key) {
             case 'edit':
@@ -265,15 +258,15 @@ const StaffList = () => {
             case 'reset-password':
               handleResetPassword(record.id, record.name);
               break;
-            case 'delete':
-              handleDelete(record.id, record.name);
+            case 'toggle-status':
+              handleToggleStatus(record.id, record.name, isActive);
               break;
             default:
               break;
           }
         };
 
-        const isLoading = deletingId === record.id || resettingId === record.id;
+        const isLoading = resettingId === record.id || togglingId === record.id;
 
         const menuItems = [
           {
@@ -292,10 +285,10 @@ const StaffList = () => {
             type: 'divider',
           },
           {
-            key: 'delete',
-            icon: <StopOutlined />,
-            label: 'Deactivate',
-            danger: true,
+            key: 'toggle-status',
+            icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
+            label: isActive ? 'Deactivate' : 'Activate',
+            danger: isActive,
             disabled: isLoading,
           },
         ];
@@ -391,13 +384,6 @@ const StaffList = () => {
                   onChange={(value) => handleFilterChange('role', value || '')}
                 >
                   <Select.Option value="TEACHER">Teacher</Select.Option>
-                  <Select.Option value="FACULTY_SUPERVISOR">Faculty Supervisor</Select.Option>
-                  <Select.Option value="PLACEMENT_OFFICER">Placement Officer</Select.Option>
-                  <Select.Option value="ACCOUNTANT">Accountant</Select.Option>
-                  <Select.Option value="ADMISSION_OFFICER">Admission Officer</Select.Option>
-                  <Select.Option value="EXAMINATION_OFFICER">Examination Officer</Select.Option>
-                  <Select.Option value="PMS_OFFICER">PMS Officer</Select.Option>
-                  <Select.Option value="EXTRACURRICULAR_HEAD">Extracurricular Head</Select.Option>
                 </Select>
               </Col>
               <Col xs={24} sm={12} md={6}>

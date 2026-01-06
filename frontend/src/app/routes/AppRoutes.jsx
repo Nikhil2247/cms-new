@@ -49,6 +49,7 @@ import AuditLogs from '../../features/state/audit/AuditLogs';
 import BulkUserCreate from '../../features/state/users/BulkUserCreate';
 import CredentialsReset from '../../features/state/users/CredentialsReset';
 import CompaniesOverview from '../../features/state/companies/CompaniesOverview';
+import RestoreCenter from '../../features/state/restore/RestoreCenter';
 import MasterData from '../../features/state/master-data/MasterData';
 
 // Shared
@@ -217,6 +218,14 @@ const AppRoutes = () => {
           element={
             <ProtectedRoute allowedRoles={[ROLES.STATE]}>
               <CompaniesOverview />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="restore-center"
+          element={
+            <ProtectedRoute allowedRoles={[ROLES.STATE]}>
+              <RestoreCenter />
             </ProtectedRoute>
           }
         />

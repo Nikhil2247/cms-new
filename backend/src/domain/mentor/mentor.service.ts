@@ -340,20 +340,23 @@ export class MentorService {
             }),
             this.prisma.monthlyReport.count({
               where: {
+                isDeleted: false,
                 application: { mentorId, isSelfIdentified: true },
               },
             }),
             this.prisma.facultyVisitLog.count({
-              where: { facultyId: mentorId },
+              where: { facultyId: mentorId, isDeleted: false },
             }),
             this.prisma.monthlyReport.count({
               where: {
+                isDeleted: false,
                 application: { mentorId, isSelfIdentified: true },
                 status: { in: [MonthlyReportStatus.SUBMITTED, MonthlyReportStatus.UNDER_REVIEW, MonthlyReportStatus.REVISION_REQUIRED] },
               },
             }),
             this.prisma.monthlyReport.count({
               where: {
+                isDeleted: false,
                 application: { mentorId, isSelfIdentified: true },
                 status: MonthlyReportStatus.APPROVED,
               },

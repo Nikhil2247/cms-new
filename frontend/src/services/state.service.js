@@ -143,6 +143,11 @@ export const stateService = {
     return response.data;
   },
 
+  async togglePrincipalStatus(id) {
+    const response = await API.patch(`/state/principals/${id}/toggle-status`);
+    return response.data;
+  },
+
   async resetPrincipalPassword(id) {
     const response = await API.post(`/state/principals/${id}/reset-password`);
     return response.data;
@@ -425,6 +430,41 @@ export const stateService = {
       ? `/state/dashboard/college-breakdown/${type}?${queryParams}`
       : `/state/dashboard/college-breakdown/${type}`;
     const response = await API.get(url);
+    return response.data;
+  },
+
+  // ==================== RESTORE CENTER ====================
+
+  // Get summary of deleted items counts across all types
+  async getDeletedItemsSummary(institutionId) {
+    const params = institutionId ? `?institutionId=${institutionId}` : '';
+    const response = await API.get(`/state/restore/summary${params}`);
+    return response.data;
+  },
+
+  // Get deleted items by type with pagination and filters
+  // type: 'monthly-reports' | 'faculty-visits' | 'documents'
+  async getDeletedItems(type, params = {}) {
+    const cleanParams = Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v != null && v !== '')
+    );
+    const queryParams = new URLSearchParams(cleanParams).toString();
+    const url = queryParams
+      ? `/state/restore/${type}?${queryParams}`
+      : `/state/restore/${type}`;
+    const response = await API.get(url);
+    return response.data;
+  },
+
+  // Restore a single deleted item
+  async restoreItem(type, id) {
+    const response = await API.post(`/state/restore/${type}/${id}`);
+    return response.data;
+  },
+
+  // Bulk restore multiple deleted items
+  async bulkRestoreItems(type, ids) {
+    const response = await API.post(`/state/restore/${type}/bulk`, { ids });
     return response.data;
   },
 };

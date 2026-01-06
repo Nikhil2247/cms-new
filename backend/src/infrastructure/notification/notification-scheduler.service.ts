@@ -75,10 +75,12 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         const hasActiveApplication = await this.prisma.internshipApplication.findFirst({
           where: {
             studentId: assignment.studentId,
+            isActive: true,
             status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
             facultyVisitLogs: {
               none: {
                 visitDate: { gte: oneMonthAgo },
+                isDeleted: false,
               },
             },
           },
@@ -140,6 +142,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       // Find students with active applications
       const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
         where: {
+          isActive: true,
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
         },
         include: {
@@ -167,6 +170,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
             studentId: app.studentId,
             reportMonth: currentMonth,
             reportYear: currentYear,
+            isDeleted: false,
             status: { in: ['SUBMITTED', 'APPROVED'] },
           },
         });
@@ -220,6 +224,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
       // Find students with active applications
       const studentsWithActiveApplications = await this.prisma.internshipApplication.findMany({
         where: {
+          isActive: true,
           status: { in: [ApplicationStatus.JOINED, ApplicationStatus.SELECTED, ApplicationStatus.APPROVED] },
         },
         include: {
@@ -247,6 +252,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
             studentId: app.studentId,
             reportMonth: currentMonth,
             reportYear: currentYear,
+            isDeleted: false,
             status: { in: ['SUBMITTED', 'APPROVED'] },
           },
         });
@@ -304,7 +310,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
           where: { createdAt: { gte: lastWeek } },
         }),
         this.prisma.monthlyReport.count({
-          where: { submittedAt: { gte: lastWeek } },
+          where: { submittedAt: { gte: lastWeek }, isDeleted: false },
         }),
         this.prisma.internshipApplication.count({
           where: {
@@ -332,6 +338,7 @@ export class NotificationSchedulerService implements OnModuleDestroy {
         const instReports = await this.prisma.monthlyReport.count({
           where: {
             submittedAt: { gte: lastWeek },
+            isDeleted: false,
             student: { institutionId: principal.institutionId },
           },
         });

@@ -470,6 +470,22 @@ export const deleteStaff = createAsyncThunk(
   }
 );
 
+export const toggleStaffStatus = createAsyncThunk(
+  'principal/toggleStaffStatus',
+  async (id, { rejectWithValue }) => {
+    try {
+      const response = await principalService.toggleStaffStatus(id);
+      return { id, ...response };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message ||
+                          error.message ||
+                          'Failed to toggle staff status. Please try again.';
+      console.error('Toggle staff status error:', error);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 // Mentor assignments
 export const assignMentor = createAsyncThunk(
   'principal/assignMentor',
@@ -1354,6 +1370,25 @@ const principalSlice = createSlice({
         state.staff.loading = false;
         state.staff.error = action.payload;
         // Rollback is handled in the thunk
+      })
+      .addCase(toggleStaffStatus.pending, (state) => {
+        state.staff.loading = true;
+        state.staff.error = null;
+      })
+      .addCase(toggleStaffStatus.fulfilled, (state, action) => {
+        state.staff.loading = false;
+        // Update the staff member's active status in the list
+        const staffIndex = state.staff.list.findIndex(s => s.id === action.payload.id);
+        if (staffIndex !== -1) {
+          state.staff.list[staffIndex].active = action.payload.active;
+        }
+        // Invalidate cache to trigger refresh
+        state.lastFetched.staff = null;
+        state.lastFetched.staffKey = null;
+      })
+      .addCase(toggleStaffStatus.rejected, (state, action) => {
+        state.staff.loading = false;
+        state.staff.error = action.payload;
       })
 
       // Mentors

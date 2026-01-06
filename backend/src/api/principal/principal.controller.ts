@@ -184,6 +184,12 @@ export class PrincipalController {
     return this.principalService.deleteStaff(req.user.userId, id);
   }
 
+  @Patch('staff/:id/toggle-status')
+  @ApiOperation({ summary: 'Toggle staff member active status' })
+  async toggleStaffStatus(@Request() req, @Param('id') id: string) {
+    return this.principalService.toggleStaffStatus(req.user.userId, id);
+  }
+
   // Mentor Management
   @Get('mentors')
   @ApiOperation({ summary: 'Get list of mentors' })

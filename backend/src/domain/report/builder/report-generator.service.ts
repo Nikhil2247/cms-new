@@ -468,7 +468,7 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = { isDeleted: false };
     const { take, skip } = this.getPaginationParams(pagination);
 
     // Build student filter with active checks
@@ -576,7 +576,9 @@ export class ReportGeneratorService {
     filters: any,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    const where: Record<string, unknown> = {};
+    const where: Record<string, unknown> = {
+      isDeleted: false,
+    };
     const { take, skip } = this.getPaginationParams(pagination);
 
     if (filters?.studentId) {

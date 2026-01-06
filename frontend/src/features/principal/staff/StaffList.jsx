@@ -5,10 +5,9 @@ import {
   fetchStaff,
   fetchPrincipalDashboard,
   updateStaff,
-  deleteStaff,
+  toggleStaffStatus,
   resetUserPassword,
   optimisticallyUpdateStaff,
-  optimisticallyDeleteStaff,
   rollbackStaffOperation,
 } from '../store/principalSlice';
 import {
@@ -20,7 +19,6 @@ import {
 import {
   EyeOutlined,
   EditOutlined,
-  DeleteOutlined,
   UserOutlined,
   SearchOutlined,
   PlusOutlined,
@@ -106,23 +104,25 @@ const StaffList = () => {
     // Staff records use 'active' boolean field
     const isCurrentlyActive = record.active === true;
     const actionText = isCurrentlyActive ? 'deactivate' : 'activate';
+    const actionPast = isCurrentlyActive ? 'deactivated' : 'activated';
     const previousList = [...list];
 
     Modal.confirm({
       title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
-      content: `Are you sure you want to ${actionText} ${record.name}?`,
+      content: isCurrentlyActive
+        ? `Are you sure you want to deactivate ${record.name}? They will no longer be able to access the system and their mentor assignments will be deactivated.`
+        : `Are you sure you want to activate ${record.name}? They will regain access to the system and their mentor assignments will be reactivated.`,
       okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
       okType: isCurrentlyActive ? 'danger' : 'primary',
       onOk: async () => {
         // Optimistic update - update UI immediately
         dispatch(optimisticallyUpdateStaff({ id: record.id, data: { active: !isCurrentlyActive } }));
-        message.success(`Staff member ${isCurrentlyActive ? 'deactivated' : 'activated'} successfully`);
 
         try {
-          await dispatch(updateStaff({
-            id: record.id,
-            data: { active: !isCurrentlyActive }
-          })).unwrap();
+          const result = await dispatch(toggleStaffStatus(record.id)).unwrap();
+          message.success(result.message || `Staff member ${actionPast} successfully`);
+          // Refresh dashboard stats (mentor count may change)
+          dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStaffOperation({ list: previousList }));
@@ -179,32 +179,6 @@ const StaffList = () => {
     });
   };
 
-  const handleDelete = (record) => {
-    const previousList = [...list];
-
-    Modal.confirm({
-      title: 'Deactivate Staff Member',
-      content: `Are you sure you want to deactivate ${record.name}? They will no longer be able to access the system but their data will be preserved.`,
-      okText: 'Deactivate',
-      okType: 'danger',
-      onOk: async () => {
-        // Optimistic update - remove from active list
-        dispatch(optimisticallyDeleteStaff(record.id));
-        message.success('Staff member deactivated successfully');
-
-        try {
-          await dispatch(deleteStaff(record.id)).unwrap();
-          // Refresh dashboard stats (staff/mentor count may change)
-          dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
-        } catch (error) {
-          // Rollback on failure
-          dispatch(rollbackStaffOperation({ list: previousList }));
-          message.error(error || 'Failed to deactivate staff member');
-        }
-      },
-    });
-  };
-
   const getActionMenuItems = (record) => {
     const isActive = record.active === true;
     return [
@@ -235,16 +209,6 @@ const StaffList = () => {
         icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
         onClick: () => handleToggleStatus(record),
         danger: isActive,
-      },
-      {
-        type: 'divider',
-      },
-      {
-        key: 'delete',
-        label: 'Deactivate',
-        icon: <StopOutlined />,
-        onClick: () => handleDelete(record),
-        danger: true,
       },
     ];
   };

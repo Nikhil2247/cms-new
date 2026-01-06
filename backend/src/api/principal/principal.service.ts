@@ -123,6 +123,7 @@ export class PrincipalService {
           // Count reports SUBMITTED for current month (status: APPROVED means submitted and auto-approved)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               student: { institutionId, user: { active: true } },
               reportMonth: currentMonth,
               reportYear: currentYear,
@@ -132,6 +133,7 @@ export class PrincipalService {
           // Count faculty visits COMPLETED in current month
           this.prisma.facultyVisitLog.count({
             where: {
+              isDeleted: false,
               application: {
                 student: { institutionId, user: { active: true } },
                 isSelfIdentified: true,
@@ -676,7 +678,7 @@ export class PrincipalService {
     // Fetch faculty visits for all applications in a single query
     const facultyVisits = applicationIds.length > 0
       ? await this.prisma.facultyVisitLog.findMany({
-          where: { applicationId: { in: applicationIds } },
+          where: { applicationId: { in: applicationIds }, isDeleted: false },
           select: {
             applicationId: true,
             visitDate: true,
@@ -1793,7 +1795,7 @@ export class PrincipalService {
 
     const where: Prisma.UserWhereInput = {
       institutionId: principal.institutionId,
-      role: { in: [Role.TEACHER, Role.PRINCIPAL] },
+      role: Role.TEACHER, // Only TEACHER role allowed in staff list
     };
 
     if (search) {
@@ -1803,9 +1805,8 @@ export class PrincipalService {
       ];
     }
 
-    if (role) {
-      where.role = role as Role;
-    }
+    // Note: role filter is intentionally not allowed to override TEACHER restriction
+    // to prevent principals from appearing in staff list
 
     // Handle active filter - support both string and boolean
     if (active !== undefined && active !== '') {
@@ -1933,11 +1934,22 @@ export class PrincipalService {
       where: {
         id: staffId,
         institutionId: principal.institutionId,
+        role: Role.TEACHER, // Only allow updating TEACHER role
       },
     });
 
     if (!staff) {
-      throw new NotFoundException('Staff member not found');
+      throw new NotFoundException('Staff member not found or not a valid staff role');
+    }
+
+    // Prevent principal from modifying themselves through staff endpoint
+    if (staff.id === principalId) {
+      throw new BadRequestException('Cannot modify your own account through this endpoint');
+    }
+
+    // Prevent changing role to PRINCIPAL
+    if (updateData.role && updateData.role === Role.PRINCIPAL) {
+      throw new BadRequestException('Cannot change staff role to principal');
     }
 
     // Prepare update data for Prisma
@@ -1969,11 +1981,17 @@ export class PrincipalService {
       where: {
         id: staffId,
         institutionId: principal.institutionId,
+        role: Role.TEACHER, // Only allow deactivating TEACHER role
       },
     });
 
     if (!staff) {
-      throw new NotFoundException('Staff member not found');
+      throw new NotFoundException('Staff member not found or not a valid staff role');
+    }
+
+    // Prevent principal from deactivating themselves
+    if (staff.id === principalId) {
+      throw new BadRequestException('Cannot deactivate your own account');
     }
 
     // Check if already deactivated
@@ -2023,6 +2041,100 @@ export class PrincipalService {
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
 
     return { success: true, message: 'Staff member deactivated successfully' };
+  }
+
+  /**
+   * Toggle staff member active status (activate/deactivate)
+   * Also handles mentor assignment reactivation when activating
+   */
+  async toggleStaffStatus(principalId: string, staffId: string) {
+    const principal = await this.prisma.user.findUnique({
+      where: { id: principalId },
+    });
+
+    if (!principal || !principal.institutionId) {
+      throw new NotFoundException('Institution not found');
+    }
+
+    const staff = await this.prisma.user.findFirst({
+      where: {
+        id: staffId,
+        institutionId: principal.institutionId,
+        role: Role.TEACHER, // Only allow toggling TEACHER role
+      },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found or not a valid staff role');
+    }
+
+    // Prevent principal from toggling themselves
+    if (staff.id === principalId) {
+      throw new BadRequestException('Cannot modify your own account status');
+    }
+
+    const currentStatus = staff.active !== false;
+    const newStatus = !currentStatus;
+    const action = newStatus ? 'activated' : 'deactivated';
+
+    // Store info for audit
+    const staffInfo = {
+      staffId,
+      email: staff.email,
+      name: staff.name,
+      role: staff.role,
+      previousStatus: currentStatus,
+    };
+
+    if (!newStatus) {
+      // Deactivating: deactivate mentor assignments and user
+      await this.prisma.$transaction([
+        this.prisma.mentorAssignment.updateMany({
+          where: { mentorId: staffId, isActive: true },
+          data: { isActive: false, deactivatedAt: new Date() },
+        }),
+        this.prisma.user.update({
+          where: { id: staffId },
+          data: { active: false },
+        }),
+      ]);
+    } else {
+      // Activating: reactivate mentor assignments and user
+      await this.prisma.$transaction([
+        this.prisma.mentorAssignment.updateMany({
+          where: { mentorId: staffId, isActive: false },
+          data: { isActive: true, deactivatedAt: null },
+        }),
+        this.prisma.user.update({
+          where: { id: staffId },
+          data: { active: true },
+        }),
+      ]);
+    }
+
+    // Log status change
+    this.auditService.log({
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'Staff',
+      entityId: staffId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Staff member ${action}: ${staffInfo.name} (${staffInfo.email})`,
+      category: AuditCategory.ADMINISTRATIVE,
+      severity: AuditSeverity.HIGH,
+      institutionId: principal.institutionId,
+      oldValues: staffInfo,
+      newValues: { active: newStatus },
+    }).catch(() => {}); // Non-blocking
+
+    await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
+
+    return {
+      success: true,
+      message: `Staff member ${action} successfully`,
+      active: newStatus,
+    };
   }
 
   /**
@@ -2624,6 +2736,7 @@ export class PrincipalService {
 
     // Build where clause
     const where: Prisma.FacultyVisitLogWhereInput = {
+      isDeleted: false,
       application: {
         student: {
           institutionId,
@@ -2811,6 +2924,7 @@ export class PrincipalService {
     const skip = (page - 1) * limit;
 
     const where: Prisma.FacultyVisitLogWhereInput = {
+      isDeleted: false,
       application: {
         student: {
           institutionId: principal.institutionId,
@@ -2851,6 +2965,7 @@ export class PrincipalService {
     const skip = (page - 1) * limit;
 
     const where: Prisma.MonthlyReportWhereInput = {
+      isDeleted: false,
       student: { institutionId: principal.institutionId },
     };
     if (status) where.status = status as any;
@@ -3754,6 +3869,7 @@ export class PrincipalService {
       this.prisma.facultyVisitLog.groupBy({
         by: ['facultyId'],
         where: {
+          isDeleted: false,
           faculty: { institutionId: principal.institutionId },
         },
         _count: { id: true },
@@ -3761,6 +3877,7 @@ export class PrincipalService {
       // Get report counts per student (to map to mentor) - cumulative
       this.prisma.monthlyReport.findMany({
         where: {
+          isDeleted: false,
           application: {
             student: { institutionId: principal.institutionId },
           },
@@ -3788,6 +3905,7 @@ export class PrincipalService {
       this.prisma.facultyVisitLog.groupBy({
         by: ['facultyId'],
         where: {
+          isDeleted: false,
           faculty: { institutionId: principal.institutionId },
           visitDate: {
             gte: selectedMonthStart,
@@ -3799,6 +3917,7 @@ export class PrincipalService {
       // Selected month reports (submitted/approved)
       this.prisma.monthlyReport.findMany({
         where: {
+          isDeleted: false,
           application: {
             student: { institutionId: principal.institutionId },
           },
@@ -4053,6 +4172,7 @@ export class PrincipalService {
     const visits = await this.prisma.facultyVisitLog.findMany({
       where: {
         facultyId,
+        isDeleted: false,
         application: {
           student: {
             institutionId: principal.institutionId,
@@ -4085,6 +4205,7 @@ export class PrincipalService {
     const currentMonthReports = assignedStudentIds.length > 0
       ? await this.prisma.monthlyReport.count({
           where: {
+            isDeleted: false,
             studentId: { in: assignedStudentIds },
             reportMonth: currentMonth,
             reportYear: currentYear,
@@ -4482,6 +4603,7 @@ export class PrincipalService {
         // Faculty visits for informational metrics
         this.prisma.facultyVisitLog.count({
           where: {
+            isDeleted: false,
             application: {
               student: { institutionId },
               isSelfIdentified: true,
@@ -4495,6 +4617,7 @@ export class PrincipalService {
         // Reports submitted for informational metrics
         this.prisma.monthlyReport.count({
           where: {
+            isDeleted: false,
             student: { institutionId },
             reportMonth: month,
             reportYear: year,
@@ -5500,7 +5623,7 @@ export class PrincipalService {
     }
 
     const documents = await this.prisma.document.findMany({
-      where: { studentId },
+      where: { studentId, isDeleted: false },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
@@ -5635,6 +5758,7 @@ export class PrincipalService {
       where: {
         id: documentId,
         studentId: studentId,
+        isDeleted: false,
       },
     });
 
@@ -5654,9 +5778,13 @@ export class PrincipalService {
       }
     }
 
-    // Delete from database
-    await this.prisma.document.delete({
+    // Soft delete from database (preserve audit trail)
+    await this.prisma.document.update({
       where: { id: documentId },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
     });
 
     // Log audit

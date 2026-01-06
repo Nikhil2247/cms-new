@@ -299,6 +299,51 @@ export class StatePrincipalService {
   }
 
   /**
+   * Toggle principal status (activate/deactivate)
+   */
+  async togglePrincipalStatus(id: string, toggledBy?: string) {
+    const existingPrincipal = await this.prisma.user.findUnique({
+      where: { id, role: 'PRINCIPAL' },
+    });
+
+    if (!existingPrincipal) {
+      throw new NotFoundException(`Principal with ID ${id} not found`);
+    }
+
+    const currentStatus = existingPrincipal.active;
+    const newStatus = !currentStatus;
+
+    // Update principal status
+    await this.prisma.user.update({
+      where: { id },
+      data: { active: newStatus },
+    });
+
+    // Audit principal status toggle
+    this.auditService.log({
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'User',
+      entityId: id,
+      userId: toggledBy || 'SYSTEM',
+      userRole: Role.STATE_DIRECTORATE,
+      description: `Principal account ${newStatus ? 'activated' : 'deactivated'}: ${existingPrincipal.name}`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: existingPrincipal.institutionId || undefined,
+      oldValues: { active: currentStatus },
+      newValues: { active: newStatus },
+    }).catch(() => {});
+
+    await this.cache.invalidateByTags(['state', 'principals']);
+
+    return {
+      success: true,
+      active: newStatus,
+      message: `Principal ${newStatus ? 'activated' : 'deactivated'} successfully`,
+    };
+  }
+
+  /**
    * Reset principal password
    */
   async resetPrincipalPassword(id: string, resetBy?: string) {

@@ -177,6 +177,7 @@ export class StateReportService {
         async () => {
           // Base filter: only count reports from active students with active user accounts
           const baseWhere = {
+            isDeleted: false,
             reportMonth: month,
             reportYear: year,
             student: { user: { active: true } },
@@ -244,6 +245,7 @@ export class StateReportService {
             application: {
               student: { user: { active: true } },
             },
+            isDeleted: false,
           };
 
           const [totalVisits, pendingFollowUps, facultyParticipation] = await Promise.all([

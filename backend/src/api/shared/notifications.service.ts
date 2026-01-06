@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Logger } from '@nestjs/common';
-import { Role, AuditAction } from '../../generated/prisma/client';
+import { Role, AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 import { PrismaService } from '../../core/database/prisma.service';
 import { NotificationSenderService } from '../../infrastructure/notification/notification-sender.service';
 import { AuditService } from '../../infrastructure/audit/audit.service';
@@ -181,6 +181,22 @@ export class NotificationsService {
         where: { id: notificationId },
       });
 
+      // Audit logging for notification deletion
+      this.auditService.log({
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        entityId: notificationId,
+        userId: userId,
+        description: `Notification deleted: ${notification.title}`,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        oldValues: {
+          id: notification.id,
+          title: notification.title,
+          type: notification.type,
+        },
+      }).catch(() => {}); // Non-blocking audit
+
       this.logger.log(`Notification ${notificationId} deleted`);
 
       return {
@@ -263,6 +279,18 @@ export class NotificationsService {
         where: { userId },
       });
 
+      // Audit logging for clearing all notifications
+      this.auditService.log({
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        entityId: userId,
+        userId: userId,
+        description: `Cleared all notifications (${result.count} items)`,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        oldValues: { deletedCount: result.count },
+      }).catch(() => {}); // Non-blocking audit
+
       this.logger.log(`Cleared ${result.count} notifications for user ${userId}`);
 
       return {
@@ -288,6 +316,18 @@ export class NotificationsService {
         },
       });
 
+      // Audit logging for clearing read notifications
+      this.auditService.log({
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        entityId: userId,
+        userId: userId,
+        description: `Cleared read notifications (${result.count} items)`,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        oldValues: { deletedCount: result.count, filter: 'read' },
+      }).catch(() => {}); // Non-blocking audit
+
       this.logger.log(`Cleared ${result.count} read notifications for user ${userId}`);
 
       return {
@@ -312,6 +352,21 @@ export class NotificationsService {
           userId,
         },
       });
+
+      // Audit logging for deleting multiple notifications
+      this.auditService.log({
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'Notification',
+        entityId: userId,
+        userId: userId,
+        description: `Deleted multiple notifications (${result.count} items)`,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        oldValues: {
+          deletedCount: result.count,
+          requestedIds: notificationIds,
+        },
+      }).catch(() => {}); // Non-blocking audit
 
       this.logger.log(`Deleted ${result.count} notifications for user ${userId}`);
 

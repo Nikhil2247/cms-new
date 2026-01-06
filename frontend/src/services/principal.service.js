@@ -158,6 +158,11 @@ export const principalService = {
     return response.data;
   },
 
+  async toggleStaffStatus(id) {
+    const response = await API.patch(`/principal/staff/${id}/toggle-status`);
+    return response.data;
+  },
+
   // Mentors
   async getMentors(params = {}) {
     const queryParams = new URLSearchParams(params).toString();

@@ -1,6 +1,8 @@
 import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { ReportBuilderService } from '../../domain/report/builder/report-builder.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditAction, AuditCategory, AuditSeverity } from '../../generated/prisma/client';
 
 interface PaginationParams {
   page?: number;
@@ -24,6 +26,7 @@ export class ReportsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly reportBuilderService: ReportBuilderService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -260,6 +263,10 @@ export class ReportsService {
       const report = await this.prisma.generatedReport.findUnique({
         where: { id: reportId },
         select: {
+          id: true,
+          reportName: true,
+          reportType: true,
+          format: true,
           generatedBy: true,
         },
       });
@@ -277,6 +284,23 @@ export class ReportsService {
       await this.prisma.generatedReport.delete({
         where: { id: reportId },
       });
+
+      // Audit log the deletion
+      this.auditService.log({
+        action: AuditAction.BULK_OPERATION,
+        entityType: 'GeneratedReport',
+        entityId: reportId,
+        userId,
+        description: `Generated report deleted: ${report.reportName} (${report.reportType})`,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        oldValues: {
+          id: report.id,
+          name: report.reportName,
+          type: report.reportType,
+          format: report.format,
+        },
+      }).catch(() => {}); // Non-blocking audit
 
       this.logger.log(`Report ${reportId} deleted by user ${userId}`);
 

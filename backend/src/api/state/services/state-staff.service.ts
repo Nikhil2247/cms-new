@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException, Logger } from '@nes
 import { PrismaService } from '../../../core/database/prisma.service';
 import { LruCacheService } from '../../../core/cache/lru-cache.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
-import { Prisma, Role } from '../../../generated/prisma/client';
+import { Prisma, Role, AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 import * as bcrypt from 'bcrypt';
 import { BCRYPT_SALT_ROUNDS } from '../../../core/auth/services/auth.service';
 
@@ -36,11 +36,8 @@ export class StateStaffService {
     const { institutionId, role, branchName, search, active, page = 1, limit = 10 } = params;
     const skip = (page - 1) * limit;
 
-    // Staff roles - TEACHER, FACULTY_SUPERVISOR, PLACEMENT_OFFICER, etc. (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, INDUSTRY roles)
-    const staffRoles: Role[] = [
-      Role.TEACHER,
-      Role.TEACHER,
-    ];
+    // Staff roles - TEACHER (excluding PRINCIPAL, STUDENT, STATE_DIRECTORATE, SYSTEM_ADMIN)
+    const staffRoles: Role[] = [Role.TEACHER];
 
     const where: Prisma.UserWhereInput = {
       role: role ? (role as Role) : { in: staffRoles },
@@ -159,10 +156,7 @@ export class StateStaffService {
    * Get staff member by ID
    */
   async getStaffById(id: string) {
-    const staffRoles: Role[] = [
-      Role.TEACHER,
-      Role.TEACHER,
-    ];
+    const staffRoles: Role[] = [Role.TEACHER];
 
     const staff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -205,10 +199,7 @@ export class StateStaffService {
     isActive?: boolean;
     active?: boolean;
   }) {
-    const staffRoles: Role[] = [
-      Role.TEACHER,
-      Role.TEACHER,
-    ];
+    const staffRoles: Role[] = [Role.TEACHER];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -267,11 +258,7 @@ export class StateStaffService {
    * Delete staff member by ID
    */
   async deleteStaff(id: string) {
-    const staffRoles: Role[] = [
-      Role.TEACHER,
-      Role.TEACHER,
-
-    ];
+    const staffRoles: Role[] = [Role.TEACHER];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },
@@ -297,6 +284,27 @@ export class StateStaffService {
         data: { active: false },
       }),
     ]);
+
+    // Audit logging for staff deactivation
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'Staff',
+      entityId: id,
+      userId: id,
+      userName: existingStaff.name,
+      userRole: existingStaff.role,
+      description: `Staff member deactivated: ${existingStaff.name} (${existingStaff.email})`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: existingStaff.institutionId,
+      oldValues: {
+        active: true,
+        name: existingStaff.name,
+        email: existingStaff.email,
+        role: existingStaff.role,
+      },
+      newValues: { active: false },
+    }).catch(() => {}); // Non-blocking audit
 
     await this.cache.invalidateByTags(['state', 'staff']);
 
@@ -336,6 +344,27 @@ export class StateStaffService {
       }),
     ]);
 
+    // Audit logging for faculty deactivation
+    this.auditService.log({
+      action: AuditAction.USER_DEACTIVATION,
+      entityType: 'Faculty',
+      entityId: id,
+      userId: id,
+      userName: existingFaculty.name,
+      userRole: existingFaculty.role,
+      description: `Faculty member deactivated: ${existingFaculty.name} (${existingFaculty.email})`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: existingFaculty.institutionId,
+      oldValues: {
+        active: true,
+        name: existingFaculty.name,
+        email: existingFaculty.email,
+        role: existingFaculty.role,
+      },
+      newValues: { active: false },
+    }).catch(() => {}); // Non-blocking audit
+
     await this.cache.invalidateByTags(['state', 'staff', 'faculty']);
 
     return { success: true, message: 'Faculty member deactivated successfully' };
@@ -360,7 +389,7 @@ export class StateStaffService {
     const newStatus = !currentStatus;
 
     if (!newStatus) {
-      // Deactivating: deactivate mentor assignments
+      // Deactivating: deactivate mentor assignments and user
       await this.prisma.$transaction([
         this.prisma.mentorAssignment.updateMany({
           where: { mentorId: id, isActive: true },
@@ -372,19 +401,41 @@ export class StateStaffService {
         }),
       ]);
     } else {
-      // Activating: just activate the user (mentor assignments need to be reassigned)
-      await this.prisma.user.update({
-        where: { id },
-        data: { active: true },
-      });
+      // Activating: reactivate mentor assignments and user
+      await this.prisma.$transaction([
+        this.prisma.mentorAssignment.updateMany({
+          where: { mentorId: id, isActive: false },
+          data: { isActive: true, deactivatedAt: null },
+        }),
+        this.prisma.user.update({
+          where: { id },
+          data: { active: true },
+        }),
+      ]);
     }
 
     await this.cache.invalidateByTags(['state', 'staff', 'faculty']);
 
+    // Audit log the status toggle
+    this.auditService.log({
+      action: newStatus ? AuditAction.USER_ACTIVATION : AuditAction.USER_DEACTIVATION,
+      entityType: 'Faculty',
+      entityId: id,
+      userId: id,
+      userName: existingFaculty.name,
+      userRole: existingFaculty.role,
+      description: `Faculty member ${newStatus ? 'activated' : 'deactivated'}: ${existingFaculty.name} (${existingFaculty.email})`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.HIGH,
+      institutionId: existingFaculty.institutionId,
+      oldValues: { active: currentStatus },
+      newValues: { active: newStatus },
+    }).catch(() => {}); // Non-blocking audit
+
     return {
       success: true,
       active: newStatus,
-      message: `Faculty member ${newStatus ? 'activated' : 'deactivated'} successfully`,
+      message: `Faculty member ${newStatus ? 'activated' : 'deactivated'} successfully. Mentor assignments also ${newStatus ? 'reactivated' : 'deactivated'}.`,
     };
   }
 
@@ -392,12 +443,7 @@ export class StateStaffService {
    * Reset staff member password
    */
   async resetStaffPassword(id: string) {
-    const staffRoles: Role[] = [
-      Role.TEACHER,
-      Role.TEACHER,
-      
-
-    ];
+    const staffRoles: Role[] = [Role.TEACHER];
 
     const existingStaff = await this.prisma.user.findUnique({
       where: { id, role: { in: staffRoles } },

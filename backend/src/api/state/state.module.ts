@@ -10,12 +10,14 @@ import { StateStaffService } from './services/state-staff.service';
 import { StateReportsService } from './services/state-reports.service';
 import { StateIndustryService } from './services/state-industry.service';
 import { StateMentorService } from './services/state-mentor.service';
+import { StateRestoreService } from './services/state-restore.service';
 
 // Import domain modules for business logic reuse
 import { ReportModule } from '../../domain/report/report.module';
 import { MentorModule } from '../../domain/mentor/mentor.module';
 import { AcademicModule } from '../../domain/academic/academic.module';
 import { InstitutionModule } from '../../domain/institution/institution.module';
+import { InternshipModule } from '../../domain/internship/internship.module';
 import { UserModule } from '../../domain/user/user.module';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
 import { SharedModule } from '../shared/shared.module';
@@ -27,6 +29,7 @@ import { SharedModule } from '../shared/shared.module';
     MentorModule,
     AcademicModule,
     InstitutionModule,
+    InternshipModule, // For ExpectedCycleService (counter adjustments)
     UserModule,
     AuditModule,
     SharedModule, // For LookupService
@@ -43,6 +46,7 @@ import { SharedModule } from '../shared/shared.module';
     StateReportsService,
     StateIndustryService,
     StateMentorService,
+    StateRestoreService,
   ],
   exports: [StateService],
 })

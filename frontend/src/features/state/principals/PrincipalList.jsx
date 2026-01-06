@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App } from 'antd';
-import { PlusOutlined, EditOutlined, StopOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined } from '@ant-design/icons';
-import { fetchPrincipals, deletePrincipal, resetPrincipalPassword } from '../store/stateSlice';
+import { PlusOutlined, EditOutlined, StopOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { fetchPrincipals, togglePrincipalStatus, resetPrincipalPassword } from '../store/stateSlice';
 import PrincipalModal from './PrincipalModal';
 import { getImageUrl } from '../../../utils/imageUtils';
 
@@ -17,6 +17,8 @@ const PrincipalList = () => {
   });
   const [modalOpen, setModalOpen] = useState(false);
   const [editingPrincipalId, setEditingPrincipalId] = useState(null);
+  const [togglingId, setTogglingId] = useState(null);
+  const [resettingId, setResettingId] = useState(null);
 
   const loadPrincipals = useCallback((params = {}) => {
     dispatch(fetchPrincipals({
@@ -44,20 +46,29 @@ const PrincipalList = () => {
     loadPrincipals({ forceRefresh: true });
   };
 
-  const handleDelete = (id, name) => {
+  const handleToggleStatus = (id, name, isCurrentlyActive) => {
+    const action = isCurrentlyActive ? 'deactivate' : 'activate';
+    const actionPast = isCurrentlyActive ? 'deactivated' : 'activated';
+
     modal.confirm({
-      title: 'Deactivate Principal',
-      content: `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`,
-      okText: 'Deactivate',
-      okType: 'danger',
+      title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Principal`,
+      content: isCurrentlyActive
+        ? `Are you sure you want to deactivate ${name}? They will no longer be able to access the system but their data will be preserved.`
+        : `Are you sure you want to activate ${name}? They will regain access to the system.`,
+      okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
+      okType: isCurrentlyActive ? 'danger' : 'primary',
+      confirmLoading: togglingId === id,
       onOk: async () => {
+        setTogglingId(id);
         try {
-          await dispatch(deletePrincipal(id)).unwrap();
-          message.success('Principal deactivated successfully');
+          const result = await dispatch(togglePrincipalStatus(id)).unwrap();
+          message.success(result.message || `Principal ${actionPast} successfully`);
           loadPrincipals({ forceRefresh: true });
         } catch (error) {
-          message.error(error?.message || 'Failed to deactivate principal');
-          throw error; // Re-throw to prevent modal from closing
+          message.error(error?.message || `Failed to ${action} principal`);
+          throw error;
+        } finally {
+          setTogglingId(null);
         }
       },
     });
@@ -74,7 +85,9 @@ const PrincipalList = () => {
       ),
       okText: 'Reset Password',
       okType: 'primary',
+      confirmLoading: resettingId === id,
       onOk: async () => {
+        setResettingId(id);
         try {
           const result = await dispatch(resetPrincipalPassword(id)).unwrap();
           message.success('Password reset successfully');
@@ -92,7 +105,9 @@ const PrincipalList = () => {
         } catch (error) {
           console.error('Reset password error:', error);
           message.error(error?.message || 'Failed to reset password');
-          throw error; // Re-throw to prevent modal from closing on error
+          throw error;
+        } finally {
+          setResettingId(null);
         }
       },
     });
@@ -176,6 +191,8 @@ const PrincipalList = () => {
       width: 80,
       align: 'center',
       render: (_, record) => {
+        const isActive = record.active !== false;
+
         const handleMenuClick = ({ key }) => {
           switch (key) {
             case 'edit':
@@ -184,32 +201,37 @@ const PrincipalList = () => {
             case 'reset-password':
               handleResetPassword(record.id, record.name, record.email);
               break;
-            case 'delete':
-              handleDelete(record.id, record.name);
+            case 'toggle-status':
+              handleToggleStatus(record.id, record.name, isActive);
               break;
             default:
           }
         };
+
+        const isLoading = resettingId === record.id || togglingId === record.id;
 
         const menuItems = [
           {
             key: 'edit',
             icon: <EditOutlined />,
             label: 'Edit',
+            disabled: isLoading,
           },
           {
             key: 'reset-password',
             icon: <KeyOutlined />,
             label: 'Reset Password',
+            disabled: isLoading,
           },
           {
             type: 'divider',
           },
           {
-            key: 'delete',
-            icon: <StopOutlined />,
-            label: 'Deactivate',
-            danger: true,
+            key: 'toggle-status',
+            icon: isActive ? <StopOutlined /> : <CheckCircleOutlined />,
+            label: isActive ? 'Deactivate' : 'Activate',
+            danger: isActive,
+            disabled: isLoading,
           },
         ];
 
@@ -218,11 +240,13 @@ const PrincipalList = () => {
             menu={{ items: menuItems, onClick: handleMenuClick }}
             trigger={['click']}
             placement="bottomRight"
+            disabled={isLoading}
           >
             <Button
               type="text"
               icon={<MoreOutlined />}
               size="small"
+              disabled={isLoading}
             />
           </Dropdown>
         );

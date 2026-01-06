@@ -431,6 +431,7 @@ enum AuditAction {
   STUDENT_PROFILE_UPDATE
   STUDENT_DOCUMENT_UPLOAD
   STUDENT_DOCUMENT_DELETE
+  STUDENT_DOCUMENT_RESTORE
 
   // Internship Operations
   INTERNSHIP_CREATE
@@ -472,6 +473,7 @@ enum AuditAction {
   VISIT_LOG_CREATE
   VISIT_LOG_UPDATE
   VISIT_LOG_DELETE
+  VISIT_LOG_RESTORE
   VISIT_LOG_VIEW
   FACULTY_ASSIGNMENT
 
@@ -481,6 +483,7 @@ enum AuditAction {
   MONTHLY_REPORT_APPROVE
   MONTHLY_REPORT_REJECT
   MONTHLY_REPORT_DELETE
+  MONTHLY_REPORT_RESTORE
 
   // Joining Letter Operations
   JOINING_LETTER_UPLOAD
@@ -857,9 +860,15 @@ model FacultyVisitLog {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Soft Delete
+  isDeleted Boolean   @default(false)
+  deletedAt DateTime?
+
   // Performance Indexes
   @@index([applicationId])
   @@index([facultyId])
+  @@index([isDeleted])
+  @@index([facultyId, isDeleted])
   @@index([visitDate])
   @@index([applicationId, visitDate])
   @@index([facultyId, visitDate])

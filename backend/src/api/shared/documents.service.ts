@@ -131,7 +131,7 @@ export class DocumentsService {
         },
       });
 
-      if (!document) {
+      if (!document || document.isDeleted) {
         throw new NotFoundException('Document not found');
       }
 
@@ -173,7 +173,7 @@ export class DocumentsService {
         },
       });
 
-      if (!document) {
+      if (!document || document.isDeleted) {
         throw new NotFoundException('Document not found');
       }
 
@@ -202,9 +202,13 @@ export class DocumentsService {
         }
       }
 
-      // Delete from database
-      await this.prisma.document.delete({
+      // Soft delete from database (preserve audit trail)
+      await this.prisma.document.update({
         where: { id: documentId },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
       });
 
       // Log document deletion
@@ -256,7 +260,7 @@ export class DocumentsService {
 
       const [documents, total] = await Promise.all([
         this.prisma.document.findMany({
-          where: { studentId: student.id },
+          where: { studentId: student.id, isDeleted: false },
           orderBy: { createdAt: 'desc' },
           skip,
           take: limit,
@@ -269,7 +273,7 @@ export class DocumentsService {
           },
         }),
         this.prisma.document.count({
-          where: { studentId: student.id },
+          where: { studentId: student.id, isDeleted: false },
         }),
       ]);
 

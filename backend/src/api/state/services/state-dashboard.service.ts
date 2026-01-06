@@ -167,6 +167,7 @@ export class StateDashboardService {
           // Faculty visits - target month (only for internships that have started, ACTIVE institutions, active users)
           this.prisma.facultyVisitLog.count({
             where: {
+              isDeleted: false,
               visitDate: { gte: startOfTargetMonth, lte: endOfTargetMonth },
               application: {
                 startDate: { lte: endOfTargetMonth },
@@ -177,6 +178,7 @@ export class StateDashboardService {
           // Faculty visits - previous month (only for internships that have started, ACTIVE institutions, active users)
           this.prisma.facultyVisitLog.count({
             where: {
+              isDeleted: false,
               visitDate: { gte: startOfPrevMonth, lte: endOfPrevMonth },
               application: {
                 startDate: { lte: endOfPrevMonth },
@@ -187,6 +189,7 @@ export class StateDashboardService {
           // Total faculty visits (only for internships that have started, ACTIVE institutions, active users)
           this.prisma.facultyVisitLog.count({
             where: {
+              isDeleted: false,
               application: {
                 startDate: { lte: endOfTargetMonth },
                 student: { user: { active: true }, Institution: { isActive: true } },
@@ -196,6 +199,7 @@ export class StateDashboardService {
           // Monthly reports - submitted for target month (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
@@ -205,6 +209,7 @@ export class StateDashboardService {
           // Monthly reports - submitted previous month (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               reportMonth: prevMonth,
               reportYear: prevMonthYear,
               status: 'APPROVED',
@@ -214,6 +219,7 @@ export class StateDashboardService {
           // Monthly reports - pending review (should be 0 with auto-approval, kept for legacy)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               status: 'SUBMITTED',
               student: { user: { active: true }, Institution: { isActive: true } },
             },
@@ -221,6 +227,7 @@ export class StateDashboardService {
           // Monthly reports - approved for target month (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               reportMonth: targetMonth,
               reportYear: targetYear,
               status: 'APPROVED',
@@ -230,6 +237,7 @@ export class StateDashboardService {
           // Total reports submitted (ACTIVE institutions, active users)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               status: 'APPROVED',
               student: { user: { active: true }, Institution: { isActive: true } },
             },
@@ -495,6 +503,7 @@ export class StateDashboardService {
           // 5. Get last visit per institution using raw aggregation - avoiding N+1
           this.prisma.facultyVisitLog.groupBy({
             by: ['applicationId'],
+            where: { isDeleted: false },
             _max: { visitDate: true },
           }),
         ]);
@@ -767,6 +776,7 @@ export class StateDashboardService {
           }),
           this.prisma.facultyVisitLog.count({
             where: {
+              isDeleted: false,
               visitDate: { gte: startOfMonth },
               application: { student: { user: { active: true }, Institution: { isActive: true } } },
             },
@@ -774,6 +784,7 @@ export class StateDashboardService {
           // With auto-approval, all submitted reports are APPROVED (active users)
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               reportMonth: currentMonth,
               reportYear: currentYear,
               status: 'APPROVED',
@@ -972,6 +983,7 @@ export class StateDashboardService {
             // Get reports submitted for the target month per institution (active students with active users from active institutions)
             const reportsThisMonth = await this.prisma.monthlyReport.findMany({
               where: {
+                isDeleted: false,
                 reportMonth: targetMonth,
                 reportYear: targetYear,
                 status: 'APPROVED',
@@ -1065,6 +1077,7 @@ export class StateDashboardService {
             // Get visits this month per institution (active students with active users from active institutions)
             const visitsThisMonth = await this.prisma.facultyVisitLog.findMany({
               where: {
+                isDeleted: false,
                 visitDate: { gte: startOfMonth },
                 application: { student: { user: { active: true }, Institution: { isActive: true } } },
               },

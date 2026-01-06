@@ -54,6 +54,7 @@ export class MonthlyReportService {
       // Check for duplicate report
       const existingReport = await this.prisma.monthlyReport.findFirst({
         where: {
+          isDeleted: false,
           applicationId: data.applicationId,
           reportMonth: data.reportMonth,
           reportYear: data.reportYear,
@@ -126,7 +127,7 @@ export class MonthlyReportService {
         cacheKey,
         async () => {
           return await this.prisma.monthlyReport.findMany({
-            where: { studentId },
+            where: { studentId, isDeleted: false },
             include: {
               application: { select: { id: true } },
             },
@@ -153,6 +154,7 @@ export class MonthlyReportService {
         async () => {
           return await this.prisma.monthlyReport.findMany({
             where: {
+              isDeleted: false,
               application: { mentorId },
             },
             include: {
@@ -195,7 +197,7 @@ export class MonthlyReportService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Report not found');
     }
 

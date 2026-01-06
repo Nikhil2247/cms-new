@@ -10,6 +10,7 @@ import {
   Query,
   UseGuards,
   Req,
+  BadRequestException,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { THROTTLE_PRESETS } from '../../core/config/throttle.config';
@@ -263,6 +264,12 @@ export class StateController {
   @ApiOperation({ summary: 'Delete principal by ID' })
   async deletePrincipal(@Param('id') id: string) {
     return this.stateService.deletePrincipal(id);
+  }
+
+  @Patch('principals/:id/toggle-status')
+  @ApiOperation({ summary: 'Toggle principal active status (activate/deactivate)' })
+  async togglePrincipalStatus(@Param('id') id: string) {
+    return this.stateService.togglePrincipalStatus(id);
   }
 
   @Post('principals/:id/reset-password')
@@ -578,5 +585,91 @@ export class StateController {
   ) {
     const toggledBy = req.user?.userId || 'state-admin';
     return this.stateService.toggleStudentStatus(studentId, toggledBy);
+  }
+
+  // ==================== Restore Center ====================
+
+  private readonly VALID_RESTORE_TYPES = ['monthly-reports', 'faculty-visits', 'documents'] as const;
+
+  private validateRestoreType(type: string): type is 'monthly-reports' | 'faculty-visits' | 'documents' {
+    return this.VALID_RESTORE_TYPES.includes(type as any);
+  }
+
+  @Get('restore/summary')
+  @ApiOperation({ summary: 'Get summary of deleted items counts across all types' })
+  async getDeletedItemsSummary(
+    @Query('institutionId') institutionId?: string,
+  ) {
+    return this.stateService.getDeletedItemsSummary(institutionId);
+  }
+
+  @Get('restore/:type')
+  @ApiOperation({ summary: 'Get deleted items by type with pagination and filters' })
+  async getDeletedItems(
+    @Param('type') type: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('institutionId') institutionId?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
+  ) {
+    if (!this.validateRestoreType(type)) {
+      throw new BadRequestException(
+        `Invalid type: ${type}. Valid types are: ${this.VALID_RESTORE_TYPES.join(', ')}`
+      );
+    }
+    return this.stateService.getDeletedItems(type, {
+      page: page ? Number(page) : undefined,
+      limit: limit ? Number(limit) : undefined,
+      search,
+      institutionId,
+      fromDate,
+      toDate,
+    });
+  }
+
+  // IMPORTANT: Bulk route must come BEFORE the parameterized :id route
+  @Post('restore/:type/bulk')
+  @ApiOperation({ summary: 'Bulk restore multiple deleted items' })
+  async bulkRestore(
+    @Param('type') type: string,
+    @Body('ids') ids: string[],
+    @Req() req,
+  ) {
+    if (!this.validateRestoreType(type)) {
+      throw new BadRequestException(
+        `Invalid type: ${type}. Valid types are: ${this.VALID_RESTORE_TYPES.join(', ')}`
+      );
+    }
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      throw new BadRequestException('ids must be a non-empty array of strings');
+    }
+    // Validate each ID is a non-empty string
+    const invalidIds = ids.filter(id => typeof id !== 'string' || !id.trim());
+    if (invalidIds.length > 0) {
+      throw new BadRequestException('All ids must be non-empty strings');
+    }
+    const restoredBy = req.user?.userId || 'state-admin';
+    return this.stateService.bulkRestore(type, ids, restoredBy);
+  }
+
+  @Post('restore/:type/:id')
+  @ApiOperation({ summary: 'Restore a single deleted item' })
+  async restoreItem(
+    @Param('type') type: string,
+    @Param('id') id: string,
+    @Req() req,
+  ) {
+    if (!this.validateRestoreType(type)) {
+      throw new BadRequestException(
+        `Invalid type: ${type}. Valid types are: ${this.VALID_RESTORE_TYPES.join(', ')}`
+      );
+    }
+    if (!id || !id.trim()) {
+      throw new BadRequestException('id is required');
+    }
+    const restoredBy = req.user?.userId || 'state-admin';
+    return this.stateService.restoreItem(type, id, restoredBy);
   }
 }

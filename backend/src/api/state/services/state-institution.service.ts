@@ -301,6 +301,7 @@ export class StateInstitutionService {
       // Only count visits for internships that have started (startDate <= now)
       this.prisma.facultyVisitLog.findMany({
         where: {
+          isDeleted: false,
           visitDate: { gte: startOfMonth, lte: endOfMonth },
           application: {
             student: { institutionId: { in: institutionIds }, user: { active: true } },
@@ -323,6 +324,7 @@ export class StateInstitutionService {
       // With auto-approval, all submitted reports are APPROVED
       this.prisma.monthlyReport.findMany({
         where: {
+          isDeleted: false,
           student: { institutionId: { in: institutionIds }, user: { active: true } },
           reportMonth: currentMonth,
           reportYear: currentYear,
@@ -754,6 +756,7 @@ export class StateInstitutionService {
       // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
+          isDeleted: false,
           student: {
             institutionId: id,
             user: { active: true },
@@ -782,6 +785,7 @@ export class StateInstitutionService {
       // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
+          isDeleted: false,
           student: {
             institutionId: id,
             user: { active: true },
@@ -810,6 +814,7 @@ export class StateInstitutionService {
       // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
+          isDeleted: false,
           student: {
             institutionId: id,
             user: { active: true },
@@ -838,6 +843,7 @@ export class StateInstitutionService {
       // Include students with active internships where startDate is NULL or in training period
       this.prisma.monthlyReport.count({
         where: {
+          isDeleted: false,
           student: {
             institutionId: id,
             user: { active: true },
@@ -895,6 +901,7 @@ export class StateInstitutionService {
       // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
+          isDeleted: false,
           application: {
             isActive: true,
             student: { institutionId: id, user: { active: true } },
@@ -917,6 +924,7 @@ export class StateInstitutionService {
       // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
+          isDeleted: false,
           application: {
             isActive: true,
             student: { institutionId: id, user: { active: true } },
@@ -939,6 +947,7 @@ export class StateInstitutionService {
       // Include visits for active internships where startDate is NULL or in training period
       this.prisma.facultyVisitLog.count({
         where: {
+          isDeleted: false,
           application: {
             isActive: true,
             student: { institutionId: id, user: { active: true } },
@@ -1634,6 +1643,7 @@ export class StateInstitutionService {
       this.prisma.facultyVisitLog.groupBy({
         by: ['facultyId'],
         where: {
+          isDeleted: false,
           faculty: { institutionId: id },
           visitDate: { gte: startOfMonth, lte: endOfMonth },
         },
@@ -1644,6 +1654,7 @@ export class StateInstitutionService {
       this.prisma.facultyVisitLog.groupBy({
         by: ['facultyId'],
         where: {
+          isDeleted: false,
           faculty: { institutionId: id },
           visitDate: { gte: startOfMonth, lte: completedThrough },
         },

@@ -9,6 +9,7 @@ import { StateStaffService } from './services/state-staff.service';
 import { StateReportsService } from './services/state-reports.service';
 import { StateIndustryService } from './services/state-industry.service';
 import { StateMentorService } from './services/state-mentor.service';
+import { StateRestoreService, RestorableEntityType } from './services/state-restore.service';
 
 /**
  * State Service - Main facade that delegates to specialized sub-services
@@ -35,6 +36,7 @@ export class StateService {
     private readonly reportsService: StateReportsService,
     private readonly industryService: StateIndustryService,
     private readonly mentorService: StateMentorService,
+    private readonly restoreService: StateRestoreService,
   ) {}
 
   // ==========================================
@@ -181,6 +183,10 @@ export class StateService {
 
   async deletePrincipal(id: string, deletedBy?: string) {
     return this.principalService.deletePrincipal(id, deletedBy);
+  }
+
+  async togglePrincipalStatus(id: string, toggledBy?: string) {
+    return this.principalService.togglePrincipalStatus(id, toggledBy);
   }
 
   async resetPrincipalPassword(id: string, resetBy?: string) {
@@ -404,5 +410,35 @@ export class StateService {
 
   async toggleStudentStatus(studentId: string, toggledBy: string) {
     return this.mentorService.toggleStudentStatus(studentId, toggledBy);
+  }
+
+  // ==========================================
+  // RESTORE CENTER METHODS
+  // ==========================================
+
+  async getDeletedItems(
+    type: RestorableEntityType,
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      institutionId?: string;
+      fromDate?: string;
+      toDate?: string;
+    },
+  ) {
+    return this.restoreService.getDeletedItems(type, params);
+  }
+
+  async getDeletedItemsSummary(institutionId?: string) {
+    return this.restoreService.getDeletedItemsSummary(institutionId);
+  }
+
+  async restoreItem(type: RestorableEntityType, id: string, restoredBy?: string) {
+    return this.restoreService.restoreItem(type, id, restoredBy);
+  }
+
+  async bulkRestore(type: RestorableEntityType, ids: string[], restoredBy?: string) {
+    return this.restoreService.bulkRestore(type, ids, restoredBy);
   }
 }

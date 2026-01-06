@@ -316,6 +316,7 @@ export class FacultyService {
           // Only count reports for active internships that have started
           this.prisma.monthlyReport.count({
             where: {
+              isDeleted: false,
               application: {
                 studentId: { in: studentIds },
                 student: { user: { active: true } },
@@ -340,6 +341,7 @@ export class FacultyService {
           this.prisma.facultyVisitLog.count({
             where: {
               facultyId,
+              isDeleted: false,
               application: {
                 student: { user: { active: true } },
                 isActive: true,
@@ -387,6 +389,7 @@ export class FacultyService {
         const upcomingVisits = await this.prisma.facultyVisitLog.findMany({
           where: {
             facultyId,
+            isDeleted: false,
             visitDate: {
               gte: new Date(),
             },
@@ -657,7 +660,7 @@ export class FacultyService {
       },
     });
 
-    if (!visitLog) {
+    if (!visitLog || visitLog.isDeleted) {
       throw new NotFoundException('Visit log not found');
     }
 
@@ -683,6 +686,7 @@ export class FacultyService {
 
     const where: Prisma.FacultyVisitLogWhereInput = {
       facultyId,
+      isDeleted: false,
     };
 
     if (studentId) {
@@ -833,7 +837,7 @@ export class FacultyService {
 
     // Count existing visits for this application
     const visitCount = await this.prisma.facultyVisitLog.count({
-      where: { applicationId: application.id },
+      where: { applicationId: application.id, isDeleted: false },
     });
 
     // Prepare visit data with defaults for quick logging
@@ -926,7 +930,7 @@ export class FacultyService {
       },
     });
 
-    if (!visitLog) {
+    if (!visitLog || visitLog.isDeleted) {
       throw new NotFoundException('Visit log not found');
     }
 
@@ -1083,7 +1087,7 @@ export class FacultyService {
       },
     });
 
-    if (!visitLog) {
+    if (!visitLog || visitLog.isDeleted) {
       throw new NotFoundException('Visit log not found');
     }
 
@@ -1102,8 +1106,13 @@ export class FacultyService {
       visitDate: visitLog.visitDate,
     };
 
-    await this.prisma.facultyVisitLog.delete({
+    // Soft delete instead of hard delete
+    await this.prisma.facultyVisitLog.update({
       where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
     });
 
     // Get faculty for audit
@@ -1118,7 +1127,7 @@ export class FacultyService {
       userId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Faculty visit log deleted`,
+      description: `Faculty visit log soft deleted`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.MEDIUM,
       institutionId: faculty?.institutionId || undefined,
@@ -1160,6 +1169,7 @@ export class FacultyService {
     // 1. Students assigned via MentorAssignment
     // 2. Applications where faculty is directly set as mentorId
     const where: Prisma.MonthlyReportWhereInput = {
+      isDeleted: false,
       OR: [
         // Reports from students assigned via MentorAssignment
         ...(studentIds.length > 0 ? [{
@@ -1224,7 +1234,7 @@ export class FacultyService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Monthly report not found');
     }
 
@@ -1675,7 +1685,7 @@ export class FacultyService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Monthly report not found');
     }
 
@@ -1749,7 +1759,7 @@ export class FacultyService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Monthly report not found');
     }
 
@@ -1821,7 +1831,7 @@ export class FacultyService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Monthly report not found');
     }
 
@@ -1840,8 +1850,13 @@ export class FacultyService {
       status: report.status,
     };
 
-    await this.prisma.monthlyReport.delete({
+    // Soft delete instead of hard delete
+    await this.prisma.monthlyReport.update({
       where: { id },
+      data: {
+        isDeleted: true,
+        deletedAt: new Date(),
+      },
     });
 
     // Get faculty for audit
@@ -1855,7 +1870,7 @@ export class FacultyService {
       userId: facultyId,
       userName: faculty?.name,
       userRole: faculty?.role || Role.TEACHER,
-      description: `Monthly report deleted: ${report.monthName} ${report.reportYear} for ${report.application?.student?.user?.name}`,
+      description: `Monthly report soft deleted: ${report.monthName} ${report.reportYear} for ${report.application?.student?.user?.name}`,
       category: AuditCategory.INTERNSHIP_WORKFLOW,
       severity: AuditSeverity.HIGH,
       institutionId: faculty?.institutionId || undefined,
@@ -2198,7 +2213,7 @@ export class FacultyService {
       },
     });
 
-    if (!report) {
+    if (!report || report.isDeleted) {
       throw new NotFoundException('Monthly report not found');
     }
 
@@ -2286,6 +2301,7 @@ export class FacultyService {
         applicationId,
         reportMonth,
         reportYear,
+        isDeleted: false,
       },
     });
 

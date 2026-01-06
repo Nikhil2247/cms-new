@@ -223,6 +223,7 @@ export class StudentService {
         const pendingReports = await this.prisma.monthlyReport.count({
           where: {
             studentId,
+            isDeleted: false,
             status: MonthlyReportStatus.DRAFT,
           },
         });
@@ -1814,7 +1815,7 @@ export class StudentService {
 
     // Get all reports for this application
     const reports = await this.prisma.monthlyReport.findMany({
-      where: { applicationId },
+      where: { applicationId, isDeleted: false },
       orderBy: [{ reportYear: 'asc' }, { reportMonth: 'asc' }],
     });
 

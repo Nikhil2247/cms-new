@@ -158,7 +158,7 @@ export class FacultyVisitService {
             startDate: true,
           },
         }),
-        this.prisma.facultyVisitLog.count({ where: { applicationId } }),
+        this.prisma.facultyVisitLog.count({ where: { applicationId, isDeleted: false } }),
       ]);
 
       if (!faculty) {
@@ -235,6 +235,7 @@ export class FacultyVisitService {
           return await this.prisma.facultyVisitLog.findMany({
             where: {
               facultyId,
+              isDeleted: false,
               application: {
                 student: {
               user: { active: true },
@@ -274,6 +275,7 @@ export class FacultyVisitService {
         async () => {
           return await this.prisma.facultyVisitLog.findMany({
             where: {
+              isDeleted: false,
               application: {
                 studentId,
                 student: {
@@ -304,7 +306,7 @@ export class FacultyVisitService {
         include: { application: { select: { studentId: true } } },
       });
 
-      if (!visitLog) {
+      if (!visitLog || visitLog.isDeleted) {
         throw new NotFoundException('Visit log not found');
       }
 
@@ -351,12 +353,17 @@ export class FacultyVisitService {
         include: { application: { select: { id: true, studentId: true } } },
       });
 
-      if (!visitLog) {
+      if (!visitLog || visitLog.isDeleted) {
         throw new NotFoundException('Visit log not found');
       }
 
-      await this.prisma.facultyVisitLog.delete({
+      // Soft delete instead of hard delete
+      await this.prisma.facultyVisitLog.update({
         where: { id },
+        data: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
       });
 
       // Decrement counter only if this was a completed visit
@@ -387,17 +394,19 @@ export class FacultyVisitService {
           const [totalVisits, pendingFollowUps, facultyStats] = await Promise.all([
             this.prisma.facultyVisitLog.count({
               where: {
+                isDeleted: false,
                 application: { student: { institutionId, user: { active: true } } },
               },
             }),
             this.prisma.facultyVisitLog.count({
               where: {
+                isDeleted: false,
                 application: { student: { institutionId, user: { active: true } } },
                 followUpRequired: true,
               },
             }),
             this.prisma.facultyVisitLog.findMany({
-              where: { application: { student: { institutionId, user: { active: true } } } },
+              where: { isDeleted: false, application: { student: { institutionId, user: { active: true } } } },
               select: { facultyId: true },
             }),
           ]);
@@ -439,6 +448,7 @@ export class FacultyVisitService {
           const visits = await this.prisma.facultyVisitLog.findMany({
             where: {
               applicationId,
+              isDeleted: false,
               application: {
                 student: {
                   user: { active: true },
@@ -514,7 +524,7 @@ export class FacultyVisitService {
         include: { application: { select: { id: true, studentId: true } } },
       });
 
-      if (!visit) {
+      if (!visit || visit.isDeleted) {
         throw new NotFoundException('Visit not found');
       }
 
@@ -575,6 +585,7 @@ export class FacultyVisitService {
       return await this.prisma.facultyVisitLog.findMany({
         where: {
           applicationId,
+          isDeleted: false,
           application: {
             student: {
               user: { active: true },
