@@ -301,8 +301,8 @@ export class PrincipalService {
           return a.branchName.localeCompare(b.branchName);
         });
 
-        // Calculate expected counts for current month using simple date overlap
-        // Count ALL internships that overlap with current month (no 10-day rule for dashboard)
+        // Calculate expected counts for current month using 10-day rule
+        // Only count students whose internship has >10 days in the current month
         let currentMonthExpectedReports = 0;
         let currentMonthExpectedVisits = 0;
 
@@ -311,15 +311,10 @@ export class PrincipalService {
             const { startDate, endDate } = app;
             if (!startDate || !endDate) continue;
 
-            // Simple overlap check: internship overlaps with current month if
-            // startDate <= currentMonthEnd AND endDate >= currentMonthStart
-            const internshipStart = new Date(startDate);
-            const internshipEnd = new Date(endDate);
-            internshipStart.setHours(0, 0, 0, 0);
-            internshipEnd.setHours(23, 59, 59, 999);
-
-            const overlapsCurrentMonth = internshipStart <= currentMonthEnd && internshipEnd >= currentMonthStart;
-            if (overlapsCurrentMonth) {
+            // Use 10-day rule: only count if student has >10 days in this month
+            const monthCycle = getMonthCycle(currentYear, currentMonth, new Date(startDate), new Date(endDate));
+            if (monthCycle) {
+              // Month is included (has >10 days)
               currentMonthExpectedReports++;
               currentMonthExpectedVisits++;
             }
@@ -3996,23 +3991,18 @@ export class PrincipalService {
     }
 
     // Build selected month EXPECTED counts per mentor
-    // Count ALL students whose internship overlaps with selected month (no 10-day rule for dashboard)
+    // Use 10-day rule: only count students whose internship has >10 days in selected month
     const selectedMonthExpectedMap = new Map<string, { expectedReports: number; expectedVisits: number }>();
     for (const assignment of mentorAssignmentsList) {
       const { mentorId, student } = assignment;
       const app = student.internshipApplications?.[0];
       if (!app || !app.startDate || !app.endDate) continue;
 
-      // Simple overlap check: internship overlaps with selected month if
-      // startDate <= selectedMonthEnd AND endDate >= selectedMonthStart
-      const internshipStart = new Date(app.startDate);
-      const internshipEnd = new Date(app.endDate);
-      internshipStart.setHours(0, 0, 0, 0);
-      internshipEnd.setHours(23, 59, 59, 999);
+      // Use 10-day rule: only count if student has >10 days in this month
+      const monthCycle = getMonthCycle(selectedYear, selectedMonth, new Date(app.startDate), new Date(app.endDate));
 
-      const overlapsSelectedMonth = internshipStart <= selectedMonthEnd && internshipEnd >= selectedMonthStart;
-
-      if (overlapsSelectedMonth) {
+      if (monthCycle) {
+        // Month is included (has >10 days)
         if (!selectedMonthExpectedMap.has(mentorId)) {
           selectedMonthExpectedMap.set(mentorId, { expectedReports: 0, expectedVisits: 0 });
         }
@@ -4215,10 +4205,14 @@ export class PrincipalService {
       : 0;
 
     // Calculate expected reports for current month using getMonthCycle
+    // Include all active internship statuses (not just JOINED)
+    const validStatuses = ['JOINED', 'APPROVED', 'SELECTED', 'COMPLETED'];
     let currentMonthExpectedReports = 0;
     for (const assignment of mentorAssignments) {
       const app = assignment.student.internshipApplications[0];
-      if (!app || app.status !== 'JOINED' || !app.startDate || !app.endDate) continue;
+      // Skip if no app, no dates, or invalid status (unless self-identified)
+      if (!app || !app.startDate || !app.endDate) continue;
+      if (!app.isSelfIdentified && !validStatuses.includes(app.status)) continue;
 
       const monthCycle = getMonthCycle(currentYear, currentMonth, app.startDate, app.endDate);
       if (monthCycle) {
@@ -4230,7 +4224,9 @@ export class PrincipalService {
     let currentMonthExpectedVisits = 0;
     for (const assignment of mentorAssignments) {
       const app = assignment.student.internshipApplications[0];
-      if (!app || app.status !== 'JOINED' || !app.startDate || !app.endDate) continue;
+      // Skip if no app, no dates, or invalid status (unless self-identified)
+      if (!app || !app.startDate || !app.endDate) continue;
+      if (!app.isSelfIdentified && !validStatuses.includes(app.status)) continue;
 
       const monthCycle = getMonthCycle(currentYear, currentMonth, app.startDate, app.endDate);
       if (monthCycle) {
@@ -4262,10 +4258,12 @@ export class PrincipalService {
 
     // Calculate missed visits (months with active students but no visits)
     let missedVisits = 0;
-    const studentsWithActiveInternships = mentorAssignments.filter(
-      (a) => a.student.internshipApplications.length > 0 &&
-        a.student.internshipApplications[0].status === 'JOINED'
-    );
+    const studentsWithActiveInternships = mentorAssignments.filter((a) => {
+      const app = a.student.internshipApplications[0];
+      if (!app || !app.startDate || !app.endDate) return false;
+      // Include self-identified or valid status internships
+      return app.isSelfIdentified || validStatuses.includes(app.status);
+    });
 
     // Simple heuristic: if a student has been on internship for a month and no visit, it's missed
     for (const assignment of studentsWithActiveInternships) {
