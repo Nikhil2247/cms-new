@@ -372,14 +372,22 @@ export class FacultyController {
   @ApiResponse({ status: 200, description: 'Monthly report uploaded successfully' })
   async uploadMonthlyReport(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { applicationId: string; month: string; year: string; studentId?: string },
+    @Body() body: { applicationId?: string; month: string; year: string; studentId?: string },
     @Req() req,
   ) {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
-    return this.facultyService.uploadMonthlyReport(file, body, req.user.userId);
+    return this.facultyService.uploadMonthlyReport(file, body, req.user.userId, this.fileStorageService);
+  }
+
+  @Get('monthly-reports/:id/view')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @ApiOperation({ summary: 'Get presigned URL to view monthly report' })
+  @ApiResponse({ status: 200, description: 'Presigned URL generated successfully' })
+  async viewMonthlyReport(@Param('id') id: string, @Req() req) {
+    return this.facultyService.getMonthlyReportViewUrl(id, req.user.userId, this.fileStorageService);
   }
 
   @Post('assignments')

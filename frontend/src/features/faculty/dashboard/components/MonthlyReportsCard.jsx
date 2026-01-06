@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme, Popconfirm } from 'antd';
 import {
   FileTextOutlined,
   RightOutlined,
@@ -10,10 +10,11 @@ import {
   EyeOutlined,
   ClockCircleOutlined,
   UserOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { approveMonthlyReport, rejectMonthlyReport, downloadMonthlyReport } from '../../store/facultySlice';
+import { approveMonthlyReport, rejectMonthlyReport, downloadMonthlyReport, viewMonthlyReport, deleteMonthlyReport } from '../../store/facultySlice';
 import ProfileAvatar from '../../../../components/common/ProfileAvatar';
 
 const { TextArea } = Input;
@@ -88,6 +89,33 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
     }
   };
 
+  // Handle view report with presigned URL
+  const handleViewReport = async (report) => {
+    try {
+      const result = await dispatch(viewMonthlyReport(report.id)).unwrap();
+      if (result?.url) {
+        window.open(result.url, '_blank');
+      } else {
+        message.error('No file available for this report');
+      }
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
+      message.error(errorMessage);
+    }
+  };
+
+  // Handle delete report
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await dispatch(deleteMonthlyReport(reportId)).unwrap();
+      message.success('Report deleted successfully');
+      onRefresh?.();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
+      message.error(errorMessage);
+    }
+  };
+
   // With auto-approval, only DRAFT reports are considered pending
   // Use ONLY counter fields from API - no fallback to date-based filtering logic
   const pendingCount = useMemo(() => {
@@ -127,7 +155,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                 <div
                   key={report.id || index}
                   className="px-4 py-3 flex items-start gap-4"
-                  style={{ 
+                  style={{
                     borderBottom: index !== reports.slice(0, 5).length - 1 ? `1px solid ${token.colorSplit}` : 'none',
                     transition: 'background-color 0.3s'
                   }}
@@ -159,15 +187,42 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
                     <div className="mt-3 flex justify-end">
                       <Space size="small">
                         {report.reportFileUrl && (
-                          <Tooltip title="Download">
+                          <>
+                            <Tooltip title="View Report">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<EyeOutlined />}
+                                onClick={() => handleViewReport(report)}
+                              />
+                            </Tooltip>
+                            <Tooltip title="Download">
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DownloadOutlined />}
+                                onClick={() => handleDownload(report)}
+                              />
+                            </Tooltip>
+                          </>
+                        )}
+                        <Popconfirm
+                          title="Delete Report"
+                          description="Are you sure you want to delete this report?"
+                          onConfirm={() => handleDeleteReport(report.id)}
+                          okText="Delete"
+                          okButtonProps={{ danger: true }}
+                          cancelText="Cancel"
+                        >
+                          <Tooltip title="Delete">
                             <Button
                               type="text"
                               size="small"
-                              icon={<DownloadOutlined />}
-                              onClick={() => handleDownload(report)}
+                              danger
+                              icon={<DeleteOutlined />}
                             />
                           </Tooltip>
-                        )}
+                        </Popconfirm>
                       </Space>
                     </div>
                   </div>
@@ -224,4 +279,3 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
 };
 
 export default MonthlyReportsCard;
-

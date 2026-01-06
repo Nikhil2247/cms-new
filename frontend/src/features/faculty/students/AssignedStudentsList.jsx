@@ -22,6 +22,8 @@ import {
   Popconfirm,
   theme,
   Grid,
+  Switch,
+  Alert,
 } from 'antd';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -33,6 +35,8 @@ import {
   toggleStudentStatus,
   optimisticallyToggleStudentStatus,
   rollbackStudentOperation,
+  viewMonthlyReport,
+  deleteMonthlyReport,
 } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
 import {
@@ -57,6 +61,9 @@ import {
   EditOutlined,
   StopOutlined,
   PlayCircleOutlined,
+  InboxOutlined,
+  PlusOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import StudentDetailsModal from '../dashboard/components/StudentDetailsModal';
@@ -67,6 +74,11 @@ import { facultyService } from '../../../services/faculty.service';
 
 const { Title, Text } = Typography;
 const { useBreakpoint } = Grid;
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 const AssignedStudentsList = () => {
   const dispatch = useDispatch();
@@ -83,6 +95,28 @@ const AssignedStudentsList = () => {
   const [visitModalVisible, setVisitModalVisible] = useState(false);
   const [uploadingJoiningLetter, setUploadingJoiningLetter] = useState(false);
   const [uploadingReport, setUploadingReport] = useState(false);
+
+  // Report upload modal states
+  const [reportUploadModalVisible, setReportUploadModalVisible] = useState(false);
+  const [reportFileList, setReportFileList] = useState([]);
+  const [autoMonthSelection, setAutoMonthSelection] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
+  const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
+
+  // Month options
+  const monthOptions = MONTH_NAMES.map((name, index) => ({
+    value: index + 1,
+    label: name,
+  }));
+
+  // Year options
+  const yearOptions = (() => {
+    const currentYear = dayjs().year();
+    return Array.from({ length: 5 }, (_, i) => ({
+      value: currentYear - i + 1,
+      label: (currentYear - i + 1).toString(),
+    }));
+  })();
 
   // Document upload modal state
   const [uploadDocumentModal, setUploadDocumentModal] = useState(false);
@@ -215,12 +249,84 @@ const AssignedStudentsList = () => {
     return false;
   };
 
-  // Handle monthly report upload
-  const handleReportUpload = async (file) => {
+  // Handle report file change
+  const handleReportFileChange = ({ fileList: newFileList }) => {
+    const file = newFileList[0]?.originFileObj;
+    if (file && file.size > 5 * 1024 * 1024) {
+      message.error('File must be smaller than 5MB');
+      return;
+    }
+    setReportFileList(newFileList.slice(-1));
+  };
+
+  // Open report upload modal
+  const handleOpenReportUploadModal = () => {
+    setReportFileList([]);
+    setAutoMonthSelection(true);
+    setSelectedMonth(dayjs().month() + 1);
+    setSelectedYear(dayjs().year());
+    setReportUploadModalVisible(true);
+  };
+
+  // Close report upload modal
+  const handleCloseReportUploadModal = () => {
+    setReportUploadModalVisible(false);
+    setReportFileList([]);
+    setAutoMonthSelection(true);
+  };
+
+  // Handle view report
+  const handleViewReport = async (reportId) => {
+    try {
+      const result = await dispatch(viewMonthlyReport(reportId)).unwrap();
+      if (result?.url) {
+        window.open(result.url, '_blank');
+      } else {
+        message.error('No file available for this report');
+      }
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
+      message.error(errorMessage);
+    }
+  };
+
+  // Handle delete report
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await dispatch(deleteMonthlyReport(reportId)).unwrap();
+      message.success('Report deleted successfully');
+      handleRefresh();
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
+      message.error(errorMessage);
+    }
+  };
+
+  // Handle monthly report upload submit
+  const handleReportUploadSubmit = async () => {
     const app = getActiveApplication();
     if (!app?.id) {
       message.error('No active internship application found');
-      return false;
+      return;
+    }
+
+    if (reportFileList.length === 0) {
+      message.error('Please select a file to upload');
+      return;
+    }
+
+    const file = reportFileList[0]?.originFileObj || reportFileList[0];
+    if (!file) {
+      message.error('Invalid file');
+      return;
+    }
+
+    const monthValue = autoMonthSelection ? dayjs().month() + 1 : selectedMonth;
+    const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
+
+    if (!monthValue || !yearValue) {
+      message.error('Please select report month and year');
+      return;
     }
 
     setUploadingReport(true);
@@ -228,11 +334,12 @@ const AssignedStudentsList = () => {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('applicationId', app.id);
-      formData.append('reportMonth', dayjs().month() + 1);
-      formData.append('reportYear', dayjs().year());
+      formData.append('month', monthValue.toString());
+      formData.append('year', yearValue.toString());
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
       message.success('Monthly report uploaded successfully');
+      handleCloseReportUploadModal();
       handleRefresh();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload report';
@@ -240,7 +347,6 @@ const AssignedStudentsList = () => {
     } finally {
       setUploadingReport(false);
     }
-    return false;
   };
 
   // Handle document upload
@@ -581,6 +687,16 @@ const AssignedStudentsList = () => {
       label: <span><EnvironmentOutlined /> Visits ({getStudentVisits().length})</span>,
       children: (
         <div style={{ padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <Button
+              type="primary"
+              icon={<CalendarOutlined />}
+              onClick={() => setVisitModalVisible(true)}
+              disabled={!getActiveApplication()}
+            >
+              Log Visit
+            </Button>
+          </div>
           {getStudentVisits().length > 0 ? (
             <Timeline
               style={{ marginTop: 8 }}
@@ -635,6 +751,16 @@ const AssignedStudentsList = () => {
       label: <span><FileTextOutlined /> Reports ({getStudentReports().length})</span>,
       children: (
         <div style={{ padding: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleOpenReportUploadModal}
+              disabled={!getActiveApplication()}
+            >
+              Upload Report
+            </Button>
+          </div>
           {getStudentReports().length > 0 ? (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
               {getStudentReports().map((report, idx) => (
@@ -670,6 +796,35 @@ const AssignedStudentsList = () => {
                       Submitted: {formatDate(report.submittedAt)}
                     </Text>
                   )}
+                  <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
+                    {report.reportFileUrl && (
+                      <Tooltip title="View Report">
+                        <Button
+                          type="text"
+                          size="small"
+                          icon={<EyeOutlined />}
+                          onClick={() => handleViewReport(report.id)}
+                        />
+                      </Tooltip>
+                    )}
+                    <Popconfirm
+                      title="Delete Report"
+                      description="Are you sure you want to delete this report?"
+                      onConfirm={() => handleDeleteReport(report.id)}
+                      okText="Delete"
+                      okButtonProps={{ danger: true }}
+                      cancelText="Cancel"
+                    >
+                      <Tooltip title="Delete Report">
+                        <Button
+                          type="text"
+                          size="small"
+                          danger
+                          icon={<DeleteOutlined />}
+                        />
+                      </Tooltip>
+                    </Popconfirm>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -692,64 +847,6 @@ const AssignedStudentsList = () => {
             Assigned Students
           </Title>
         </div>
-        {selectedStudent && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <Tooltip title="View full application details">
-              <Button
-                size="small"
-                icon={<EyeOutlined />}
-                onClick={() => setDetailModalVisible(true)}
-              >
-                Details
-              </Button>
-            </Tooltip>
-            <Tooltip title="Log a new visit for this student">
-              <Button
-                size="small"
-                type="primary"
-                icon={<CalendarOutlined />}
-                onClick={() => setVisitModalVisible(true)}
-                disabled={!getActiveApplication()}
-              >
-                Log Visit
-              </Button>
-            </Tooltip>
-            <Tooltip title="Upload joining letter document">
-              <Upload
-                showUploadList={false}
-                beforeUpload={handleJoiningLetterUpload}
-                accept=".pdf,.jpg,.jpeg,.png"
-                disabled={!getActiveApplication()}
-              >
-                <Button
-                  size="small"
-                  icon={<UploadOutlined />}
-                  loading={uploadingJoiningLetter}
-                  disabled={!getActiveApplication()}
-                >
-                  {getActiveApplication()?.joiningLetterUrl ? 'Replace Letter' : 'Letter'}
-                </Button>
-              </Upload>
-            </Tooltip>
-            <Tooltip title="Upload monthly report for this student">
-              <Upload
-                showUploadList={false}
-                beforeUpload={handleReportUpload}
-                accept=".pdf,.doc,.docx"
-                disabled={!getActiveApplication()}
-              >
-                <Button
-                  size="small"
-                  icon={<FileTextOutlined />}
-                  loading={uploadingReport}
-                  disabled={!getActiveApplication()}
-                >
-                  Report
-                </Button>
-              </Upload>
-            </Tooltip>
-          </div>
-        )}
       </div>
 
       <Row gutter={[16, 16]}>
@@ -1045,6 +1142,145 @@ const AssignedStudentsList = () => {
         studentData={selectedStudent}
         onSuccess={handleEditModalSuccess}
       />
+
+      {/* Report Upload Modal */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
+            <span>Upload Monthly Report</span>
+          </div>
+        }
+        open={reportUploadModalVisible}
+        onCancel={handleCloseReportUploadModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseReportUploadModal}>
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={uploadingReport}
+            onClick={handleReportUploadSubmit}
+            disabled={reportFileList.length === 0 || (!autoMonthSelection && (!selectedMonth || !selectedYear))}
+            icon={<UploadOutlined />}
+          >
+            Upload
+          </Button>
+        ]}
+        width={520}
+        destroyOnClose
+        centered
+      >
+        <div style={{ paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* File Upload */}
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: token.colorTextSecondary }}>
+              Select Report File (PDF)
+            </div>
+            <Upload.Dragger
+              accept=".pdf"
+              maxCount={1}
+              fileList={reportFileList}
+              onChange={handleReportFileChange}
+              beforeUpload={() => false}
+              onRemove={() => setReportFileList([])}
+              style={{
+                background: token.colorBgContainer,
+                borderColor: token.colorBorder,
+                borderRadius: 12,
+              }}
+            >
+              <p style={{ marginBottom: 12 }}>
+                <InboxOutlined style={{ fontSize: 32, color: token.colorPrimary }} />
+              </p>
+              <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4, color: token.colorText }}>
+                Click or drag PDF file to upload
+              </p>
+              <p style={{ fontSize: 12, color: token.colorTextTertiary }}>
+                Maximum file size: 5MB
+              </p>
+            </Upload.Dragger>
+          </div>
+
+          {/* Auto Month Detection Toggle */}
+          <div
+            style={{
+              borderRadius: 8,
+              padding: 12,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: token.colorBgLayout,
+              border: `1px solid ${token.colorBorderSecondary}`
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 2, color: token.colorText }}>
+                Auto-detect month
+              </div>
+              <div style={{ fontSize: 12, color: token.colorTextTertiary }}>
+                Turn off to select month manually
+              </div>
+            </div>
+            <Switch
+              checked={autoMonthSelection}
+              onChange={(checked) => {
+                setAutoMonthSelection(checked);
+                if (checked) {
+                  setSelectedMonth(dayjs().month() + 1);
+                  setSelectedYear(dayjs().year());
+                }
+              }}
+            />
+          </div>
+
+          {/* Manual Month/Year Selection */}
+          {!autoMonthSelection && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: token.colorTextSecondary }}>
+                  Month
+                </div>
+                <Select
+                  value={selectedMonth}
+                  onChange={setSelectedMonth}
+                  options={monthOptions}
+                  placeholder="Select month"
+                  style={{ width: '100%' }}
+                />
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, color: token.colorTextSecondary }}>
+                  Year
+                </div>
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  options={yearOptions}
+                  placeholder="Select year"
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Info Alert */}
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <span style={{ fontSize: 12, color: token.colorInfo }}>
+                {autoMonthSelection
+                  ? `Report will be uploaded for ${MONTH_NAMES[dayjs().month()]} ${dayjs().year()}`
+                  : `Report will be uploaded for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`
+                }
+              </span>
+            }
+            style={{ borderRadius: 8, padding: '10px 12px' }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

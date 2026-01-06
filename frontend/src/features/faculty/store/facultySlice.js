@@ -34,7 +34,9 @@ const initialState = {
     page: 1,
     totalPages: 1,
     loading: false,
+    uploading: false,
     error: null,
+    uploadError: null,
   },
   joiningLetters: {
     list: [],
@@ -629,6 +631,18 @@ export const downloadMonthlyReport = createAsyncThunk(
   }
 );
 
+export const viewMonthlyReport = createAsyncThunk(
+  'faculty/viewMonthlyReport',
+  async (reportId, { rejectWithValue }) => {
+    try {
+      const response = await facultyService.viewMonthlyReport(reportId);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to get report view URL');
+    }
+  }
+);
+
 // Internship Actions
 export const updateInternship = createAsyncThunk(
   'faculty/updateInternship',
@@ -946,6 +960,30 @@ const facultySlice = createSlice({
       const { list } = action.payload;
       state.students.list = list;
     },
+    // Optimistic update: Add report to list immediately
+    optimisticallyAddReport: (state, action) => {
+      const { report } = action.payload;
+      // Add to beginning of list with optimistic flag
+      state.monthlyReports.list.unshift({
+        ...report,
+        _isOptimistic: true,
+      });
+      state.monthlyReports.total += 1;
+    },
+    // Rollback: Restore monthly reports state on error
+    rollbackReportOperation: (state, action) => {
+      const { list, total } = action.payload;
+      state.monthlyReports.list = list;
+      state.monthlyReports.total = total;
+    },
+    // Confirm optimistic report (replace with actual data)
+    confirmOptimisticReport: (state, action) => {
+      const { tempId, actualReport } = action.payload;
+      const index = state.monthlyReports.list.findIndex(r => r._tempId === tempId);
+      if (index !== -1) {
+        state.monthlyReports.list[index] = actualReport;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -1140,6 +1178,40 @@ const facultySlice = createSlice({
         state.monthlyReports.loading = false;
         state.monthlyReports.error = action.payload;
       })
+
+      // Upload Monthly Report
+      .addCase(uploadMonthlyReport.pending, (state) => {
+        state.monthlyReports.uploading = true;
+        state.monthlyReports.uploadError = null;
+      })
+      .addCase(uploadMonthlyReport.fulfilled, (state, action) => {
+        state.monthlyReports.uploading = false;
+        // Add the new report to the list if data is returned
+        if (action.payload?.data) {
+          // Check if report already exists (from optimistic update)
+          const existingIndex = state.monthlyReports.list.findIndex(
+            r => r._isOptimistic && r.reportMonth === action.payload.data.reportMonth && r.reportYear === action.payload.data.reportYear
+          );
+          if (existingIndex !== -1) {
+            // Replace optimistic report with actual data
+            state.monthlyReports.list[existingIndex] = action.payload.data;
+          } else {
+            // Add new report to beginning of list
+            state.monthlyReports.list.unshift(action.payload.data);
+            state.monthlyReports.total += 1;
+          }
+        }
+        // Invalidate cache to ensure fresh data on next fetch
+        state.lastFetched.monthlyReports = null;
+        state.lastFetched.monthlyReportsKey = null;
+      })
+      .addCase(uploadMonthlyReport.rejected, (state, action) => {
+        state.monthlyReports.uploading = false;
+        state.monthlyReports.uploadError = action.payload;
+        // Remove optimistic report on failure
+        state.monthlyReports.list = state.monthlyReports.list.filter(r => !r._isOptimistic);
+      })
+
       // Removed: Auto-approval implemented - reviewMonthlyReport reducers no longer needed
       // .addCase(reviewMonthlyReport.pending, (state) => {
       //   state.monthlyReports.loading = true;
@@ -1361,20 +1433,20 @@ const facultySlice = createSlice({
       //   state.monthlyReports.loading = false;
       //   state.monthlyReports.error = action.payload;
       // })
-      // .addCase(deleteMonthlyReport.pending, (state) => {
-      //   state.monthlyReports.loading = true;
-      // })
-      // .addCase(deleteMonthlyReport.fulfilled, (state, action) => {
-      //   state.monthlyReports.loading = false;
-      //   state.monthlyReports.list = state.monthlyReports.list.filter(r => r.id !== action.payload.id);
-      //   state.monthlyReports.total -= 1;
-      //   state.lastFetched.monthlyReports = null; // Invalidate cache after mutation
-      //   state.lastFetched.monthlyReportsKey = null;
-      // })
-      // .addCase(deleteMonthlyReport.rejected, (state, action) => {
-      //   state.monthlyReports.loading = false;
-      //   state.monthlyReports.error = action.payload;
-      // })
+      .addCase(deleteMonthlyReport.pending, (state) => {
+        state.monthlyReports.loading = true;
+      })
+      .addCase(deleteMonthlyReport.fulfilled, (state, action) => {
+        state.monthlyReports.loading = false;
+        state.monthlyReports.list = state.monthlyReports.list.filter(r => r.id !== action.payload.id);
+        state.monthlyReports.total = Math.max(0, state.monthlyReports.total - 1);
+        state.lastFetched.monthlyReports = null; // Invalidate cache after mutation
+        state.lastFetched.monthlyReportsKey = null;
+      })
+      .addCase(deleteMonthlyReport.rejected, (state, action) => {
+        state.monthlyReports.loading = false;
+        state.monthlyReports.error = action.payload;
+      })
 
       // ==================== Faculty Grievances ====================
       .addCase(fetchFacultyGrievances.pending, (state) => {
@@ -1522,6 +1594,9 @@ export const {
   optimisticallyUpdateStudent,
   optimisticallyToggleStudentStatus,
   rollbackStudentOperation,
+  optimisticallyAddReport,
+  rollbackReportOperation,
+  confirmOptimisticReport,
 } = facultySlice.actions;
 
 // Selectors

@@ -259,6 +259,12 @@ export const facultyService = {
     });
     return response.data;
   },
+
+  // Get presigned URL to view monthly report
+  async viewMonthlyReport(reportId) {
+    const response = await API.get(`/faculty/monthly-reports/${reportId}/view`);
+    return response.data;
+  },
 };
 
 export default facultyService;

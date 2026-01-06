@@ -2247,34 +2247,105 @@ export class FacultyService {
    */
   async uploadMonthlyReport(
     file: Express.Multer.File,
-    body: { applicationId: string; month: string; year: string; studentId?: string },
+    body: { applicationId?: string; month: string; year: string; studentId?: string },
     facultyId: string,
+    fileStorageService?: any,
   ) {
     const { applicationId, month, year, studentId } = body;
 
-    // Find the application
-    const application = await this.prisma.internshipApplication.findUnique({
-      where: { id: applicationId },
-      include: {
-        student: {
-          include: {
-            Institution: true,
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                rollNumber: true,
-                phoneNo: true,
+    // Validate that at least one identifier is provided
+    if (!applicationId && !studentId) {
+      throw new BadRequestException('Either applicationId or studentId must be provided');
+    }
+
+    // Find the application - either by ID or by finding student's active application
+    let application;
+
+    if (applicationId) {
+      // Direct lookup by applicationId
+      application = await this.prisma.internshipApplication.findUnique({
+        where: { id: applicationId },
+        include: {
+          student: {
+            include: {
+              Institution: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  rollNumber: true,
+                  phoneNo: true,
+                },
               },
             },
           },
         },
-      },
-    });
+      });
+    } else if (studentId) {
+      // Find the student's active internship application
+      application = await this.prisma.internshipApplication.findFirst({
+        where: {
+          studentId: studentId,
+          internshipPhase: 'ACTIVE',
+        },
+        include: {
+          student: {
+            include: {
+              Institution: true,
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  rollNumber: true,
+                  phoneNo: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      // If no active application, try to find any approved/joined application
+      if (!application) {
+        application = await this.prisma.internshipApplication.findFirst({
+          where: {
+            studentId: studentId,
+            status: { in: ['APPROVED', 'JOINED'] },
+          },
+          include: {
+            student: {
+              include: {
+                Institution: true,
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    rollNumber: true,
+                    phoneNo: true,
+                  },
+                },
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        });
+      }
+    }
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException(
+        studentId
+          ? 'No active internship application found for this student'
+          : 'Application not found'
+      );
     }
 
     // Verify faculty is authorized
@@ -2295,10 +2366,18 @@ export class FacultyService {
     const reportMonth = parseInt(month, 10);
     const reportYear = parseInt(year, 10);
 
+    // Validate month and year
+    if (isNaN(reportMonth) || isNaN(reportYear)) {
+      throw new BadRequestException('Invalid month or year provided');
+    }
+
+    // Use application.id for consistency (handles both applicationId and studentId cases)
+    const appId = application.id;
+
     // Check if report already exists for this month
     const existingReport = await this.prisma.monthlyReport.findFirst({
       where: {
-        applicationId,
+        applicationId: appId,
         reportMonth,
         reportYear,
         isDeleted: false,
@@ -2309,31 +2388,118 @@ export class FacultyService {
       throw new BadRequestException(`Report for ${month}/${year} already exists`);
     }
 
-    // For now, store file info - actual file upload would use FileStorageService
-    // This is a placeholder - in production you'd upload to MinIO/S3
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December'];
 
+    // Upload file to MinIO if fileStorageService is provided
+    let reportFileUrl = null;
+    let reportFileKey = null;
+
+    if (fileStorageService && file) {
+      try {
+        // Create folder structure: monthly-reports/{institutionId}/{studentId}/{year}/{month}/
+        const institutionId = application.student?.Institution?.id || 'unknown';
+        const studentIdForPath = application.studentId;
+        const folder = `monthly-reports/${institutionId}/${studentIdForPath}/${reportYear}`;
+        const filename = `report_${reportMonth}_${Date.now()}.pdf`;
+
+        const uploadResult = await fileStorageService.uploadFile(file.buffer, {
+          folder,
+          filename,
+          contentType: file.mimetype || 'application/pdf',
+          metadata: {
+            studentId: application.studentId,
+            applicationId: appId,
+            reportMonth: reportMonth.toString(),
+            reportYear: reportYear.toString(),
+            uploadedBy: facultyId,
+          },
+        });
+
+        reportFileKey = uploadResult.key;
+        reportFileUrl = uploadResult.url;
+      } catch (uploadError) {
+        console.error('Failed to upload report file to storage:', uploadError);
+        // Continue without file URL - report will still be created
+      }
+    }
+
     const report = await this.prisma.monthlyReport.create({
       data: {
-        applicationId,
+        applicationId: appId,
         studentId: application.studentId,
         reportMonth,
         reportYear,
         monthName: monthNames[reportMonth - 1] || `Month ${reportMonth}`,
         status: 'SUBMITTED',
         submittedAt: new Date(),
-        // Note: reportFileUrl would be set after file upload to storage
+        reportFileUrl: reportFileKey, // Store the key, not the full URL
       },
     });
 
-    await this.cache.invalidateByTags(['reports', `application:${applicationId}`]);
+    await this.cache.invalidateByTags(['reports', `application:${appId}`]);
 
     return {
       success: true,
       message: 'Monthly report uploaded successfully',
       data: report,
     };
+  }
+
+  /**
+   * Get presigned URL to view monthly report
+   */
+  async getMonthlyReportViewUrl(
+    reportId: string,
+    facultyId: string,
+    fileStorageService: any,
+  ) {
+    // Find the report
+    const report = await this.prisma.monthlyReport.findUnique({
+      where: { id: reportId },
+      include: {
+        application: true,
+        student: true,
+      },
+    });
+
+    if (!report) {
+      throw new NotFoundException('Report not found');
+    }
+
+    // Verify faculty is authorized to view this report
+    const isDirectMentor = report.application?.mentorId === facultyId;
+    const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+      where: {
+        mentorId: facultyId,
+        studentId: report.studentId,
+        isActive: true,
+      },
+    });
+    const isAssignedMentor = !!mentorAssignment;
+
+    if (!isDirectMentor && !isAssignedMentor) {
+      throw new BadRequestException('You are not authorized to view this report');
+    }
+
+    // Check if report has a file
+    if (!report.reportFileUrl) {
+      throw new BadRequestException('No file attached to this report');
+    }
+
+    // Generate presigned URL (valid for 1 hour)
+    try {
+      const presignedUrl = await fileStorageService.getSignedUrl(report.reportFileUrl, 3600);
+      return {
+        success: true,
+        url: presignedUrl,
+        filename: `report_${report.monthName}_${report.reportYear}.pdf`,
+        expiresIn: 3600,
+      };
+    } catch (error) {
+      console.error('Failed to generate presigned URL:', error);
+      throw new BadRequestException('Failed to generate view URL for the report');
+    }
   }
 
   /**

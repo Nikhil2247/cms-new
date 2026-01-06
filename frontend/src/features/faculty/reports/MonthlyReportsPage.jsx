@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -17,6 +17,12 @@ import {
   Drawer,
   Descriptions,
   theme,
+  Modal,
+  Upload,
+  Switch,
+  Select,
+  Alert,
+  Popconfirm,
 } from 'antd';
 import {
   FileTextOutlined,
@@ -30,14 +36,28 @@ import {
   UserOutlined,
   CalendarOutlined,
   BankOutlined,
+  PlusOutlined,
+  UploadOutlined,
+  InboxOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
   fetchMonthlyReports,
   selectMonthlyReports,
   downloadMonthlyReport,
+  uploadMonthlyReport,
+  fetchAssignedStudents,
+  selectStudents,
+  viewMonthlyReport,
+  deleteMonthlyReport,
 } from '../store/facultySlice';
 import ProfileAvatar from '../../../components/common/ProfileAvatar';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -58,6 +78,7 @@ const MonthlyReportsPage = () => {
   const navigate = useNavigate();
   const { token } = theme.useToken();
   const { list: reports, loading, total, page, totalPages } = useSelector(selectMonthlyReports);
+  const { list: students } = useSelector(selectStudents);
   const lastFetched = useSelector((state) => state.faculty.lastFetched?.monthlyReports);
 
   const [searchText, setSearchText] = useState('');
@@ -66,8 +87,48 @@ const MonthlyReportsPage = () => {
   const [detailDrawer, setDetailDrawer] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
 
+  // Upload modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [fileList, setFileList] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState(null);
+
+  // Auto month detection states
+  const [autoMonthSelection, setAutoMonthSelection] = useState(true);
+  const [selectedMonth, setSelectedMonth] = useState(() => dayjs().month() + 1);
+  const [selectedYear, setSelectedYear] = useState(() => dayjs().year());
+
+  // Month options
+  const monthOptions = useMemo(() =>
+    MONTH_NAMES.map((name, index) => ({
+      value: index + 1,
+      label: name,
+    })), []
+  );
+
+  // Year options
+  const yearOptions = useMemo(() => {
+    const currentYear = dayjs().year();
+    return Array.from({ length: 5 }, (_, i) => ({
+      value: currentYear - i + 1,
+      label: (currentYear - i + 1).toString(),
+    }));
+  }, []);
+
+  // Student options for selection
+  const studentOptions = useMemo(() => {
+    return (students || []).map(s => {
+      const student = s.student || s;
+      return {
+        value: student.id,
+        label: `${student.user?.name || student.name || 'Unknown'} (${student.user?.rollNumber || student.rollNumber || 'N/A'})`,
+      };
+    });
+  }, [students]);
+
   useEffect(() => {
     dispatch(fetchMonthlyReports());
+    dispatch(fetchAssignedStudents({ limit: 100 }));
   }, [dispatch]);
 
   const handleRefresh = useCallback(async () => {
@@ -99,10 +160,112 @@ const MonthlyReportsPage = () => {
     }
   };
 
+  // Handle view report with presigned URL
+  const handleViewReport = async (report) => {
+    try {
+      const result = await dispatch(viewMonthlyReport(report.id)).unwrap();
+      if (result?.url) {
+        window.open(result.url, '_blank');
+      } else {
+        message.error('No file available for this report');
+      }
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
+      message.error(errorMessage);
+    }
+  };
+
+  // Handle delete report
+  const handleDeleteReport = async (reportId) => {
+    try {
+      await dispatch(deleteMonthlyReport(reportId)).unwrap();
+      message.success('Report deleted successfully');
+      dispatch(fetchMonthlyReports({ forceRefresh: true }));
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
+      message.error(errorMessage);
+    }
+  };
+
   const handleViewDetails = (report) => {
     setSelectedReport(report);
     setDetailDrawer(true);
   };
+
+  // Handle file change
+  const handleFileChange = useCallback(({ fileList: newFileList }) => {
+    const file = newFileList[0]?.originFileObj;
+    if (file && file.size > 5 * 1024 * 1024) {
+      message.error('File must be smaller than 5MB');
+      return;
+    }
+    setFileList(newFileList.slice(-1));
+  }, []);
+
+  // Open upload modal
+  const handleOpenModal = useCallback(() => {
+    setFileList([]);
+    setSelectedStudentId(null);
+    setAutoMonthSelection(true);
+    setSelectedMonth(dayjs().month() + 1);
+    setSelectedYear(dayjs().year());
+    setModalVisible(true);
+  }, []);
+
+  // Close upload modal
+  const handleCloseModal = useCallback(() => {
+    setModalVisible(false);
+    setFileList([]);
+    setSelectedStudentId(null);
+    setAutoMonthSelection(true);
+  }, []);
+
+  // Submit uploaded report
+  const handleUploadSubmit = useCallback(async () => {
+    if (!selectedStudentId) {
+      message.error('Please select a student');
+      return;
+    }
+
+    if (fileList.length === 0) {
+      message.error('Please select a file to upload');
+      return;
+    }
+
+    const file = fileList[0]?.originFileObj || fileList[0];
+    if (!file) {
+      message.error('Invalid file');
+      return;
+    }
+
+    const monthValue = autoMonthSelection ? dayjs().month() + 1 : selectedMonth;
+    const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
+
+    if (!monthValue || !yearValue) {
+      message.error('Please select report month and year');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('studentId', selectedStudentId);
+      formData.append('month', monthValue.toString());
+      formData.append('year', yearValue.toString());
+
+      await dispatch(uploadMonthlyReport(formData)).unwrap();
+
+      message.success('Report uploaded successfully!');
+      handleCloseModal();
+      dispatch(fetchMonthlyReports({ forceRefresh: true }));
+    } catch (error) {
+      const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
+      message.error(errorMessage);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [dispatch, selectedStudentId, fileList, autoMonthSelection, selectedMonth, selectedYear, handleCloseModal]);
 
   // Filter reports based on tab and search
   const getFilteredReports = () => {
@@ -227,15 +390,42 @@ const MonthlyReportsPage = () => {
             />
           </Tooltip>
           {record.reportFileUrl && (
-            <Tooltip title="Download">
+            <>
+              <Tooltip title="View Report">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<FileTextOutlined />}
+                  onClick={() => handleViewReport(record)}
+                />
+              </Tooltip>
+              <Tooltip title="Download">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={() => handleDownload(record)}
+                />
+              </Tooltip>
+            </>
+          )}
+          <Popconfirm
+            title="Delete Report"
+            description="Are you sure you want to delete this report?"
+            onConfirm={() => handleDeleteReport(record.id)}
+            okText="Delete"
+            okButtonProps={{ danger: true }}
+            cancelText="Cancel"
+          >
+            <Tooltip title="Delete Report">
               <Button
                 type="text"
                 size="small"
-                icon={<DownloadOutlined />}
-                onClick={() => handleDownload(record)}
+                danger
+                icon={<DeleteOutlined />}
               />
             </Tooltip>
-          )}
+          </Popconfirm>
         </Space>
       ),
     },
@@ -264,15 +454,25 @@ const MonthlyReportsPage = () => {
             </div>
           </div>
 
-          <Button
-            icon={<ReloadOutlined spin={isRefreshing} />}
-            onClick={handleRefresh}
-            loading={isRefreshing}
-            disabled={loading}
-            className="rounded-lg"
-          >
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              icon={<ReloadOutlined spin={isRefreshing} />}
+              onClick={handleRefresh}
+              loading={isRefreshing}
+              disabled={loading}
+              className="rounded-lg"
+            >
+              Refresh
+            </Button>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleOpenModal}
+              className="rounded-lg"
+            >
+              Upload Report
+            </Button>
+          </div>
         </div>
 
         {/* Statistics Cards */}
@@ -479,6 +679,158 @@ const MonthlyReportsPage = () => {
           </div>
         )}
       </Drawer>
+
+      {/* Upload Modal */}
+      <Modal
+        title={
+          <div className="flex items-center gap-2">
+            <FileTextOutlined style={{ color: token.colorPrimary }} />
+            <span>Upload Monthly Report</span>
+          </div>
+        }
+        open={modalVisible}
+        onCancel={handleCloseModal}
+        footer={[
+          <Button key="cancel" onClick={handleCloseModal} className="rounded-lg">
+            Cancel
+          </Button>,
+          <Button
+            key="submit"
+            type="primary"
+            loading={submitting}
+            onClick={handleUploadSubmit}
+            disabled={fileList.length === 0 || !selectedStudentId || (!autoMonthSelection && (!selectedMonth || !selectedYear))}
+            icon={<UploadOutlined />}
+            className="rounded-lg"
+          >
+            Upload
+          </Button>
+        ]}
+        width={520}
+        destroyOnClose
+        className="rounded-2xl"
+      >
+        <div className="pt-4 space-y-4">
+          {/* Student Selection */}
+          <div>
+            <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+              Select Student
+            </Text>
+            <Select
+              value={selectedStudentId}
+              onChange={setSelectedStudentId}
+              options={studentOptions}
+              placeholder="Select a student"
+              className="w-full"
+              showSearch
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+            />
+          </div>
+
+          {/* File Upload */}
+          <div>
+            <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+              Select Report File (PDF)
+            </Text>
+            <Upload.Dragger
+              accept=".pdf"
+              maxCount={1}
+              fileList={fileList}
+              onChange={handleFileChange}
+              beforeUpload={() => false}
+              onRemove={() => setFileList([])}
+              style={{
+                background: token.colorBgContainer,
+                borderColor: token.colorBorder,
+                borderRadius: '12px',
+              }}
+            >
+              <p className="ant-upload-drag-icon mb-3">
+                <InboxOutlined className="text-4xl" style={{ color: token.colorPrimary }} />
+              </p>
+              <p className="ant-upload-text text-sm font-medium mb-1" style={{ color: token.colorText }}>
+                Click or drag PDF file to upload
+              </p>
+              <p className="ant-upload-hint text-xs" style={{ color: token.colorTextTertiary }}>
+                Maximum file size: 5MB
+              </p>
+            </Upload.Dragger>
+          </div>
+
+          {/* Auto Month Detection Toggle */}
+          <div
+            className="rounded-lg p-3 flex items-center justify-between"
+            style={{ backgroundColor: token.colorBgLayout, border: `1px solid ${token.colorBorderSecondary}` }}
+          >
+            <div>
+              <Text className="text-sm font-medium block mb-0.5" style={{ color: token.colorText }}>
+                Auto-detect month
+              </Text>
+              <Text className="text-xs" style={{ color: token.colorTextTertiary }}>
+                Turn off to select month manually
+              </Text>
+            </div>
+            <Switch
+              checked={autoMonthSelection}
+              onChange={(checked) => {
+                setAutoMonthSelection(checked);
+                if (checked) {
+                  setSelectedMonth(dayjs().month() + 1);
+                  setSelectedYear(dayjs().year());
+                }
+              }}
+            />
+          </div>
+
+          {/* Manual Month/Year Selection */}
+          {!autoMonthSelection && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+                  Month
+                </Text>
+                <Select
+                  value={selectedMonth}
+                  onChange={setSelectedMonth}
+                  options={monthOptions}
+                  placeholder="Select month"
+                  className="w-full"
+                />
+              </div>
+              <div>
+                <Text className="text-xs font-semibold block mb-2" style={{ color: token.colorTextSecondary }}>
+                  Year
+                </Text>
+                <Select
+                  value={selectedYear}
+                  onChange={setSelectedYear}
+                  options={yearOptions}
+                  placeholder="Select year"
+                  className="w-full"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Info Alert */}
+          <Alert
+            type="info"
+            showIcon
+            message={
+              <Text className="text-xs" style={{ color: token.colorInfo }}>
+                {autoMonthSelection
+                  ? `Report will be uploaded for ${MONTH_NAMES[dayjs().month()]} ${dayjs().year()}`
+                  : `Report will be uploaded for ${MONTH_NAMES[selectedMonth - 1]} ${selectedYear}`
+                }
+              </Text>
+            }
+            className="rounded-lg"
+            style={{ padding: '10px 12px' }}
+          />
+        </div>
+      </Modal>
     </div>
   );
 };
