@@ -34,7 +34,7 @@ export const instituteReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['district', 'city', 'type'],
     sortableColumns: ['name', 'city', 'totalStudents', 'activeInternships', 'placementRate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'institute-comparison': {
@@ -62,7 +62,7 @@ export const instituteReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['district'],
     sortableColumns: ['name', 'totalStudents', 'internshipRate', 'complianceRate', 'placementRate', 'overallScore'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'branch-wise-summary': {
@@ -89,6 +89,6 @@ export const instituteReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName'],
     sortableColumns: ['branchName', 'institutionName', 'totalStudents', 'internshipRate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

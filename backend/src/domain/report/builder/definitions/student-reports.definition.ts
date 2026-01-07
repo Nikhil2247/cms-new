@@ -40,7 +40,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'currentYear', 'institutionName'],
     sortableColumns: ['rollNumber', 'name', 'branchName', 'currentYear', 'institutionName'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'student-internship-status': {
@@ -80,7 +80,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['internshipStatus', 'branchName', 'mentorName'],
     sortableColumns: ['rollNumber', 'name', 'branchName', 'internshipStatus'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'student-compliance': {
@@ -119,7 +119,7 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'mentorName', 'complianceLevel'],
     sortableColumns: ['rollNumber', 'name', 'complianceScore'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'student-by-branch': {
@@ -144,6 +144,6 @@ export const studentReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName'],
     sortableColumns: ['branchName', 'totalStudents', 'activeInternships'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

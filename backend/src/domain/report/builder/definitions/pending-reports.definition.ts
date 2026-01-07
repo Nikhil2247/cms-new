@@ -32,7 +32,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName', 'mentorName', 'urgency'],
     sortableColumns: ['mentorName', 'daysSinceLastVisit', 'visitsDue'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'pending-monthly-reports': {
@@ -76,7 +76,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'mentorName', 'pendingMonth'],
     sortableColumns: ['studentName', 'daysPastDue', 'totalPendingReports'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'pending-joining-letters': {
@@ -110,7 +110,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'mentorName', 'institutionName'],
     sortableColumns: ['studentName', 'daysSinceStart', 'internshipStartDate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'pending-mentor-assignments': {
@@ -144,6 +144,6 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'currentYear', 'institutionName'],
     sortableColumns: ['studentName', 'branchName', 'daysPending'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

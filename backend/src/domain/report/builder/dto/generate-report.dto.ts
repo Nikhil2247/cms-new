@@ -93,29 +93,38 @@ function IsSafeFilters(validationOptions?: ValidationOptions) {
 
 /**
  * Valid report types for validation
+ * Must match keys in definitions/*.definition.ts files
  */
 const VALID_REPORT_TYPES = [
-  // Student Reports
+  // Student Reports (4)
   'student-directory',
   'student-internship-status',
   'student-compliance',
   'student-by-branch',
-  'student-progress',
-  // Internship Reports
-  'internship',
-  'internship-status',
-  'self-identified-internship',
-  // Faculty/Mentor Reports
-  'faculty-visit',
+  // Mentor Reports (4)
   'mentor-list',
-  // Monthly Reports
-  'monthly-report',
-  'monthly-report-status',
-  // Placement Reports
-  'placement',
-  // Institution Reports
-  'institution-performance',
-  // User Activity Reports
+  'mentor-student-assignments',
+  'mentor-utilization',
+  'unassigned-students',
+  // Internship Reports (4)
+  'internship-applications',
+  'internship-by-institution',
+  'internship-by-industry',
+  'self-identified-internships',
+  // Compliance Reports (3)
+  'faculty-visit-compliance',
+  'monthly-report-compliance',
+  'joining-report-status',
+  // Institute Reports (3)
+  'institute-summary',
+  'institute-comparison',
+  'branch-wise-summary',
+  // Pending Reports (4)
+  'pending-monthly-visits',
+  'pending-monthly-reports',
+  'pending-joining-letters',
+  'pending-mentor-assignments',
+  // User Activity Reports (6)
   'user-login-activity',
   'user-session-history',
   'never-logged-in-users',

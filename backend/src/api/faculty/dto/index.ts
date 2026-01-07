@@ -23,7 +23,9 @@ export enum VisitType {
 }
 
 export enum VisitStatus {
+  DRAFT = 'DRAFT',
   SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }

@@ -198,7 +198,7 @@ const UnifiedVisitLogModal = ({
 
   const handleSignedDocChange = ({ fileList }) => setSignedDocList(fileList.slice(0, 1));
   const beforeSignedDocUpload = (file) => {
-    if (!['image/jpeg', 'image/png', 'application/pdf'].includes(file.type)) { message.error('PDF/Image only!'); return Upload.LIST_IGNORE; }
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)) { message.error('Only JPEG, PNG, GIF, WebP or PDF files allowed!'); return Upload.LIST_IGNORE; }
     if (file.size / 1024 / 1024 >= 10) { message.error('Max 10MB!'); return Upload.LIST_IGNORE; }
     return false;
   };
@@ -208,23 +208,33 @@ const UnifiedVisitLogModal = ({
     let signedDocUrl = null;
     if (photoList.length > 0) {
       setUploadingPhotos(true);
-      for (const file of photoList) {
-        if (file.originFileObj) {
-          try {
+      try {
+        for (const file of photoList) {
+          if (file.originFileObj) {
             const result = await dispatch(uploadVisitDocument({ file: file.originFileObj, type: 'visit-photo' })).unwrap();
             photoUrls.push(result.url);
-          } catch (error) { console.error('Photo upload error:', error); }
-        } else if (file.url) { photoUrls.push(file.url); }
+          } else if (file.url) { photoUrls.push(file.url); }
+        }
+      } catch (error) {
+        console.error('Photo upload error:', error);
+        message.error(error?.message || 'Failed to upload photo. Please try again.');
+        throw error;
+      } finally {
+        setUploadingPhotos(false);
       }
-      setUploadingPhotos(false);
     }
     if (signedDocList.length > 0 && signedDocList[0].originFileObj) {
       setUploadingSignedDoc(true);
       try {
         const result = await dispatch(uploadVisitDocument({ file: signedDocList[0].originFileObj, type: 'signed-visit-document' })).unwrap();
         signedDocUrl = result.url;
-      } catch (error) { console.error('Signed doc upload error:', error); }
-      setUploadingSignedDoc(false);
+      } catch (error) {
+        console.error('Signed doc upload error:', error);
+        message.error(error?.message || 'Failed to upload signed document. Please try again.');
+        throw error;
+      } finally {
+        setUploadingSignedDoc(false);
+      }
     } else if (signedDocList.length > 0 && signedDocList[0].url) { signedDocUrl = signedDocList[0].url; }
     return { photoUrls, signedDocUrl };
   };

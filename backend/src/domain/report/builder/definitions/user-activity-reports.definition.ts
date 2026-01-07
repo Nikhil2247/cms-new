@@ -177,7 +177,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName', 'role'],
     sortableColumns: ['userName', 'role', 'accountCreatedAt', 'daysSinceCreation'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'default-password-users': {
@@ -221,7 +221,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName', 'role'],
     sortableColumns: ['userName', 'role', 'accountCreatedAt', 'daysSinceCreation', 'loginCount'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'inactive-users': {
@@ -268,7 +268,7 @@ export const userActivityReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName', 'role'],
     sortableColumns: ['userName', 'role', 'lastLoginAt', 'daysSinceLastLogin', 'loginCount'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'user-audit-log': {

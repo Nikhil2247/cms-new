@@ -14,6 +14,7 @@ import { TokenBlacklistService } from './token-blacklist.service';
 import { AccountLockoutService } from './account-lockout.service';
 import { MfaService } from './mfa.service';
 import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { MailService } from '../../../infrastructure/mail/mail.service';
 import { User, AuditAction, AuditCategory, AuditSeverity, Role } from '../../../generated/prisma/client';
 
 // SECURITY: Bcrypt salt rounds for password hashing
@@ -30,6 +31,7 @@ export class AuthService {
     private accountLockoutService: AccountLockoutService,
     private mfaService: MfaService,
     private auditService: AuditService,
+    private mailService: MailService,
   ) {}
 
   /**
@@ -562,12 +564,14 @@ export class AuthService {
       },
     });
 
-    // TODO: Send email with reset token
-    // await this.emailService.sendPasswordResetEmail(email, resetToken);
+    // Send password reset email
+    await this.mailService.sendPasswordResetEmail(user, resetToken);
+
+    this.logger.log(`Password reset email queued for: ${email}`);
 
     return {
       message: 'If the email exists, a password reset link has been sent',
-      // Return token in development for testing (no email service configured)
+      // Return token in development for testing
       resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined,
     };
   }
@@ -1234,17 +1238,29 @@ export class AuthService {
 
     this.logger.log(`Admin reset password for user ${userId}`);
 
-    // TODO: Send email with new password
-    // await this.emailService.sendPasswordResetNotification(user.email, newPassword);
+    // Send email notification with new password
+    // Note: Sending passwords via email is not ideal, but necessary for admin-initiated resets
+    await this.mailService.queueMail({
+      to: user.email,
+      subject: 'Your Password Has Been Reset',
+      template: 'announcement',
+      context: {
+        name: user.name,
+        title: 'Password Reset Notification',
+        body: `Your account password has been reset by an administrator.\n\nYour new temporary password is: ${newPassword}\n\nPlease log in and change your password immediately for security purposes.\n\nIf you did not request this change, please contact support immediately.`,
+      },
+    });
+
+    this.logger.log(`Password reset notification email queued for: ${user.email}`);
 
     return {
       success: true,
       userId: user.id,
       email: user.email,
       name: user.name,
-      // Return password in development for testing (no email service configured)
+      // Return password in development for testing
       newPassword: process.env.NODE_ENV === 'development' ? newPassword : undefined,
-      message: 'Password reset successfully. User will be notified via email.',
+      message: 'Password reset successfully. User has been notified via email.',
     };
   }
 

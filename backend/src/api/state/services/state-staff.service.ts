@@ -389,11 +389,17 @@ export class StateStaffService {
     const newStatus = !currentStatus;
 
     if (!newStatus) {
-      // Deactivating: deactivate mentor assignments and user
+      // Deactivating: soft delete mentor assignments (irreversible) and deactivate user
+      // Note: Mentor assignments are permanently deactivated - new assignments must be created when user is reactivated
+      // Faculty visits by this mentor are preserved for historical records
       await this.prisma.$transaction([
         this.prisma.mentorAssignment.updateMany({
           where: { mentorId: id, isActive: true },
-          data: { isActive: false, deactivatedAt: new Date() },
+          data: {
+            isActive: false,
+            deactivatedAt: new Date(),
+            deactivationReason: 'Faculty mentor deactivated',
+          },
         }),
         this.prisma.user.update({
           where: { id },
@@ -401,17 +407,12 @@ export class StateStaffService {
         }),
       ]);
     } else {
-      // Activating: reactivate mentor assignments and user
-      await this.prisma.$transaction([
-        this.prisma.mentorAssignment.updateMany({
-          where: { mentorId: id, isActive: false },
-          data: { isActive: true, deactivatedAt: null },
-        }),
-        this.prisma.user.update({
-          where: { id },
-          data: { active: true },
-        }),
-      ]);
+      // Activating: only reactivate user - mentor assignments remain deactivated
+      // New mentor assignments must be created fresh
+      await this.prisma.user.update({
+        where: { id },
+        data: { active: true },
+      });
     }
 
     await this.cache.invalidateByTags(['state', 'staff', 'faculty']);

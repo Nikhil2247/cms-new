@@ -30,7 +30,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['department', 'institutionName'],
     sortableColumns: ['name', 'department', 'assignedStudents', 'institutionName'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'mentor-student-assignments': {
@@ -62,7 +62,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['mentorName', 'branchName', 'internshipStatus'],
     sortableColumns: ['mentorName', 'studentName', 'assignedDate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'mentor-utilization': {
@@ -93,7 +93,7 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['department', 'institutionName', 'utilizationLevel'],
     sortableColumns: ['mentorName', 'currentAssignments', 'utilizationPercent'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'unassigned-students': {
@@ -126,6 +126,6 @@ export const mentorReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'currentYear', 'institutionName'],
     sortableColumns: ['rollNumber', 'name', 'branchName', 'daysUnassigned'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

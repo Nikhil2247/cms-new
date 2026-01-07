@@ -47,7 +47,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['institutionName', 'department', 'complianceLevel'],
     sortableColumns: ['mentorName', 'completedVisits', 'pendingVisits', 'compliancePercent'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'monthly-report-compliance': {
@@ -98,7 +98,7 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'mentorName', 'complianceLevel'],
     sortableColumns: ['studentName', 'reportsSubmitted', 'reportsPending', 'compliancePercent'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'joining-report-status': {
@@ -138,6 +138,6 @@ export const complianceReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'joiningLetterStatus'],
     sortableColumns: ['studentName', 'internshipStartDate', 'daysSinceStart'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

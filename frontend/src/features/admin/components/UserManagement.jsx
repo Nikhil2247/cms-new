@@ -292,8 +292,8 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
             <Button type="link" size="small" icon={<LockOutlined />} />
           </Popconfirm>
           <Popconfirm
-            title="Delete user?"
-            description="Choose delete type"
+            title="Deactivate user?"
+            description="All mentor assignments will be permanently deleted and new assignments will need to be created. Faculty visits will be preserved."
             onConfirm={() => handleDelete(record.id, false)}
             okText="Deactivate"
             cancelText="Cancel"

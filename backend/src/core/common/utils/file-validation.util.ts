@@ -45,7 +45,7 @@ export const FILE_SIGNATURES: Record<string, { signature: number[]; offset?: num
 export const ALLOWED_MIME_TYPES = {
   images: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
   documents: ['application/pdf'],
-  visitDocuments: ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'],
+  visitDocuments: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'],
   joiningLetters: ['application/pdf', 'image/jpeg', 'image/png'],
   all: [
     'image/jpeg',
