@@ -334,11 +334,16 @@ export class UserManagementService {
       });
     } else {
       // Soft delete - deactivate user (User.active is the source of truth)
+      // Note: Mentor assignments are permanently deactivated - new assignments must be created when user is reactivated
       await this.prisma.$transaction([
-        // If this user is a mentor, deactivate active mentor assignments
+        // If this user is a mentor, deactivate active mentor assignments (irreversible)
         this.prisma.mentorAssignment.updateMany({
           where: { mentorId: userId, isActive: true },
-          data: { isActive: false, deactivatedAt: new Date() },
+          data: {
+            isActive: false,
+            deactivatedAt: new Date(),
+            deactivationReason: 'Faculty mentor deactivated',
+          },
         }),
         this.prisma.user.update({
           where: { id: userId },
@@ -401,10 +406,14 @@ export class UserManagementService {
             break;
           case 'deactivate':
             await this.prisma.$transaction([
-              // If this user is a mentor, deactivate active mentor assignments
+              // If this user is a mentor, deactivate active mentor assignments (irreversible)
               this.prisma.mentorAssignment.updateMany({
                 where: { mentorId: userId, isActive: true },
-                data: { isActive: false, deactivatedAt: new Date() },
+                data: {
+                  isActive: false,
+                  deactivatedAt: new Date(),
+                  deactivationReason: 'Faculty mentor deactivated',
+                },
               }),
               this.prisma.user.update({
                 where: { id: userId },
@@ -415,10 +424,14 @@ export class UserManagementService {
             break;
           case 'delete':
             await this.prisma.$transaction([
-              // If this user is a mentor, deactivate active mentor assignments
+              // If this user is a mentor, deactivate active mentor assignments (irreversible)
               this.prisma.mentorAssignment.updateMany({
                 where: { mentorId: userId, isActive: true },
-                data: { isActive: false, deactivatedAt: new Date() },
+                data: {
+                  isActive: false,
+                  deactivatedAt: new Date(),
+                  deactivationReason: 'Faculty mentor deactivated',
+                },
               }),
               this.prisma.user.update({
                 where: { id: userId },

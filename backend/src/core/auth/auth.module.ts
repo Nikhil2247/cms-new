@@ -18,11 +18,13 @@ import { RolesGuard } from './guards/roles.guard';
 import { PrismaService } from '../database/prisma.service';
 import { LruCacheService } from '../cache/lru-cache.service';
 import { AuditModule } from '../../infrastructure/audit/audit.module';
+import { MailModule } from '../../infrastructure/mail/mail.module';
 
 @Global()
 @Module({
   imports: [
     AuditModule,
+    MailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -1533,7 +1533,8 @@ export class ReportGeneratorService {
 
   /**
    * Generate report based on type
-   * @param type - Report type
+   * Uses exact type matching with switch statement to prevent routing bugs
+   * @param type - Report type (must match keys in definitions/*.definition.ts)
    * @param filters - Filter parameters including institutionId
    * @param isAdmin - Whether the requesting user is an admin (can bypass institution isolation)
    * @param pagination - Optional pagination options (take, skip) to limit result sets
@@ -1544,7 +1545,6 @@ export class ReportGeneratorService {
     isAdmin: boolean = false,
     pagination?: ReportPaginationOptions,
   ): Promise<any[]> {
-    // Map new report types to generators
     const typeStr = String(type).toLowerCase();
 
     // SECURITY: Validate institution isolation before generating any report
@@ -1555,74 +1555,1430 @@ export class ReportGeneratorService {
       `pagination: take=${pagination?.take ?? DEFAULT_MAX_RECORDS}, skip=${pagination?.skip ?? 0}`,
     );
 
-    // Compliance reports - check this before generic student reports
-    if (typeStr.includes('compliance')) {
-      return this.generateStudentComplianceReport(filters, pagination);
+    // Use exact type matching to prevent routing bugs
+    switch (typeStr) {
+      // ==================== Student Reports (4) ====================
+      case 'student-directory':
+      case 'student-internship-status':
+      case 'student-by-branch':
+        return this.generateStudentProgressReport(filters, pagination);
+      case 'student-compliance':
+        return this.generateStudentComplianceReport(filters, pagination);
+
+      // ==================== Mentor Reports (4) ====================
+      case 'mentor-list':
+        return this.generateMentorListReport(filters, pagination);
+      case 'mentor-student-assignments':
+        return this.generateMentorStudentAssignmentsReport(filters, pagination);
+      case 'mentor-utilization':
+        return this.generateMentorUtilizationReport(filters, pagination);
+      case 'unassigned-students':
+        return this.generateUnassignedStudentsReport(filters, pagination);
+
+      // ==================== Internship Reports (4) ====================
+      case 'internship-applications':
+        return this.generateInternshipReport(filters, pagination);
+      case 'internship-by-institution':
+        return this.generateInternshipByInstitutionReport(filters, pagination);
+      case 'internship-by-industry':
+        return this.generateInternshipByIndustryReport(filters, pagination);
+      case 'self-identified-internships':
+        // Set filter to only show self-identified internships
+        return this.generateInternshipReport({ ...filters, isSelfIdentified: true }, pagination);
+
+      // ==================== Compliance Reports (3) ====================
+      case 'faculty-visit-compliance':
+        return this.generateFacultyVisitComplianceReport(filters, pagination);
+      case 'monthly-report-compliance':
+        return this.generateMonthlyReportComplianceReport(filters, pagination);
+      case 'joining-report-status':
+        return this.generateJoiningReportStatusReport(filters, pagination);
+
+      // ==================== Institute Reports (3) ====================
+      case 'institute-summary':
+        return this.generateInstituteSummaryReport(filters, pagination);
+      case 'institute-comparison':
+        return this.generateInstituteComparisonReport(filters, pagination);
+      case 'branch-wise-summary':
+        return this.generateBranchWiseSummaryReport(filters, pagination);
+
+      // ==================== Pending Reports (4) ====================
+      case 'pending-monthly-visits':
+        return this.generatePendingMonthlyVisitsReport(filters, pagination);
+      case 'pending-monthly-reports':
+        return this.generatePendingMonthlyReportsReport(filters, pagination);
+      case 'pending-joining-letters':
+        return this.generatePendingJoiningLettersReport(filters, pagination);
+      case 'pending-mentor-assignments':
+        return this.generateUnassignedStudentsReport(filters, pagination); // Same as unassigned-students
+
+      // ==================== User Activity Reports (6) ====================
+      case 'user-login-activity':
+        return this.generateUserLoginActivityReport(filters, pagination);
+      case 'user-session-history':
+        return this.generateUserSessionHistoryReport(filters, pagination);
+      case 'never-logged-in-users':
+        return this.generateNeverLoggedInUsersReport(filters, pagination);
+      case 'default-password-users':
+        return this.generateDefaultPasswordUsersReport(filters, pagination);
+      case 'inactive-users':
+        return this.generateInactiveUsersReport(filters, pagination);
+      case 'user-audit-log':
+        return this.generateUserAuditLogReport(filters, pagination);
+
+      // ==================== Legacy Support ====================
+      // Support for legacy enum values
+      case ReportType.STUDENT_PROGRESS:
+        return this.generateStudentProgressReport(filters, pagination);
+      case ReportType.INTERNSHIP:
+        return this.generateInternshipReport(filters, pagination);
+      case ReportType.FACULTY_VISIT:
+        return this.generateFacultyVisitReport(filters, pagination);
+      case ReportType.MONTHLY:
+        return this.generateMonthlyReport(filters, pagination);
+      case ReportType.PLACEMENT:
+        return this.generatePlacementReport(filters, pagination);
+      case ReportType.INSTITUTION_PERFORMANCE:
+        return this.generateInstitutionPerformanceReport(filters);
+
+      default:
+        this.logger.error(`Unknown report type requested: ${type}`);
+        throw new ForbiddenException(`Unknown report type: ${type}. Valid types: student-directory, mentor-list, internship-applications, etc.`);
+    }
+  }
+
+  // ==================== Mentor Report Generators ====================
+
+  /**
+   * Generate Mentor List Report
+   * Lists all faculty members who can be assigned as mentors
+   * @param filters - Filter criteria (institutionId, isActive)
+   * @param pagination - Optional pagination options
+   */
+  async generateMentorListReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      role: Role.TEACHER,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
     }
 
-    // Student reports
-    if (typeStr.includes('student') || typeStr === ReportType.STUDENT_PROGRESS) {
-      return this.generateStudentProgressReport(filters, pagination);
+    if (filters?.department) {
+      where.branchName = filters.department;
     }
 
-    // Internship reports (including self-identified)
-    if (typeStr.includes('internship') || typeStr === ReportType.INTERNSHIP) {
-      return this.generateInternshipReport(filters, pagination);
+    // Default to active faculty only
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.active = isActiveValue;
+    } else {
+      where.active = true;
     }
 
-    // Faculty/Mentor reports
-    if (typeStr.includes('mentor') || typeStr.includes('faculty-visit') || typeStr === ReportType.FACULTY_VISIT) {
-      return this.generateFacultyVisitReport(filters, pagination);
+    const mentors = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+        mentorAssignments: {
+          where: { isActive: true },
+          include: {
+            student: {
+              include: {
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: { id: true, completedVisitsCount: true },
+                },
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            mentorAssignments: { where: { isActive: true } },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(mentors.length, 'MentorListReport');
+
+    // Apply hasAssignments filter if specified
+    let filteredMentors = mentors;
+    if (filters?.hasAssignments !== undefined) {
+      const hasAssignments = this.parseBooleanLike(filters.hasAssignments);
+      if (hasAssignments === true) {
+        filteredMentors = mentors.filter((m) => m._count.mentorAssignments > 0);
+      } else if (hasAssignments === false) {
+        filteredMentors = mentors.filter((m) => m._count.mentorAssignments === 0);
+      }
     }
 
-    // Monthly reports
-    if (typeStr.includes('monthly') || typeStr === ReportType.MONTHLY) {
-      return this.generateMonthlyReport(filters, pagination);
+    return filteredMentors.map((mentor) => {
+      // Count active internships and visits from assignments
+      let activeInternships = 0;
+      let visitsCompleted = 0;
+
+      mentor.mentorAssignments.forEach((assignment) => {
+        assignment.student.internshipApplications.forEach((app) => {
+          activeInternships++;
+          visitsCompleted += app.completedVisitsCount;
+        });
+      });
+
+      return {
+        name: mentor.name,
+        email: mentor.email,
+        phoneNumber: mentor.phoneNo,
+        designation: mentor.designation,
+        department: mentor.branchName ?? 'N/A',
+        institutionName: mentor.Institution?.name ?? 'N/A',
+        assignedStudents: mentor._count.mentorAssignments,
+        activeInternships,
+        visitsCompleted,
+        isActive: mentor.active,
+      };
+    });
+  }
+
+  /**
+   * Generate Mentor-Student Assignments Report
+   * Shows mentor-student assignment relationships - matches mentor-reports.definition.ts columns
+   * @param filters - Filter criteria (institutionId, mentorId, branchId, isActive)
+   * @param pagination - Optional pagination options
+   */
+  async generateMentorStudentAssignmentsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isActive: true,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.mentorId) {
+      where.mentorId = filters.mentorId;
     }
 
-    // Placement reports
-    if (typeStr.includes('placement') || typeStr === ReportType.PLACEMENT) {
-      return this.generatePlacementReport(filters, pagination);
+    // Build student filter
+    const studentFilter: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      studentFilter.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      studentFilter.branchId = filters.branchId;
     }
 
-    // Institution reports - requires institutionId by design
-    // Note: Institution performance report doesn't need pagination (returns aggregated metrics)
-    if (typeStr.includes('institut') || typeStr === ReportType.INSTITUTION_PERFORMANCE) {
-      return this.generateInstitutionPerformanceReport(filters);
+    // Default to active students and mentors
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentFilter.user = { active: isActiveValue };
+      where.mentor = { active: isActiveValue };
+    } else {
+      studentFilter.user = { active: true };
+      where.mentor = { active: true };
     }
 
-    // Pending reports - use monthly report data
-    if (typeStr.includes('pending')) {
-      return this.generateMonthlyReport(filters, pagination);
+    if (Object.keys(studentFilter).length > 0) {
+      where.student = studentFilter;
     }
 
-    // User Activity Reports
-    if (typeStr === 'user-login-activity' || typeStr.includes('login-activity')) {
-      return this.generateUserLoginActivityReport(filters, pagination);
+    const assignments = await this.prisma.mentorAssignment.findMany({
+      where,
+      include: {
+        mentor: { select: { id: true, name: true, email: true, designation: true, active: true } },
+        student: {
+          select: {
+            id: true,
+            user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+            Institution: { select: { name: true } },
+            branch: { select: { name: true } },
+            internshipApplications: {
+              where: { isActive: true },
+              select: {
+                companyName: true,
+                internshipPhase: true,
+                status: true,
+                completedVisitsCount: true,
+                submittedReportsCount: true,
+                facultyVisitLogs: {
+                  select: { visitDate: true },
+                  orderBy: { visitDate: 'desc' },
+                  take: 1,
+                },
+              },
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+            },
+            monthlyReports: {
+              where: { status: 'APPROVED' },
+              select: { id: true },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { assignmentDate: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(assignments.length, 'MentorStudentAssignmentsReport');
+
+    return assignments.map((assignment) => {
+      const app = assignment.student.internshipApplications[0];
+      const lastVisit = app?.facultyVisitLogs[0]?.visitDate ?? null;
+
+      // Map internship phase to status string
+      let internshipStatus = 'Not Started';
+      if (app) {
+        switch (app.internshipPhase) {
+          case 'ACTIVE': internshipStatus = 'Active'; break;
+          case 'COMPLETED': internshipStatus = 'Completed'; break;
+          case 'NOT_STARTED': internshipStatus = 'Not Started'; break;
+          default: internshipStatus = app.status ?? 'Unknown';
+        }
+      }
+
+      return {
+        mentorName: assignment.mentor.name,
+        mentorEmail: assignment.mentor.email,
+        studentName: assignment.student.user?.name,
+        studentRollNumber: assignment.student.user?.rollNumber,
+        branchName: assignment.student.branch?.name ?? assignment.student.user?.branchName,
+        companyName: app?.companyName ?? 'N/A',
+        internshipStatus,
+        assignedDate: assignment.assignmentDate,
+        lastVisitDate: lastVisit,
+        reportsReviewed: assignment.student.monthlyReports.length,
+        studentActive: assignment.student.user?.active ?? false,
+        mentorActive: assignment.mentor.active,
+      };
+    });
+  }
+
+  /**
+   * Generate Mentor Utilization Report
+   * Shows mentor workload and utilization metrics
+   * @param filters - Filter criteria (institutionId, isActive)
+   * @param pagination - Optional pagination options
+   */
+  async generateMentorUtilizationReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      role: Role.TEACHER,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
     }
 
-    if (typeStr === 'user-session-history' || typeStr.includes('session-history')) {
-      return this.generateUserSessionHistoryReport(filters, pagination);
+    // Default to active faculty only
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.active = isActiveValue;
+    } else {
+      where.active = true;
     }
 
-    if (typeStr === 'never-logged-in-users' || typeStr.includes('never-logged')) {
-      return this.generateNeverLoggedInUsersReport(filters, pagination);
+    const mentors = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+        mentorAssignments: {
+          include: {
+            student: {
+              include: {
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: {
+                    status: true,
+                    internshipPhase: true,
+                    completedVisitsCount: true,
+                    totalExpectedVisits: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        facultyVisitLogs: {
+          where: { isDeleted: false },
+          select: { id: true, visitDate: true },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(mentors.length, 'MentorUtilizationReport');
+
+    return mentors.map((mentor) => {
+      const activeAssignments = mentor.mentorAssignments.filter((a) => a.isActive);
+      const totalAssigned = activeAssignments.length;
+
+      // Count active and completed internships from assigned students
+      let activeInternships = 0;
+      let completedInternships = 0;
+      let totalExpectedVisits = 0;
+      let completedVisits = 0;
+
+      activeAssignments.forEach((assignment) => {
+        assignment.student.internshipApplications.forEach((app) => {
+          if (app.internshipPhase === 'ACTIVE') activeInternships++;
+          if (app.internshipPhase === 'COMPLETED') completedInternships++;
+          totalExpectedVisits += app.totalExpectedVisits;
+          completedVisits += app.completedVisitsCount;
+        });
+      });
+
+      const utilizationRate = totalExpectedVisits > 0
+        ? Math.round((completedVisits / totalExpectedVisits) * 100)
+        : 0;
+
+      const lastVisit = mentor.facultyVisitLogs.length > 0
+        ? mentor.facultyVisitLogs.sort((a, b) => b.visitDate.getTime() - a.visitDate.getTime())[0]?.visitDate
+        : null;
+
+      return {
+        mentorName: mentor.name,
+        email: mentor.email,
+        designation: mentor.designation,
+        department: mentor.branchName,
+        institutionName: mentor.Institution?.name ?? 'N/A',
+        totalAssigned,
+        activeAssignments: totalAssigned,
+        activeInternships,
+        completedInternships,
+        totalVisitsCompleted: mentor.facultyVisitLogs.length,
+        utilizationRate,
+        lastVisitDate: lastVisit,
+        isActive: mentor.active,
+      };
+    });
+  }
+
+  /**
+   * Generate Unassigned Students Report
+   * Lists students who don't have a mentor assigned
+   * @param filters - Filter criteria (institutionId, branchId, isActive)
+   * @param pagination - Optional pagination options
+   */
+  async generateUnassignedStudentsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      // Students with NO active mentor assignment
+      mentorAssignments: {
+        none: { isActive: true },
+      },
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
     }
 
-    if (typeStr === 'default-password-users' || typeStr.includes('default-password')) {
-      return this.generateDefaultPasswordUsersReport(filters, pagination);
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
     }
 
-    if (typeStr === 'inactive-users' || typeStr.includes('inactive-user')) {
-      return this.generateInactiveUsersReport(filters, pagination);
+    if (filters?.currentYear) {
+      where.currentYear = Number(filters.currentYear);
     }
 
-    if (typeStr === 'user-audit-log' || typeStr.includes('audit-log')) {
-      return this.generateUserAuditLogReport(filters, pagination);
+    // Default to active students only
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.user = { active: isActiveValue };
+    } else {
+      where.user = { active: true };
     }
 
-    // Unknown report type - reject instead of defaulting
-    this.logger.error(`Unknown report type requested: ${type}`);
-    throw new ForbiddenException(`Unknown report type: ${type}`);
+    const students = await this.prisma.student.findMany({
+      where,
+      include: {
+        user: { select: { name: true, rollNumber: true, branchName: true, email: true, phoneNo: true, active: true } },
+        branch: { select: { name: true } },
+        Institution: { select: { name: true } },
+        internshipApplications: {
+          where: { isActive: true },
+          select: { id: true, status: true, companyName: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(students.length, 'UnassignedStudentsReport');
+
+    return students.map((student) => {
+      const activeInternship = student.internshipApplications[0];
+      return {
+        studentName: student.user?.name,
+        rollNumber: student.user?.rollNumber,
+        email: student.user?.email,
+        phoneNo: student.user?.phoneNo,
+        branchName: student.branch?.name ?? student.user?.branchName,
+        currentYear: student.currentYear,
+        currentSemester: student.currentSemester,
+        institutionName: student.Institution?.name ?? 'N/A',
+        hasActiveInternship: !!activeInternship,
+        internshipStatus: activeInternship?.status ?? 'None',
+        companyName: activeInternship?.companyName ?? 'N/A',
+        isActive: student.user?.active ?? false,
+        userActive: student.user?.active ?? true,
+      };
+    });
+  }
+
+  // ==================== Internship Summary Report Generators ====================
+
+  /**
+   * Generate Internship by Institution Report
+   * Aggregates internship data by institution
+   * @param filters - Filter criteria (district, city)
+   * @param pagination - Optional pagination options
+   */
+  async generateInternshipByInstitutionReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    const institutions = await this.prisma.institution.findMany({
+      where: filters?.district ? { district: filters.district } : undefined,
+      include: {
+        _count: {
+          select: {
+            Student: { where: { user: { active: true } } },
+          },
+        },
+        Student: {
+          where: { user: { active: true } },
+          include: {
+            internshipApplications: {
+              where: { isActive: true },
+              select: {
+                status: true,
+                internshipPhase: true,
+                isSelfIdentified: true,
+              },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(institutions.length, 'InternshipByInstitutionReport');
+
+    return institutions.map((inst) => {
+      let activeInternships = 0;
+      let completedInternships = 0;
+      let pendingApplications = 0;
+      let selfIdentified = 0;
+
+      inst.Student.forEach((student) => {
+        student.internshipApplications.forEach((app) => {
+          if (app.internshipPhase === 'ACTIVE') activeInternships++;
+          if (app.internshipPhase === 'COMPLETED') completedInternships++;
+          if (['SUBMITTED', 'UNDER_REVIEW'].includes(app.status)) pendingApplications++;
+          if (app.isSelfIdentified) selfIdentified++;
+        });
+      });
+
+      const totalStudents = inst._count.Student;
+      const totalInternships = activeInternships + completedInternships;
+      const internshipRate = totalStudents > 0 ? Math.round((totalInternships / totalStudents) * 100) : 0;
+
+      return {
+        institutionName: inst.name,
+        institutionCode: inst.shortName,
+        city: inst.city,
+        district: inst.district,
+        totalStudents,
+        activeInternships,
+        completedInternships,
+        pendingApplications,
+        selfIdentified,
+        internshipRate,
+      };
+    });
+  }
+
+  /**
+   * Generate Internship by Industry Report
+   * Aggregates internship data by company/industry
+   * @param filters - Filter criteria (institutionId, industryType, isVerified)
+   * @param pagination - Optional pagination options
+   */
+  async generateInternshipByIndustryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isActive: true,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.student = { institutionId: filters.institutionId };
+    }
+
+    // Group by company name
+    const applications = await this.prisma.internshipApplication.findMany({
+      where,
+      select: {
+        companyName: true,
+        companyAddress: true,
+        internshipDuration: true,
+        stipend: true,
+        internshipPhase: true,
+        status: true,
+      },
+      take: 50000, // Get all for grouping
+    });
+
+    // Group by company
+    const companyMap = new Map<string, {
+      companyName: string;
+      city: string;
+      totalInternships: number;
+      activeInternships: number;
+      completedInternships: number;
+      durations: number[];
+      stipends: number[];
+    }>();
+
+    applications.forEach((app) => {
+      const key = app.companyName || 'Unknown';
+      if (!companyMap.has(key)) {
+        // Extract city from address
+        let city = '';
+        if (app.companyAddress) {
+          const parts = app.companyAddress.split(',').map((p) => p.trim());
+          city = parts.length >= 2 ? parts[1] : '';
+        }
+
+        companyMap.set(key, {
+          companyName: app.companyName ?? 'Unknown',
+          city,
+          totalInternships: 0,
+          activeInternships: 0,
+          completedInternships: 0,
+          durations: [],
+          stipends: [],
+        });
+      }
+
+      const data = companyMap.get(key)!;
+      data.totalInternships++;
+      if (app.internshipPhase === 'ACTIVE') data.activeInternships++;
+      if (app.internshipPhase === 'COMPLETED') data.completedInternships++;
+      // Parse string duration/stipend to numbers
+      if (app.internshipDuration) {
+        const durationNum = parseFloat(app.internshipDuration);
+        if (!isNaN(durationNum)) data.durations.push(durationNum);
+      }
+      if (app.stipend) {
+        const stipendNum = parseFloat(app.stipend);
+        if (!isNaN(stipendNum)) data.stipends.push(stipendNum);
+      }
+    });
+
+    // Convert to array and apply pagination
+    const results = Array.from(companyMap.values())
+      .sort((a, b) => b.totalInternships - a.totalInternships)
+      .slice(skip, skip + take);
+
+    this.warnOnLargeResultSet(results.length, 'InternshipByIndustryReport');
+
+    return results.map((data) => ({
+      companyName: data.companyName,
+      industryType: 'N/A', // Would need company industry field
+      city: data.city,
+      totalInternships: data.totalInternships,
+      activeInternships: data.activeInternships,
+      completedInternships: data.completedInternships,
+      avgDuration: data.durations.length > 0
+        ? Math.round(data.durations.reduce((a, b) => a + b, 0) / data.durations.length)
+        : 0,
+      avgStipend: data.stipends.length > 0
+        ? Math.round(data.stipends.reduce((a, b) => a + b, 0) / data.stipends.length)
+        : 0,
+      isVerified: true, // Would need company verification field
+    }));
+  }
+
+  // ==================== Compliance Report Generators ====================
+
+  /**
+   * Generate Faculty Visit Compliance Report
+   * Tracks faculty visit compliance for internship monitoring
+   * @param filters - Filter criteria (institutionId, month, year, complianceLevel)
+   * @param pagination - Optional pagination options
+   */
+  async generateFacultyVisitComplianceReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      role: Role.TEACHER,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    // Default to active faculty
+    const facultyActive = this.parseBooleanLike(filters?.facultyActive);
+    if (facultyActive !== undefined) {
+      where.active = facultyActive;
+    } else {
+      where.active = true;
+    }
+
+    const mentors = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+        mentorAssignments: {
+          where: { isActive: true },
+          include: {
+            student: {
+              include: {
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: {
+                    totalExpectedVisits: true,
+                    completedVisitsCount: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        facultyVisitLogs: {
+          where: { isDeleted: false },
+          select: { visitDate: true, nextVisitDate: true },
+          orderBy: { visitDate: 'desc' },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(mentors.length, 'FacultyVisitComplianceReport');
+
+    const results = mentors.map((mentor) => {
+      const assignedStudents = mentor.mentorAssignments.length;
+      let requiredVisits = 0;
+      let completedVisits = 0;
+
+      mentor.mentorAssignments.forEach((assignment) => {
+        assignment.student.internshipApplications.forEach((app) => {
+          requiredVisits += app.totalExpectedVisits;
+          completedVisits += app.completedVisitsCount;
+        });
+      });
+
+      const pendingVisits = Math.max(0, requiredVisits - completedVisits);
+      const compliancePercent = requiredVisits > 0
+        ? Math.round((completedVisits / requiredVisits) * 100)
+        : 100;
+
+      let complianceLevel = 'low';
+      if (compliancePercent >= 80) complianceLevel = 'high';
+      else if (compliancePercent >= 50) complianceLevel = 'medium';
+
+      const lastVisit = mentor.facultyVisitLogs[0];
+      const nextScheduled = mentor.facultyVisitLogs.find((v) => v.nextVisitDate)?.nextVisitDate;
+
+      return {
+        mentorName: mentor.name,
+        department: mentor.branchName,
+        institutionName: mentor.Institution?.name ?? 'N/A',
+        assignedStudents,
+        requiredVisits,
+        completedVisits,
+        pendingVisits,
+        compliancePercent,
+        complianceLevel,
+        lastVisitDate: lastVisit?.visitDate ?? null,
+        nextScheduledVisit: nextScheduled ?? null,
+        facultyActive: mentor.active,
+      };
+    });
+
+    // Apply compliance level filter if specified
+    if (filters?.complianceLevel) {
+      return results.filter((r) => r.complianceLevel === filters.complianceLevel);
+    }
+
+    return results;
+  }
+
+  /**
+   * Generate Monthly Report Compliance Report
+   * Student monthly report submission compliance
+   * @param filters - Filter criteria (institutionId, branchId, mentorId, month, year)
+   * @param pagination - Optional pagination options
+   */
+  async generateMonthlyReportComplianceReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
+    }
+
+    // Default to active students only
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.user = { active: isActiveValue };
+    } else {
+      where.user = { active: true };
+    }
+
+    const students = await this.prisma.student.findMany({
+      where,
+      include: {
+        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        branch: { select: { name: true } },
+        internshipApplications: {
+          where: { isActive: true },
+          select: {
+            companyName: true,
+            totalExpectedReports: true,
+            submittedReportsCount: true,
+            mentor: { select: { name: true } },
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+        monthlyReports: {
+          select: { status: true, submittedAt: true },
+          orderBy: { submittedAt: 'desc' },
+        },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(students.length, 'MonthlyReportComplianceReport');
+
+    return students.map((student) => {
+      const app = student.internshipApplications[0];
+      const totalExpected = app?.totalExpectedReports ?? 0;
+      const submitted = app?.submittedReportsCount ?? 0;
+      const approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
+      const pending = totalExpected - submitted;
+      const compliancePercent = totalExpected > 0
+        ? Math.round((submitted / totalExpected) * 100)
+        : 0;
+
+      const lastSubmission = student.monthlyReports[0]?.submittedAt;
+
+      return {
+        studentName: student.user?.name,
+        rollNumber: student.user?.rollNumber,
+        branchName: student.branch?.name ?? student.user?.branchName,
+        mentorName: app?.mentor?.name ?? 'N/A',
+        companyName: app?.companyName ?? 'N/A',
+        totalReportsExpected: totalExpected,
+        reportsSubmitted: submitted,
+        reportsApproved: approved,
+        reportsPending: Math.max(0, pending),
+        compliancePercent,
+        lastSubmissionDate: lastSubmission ?? null,
+        isActive: student.user?.active ?? false,
+        userActive: student.user?.active ?? true,
+      };
+    });
+  }
+
+  /**
+   * Generate Joining Report Status Report
+   * Track joining letter/report submission status
+   * @param filters - Filter criteria (institutionId, branchId, joiningLetterStatus)
+   * @param pagination - Optional pagination options
+   */
+  async generateJoiningReportStatusReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isActive: true,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build student filter
+    const studentFilter: Record<string, unknown> = {};
+    if (filters?.institutionId) {
+      studentFilter.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      studentFilter.branchId = filters.branchId;
+    }
+
+    // Default to active students only
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      studentFilter.user = { active: isActiveValue };
+    } else {
+      studentFilter.user = { active: true };
+    }
+
+    if (Object.keys(studentFilter).length > 0) {
+      where.student = studentFilter;
+    }
+
+    const applications = await this.prisma.internshipApplication.findMany({
+      where,
+      include: {
+        student: {
+          select: {
+            user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+            branch: { select: { name: true } },
+          },
+        },
+        mentor: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { startDate: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(applications.length, 'JoiningReportStatusReport');
+
+    const now = new Date();
+
+    const results = applications.map((app) => {
+      // Determine joining letter status based on joiningLetterUrl presence
+      // All joining letters are auto-approved per user requirement
+      let joiningLetterStatus = 'PENDING';
+      if (app.joiningLetterUrl) {
+        joiningLetterStatus = 'APPROVED';
+      }
+
+      const startDate = app.startDate ?? app.joiningDate;
+      const daysSinceStart = startDate
+        ? Math.floor((now.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return {
+        studentName: app.student.user?.name,
+        rollNumber: app.student.user?.rollNumber,
+        branchName: app.student.branch?.name ?? app.student.user?.branchName,
+        companyName: app.companyName,
+        internshipStartDate: startDate,
+        joiningLetterStatus,
+        joiningLetterSubmittedAt: app.joiningLetterUrl ? app.createdAt : null, // Use createdAt as proxy
+        joiningLetterApprovedAt: app.joiningLetterUrl ? app.createdAt : null,
+        daysSinceStart,
+        mentorName: app.mentor?.name ?? 'N/A',
+        isActive: app.student.user?.active ?? false,
+        userActive: app.student.user?.active ?? true,
+      };
+    });
+
+    // Apply joining letter status filter if specified
+    if (filters?.joiningLetterStatus) {
+      return results.filter((r) => r.joiningLetterStatus === filters.joiningLetterStatus);
+    }
+
+    return results;
+  }
+
+  // ==================== Institute Report Generators ====================
+
+  /**
+   * Generate Institute Summary Report
+   * Summary statistics for each institution
+   * @param filters - Filter criteria
+   * @param pagination - Optional pagination options
+   */
+  async generateInstituteSummaryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    const institutions = await this.prisma.institution.findMany({
+      include: {
+        _count: {
+          select: {
+            Student: { where: { user: { active: true } } },
+            users: { where: { active: true, role: Role.TEACHER } },
+            Branch: true,
+          },
+        },
+        Student: {
+          where: { user: { active: true } },
+          include: {
+            internshipApplications: {
+              where: { isActive: true },
+              select: { internshipPhase: true },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(institutions.length, 'InstituteSummaryReport');
+
+    return institutions.map((inst) => {
+      let activeInternships = 0;
+      let completedInternships = 0;
+
+      inst.Student.forEach((student) => {
+        student.internshipApplications.forEach((app) => {
+          if (app.internshipPhase === 'ACTIVE') activeInternships++;
+          if (app.internshipPhase === 'COMPLETED') completedInternships++;
+        });
+      });
+
+      const totalStudents = inst._count.Student;
+      const internshipRate = totalStudents > 0
+        ? Math.round(((activeInternships + completedInternships) / totalStudents) * 100)
+        : 0;
+
+      return {
+        institutionName: inst.name,
+        institutionCode: inst.shortName,
+        city: inst.city,
+        district: inst.district,
+        totalStudents,
+        totalFaculty: inst._count.users,
+        totalBranches: inst._count.Branch,
+        activeInternships,
+        completedInternships,
+        internshipRate,
+      };
+    });
+  }
+
+  /**
+   * Generate Institute Comparison Report
+   * Compare multiple institutions side by side
+   * @param filters - Filter criteria
+   * @param pagination - Optional pagination options
+   */
+  async generateInstituteComparisonReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    // Similar to summary but with comparison metrics
+    return this.generateInstituteSummaryReport(filters, pagination);
+  }
+
+  /**
+   * Generate Branch Wise Summary Report
+   * Summary statistics broken down by branch
+   * @param filters - Filter criteria (institutionId)
+   * @param pagination - Optional pagination options
+   */
+  async generateBranchWiseSummaryReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    const branches = await this.prisma.branch.findMany({
+      where,
+      include: {
+        institution: { select: { name: true } },
+        students: {
+          where: { user: { active: true } },
+          include: {
+            internshipApplications: {
+              where: { isActive: true },
+              select: { internshipPhase: true, status: true },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(branches.length, 'BranchWiseSummaryReport');
+
+    return branches.map((branch) => {
+      let activeInternships = 0;
+      let completedInternships = 0;
+      let appliedCount = 0;
+
+      branch.students.forEach((student) => {
+        student.internshipApplications.forEach((app) => {
+          if (app.internshipPhase === 'ACTIVE') activeInternships++;
+          if (app.internshipPhase === 'COMPLETED') completedInternships++;
+          if (['APPLIED', 'SUBMITTED'].includes(app.status)) appliedCount++;
+        });
+      });
+
+      const totalStudents = branch.students.length;
+      const internshipRate = totalStudents > 0
+        ? Math.round(((activeInternships + completedInternships) / totalStudents) * 100)
+        : 0;
+
+      return {
+        branchName: branch.name,
+        branchCode: branch.code,
+        institutionName: branch.institution?.name ?? 'N/A',
+        totalStudents,
+        activeInternships,
+        completedInternships,
+        appliedCount,
+        internshipRate,
+      };
+    });
+  }
+
+  // ==================== Pending Report Generators ====================
+
+  /**
+   * Generate Pending Monthly Visits Report
+   * Faculty with overdue visits - matches pending-reports.definition.ts columns
+   * @param filters - Filter criteria (institutionId, mentorId, urgency)
+   * @param pagination - Optional pagination options
+   */
+  async generatePendingMonthlyVisitsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      role: Role.TEACHER,
+      active: true,
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.mentorId) {
+      where.id = filters.mentorId;
+    }
+
+    const mentors = await this.prisma.user.findMany({
+      where,
+      include: {
+        Institution: { select: { name: true } },
+        mentorAssignments: {
+          where: { isActive: true },
+          include: {
+            student: {
+              include: {
+                user: { select: { name: true, rollNumber: true, active: true } },
+                internshipApplications: {
+                  where: { isActive: true },
+                  select: {
+                    id: true,
+                    companyName: true,
+                    totalExpectedVisits: true,
+                    completedVisitsCount: true,
+                    facultyVisitLogs: {
+                      select: { visitDate: true },
+                      orderBy: { visitDate: 'desc' },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      take,
+      skip,
+      orderBy: { name: 'asc' },
+    });
+
+    this.warnOnLargeResultSet(mentors.length, 'PendingMonthlyVisitsReport');
+
+    const now = new Date();
+    const results: any[] = [];
+
+    mentors.forEach((mentor) => {
+      mentor.mentorAssignments.forEach((assignment) => {
+        // Only include active students
+        if (!assignment.student.user?.active) return;
+
+        assignment.student.internshipApplications.forEach((app) => {
+          const visitsDue = app.totalExpectedVisits - app.completedVisitsCount;
+          if (visitsDue > 0) {
+            const lastVisit = app.facultyVisitLogs[0]?.visitDate ?? null;
+            const daysSinceLastVisit = lastVisit
+              ? Math.floor((now.getTime() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+              : null;
+
+            // Apply urgency filter if specified
+            if (filters?.urgency) {
+              if (filters.urgency === 'critical' && (daysSinceLastVisit === null || daysSinceLastVisit <= 30)) return;
+              if (filters.urgency === 'high' && (daysSinceLastVisit === null || daysSinceLastVisit < 15 || daysSinceLastVisit > 30)) return;
+              if (filters.urgency === 'normal' && daysSinceLastVisit !== null && daysSinceLastVisit >= 15) return;
+            }
+
+            results.push({
+              mentorName: mentor.name,
+              mentorEmail: mentor.email,
+              mentorPhone: mentor.phoneNo,
+              department: mentor.designation ?? 'N/A',
+              institutionName: mentor.Institution?.name ?? 'N/A',
+              studentName: assignment.student.user?.name,
+              rollNumber: assignment.student.user?.rollNumber,
+              companyName: app.companyName,
+              lastVisitDate: lastVisit,
+              daysSinceLastVisit,
+              visitsDue,
+            });
+          }
+        });
+      });
+    });
+
+    return results;
+  }
+
+  /**
+   * Generate Pending Monthly Reports Report
+   * Students with overdue monthly reports - matches pending-reports.definition.ts columns
+   * @param filters - Filter criteria (institutionId, branchId, mentorId, month, year)
+   * @param pagination - Optional pagination options
+   */
+  async generatePendingMonthlyReportsReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      user: { active: true },
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
+    }
+
+    const students = await this.prisma.student.findMany({
+      where,
+      include: {
+        user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+        branch: { select: { name: true } },
+        Institution: { select: { name: true } },
+        internshipApplications: {
+          where: { isActive: true },
+          select: {
+            companyName: true,
+            startDate: true,
+            totalExpectedReports: true,
+            submittedReportsCount: true,
+            mentor: { select: { id: true, name: true } },
+          },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+        monthlyReports: {
+          select: { submittedAt: true, reportMonth: true, reportYear: true },
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+        },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(students.length, 'PendingMonthlyReportsReport');
+
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // 1-12
+    const currentYear = now.getFullYear();
+    const monthNames = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    const results: any[] = [];
+
+    for (const student of students) {
+      const app = student.internshipApplications[0];
+      if (!app) continue;
+      if (app.totalExpectedReports <= app.submittedReportsCount) continue;
+
+      // Apply mentor filter if specified
+      if (filters?.mentorId && app.mentor?.id !== filters.mentorId) continue;
+
+      const totalPendingReports = app.totalExpectedReports - app.submittedReportsCount;
+
+      // Calculate pending month (first month without a report)
+      const lastReport = student.monthlyReports[0];
+      let pendingMonth = currentMonth;
+      let pendingYear = currentYear;
+
+      if (lastReport) {
+        // Next month after last report
+        pendingMonth = lastReport.reportMonth + 1;
+        pendingYear = lastReport.reportYear;
+        if (pendingMonth > 12) {
+          pendingMonth = 1;
+          pendingYear++;
+        }
+      } else if (app.startDate) {
+        // Start from internship start date
+        const startDate = new Date(app.startDate);
+        pendingMonth = startDate.getMonth() + 1;
+        pendingYear = startDate.getFullYear();
+      }
+
+      // Apply month/year filter if specified
+      if (filters?.month && pendingMonth !== Number(filters.month)) continue;
+      if (filters?.year && pendingYear !== Number(filters.year)) continue;
+
+      // Calculate days past due (assuming reports due by 5th of following month)
+      const dueDate = new Date(pendingYear, pendingMonth, 5); // 5th of the month after pending month
+      const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+      results.push({
+        studentName: student.user?.name,
+        rollNumber: student.user?.rollNumber,
+        branchName: student.branch?.name ?? student.user?.branchName,
+        mentorName: app.mentor?.name ?? 'N/A',
+        companyName: app.companyName,
+        pendingMonth: monthNames[pendingMonth],
+        pendingYear,
+        daysPastDue,
+        lastSubmittedReport: lastReport?.submittedAt ?? null,
+        totalPendingReports,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Generate Pending Joining Letters Report
+   * Students who haven't submitted joining letter - matches pending-reports.definition.ts columns
+   * @param filters - Filter criteria (institutionId, branchId, mentorId, urgency)
+   * @param pagination - Optional pagination options
+   */
+  async generatePendingJoiningLettersReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {
+      isActive: true,
+      joiningLetterUrl: null, // No joining letter submitted
+    };
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Build student filter
+    const studentFilter: Record<string, unknown> = {
+      user: { active: true },
+    };
+    if (filters?.institutionId) {
+      studentFilter.institutionId = filters.institutionId;
+    }
+    if (filters?.branchId) {
+      studentFilter.branchId = filters.branchId;
+    }
+
+    where.student = studentFilter;
+
+    // Apply mentor filter if specified
+    if (filters?.mentorId) {
+      where.mentorId = filters.mentorId;
+    }
+
+    const applications = await this.prisma.internshipApplication.findMany({
+      where,
+      include: {
+        student: {
+          select: {
+            user: { select: { name: true, email: true, phoneNo: true, rollNumber: true, branchName: true, active: true } },
+            branch: { select: { name: true } },
+            Institution: { select: { name: true } },
+          },
+        },
+        mentor: { select: { name: true } },
+      },
+      take,
+      skip,
+      orderBy: { startDate: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(applications.length, 'PendingJoiningLettersReport');
+
+    const now = new Date();
+
+    const results = applications.map((app) => {
+      const startDate = app.startDate ?? app.joiningDate;
+      const daysSinceStart = startDate
+        ? Math.floor((now.getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
+
+      return {
+        studentName: app.student.user?.name,
+        rollNumber: app.student.user?.rollNumber,
+        email: app.student.user?.email,
+        phoneNumber: app.student.user?.phoneNo,
+        branchName: app.student.branch?.name ?? app.student.user?.branchName,
+        mentorName: app.mentor?.name ?? 'N/A',
+        companyName: app.companyName,
+        internshipStartDate: startDate,
+        daysSinceStart,
+        institutionName: app.student.Institution?.name ?? 'N/A',
+      };
+    });
+
+    // Apply urgency filter if specified
+    if (filters?.urgency) {
+      return results.filter((r) => {
+        if (filters.urgency === 'critical') return r.daysSinceStart > 14;
+        if (filters.urgency === 'high') return r.daysSinceStart >= 7 && r.daysSinceStart <= 14;
+        if (filters.urgency === 'normal') return r.daysSinceStart < 7;
+        return true;
+      });
+    }
+
+    return results;
   }
 }

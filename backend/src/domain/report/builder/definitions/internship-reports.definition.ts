@@ -45,7 +45,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['status', 'branchName', 'companyName'],
     sortableColumns: ['studentName', 'companyName', 'status', 'appliedDate', 'branchName'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'internship-by-institution': {
@@ -72,7 +72,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['district', 'city'],
     sortableColumns: ['institutionName', 'totalStudents', 'activeInternships', 'internshipRate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'internship-by-industry': {
@@ -101,7 +101,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['industryType', 'city'],
     sortableColumns: ['companyName', 'industryType', 'totalInternships'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
   'self-identified-internships': {
@@ -142,6 +142,6 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
     ],
     groupBy: ['branchName', 'verificationStatus', 'status'],
     sortableColumns: ['studentName', 'companyName', 'startDate'],
-    exportFormats: ['excel', 'csv', 'pdf'],
+    exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 };

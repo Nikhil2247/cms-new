@@ -107,8 +107,8 @@ const StaffList = () => {
     modal.confirm({
       title: `${isCurrentlyActive ? 'Deactivate' : 'Activate'} Staff Member`,
       content: isCurrentlyActive
-        ? `Are you sure you want to deactivate ${name}? They will no longer be able to access the system. Their mentor assignments will also be deactivated but data will be preserved.`
-        : `Are you sure you want to activate ${name}? They will regain access to the system and their mentor assignments will be reactivated.`,
+        ? `Are you sure you want to deactivate ${name}? They will no longer be able to access the system. ⚠️ All mentor assignments will be permanently deleted and new assignments will need to be created if the user is reactivated. Faculty visits done by this mentor will be preserved.`
+        : `Are you sure you want to activate ${name}? They will regain access to the system. Note: Previous mentor assignments were permanently removed - new assignments will need to be created.`,
       okText: isCurrentlyActive ? 'Deactivate' : 'Activate',
       okType: isCurrentlyActive ? 'danger' : 'primary',
       confirmLoading: togglingId === id,

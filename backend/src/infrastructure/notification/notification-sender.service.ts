@@ -476,6 +476,8 @@ export class NotificationSenderService {
 
   /**
    * Check if user has enabled notifications for a specific type
+   * TODO: Implement NotificationSettings model and query user preferences
+   * For now, allow all notifications by default
    */
   private async isNotificationEnabled(userId: string, type: NotificationType): Promise<boolean> {
     const TYPE_TO_SETTING_MAP: Record<string, string> = {
@@ -512,5 +514,16 @@ export class NotificationSenderService {
     if (!settingKey) {
       return true;
     }
+
+    // TODO: When NotificationSettings model is implemented, query user preferences:
+    // const settings = await this.prisma.notificationSettings.findUnique({
+    //   where: { userId },
+    // });
+    // if (settings) {
+    //   return settings[settingKey] ?? true;
+    // }
+
+    // For now, allow all notifications by default
+    return true;
   }
 }
