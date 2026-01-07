@@ -1081,6 +1081,11 @@ export class PrincipalService {
       where.mentorAssignments = {
         none: { isActive: true },
       };
+      // When filtering for unassigned students, only show active students by default
+      // unless isActive is explicitly set to 'false'
+      if (isActive !== 'false' && isActive !== false) {
+        where.user = { active: true };
+      }
     }
 
     // Filter by self-identified internship

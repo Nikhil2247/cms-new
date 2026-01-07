@@ -61,6 +61,14 @@ export class FacultyController {
     return this.facultyService.getDashboard(req.user.userId);
   }
 
+  @Get('dashboard/monthly-stats')
+  @Roles(Role.TEACHER, Role.TEACHER)
+  @ApiOperation({ summary: 'Get current month compliance stats (uses 10-day rule)' })
+  @ApiResponse({ status: 200, description: 'Monthly stats retrieved successfully' })
+  async getCurrentMonthStats(@Req() req) {
+    return this.facultyService.getCurrentMonthStats(req.user.userId);
+  }
+
   @Get('profile')
   @Roles(Role.TEACHER, Role.TEACHER)
   @ApiOperation({ summary: 'Get faculty profile' })

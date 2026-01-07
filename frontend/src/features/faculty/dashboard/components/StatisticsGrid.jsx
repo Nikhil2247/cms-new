@@ -87,97 +87,28 @@ const StatCard = ({
   );
 };
 
-const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitLogs = [], joiningLetters = [], onRefresh }) => {
+const StatisticsGrid = ({ stats = {}, monthlyStats = null, students = [], monthlyReports = [], visitLogs = [], joiningLetters = [], onRefresh }) => {
   const [monthlyReportsModalVisible, setMonthlyReportsModalVisible] = useState(false);
   const [visitLogsModalVisible, setVisitLogsModalVisible] = useState(false);
   const [joiningLettersModalVisible, setJoiningLettersModalVisible] = useState(false);
 
-  // Get current month start and formatted name
-  const currentMonthStart = useMemo(() => dayjs().startOf('month'), []);
-  const currentMonthEnd = useMemo(() => dayjs().endOf('month'), []);
+  // Get current month name for display
   const currentMonthName = useMemo(() => dayjs().format('MMMM YYYY'), []);
 
-  // Helper function to check if a student's internship is active in the current month
-  const isInternshipActiveInCurrentMonth = useMemo(() => (student) => {
-    // Get internship from various possible locations in the data structure
-    const internship = student.activeInternship ||
-                       student.internship ||
-                       student.application?.internship ||
-                       student.applications?.[0]?.internship ||
-                       student.applications?.[0];
-
-    // If no internship data, check if student has active status
-    if (!internship) {
-      // Fall back to checking student's hasActiveInternship flag or similar
-      // Use User SOT pattern: prefer user.active, fallback to isActive
-      return student.hasActiveInternship || (student.user?.active ?? student.isActive) || false;
-    }
-
-    // Get dates from internship or application level
-    const startDateStr = internship.startDate || student.application?.startDate || student.applications?.[0]?.startDate;
-    const endDateStr = internship.endDate || student.application?.endDate || student.applications?.[0]?.endDate;
-
-    // If no dates, assume active if internship exists
-    if (!startDateStr || !endDateStr) {
-      return true;
-    }
-
-    const startDate = dayjs(startDateStr);
-    const endDate = dayjs(endDateStr);
-
-    if (!startDate.isValid() || !endDate.isValid()) {
-      return true; // Assume active if dates are invalid
-    }
-
-    // Check if internship overlaps with current month
-    const startsBeforeOrDuringMonth = startDate.isBefore(currentMonthEnd) || startDate.isSame(currentMonthEnd, 'day');
-
-    // Apply the 5-day rule for end date
-    let effectiveEndDate = endDate;
-    if (endDate.date() <= 5) {
-      effectiveEndDate = endDate.subtract(1, 'month').endOf('month');
-    }
-
-    const endsAfterOrDuringMonth = effectiveEndDate.isAfter(currentMonthStart) || effectiveEndDate.isSame(currentMonthStart, 'month');
-
-    return startsBeforeOrDuringMonth && endsAfterOrDuringMonth;
-  }, [currentMonthStart, currentMonthEnd]);
-
-  // Get students with active internships in current month
-  const studentsActiveThisMonth = useMemo(() => {
-    const activeStudents = students.filter(student => isInternshipActiveInCurrentMonth(student));
-    // If no students pass the filter, use all students as fallback
-    return activeStudents.length > 0 ? activeStudents : students;
-  }, [students, isInternshipActiveInCurrentMonth]);
-
-  // Count reports submitted in current month from monthlyReports array
-  const currentMonthReportsCount = useMemo(() => {
-    return monthlyReports.filter(report => {
-      const reportDate = dayjs(report.createdAt || report.submittedAt);
-      return reportDate.isValid() &&
-             (reportDate.isAfter(currentMonthStart) || reportDate.isSame(currentMonthStart, 'day')) &&
-             (reportDate.isBefore(currentMonthEnd) || reportDate.isSame(currentMonthEnd, 'day'));
-    }).length;
-  }, [monthlyReports, currentMonthStart, currentMonthEnd]);
-
-  // Count visits completed in current month from visitLogs array
-  const currentMonthVisitsCount = useMemo(() => {
-    return visitLogs.filter(visit => {
-      const visitDate = dayjs(visit.visitDate || visit.createdAt);
-      return visitDate.isValid() &&
-             (visitDate.isAfter(currentMonthStart) || visitDate.isSame(currentMonthStart, 'day')) &&
-             (visitDate.isBefore(currentMonthEnd) || visitDate.isSame(currentMonthEnd, 'day'));
-    }).length;
-  }, [visitLogs, currentMonthStart, currentMonthEnd]);
+  // Use backend-calculated monthly stats (follows 10-day rule)
+  // Fall back to 0 if data not yet loaded
+  const expectedReportsThisMonth = monthlyStats?.expectedReportsThisMonth ?? 0;
+  const submittedReportsThisMonth = monthlyStats?.submittedReportsThisMonth ?? 0;
+  const expectedVisitsThisMonth = monthlyStats?.expectedVisitsThisMonth ?? 0;
+  const completedVisitsThisMonth = monthlyStats?.completedVisitsThisMonth ?? 0;
 
   // Total students (with breakdown)
   const totalStudents = stats.totalStudents || students.length || 0;
   const internalStudents = stats.internalStudents || 0;
   const externalStudents = stats.externalStudents || 0;
 
-  // Expected for current month = number of students with active internships this month
-  // Each student needs 1 report and 1 visit per month
-  const expectedThisMonth = studentsActiveThisMonth.length;
+  // Expected for current month comes from backend (uses 10-day rule)
+  const expectedThisMonth = expectedReportsThisMonth;
 
   // Get grievance stats from API
   const pendingGrievances = stats.pendingGrievances || 0;
@@ -223,25 +154,25 @@ const StatisticsGrid = ({ stats = {}, students = [], monthlyReports = [], visitL
     },
     {
       title: 'Monthly Reports',
-      value: currentMonthReportsCount,
-      secondaryValue: expectedThisMonth,
+      value: submittedReportsThisMonth,
+      secondaryValue: expectedReportsThisMonth,
       icon: <FileTextOutlined />,
       iconBgColor: '#f3e8ff',
       iconColor: '#9333ea',
       valueColor: '#9333ea',
-      subtitle: `Submitted - ${currentMonthName}`,
+      subtitle: `Submitted - ${monthlyStats?.monthName || currentMonthName}`,
       hasViewMore: true,
       onViewMore: () => setMonthlyReportsModalVisible(true),
     },
     {
       title: 'Visit Logs',
-      value: currentMonthVisitsCount,
-      secondaryValue: expectedThisMonth,
+      value: completedVisitsThisMonth,
+      secondaryValue: expectedVisitsThisMonth,
       icon: <VideoCameraOutlined />,
       iconBgColor: '#d1fae5',
       iconColor: '#10b981',
       valueColor: '#10b981',
-      subtitle: `Completed - ${currentMonthName}`,
+      subtitle: `Completed - ${monthlyStats?.monthName || currentMonthName}`,
       hasViewMore: true,
       onViewMore: () => setVisitLogsModalVisible(true),
     },

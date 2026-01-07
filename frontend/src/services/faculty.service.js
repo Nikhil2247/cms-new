@@ -11,6 +11,12 @@ export const facultyService = {
     return response.data;
   },
 
+  // Current month compliance stats (uses 10-day rule)
+  async getCurrentMonthStats() {
+    const response = await API.get('/faculty/dashboard/monthly-stats');
+    return response.data;
+  },
+
   // Profile
   async getProfile() {
     const response = await API.get('/faculty/profile');

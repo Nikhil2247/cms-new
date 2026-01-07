@@ -36,11 +36,8 @@ import {
   CarOutlined,
   VideoCameraOutlined,
   ScheduleOutlined,
-  FileTextOutlined,
   EyeOutlined,
   TableOutlined,
-  ClockCircleOutlined,
-  WarningOutlined,
   IdcardOutlined,
   BankOutlined,
 } from '@ant-design/icons';
@@ -799,32 +796,6 @@ const FacultyProgress = () => {
                         <CheckCircleOutlined style={{ marginRight: 4 }} />
                         {stats.totalVisits || 0} Total Visits
                       </Tag>
-                      <Tooltip title={`Monthly Reports for ${stats.currentMonth ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][stats.currentMonth - 1]} ${stats.currentYear}` : 'Current Month'}`}>
-                        <Tag color={stats.reportsPendingThisMonth > 0 ? 'orange' : 'purple'} bordered={false} className="rounded-full">
-                          <FileTextOutlined style={{ marginRight: 4 }} />
-                          Reports: {stats.reportsSubmittedThisMonth || 0}/{stats.reportsExpectedThisMonth || 0}
-                        </Tag>
-                      </Tooltip>
-                      <Tooltip title={`Faculty Visits for ${stats.currentMonth ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][stats.currentMonth - 1]} ${stats.currentYear}` : 'Current Month'}`}>
-                        <Tag color={stats.visitsPendingThisMonth > 0 ? 'orange' : 'cyan'} bordered={false} className="rounded-full">
-                          <CarOutlined style={{ marginRight: 4 }} />
-                          Visits: {stats.visitsCompletedThisMonth || 0}/{stats.visitsExpectedThisMonth || 0}
-                        </Tag>
-                      </Tooltip>
-                      <Tag color="cyan" bordered={false} className="rounded-full">
-                        <ClockCircleOutlined style={{ marginRight: 4 }} />
-                        {stats.visitsLastMonth || 0} Last Month
-                      </Tag>
-                      <Tag color="orange" bordered={false} className="rounded-full">
-                        <ScheduleOutlined style={{ marginRight: 4 }} />
-                        {stats.scheduledNextMonth || 0} Scheduled
-                      </Tag>
-                      {stats.missedVisits > 0 && (
-                        <Tag color="red" bordered={false} className="rounded-full">
-                          <WarningOutlined style={{ marginRight: 4 }} />
-                          {stats.missedVisits} Missed
-                        </Tag>
-                      )}
                     </div>
                   </div>
                 </div>

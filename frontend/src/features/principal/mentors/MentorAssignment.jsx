@@ -78,6 +78,7 @@ const MentorAssignment = () => {
     hasMentor: '',
     batchId: '',
     branchId: '',
+    isActive: 'true', // Default to showing only active students
   });
 
   // Use memoized selectors from principalSelectors for better performance

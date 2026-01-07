@@ -7,6 +7,7 @@ import {
   MinusOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
+import { isMonthIncluded } from '../../../../utils/monthlyCycle';
 
 const { Title, Text } = Typography;
 
@@ -35,6 +36,7 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
   const monthColumns = generateMonthColumns();
 
   // Calculate pending visits summary (students without visits in current/past months)
+  // Uses 10-day rule: only counts months where student has >10 days
   const pendingVisitsSummary = useMemo(() => {
     const summary = {};
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -50,17 +52,18 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
                          studentItem.internship;
 
       const internshipStartDate = activeApplication?.startDate || internship?.startDate;
-      if (!internshipStartDate) return;
-
-      const startDate = new Date(internshipStartDate);
-      const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+      const internshipEndDate = activeApplication?.endDate || internship?.endDate;
+      if (!internshipStartDate || !internshipEndDate) return;
 
       // Check each past month for missing visits
       monthColumns.forEach(col => {
         const monthDate = new Date(col.year, col.month - 1, 1);
 
-        // Only check past months after internship start
-        if (monthDate >= startMonth && monthDate <= currentMonth) {
+        // Use 10-day rule to check if this month should be included
+        const monthIncluded = isMonthIncluded(internshipStartDate, internshipEndDate, col.year, col.month);
+
+        // Only check past months that are included based on 10-day rule
+        if (monthIncluded && monthDate <= currentMonth) {
           const hasVisit = visitLogs.some(v => {
             const visitDate = new Date(v.visitDate);
             const studentMatch = v.application?.studentId === student.id ||
@@ -136,20 +139,16 @@ const VisitLogsOverviewModal = ({ visible, onClose, students = [], visitLogs = [
         const monthDate = new Date(col.year, col.month - 1, 1);
         let status = 'future'; // Default: future month
 
-        if (internshipStartDate) {
-          const startDate = new Date(internshipStartDate);
-          const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        // Use 10-day rule to check if this month should be included
+        const monthIncluded = internshipStartDate && internshipEndDate
+          ? isMonthIncluded(internshipStartDate, internshipEndDate, col.year, col.month)
+          : false;
 
-          if (monthDate < startMonth) {
-            status = 'na'; // Before internship start
-          } else if (internshipEndDate) {
-            const endDate = new Date(internshipEndDate);
-            if (monthDate > endDate) {
-              status = 'na'; // After internship end
-            }
-          }
-        } else {
-          // No start date - mark as N/A (internship not properly set up)
+        if (!internshipStartDate || !internshipEndDate) {
+          // No dates - mark as N/A (internship not properly set up)
+          status = 'na';
+        } else if (!monthIncluded) {
+          // Month doesn't meet 10-day rule - mark as N/A
           status = 'na';
         }
 
