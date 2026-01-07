@@ -438,6 +438,130 @@ export class FacultyService {
   }
 
   /**
+   * Get current month compliance stats for faculty dashboard.
+   * Uses the 10-day rule to determine which students should submit reports/visits this month.
+   */
+  async getCurrentMonthStats(facultyId: string) {
+    const cacheKey = `faculty:monthlyStats:${facultyId}`;
+
+    return this.cache.getOrSet(
+      cacheKey,
+      async () => {
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1; // 1-12
+        const currentYear = now.getFullYear();
+
+        // Get first and last day of current month
+        const monthStart = new Date(currentYear, currentMonth - 1, 1);
+        monthStart.setHours(0, 0, 0, 0);
+        const monthEnd = new Date(currentYear, currentMonth, 0);
+        monthEnd.setHours(23, 59, 59, 999);
+
+        // Get all active internships for assigned students
+        const assignments = await this.prisma.mentorAssignment.findMany({
+          where: {
+            mentorId: facultyId,
+            isActive: true,
+            student: { user: { active: true } },
+          },
+          select: {
+            studentId: true,
+            student: {
+              select: {
+                internshipApplications: {
+                  where: {
+                    isActive: true,
+                    isSelfIdentified: true,
+                    status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
+                  },
+                  select: {
+                    id: true,
+                    startDate: true,
+                    endDate: true,
+                    joiningDate: true,
+                    completionDate: true,
+                    monthlyReports: {
+                      where: {
+                        isDeleted: false,
+                        reportMonth: currentMonth,
+                        reportYear: currentYear,
+                      },
+                      select: { id: true, status: true },
+                    },
+                    facultyVisitLogs: {
+                      where: {
+                        isDeleted: false,
+                        facultyId,
+                        visitDate: {
+                          gte: monthStart,
+                          lte: monthEnd,
+                        },
+                        status: 'COMPLETED',
+                      },
+                      select: { id: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        let expectedThisMonth = 0;
+        let submittedReportsThisMonth = 0;
+        let completedVisitsThisMonth = 0;
+
+        for (const assignment of assignments) {
+          for (const app of assignment.student.internshipApplications) {
+            const startDate = app.startDate || app.joiningDate;
+            const endDate = app.endDate || app.completionDate;
+
+            if (!startDate || !endDate) continue;
+
+            // Use the monthly cycle utility to check if current month is included (10-day rule)
+            const includedMonths = calculateExpectedMonths(startDate, endDate);
+            const isCurrentMonthIncluded = includedMonths.some(
+              (m) => m.monthNumber === currentMonth && m.year === currentYear,
+            );
+
+            if (isCurrentMonthIncluded) {
+              expectedThisMonth++;
+
+              // Count submitted reports for this month
+              const hasReport = app.monthlyReports.some(
+                (r) => r.status === 'APPROVED' || r.status === 'SUBMITTED',
+              );
+              if (hasReport) submittedReportsThisMonth++;
+
+              // Count completed visits for this month
+              if (app.facultyVisitLogs.length > 0) completedVisitsThisMonth++;
+            }
+          }
+        }
+
+        // Get month name for display
+        const monthNames = [
+          'January', 'February', 'March', 'April', 'May', 'June',
+          'July', 'August', 'September', 'October', 'November', 'December',
+        ];
+
+        return {
+          currentMonth,
+          currentYear,
+          monthName: monthNames[currentMonth - 1],
+          expectedReportsThisMonth: expectedThisMonth,
+          submittedReportsThisMonth,
+          expectedVisitsThisMonth: expectedThisMonth,
+          completedVisitsThisMonth,
+          // Include the 10-day rule info for transparency
+          minDaysForInclusion: MONTHLY_CYCLE.MIN_DAYS_FOR_INCLUSION,
+        };
+      },
+      { ttl: 300, tags: ['faculty', `faculty:${facultyId}`] },
+    );
+  }
+
+  /**
    * Get assigned students list with pagination
    */
   async getAssignedStudents(

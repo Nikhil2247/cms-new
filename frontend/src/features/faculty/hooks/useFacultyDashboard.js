@@ -2,6 +2,7 @@ import { useEffect, useCallback, useMemo, useRef, useTransition } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchFacultyDashboard,
+  fetchMonthlyStats,
   fetchAssignedStudents,
   fetchVisitLogs,
   fetchProfile,
@@ -15,6 +16,7 @@ import {
   rejectApplication,
   submitFeedback,
   selectDashboard,
+  selectMonthlyStats,
   selectStudents,
   selectVisitLogs,
   selectProfile,
@@ -35,6 +37,7 @@ export const useFacultyDashboard = () => {
 
   // Selectors
   const dashboard = useSelector(selectDashboard);
+  const monthlyStats = useSelector(selectMonthlyStats);
   const students = useSelector(selectStudents);
   const visitLogs = useSelector(selectVisitLogs);
   const profile = useSelector(selectProfile);
@@ -46,16 +49,18 @@ export const useFacultyDashboard = () => {
   // Derived loading state from Redux
   const isLoading = useMemo(() => (
     dashboard.loading ||
+    monthlyStats.loading ||
     students.loading ||
     visitLogs.loading ||
     monthlyReports.loading ||
     joiningLetters.loading
-  ), [dashboard.loading, students.loading, visitLogs.loading, monthlyReports.loading, joiningLetters.loading]);
+  ), [dashboard.loading, monthlyStats.loading, students.loading, visitLogs.loading, monthlyReports.loading, joiningLetters.loading]);
 
   // Fetch all dashboard data - using startTransition for non-blocking updates
   const fetchDashboardData = useCallback((forceRefresh = false) => {
     startTransition(() => {
       dispatch(fetchFacultyDashboard({ forceRefresh }));
+      dispatch(fetchMonthlyStats({ forceRefresh }));
       dispatch(fetchAssignedStudents({ forceRefresh }));
       dispatch(fetchVisitLogs({ forceRefresh }));
       dispatch(fetchProfile());
@@ -216,6 +221,8 @@ export const useFacultyDashboard = () => {
       monthlyReports: monthlyReports.list,
       joiningLetters: joiningLetters.list,
     },
+    // Monthly stats from backend (uses 10-day rule)
+    monthlyStats: monthlyStats.data,
     students: students.list,
     visitLogs: visitLogs.list,
     monthlyReports: monthlyReports.list,

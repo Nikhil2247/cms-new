@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { uploadMonthlyReport, fetchMonthlyReports } from '../../store/facultySlice';
+import { isMonthIncluded } from '../../../../utils/monthlyCycle';
 
 const { Title, Text } = Typography;
 
@@ -231,20 +232,16 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
         const monthDate = new Date(col.year, col.month - 1, 1);
         let status = 'future'; // Default: future month
 
-        if (internshipStartDate) {
-          const startDate = new Date(internshipStartDate);
-          const startMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+        // Use 10-day rule to check if this month should be included
+        const monthIncluded = internshipStartDate && internshipEndDate
+          ? isMonthIncluded(internshipStartDate, internshipEndDate, col.year, col.month)
+          : false;
 
-          if (monthDate < startMonth) {
-            status = 'na'; // Before internship start
-          } else if (internshipEndDate) {
-            const endDate = new Date(internshipEndDate);
-            if (monthDate > endDate) {
-              status = 'na'; // After internship end
-            }
-          }
-        } else {
-          // No start date - mark as N/A (internship not properly set up)
+        if (!internshipStartDate || !internshipEndDate) {
+          // No dates - mark as N/A (internship not properly set up)
+          status = 'na';
+        } else if (!monthIncluded) {
+          // Month doesn't meet 10-day rule - mark as N/A
           status = 'na';
         }
 

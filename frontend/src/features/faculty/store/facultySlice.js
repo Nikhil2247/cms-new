@@ -11,6 +11,11 @@ const initialState = {
     loading: false,
     error: null,
   },
+  monthlyStats: {
+    data: null,
+    loading: false,
+    error: null,
+  },
   students: {
     list: [],
     total: 0,
@@ -73,6 +78,7 @@ const initialState = {
   },
   lastFetched: {
     dashboard: null,
+    monthlyStats: null,
     students: null,
     studentsKey: null,
     visitLogs: null,
@@ -108,6 +114,26 @@ export const fetchFacultyDashboard = createAsyncThunk(
       return response;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dashboard');
+    }
+  }
+);
+
+// Monthly Stats (uses 10-day rule from backend)
+export const fetchMonthlyStats = createAsyncThunk(
+  'faculty/fetchMonthlyStats',
+  async (params, { getState, rejectWithValue }) => {
+    try {
+      const state = getState();
+      const lastFetched = state.faculty.lastFetched.monthlyStats;
+
+      if (!params?.forceRefresh && isCacheValid(lastFetched, CACHE_DURATIONS.DASHBOARD)) {
+        return { cached: true };
+      }
+
+      const response = await facultyService.getCurrentMonthStats();
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch monthly stats');
     }
   }
 );
@@ -1017,6 +1043,23 @@ const facultySlice = createSlice({
         state.dashboard.error = action.payload;
       })
 
+      // Monthly Stats
+      .addCase(fetchMonthlyStats.pending, (state) => {
+        state.monthlyStats.loading = true;
+        state.monthlyStats.error = null;
+      })
+      .addCase(fetchMonthlyStats.fulfilled, (state, action) => {
+        state.monthlyStats.loading = false;
+        if (!action.payload.cached) {
+          state.monthlyStats.data = action.payload;
+          state.lastFetched.monthlyStats = Date.now();
+        }
+      })
+      .addCase(fetchMonthlyStats.rejected, (state, action) => {
+        state.monthlyStats.loading = false;
+        state.monthlyStats.error = action.payload;
+      })
+
       // Profile
       .addCase(fetchProfile.pending, (state) => {
         state.profile.loading = true;
@@ -1601,6 +1644,7 @@ export const {
 
 // Selectors
 export const selectDashboard = (state) => state.faculty.dashboard;
+export const selectMonthlyStats = (state) => state.faculty.monthlyStats;
 export const selectStudents = (state) => state.faculty.students;
 export const selectVisitLogs = (state) => state.faculty.visitLogs;
 export const selectMonthlyReports = (state) => state.faculty.monthlyReports;
@@ -1621,6 +1665,7 @@ export const selectMostRecentFetch = (state) => {
   const { lastFetched } = state.faculty;
   const timestamps = [
     lastFetched.dashboard,
+    lastFetched.monthlyStats,
     lastFetched.students,
     lastFetched.visitLogs,
     lastFetched.monthlyReports,

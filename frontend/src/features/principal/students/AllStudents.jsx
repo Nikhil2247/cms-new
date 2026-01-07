@@ -63,7 +63,7 @@ import {
 } from '@ant-design/icons';
 import { credentialsService } from '../../../services/credentials.service';
 import principalService from '../../../services/principal.service';
-import lookupService from '../../../services/lookup.service';
+import { useBranches } from '../../shared/hooks/useLookup';
 import StudentModal from './StudentModal';
 import dayjs from 'dayjs';
 import { getPresignedUrl } from '../../../utils/imageUtils';
@@ -80,11 +80,13 @@ const AllStudents = () => {
   const loading = useSelector(selectStudentsLoading);
   const pagination = useSelector(selectStudentsPagination);
 
+  // Use global lookup data for branches (cached)
+  const { activeBranches: branches } = useBranches();
+
   // Local state
   const [search, setSearch] = useState('');
   const [activeStatusFilter, setActiveStatusFilter] = useState('active');
   const [branchFilter, setBranchFilter] = useState('all');
-  const [branches, setBranches] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedStudentFull, setSelectedStudentFull] = useState(null);
   const [loadingStudentDetails, setLoadingStudentDetails] = useState(false);
@@ -118,21 +120,6 @@ const AllStudents = () => {
     return params;
   }, [search, activeStatusFilter, branchFilter]);
 
-  // Fetch branches on mount
-  useEffect(() => {
-    const loadBranches = async () => {
-      try {
-        const response = await lookupService.getBranches();
-        // Handle both { data: [...] } and direct array response
-        const branchList = Array.isArray(response) ? response : (response?.data || response?.branches || []);
-        setBranches(branchList);
-      } catch (error) {
-        console.error('Failed to load branches:', error);
-        setBranches([]);
-      }
-    };
-    loadBranches();
-  }, []);
 
   // Initial fetch and filter change
   useEffect(() => {

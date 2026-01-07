@@ -30,6 +30,7 @@ const FacultyDashboard = () => {
     isRevalidating, // NEW: SWR revalidation state
     lastFetched, // Timestamp of most recent data fetch
     dashboard,
+    monthlyStats, // Backend-calculated stats using 10-day rule
     students,
     visitLogs,
     joiningLetters,
@@ -166,6 +167,7 @@ const FacultyDashboard = () => {
             <div className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
               <StatisticsGrid
                 stats={stats}
+                monthlyStats={monthlyStats}
                 students={students}
                 monthlyReports={monthlyReports}
                 visitLogs={visitLogs}
