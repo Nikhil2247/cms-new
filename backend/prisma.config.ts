@@ -4,7 +4,7 @@ import { defineConfig } from 'prisma/config';
 
 // Use process.env directly with fallback for CI/build environments
 // where DATABASE_URL might not be set
-const databaseUrl = process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder';
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://postgres:postgres123@localhost:5432/cms_db?schema=public';
 
 export default defineConfig({
   schema: './prisma/schema.prisma',
