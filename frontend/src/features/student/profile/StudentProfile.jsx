@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import API from "../../../services/api";
+import studentService from "../../../services/student.service";
 import { getImageUrl, openFileWithPresignedUrl } from "../../../utils/imageUtils";
 import ProfileAvatar from "../../../components/common/ProfileAvatar";
+import MaskedField from "../../../components/common/MaskedField";
 import { fetchStudentProfile, updateProfile } from "../store/studentSlice";
 import {
   Card,
@@ -66,6 +68,39 @@ export default function StudentProfile() {
   const [imageUploading, setImageUploading] = useState(false);
   const toastShownRef = useRef(false);
   const { token } = theme.useToken();
+
+  // Cache for unmasked contact data
+  const unmaskedDataRef = useRef(null);
+
+  // Handler to reveal masked contact fields via API
+  const handleRevealContact = useCallback(async (fieldName) => {
+    // Return cached data if available
+    if (unmaskedDataRef.current) {
+      const fieldMap = {
+        'Email': unmaskedDataRef.current.email,
+        'email': unmaskedDataRef.current.email,
+        'Phone': unmaskedDataRef.current.phoneNo,
+        'phone': unmaskedDataRef.current.phoneNo,
+        'Parent Contact': unmaskedDataRef.current.parentContact,
+        'parentContact': unmaskedDataRef.current.parentContact,
+      };
+      return fieldMap[fieldName] || null;
+    }
+
+    // Fetch unmasked data from API
+    const data = await studentService.getOwnUnmaskedContact();
+    unmaskedDataRef.current = data;
+
+    const fieldMap = {
+      'Email': data.email,
+      'email': data.email,
+      'Phone': data.phoneNo,
+      'phone': data.phoneNo,
+      'Parent Contact': data.parentContact,
+      'parentContact': data.parentContact,
+    };
+    return fieldMap[fieldName] || null;
+  }, []);
 
   // Use Redux profile data
   const student = reduxProfile;
@@ -354,13 +389,13 @@ export default function StudentProfile() {
       </div>
     );
 
-  // Info Card Component
-  const InfoCard = ({ icon, label, value, color = token.colorPrimary }) => (
+  // Info Card Component with optional masking support
+  const InfoCard = ({ icon, label, value, color = token.colorPrimary, maskedValue, onReveal }) => (
     <div
       className="p-4 rounded-xl border flex items-center gap-3 transition-shadow hover:shadow-sm"
-      style={{ 
-        backgroundColor: token.colorBgContainer, 
-        borderColor: token.colorBorderSecondary 
+      style={{
+        backgroundColor: token.colorBgContainer,
+        borderColor: token.colorBorderSecondary
       }}
     >
       <div
@@ -373,9 +408,19 @@ export default function StudentProfile() {
         <Text className="text-[10px] uppercase font-semibold tracking-wider block" style={{ color: token.colorTextTertiary }}>
           {label}
         </Text>
-        <Text className="text-sm font-medium block truncate" style={{ color: token.colorText }}>
-          {value || 'N/A'}
-        </Text>
+        {maskedValue && onReveal ? (
+          <MaskedField
+            maskedValue={maskedValue}
+            fieldName={label}
+            onReveal={onReveal}
+            className="text-sm font-medium"
+            style={{ color: token.colorText }}
+          />
+        ) : (
+          <Text className="text-sm font-medium block truncate" style={{ color: token.colorText }}>
+            {value || 'N/A'}
+          </Text>
+        )}
       </div>
     </div>
   );
@@ -502,26 +547,29 @@ export default function StudentProfile() {
           <InfoCard
             icon={<MailOutlined className="text-base" />}
             label="Email"
-            value={student?.user?.email || student.email}
+            maskedValue={student?.user?.email || student.email}
+            onReveal={handleRevealContact}
             color={token.colorPrimary}
           />
           <InfoCard
             icon={<PhoneOutlined className="text-base" />}
             label="Phone"
-            value={student?.user?.phoneNo || student.contact}
+            maskedValue={student?.user?.phoneNo || student.contact}
+            onReveal={handleRevealContact}
             color={token.colorSuccess}
           />
           <InfoCard
             icon={<CalendarOutlined className="text-base" />}
             label="Date of Birth"
             value={(student?.user?.dob || student.dob)?.slice(0, 10)}
-            color={token.colorWarning} // Replaced hardcoded purple
+            color={token.colorWarning}
           />
           <InfoCard
             icon={<TeamOutlined className="text-base" />}
             label="Parent Contact"
-            value={student.parentContact}
-            color={token.colorWarning} // Replaced hardcoded amber
+            maskedValue={student.parentContact}
+            onReveal={handleRevealContact}
+            color={token.colorWarning}
           />
         </div>
 
@@ -600,7 +648,14 @@ export default function StudentProfile() {
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Parent Contact</Text>
-                            <Text className="text-xs font-semibold" style={{ color: token.colorText }}>{student.parentContact || "N/A"}</Text>
+                            <MaskedField
+                              maskedValue={student.parentContact}
+                              fieldName="parentContact"
+                              onReveal={handleRevealContact}
+                              className="text-xs font-semibold"
+                              style={{ color: token.colorText }}
+                              placeholder="N/A"
+                            />
                           </div>
                           <div className="flex justify-between items-center p-3 rounded-lg" style={{ backgroundColor: token.colorFillQuaternary }}>
                             <Text className="text-xs" style={{ color: token.colorTextSecondary }}>Gender</Text>

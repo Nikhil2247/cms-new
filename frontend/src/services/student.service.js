@@ -177,6 +177,19 @@ export const studentService = {
   },
 
   // =====================
+  // Unmasked Contact Details (for masked reveal feature)
+  // =====================
+  /**
+   * Get the current user's own unmasked contact details.
+   * Used to reveal masked phone numbers, emails in the profile page.
+   * @returns {Promise<{email: string, phoneNo: string, parentContact?: string}>}
+   */
+  async getOwnUnmaskedContact() {
+    const response = await API.get('/auth/me/unmasked-contact');
+    return response.data;
+  },
+
+  // =====================
   // Enrollments
   // =====================
   async getEnrollments(params = {}) {
