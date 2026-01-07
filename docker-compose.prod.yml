@@ -65,8 +65,8 @@ services:
       # File Storage (connects to MinIO service)
       - MINIO_ENDPOINT=http://minio:9000
       - MINIO_BUCKET=cms-uploads
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin123
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin123
       - MINIO_REGION=${MINIO_REGION:-us-east-1}
       # PM2 - Limited instances for resource constraints
       - PM2_INSTANCES=2
