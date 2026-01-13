@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"47ccd2a2a15b45d48e58aebd0c7d9513","collectionName":"internship_applications","type":"collection"}
