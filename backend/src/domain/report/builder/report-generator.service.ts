@@ -414,6 +414,11 @@ export class ReportGeneratorService {
             id: true,
             institutionId: true,
             user: { select: { name: true, rollNumber: true, branchName: true, active: true } },
+            mentorAssignments: {
+              where: { isActive: true },
+              select: { mentor: { select: { name: true } } },
+              take: 1,
+            },
           },
         },
         mentor: { select: { id: true, name: true } },
@@ -437,19 +442,25 @@ export class ReportGeneratorService {
         }
       }
 
+      // Get mentor name from application's direct mentor or from student's mentor assignment
+      const mentorName = application.mentor?.name
+        ?? application.student.mentorAssignments?.[0]?.mentor?.name
+        ?? 'N/A';
+
       return {
         studentName: application.student.user?.name,
         rollNumber: application.student.user?.rollNumber,
-        branch: application.student.user?.branchName,
+        branchName: application.student.user?.branchName,
         companyName: application.companyName,
         companyCity,
         jobProfile: application.jobProfile,
+        appliedDate: application.appliedDate,
         startDate: application.startDate,
         endDate: application.endDate,
         duration: application.internshipDuration,
         status: application.status,
         verificationStatus: (application as any).verificationStatus ?? 'N/A',
-        mentorName: application.mentor?.name ?? 'N/A',
+        mentorName,
         reportsSubmitted: application._count.monthlyReports,
         location: application.companyAddress,
         isSelfIdentified: application.isSelfIdentified,
