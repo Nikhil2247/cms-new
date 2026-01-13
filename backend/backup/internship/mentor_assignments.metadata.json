@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"caf336f44d3f44168f74eee5d5caa7b5","collectionName":"mentor_assignments","type":"collection"}
