@@ -1,6 +1,6 @@
 import React from 'react';
 import { Menu, Button, Tooltip } from 'antd';
-import { FileAddOutlined } from '@ant-design/icons';
+import { FileAddOutlined, HeartFilled } from '@ant-design/icons';
 import { Link, useLocation } from 'react-router-dom';
 
 // Sidebar colors from theme
@@ -172,6 +172,28 @@ const SidebarMenu = ({ sections, collapsed, onMobileClose, isMobile }) => {
                 />
               </Link>
             </Tooltip>
+          </div>
+        )}
+        
+        {/* Built by Section */}
+        {!collapsed && (
+          <div
+            style={{
+              marginTop: 12,
+              paddingTop: 12,
+              borderTop: '1px solid rgba(255,255,255,0.06)',
+              // textAlign: 'center',
+            }}
+          >
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', lineHeight: 1.4 }}>
+              Made with <HeartFilled style={{ color: '#ef4444', fontSize: 10 }} /> by <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>Nikhil Kumar</span>
+              <br />
+              under the guidance of
+              <br />
+              <span style={{ fontWeight: 600, color: 'rgba(255,255,255,0.5)' }}>Sukeerat Pal Singh</span>
+              <br />
+              <span style={{ fontSize: 10 }}>Govt. Polytechnic College Talwara</span>
+            </div>
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ export const internshipReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'companyName', label: 'Company', type: 'string', default: true, sortable: true },
       { id: 'jobProfile', label: 'Job Profile', type: 'string', default: true },
       { id: 'status', label: 'Status', type: 'string', default: true, sortable: true },
+      { id: 'internshipStatus', label: 'Internship Status', type: 'string', default: true },
       { id: 'appliedDate', label: 'Applied Date', type: 'date', default: true, sortable: true },
       { id: 'startDate', label: 'Start Date', type: 'date', default: true },
       { id: 'endDate', label: 'End Date', type: 'date', default: true },

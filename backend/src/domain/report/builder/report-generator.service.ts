@@ -447,6 +447,30 @@ export class ReportGeneratorService {
         ?? application.student.mentorAssignments?.[0]?.mentor?.name
         ?? 'N/A';
 
+      // Determine internship status (same logic as student directory report)
+      let internshipStatus = 'Not Started';
+      switch (application.status) {
+        case 'COMPLETED':
+          internshipStatus = 'Completed';
+          break;
+        case 'JOINED':
+        case 'APPROVED':
+        case 'SELECTED':
+          internshipStatus = 'In Progress';
+          break;
+        case 'APPLIED':
+        case 'UNDER_REVIEW':
+        case 'SHORTLISTED':
+          internshipStatus = 'Applied';
+          break;
+        case 'REJECTED':
+        case 'WITHDRAWN':
+          internshipStatus = 'Not Active';
+          break;
+        default:
+          internshipStatus = application.status ?? 'Unknown';
+      }
+
       return {
         studentName: application.student.user?.name,
         rollNumber: application.student.user?.rollNumber,
@@ -459,6 +483,7 @@ export class ReportGeneratorService {
         endDate: application.endDate,
         duration: application.internshipDuration,
         status: application.status,
+        internshipStatus,
         verificationStatus: (application as any).verificationStatus ?? 'N/A',
         mentorName,
         reportsSubmitted: application._count.monthlyReports,

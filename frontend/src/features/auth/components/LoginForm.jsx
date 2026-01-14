@@ -289,6 +289,15 @@ const LoginForm = () => {
             </Button>
           </Form>
 
+              {/* Built by Section */}
+        <div className="text-center mt-3">
+          <Text className="text-slate-400 dark:text-slate-500 !text-[11px] leading-relaxed">
+            Built by <span className="font-semibold text-slate-600 dark:text-slate-400">Nikhil Kumar</span> under the guidance of{' '}
+            <span className="font-semibold text-slate-600 dark:text-slate-400">Sukeerat Pal Singh</span><br />
+            from <span className="font-semibold text-slate-600 dark:text-slate-400">Govt. Polytechnic College Talwara</span>
+          </Text>
+        </div>
+
           {/* Footer */}
           {/* <div className="text-center mt-5 pt-4 border-t border-slate-100 dark:border-slate-800">
             <Text className="text-slate-500 dark:text-slate-400 text-sm">
