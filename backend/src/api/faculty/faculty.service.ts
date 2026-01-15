@@ -451,12 +451,6 @@ export class FacultyService {
         const currentMonth = now.getMonth() + 1; // 1-12
         const currentYear = now.getFullYear();
 
-        // Get first and last day of current month
-        const monthStart = new Date(currentYear, currentMonth - 1, 1);
-        monthStart.setHours(0, 0, 0, 0);
-        const monthEnd = new Date(currentYear, currentMonth, 0);
-        monthEnd.setHours(23, 59, 59, 999);
-
         // Get all active internships for assigned students
         const assignments = await this.prisma.mentorAssignment.findMany({
           where: {
@@ -492,13 +486,11 @@ export class FacultyService {
                       where: {
                         isDeleted: false,
                         facultyId,
-                        visitDate: {
-                          gte: monthStart,
-                          lte: monthEnd,
-                        },
+                        visitMonth: currentMonth,
+                        visitYear: currentYear,
                         status: 'COMPLETED',
                       },
-                      select: { id: true },
+                      select: { id: true, visitDate: true },
                     },
                   },
                 },
@@ -533,8 +525,10 @@ export class FacultyService {
               );
               if (hasReport) submittedReportsThisMonth++;
 
-              // Count completed visits for this month
-              if (app.facultyVisitLogs.length > 0) completedVisitsThisMonth++;
+              // Count completed visits for this month (check if at least one visit exists)
+              if (app.facultyVisitLogs && app.facultyVisitLogs.length > 0) {
+                completedVisitsThisMonth++;
+              }
             }
           }
         }

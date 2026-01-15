@@ -134,15 +134,29 @@ export class ExcelService {
    * Format value based on type and format
    */
   private formatValue(value: any, type: string, format?: string): any {
-    if (value === null || value === undefined) {
+    if (value === null || value === undefined || value === '') {
       return '';
     }
 
     switch (type) {
       case 'date':
-        return value instanceof Date ? value : new Date(value);
+        // If value is already a formatted string (e.g., "11/01/2026 18:30:00 IST"), return as-is
+        if (typeof value === 'string') {
+          return value;
+        }
+        // If it's a Date object, format it
+        if (value instanceof Date) {
+          const timestamp = value.getTime();
+          if (isNaN(timestamp) || !isFinite(timestamp)) return '';
+          return value.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+        }
+        return String(value);
       case 'number':
-        return typeof value === 'number' ? value : parseFloat(value) || 0;
+        if (typeof value === 'number') {
+          return isNaN(value) || !isFinite(value) ? '' : value;
+        }
+        const parsed = parseFloat(value);
+        return isNaN(parsed) || !isFinite(parsed) ? '' : parsed;
       case 'boolean':
         return value ? 'Yes' : 'No';
       default:

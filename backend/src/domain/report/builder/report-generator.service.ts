@@ -52,6 +52,83 @@ export class ReportGeneratorService {
   constructor(private prisma: PrismaService) {}
 
   /**
+   * Format a date to Indian Standard Time (IST, UTC+5:30)
+   * Returns formatted string in 'DD/MM/YYYY HH:mm:ss IST' format
+   * Returns empty string for null/undefined/invalid input
+   */
+  private formatToIST(date: any): string {
+    try {
+      if (date === null || date === undefined || date === '') return '';
+
+      // Convert to Date object
+      let dateObj: Date;
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string' || typeof date === 'number') {
+        dateObj = new Date(date);
+      } else {
+        return '';
+      }
+
+      // Check if date is valid
+      const timestamp = dateObj.getTime();
+      if (isNaN(timestamp) || !isFinite(timestamp)) return '';
+
+      // IST is UTC+5:30
+      const istOffset = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in milliseconds
+      const istDate = new Date(timestamp + istOffset);
+
+      const day = String(istDate.getUTCDate()).padStart(2, '0');
+      const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+      const year = istDate.getUTCFullYear();
+      const hours = String(istDate.getUTCHours()).padStart(2, '0');
+      const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+      const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+
+      return `${day}/${month}/${year} ${hours}:${minutes}:${seconds} IST`;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
+   * Format a date to Indian Standard Time (IST) - date only format
+   * Returns formatted string in 'DD/MM/YYYY' format
+   * Returns empty string for null/undefined/invalid input
+   */
+  private formatToISTDateOnly(date: any): string {
+    try {
+      if (date === null || date === undefined || date === '') return '';
+
+      // Convert to Date object
+      let dateObj: Date;
+      if (date instanceof Date) {
+        dateObj = date;
+      } else if (typeof date === 'string' || typeof date === 'number') {
+        dateObj = new Date(date);
+      } else {
+        return '';
+      }
+
+      // Check if date is valid
+      const timestamp = dateObj.getTime();
+      if (isNaN(timestamp) || !isFinite(timestamp)) return '';
+
+      // IST is UTC+5:30
+      const istOffset = 5.5 * 60 * 60 * 1000;
+      const istDate = new Date(timestamp + istOffset);
+
+      const day = String(istDate.getUTCDate()).padStart(2, '0');
+      const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+      const year = istDate.getUTCFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      return '';
+    }
+  }
+
+  /**
    * Parse common boolean-ish inputs coming from JSON bodies, query params, or forms.
    * Returns undefined when the value is "not provided".
    */
@@ -329,8 +406,8 @@ export class ReportGeneratorService {
         studentActive: student.user?.active ?? false,
         userActive: student.user?.active ?? false,
 
-        // Timestamps
-        createdAt: student.createdAt,
+        // Timestamps (formatted in IST)
+        createdAt: this.formatToIST(student.createdAt),
       };
     });
   }
@@ -394,16 +471,22 @@ export class ReportGeneratorService {
     }
 
     // Handle date range filter (startDate and endDate from transformed dateRange)
+    // Use createdAt for filtering since appliedDate/applicationDate default to migration timestamp
+    // Database stores dates in UTC, so use UTC for filtering
     if (filters?.startDate || filters?.endDate) {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
-        dateFilter.gte = new Date(filters.startDate);
+        // Parse date and create UTC start of day
+        const startDate = new Date(filters.startDate);
+        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
       }
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        // Parse date and create UTC end of day
+        const endDate = new Date(filters.endDate);
+        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
       }
-      // Apply to application's start date
-      where.startDate = dateFilter;
+      // Apply to createdAt (which has actual application date from migrated data)
+      where.createdAt = dateFilter;
     }
 
     const applications = await this.prisma.internshipApplication.findMany({
@@ -478,9 +561,11 @@ export class ReportGeneratorService {
         companyName: application.companyName,
         companyCity,
         jobProfile: application.jobProfile,
-        appliedDate: application.appliedDate,
-        startDate: application.startDate,
-        endDate: application.endDate,
+        // Use createdAt as the applied date since it's properly migrated from source data
+        // (appliedDate and applicationDate both default to migration timestamp)
+        appliedDate: this.formatToIST(application.createdAt),
+        startDate: this.formatToISTDateOnly(application.startDate),
+        endDate: this.formatToISTDateOnly(application.endDate),
         duration: application.internshipDuration,
         status: application.status,
         internshipStatus,
@@ -545,13 +630,16 @@ export class ReportGeneratorService {
     }
 
     // Handle date range filter (from transformed dateRange or direct startDate/endDate)
+    // Database stores dates in UTC, so use UTC for filtering
     if (filters?.startDate || filters?.endDate) {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
-        dateFilter.gte = new Date(filters.startDate);
+        const startDate = new Date(filters.startDate);
+        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
       }
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        const endDate = new Date(filters.endDate);
+        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
       }
       where.visitDate = dateFilter;
     }
@@ -594,11 +682,11 @@ export class ReportGeneratorService {
       rollNumber: visit.application.student.user?.rollNumber,
       studentActive: visit.application.student.user?.active,
       companyName: visit.application.companyName,
-      visitDate: visit.visitDate,
+      visitDate: this.formatToIST(visit.visitDate),
       visitType: visit.visitType,
       visitLocation: visit.visitLocation,
       followUpRequired: visit.followUpRequired,
-      nextVisitDate: visit.nextVisitDate,
+      nextVisitDate: this.formatToISTDateOnly(visit.nextVisitDate),
       meetingMinutes: visit.meetingMinutes,
     }));
   }
@@ -675,7 +763,7 @@ export class ReportGeneratorService {
       month: report.reportMonth,
       year: report.reportYear,
       status: report.status,
-      submittedAt: report.submittedAt,
+      submittedAt: this.formatToIST(report.submittedAt),
       reportFileUrl: report.reportFileUrl,
       isActive: report.student.user?.active ?? false,
       userActive: report.student.user?.active ?? true,
@@ -903,7 +991,7 @@ export class ReportGeneratorService {
         joiningReportStatus: activeApplications.length > 0 ? 'Submitted' : 'Not Started',
         monthlyReportsSubmitted: submittedReports.length,
         monthlyReportsPending: pendingReports.length,
-        lastReportDate: lastReport?.submittedAt ?? null,
+        lastReportDate: this.formatToIST(lastReport?.submittedAt ?? null),
         complianceScore,
         complianceLevel,
         isActive: student.user?.active ?? false,
@@ -1021,7 +1109,7 @@ export class ReportGeneratorService {
         institutionName: student.Institution?.name ?? '',
         mentorName,
         isActive: student.user?.active ?? false,
-        createdAt: student.createdAt,
+        createdAt: this.formatToIST(student.createdAt),
       };
     });
   }
@@ -1152,13 +1240,13 @@ export class ReportGeneratorService {
         institutionName: user.Institution?.name ?? 'N/A',
         rollNumber: user.rollNumber,
         designation: user.designation,
-        accountCreatedAt: user.createdAt,
+        accountCreatedAt: this.formatToIST(user.createdAt),
         loginCount: user.loginCount,
-        lastLoginAt: user.lastLoginAt,
-        previousLoginAt: user.previousLoginAt,
+        lastLoginAt: this.formatToIST(user.lastLoginAt),
+        previousLoginAt: this.formatToIST(user.previousLoginAt),
         lastLoginIp: user.lastLoginIp,
         hasChangedPassword: user.hasChangedDefaultPassword,
-        passwordChangedAt: user.passwordChangedAt,
+        passwordChangedAt: this.formatToIST(user.passwordChangedAt),
         daysSinceLastLogin,
         daysSinceCreation,
         isActive, // Combined: User.active AND (for students) Student record exists
@@ -1227,13 +1315,16 @@ export class ReportGeneratorService {
     }
 
     // Handle date range filter
+    // Database stores dates in UTC, so use UTC for filtering
     if (filters?.startDate || filters?.endDate) {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
-        dateFilter.gte = new Date(filters.startDate);
+        const startDate = new Date(filters.startDate);
+        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
       }
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        const endDate = new Date(filters.endDate);
+        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
       }
       where.createdAt = dateFilter;
     }
@@ -1279,8 +1370,8 @@ export class ReportGeneratorService {
         email: session.user.email,
         role: session.user.role,
         institutionName: session.user.Institution?.name ?? 'N/A',
-        sessionStartedAt: session.createdAt,
-        lastActivityAt: session.lastActivityAt,
+        sessionStartedAt: this.formatToIST(session.createdAt),
+        lastActivityAt: this.formatToIST(session.lastActivityAt),
         sessionDuration,
         ipAddress: session.ipAddress,
         userAgent: session.userAgent,
@@ -1289,7 +1380,7 @@ export class ReportGeneratorService {
         isUserActive, // User account active status (combined)
         userActive, // User.active
         studentActive, // Student record exists (null for non-students)
-        expiresAt: session.expiresAt,
+        expiresAt: this.formatToIST(session.expiresAt),
       };
     });
   }
@@ -1380,7 +1471,7 @@ export class ReportGeneratorService {
         role: user.role,
         institutionName: user.Institution?.name ?? 'N/A',
         rollNumber: user.rollNumber,
-        accountCreatedAt: user.createdAt,
+        accountCreatedAt: this.formatToIST(user.createdAt),
         daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
         hasChangedPassword: user.hasChangedDefaultPassword,
         isActive, // Combined: User.active AND (for students) Student record exists
@@ -1471,10 +1562,10 @@ export class ReportGeneratorService {
         phoneNo: user.phoneNo,
         role: user.role,
         institutionName: user.Institution?.name ?? 'N/A',
-        accountCreatedAt: user.createdAt,
+        accountCreatedAt: this.formatToIST(user.createdAt),
         daysSinceCreation: Math.floor((now.getTime() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24)),
         loginCount: user.loginCount,
-        lastLoginAt: user.lastLoginAt,
+        lastLoginAt: this.formatToIST(user.lastLoginAt),
         isActive,
         userActive,
         studentActive,
@@ -1585,12 +1676,12 @@ export class ReportGeneratorService {
         phoneNo: user.phoneNo,
         role: user.role,
         institutionName: user.Institution?.name ?? 'N/A',
-        lastLoginAt: user.lastLoginAt,
+        lastLoginAt: this.formatToIST(user.lastLoginAt),
         daysSinceLastLogin: user.lastLoginAt
           ? Math.floor((now.getTime() - user.lastLoginAt.getTime()) / (1000 * 60 * 60 * 24))
           : null,
         loginCount: user.loginCount,
-        accountCreatedAt: user.createdAt,
+        accountCreatedAt: this.formatToIST(user.createdAt),
         isActive,
         userActive,
         studentActive,
@@ -1632,13 +1723,16 @@ export class ReportGeneratorService {
     }
 
     // Handle date range filter
+    // Database stores dates in UTC, so use UTC for filtering
     if (filters?.startDate || filters?.endDate) {
       const dateFilter: Record<string, unknown> = {};
       if (filters.startDate) {
-        dateFilter.gte = new Date(filters.startDate);
+        const startDate = new Date(filters.startDate);
+        dateFilter.gte = new Date(Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate(), 0, 0, 0, 0));
       }
       if (filters.endDate) {
-        dateFilter.lte = new Date(filters.endDate);
+        const endDate = new Date(filters.endDate);
+        dateFilter.lte = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate(), 23, 59, 59, 999));
       }
       where.timestamp = dateFilter;
     }
@@ -1670,7 +1764,7 @@ export class ReportGeneratorService {
       institutionName: log.user?.Institution?.name ?? 'N/A',
       category: log.category,
       severity: log.severity,
-      timestamp: log.timestamp,
+      timestamp: this.formatToIST(log.timestamp),
     }));
   }
 
@@ -1999,8 +2093,8 @@ export class ReportGeneratorService {
         branchName: assignment.student.branch?.name ?? assignment.student.user?.branchName,
         companyName: app?.companyName ?? 'N/A',
         internshipStatus,
-        assignedDate: assignment.assignmentDate,
-        lastVisitDate: lastVisit,
+        assignedDate: this.formatToISTDateOnly(assignment.assignmentDate),
+        lastVisitDate: this.formatToIST(lastVisit),
         reportsReviewed: assignment.student.monthlyReports.length,
         studentActive: assignment.student.user?.active ?? false,
         mentorActive: assignment.mentor.active,
@@ -2107,7 +2201,7 @@ export class ReportGeneratorService {
         completedInternships,
         totalVisitsCompleted: mentor.facultyVisitLogs.length,
         utilizationRate,
-        lastVisitDate: lastVisit,
+        lastVisitDate: this.formatToIST(lastVisit),
         isActive: mentor.active,
       };
     });
@@ -2401,6 +2495,27 @@ export class ReportGeneratorService {
       where.active = true;
     }
 
+    // Build date filter for visits based on month/year
+    const visitLogsWhere: Record<string, unknown> = { isDeleted: false };
+    if (filters?.month && filters?.year) {
+      const filterMonth = Number(filters.month);
+      const filterYear = Number(filters.year);
+      const startDate = new Date(filterYear, filterMonth - 1, 1);
+      const endDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+      visitLogsWhere.visitDate = {
+        gte: startDate,
+        lte: endDate,
+      };
+    } else if (filters?.year) {
+      const filterYear = Number(filters.year);
+      const startDate = new Date(filterYear, 0, 1);
+      const endDate = new Date(filterYear, 11, 31, 23, 59, 59, 999);
+      visitLogsWhere.visitDate = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
     const mentors = await this.prisma.user.findMany({
       where,
       include: {
@@ -2422,7 +2537,7 @@ export class ReportGeneratorService {
           },
         },
         facultyVisitLogs: {
-          where: { isDeleted: false },
+          where: visitLogsWhere,
           select: { visitDate: true, nextVisitDate: true },
           orderBy: { visitDate: 'desc' },
         },
@@ -2434,6 +2549,9 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(mentors.length, 'FacultyVisitComplianceReport');
 
+    // Check if month/year filter is applied
+    const hasMonthYearFilter = filters?.month || filters?.year;
+
     const results = mentors.map((mentor) => {
       const assignedStudents = mentor.mentorAssignments.length;
       let requiredVisits = 0;
@@ -2442,7 +2560,14 @@ export class ReportGeneratorService {
       mentor.mentorAssignments.forEach((assignment) => {
         assignment.student.internshipApplications.forEach((app) => {
           requiredVisits += app.totalExpectedVisits;
-          completedVisits += app.completedVisitsCount;
+          // When filtering by month/year, use filtered visit logs count
+          // Otherwise use the stored completedVisitsCount
+          if (hasMonthYearFilter) {
+            // For filtered period, count visits from filtered facultyVisitLogs
+            completedVisits = mentor.facultyVisitLogs.length;
+          } else {
+            completedVisits += app.completedVisitsCount;
+          }
         });
       });
 
@@ -2468,8 +2593,8 @@ export class ReportGeneratorService {
         pendingVisits,
         compliancePercent,
         complianceLevel,
-        lastVisitDate: lastVisit?.visitDate ?? null,
-        nextScheduledVisit: nextScheduled ?? null,
+        lastVisitDate: this.formatToIST(lastVisit?.visitDate ?? null),
+        nextScheduledVisit: this.formatToISTDateOnly(nextScheduled ?? null),
         facultyActive: mentor.active,
       };
     });
@@ -2511,6 +2636,15 @@ export class ReportGeneratorService {
       where.user = { active: true };
     }
 
+    // Build monthly reports filter based on month/year
+    const monthlyReportsWhere: Record<string, unknown> = {};
+    if (filters?.month) {
+      monthlyReportsWhere.reportMonth = Number(filters.month);
+    }
+    if (filters?.year) {
+      monthlyReportsWhere.reportYear = Number(filters.year);
+    }
+
     const students = await this.prisma.student.findMany({
       where,
       include: {
@@ -2522,13 +2656,14 @@ export class ReportGeneratorService {
             companyName: true,
             totalExpectedReports: true,
             submittedReportsCount: true,
-            mentor: { select: { name: true } },
+            mentor: { select: { id: true, name: true } },
           },
           take: 1,
           orderBy: { createdAt: 'desc' },
         },
         monthlyReports: {
-          select: { status: true, submittedAt: true },
+          where: Object.keys(monthlyReportsWhere).length > 0 ? monthlyReportsWhere : undefined,
+          select: { status: true, submittedAt: true, reportMonth: true, reportYear: true },
           orderBy: { submittedAt: 'desc' },
         },
       },
@@ -2539,19 +2674,39 @@ export class ReportGeneratorService {
 
     this.warnOnLargeResultSet(students.length, 'MonthlyReportComplianceReport');
 
-    return students.map((student) => {
+    const results: any[] = [];
+
+    for (const student of students) {
       const app = student.internshipApplications[0];
-      const totalExpected = app?.totalExpectedReports ?? 0;
-      const submitted = app?.submittedReportsCount ?? 0;
-      const approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
-      const pending = totalExpected - submitted;
+
+      // Apply mentor filter if specified
+      if (filters?.mentorId && app?.mentor?.id !== filters.mentorId) continue;
+
+      // When filtering by specific month/year, calculate compliance based on filtered reports
+      let submitted = 0;
+      let approved = 0;
+      let totalExpected = 0;
+
+      if (filters?.month && filters?.year) {
+        // For specific month/year: check if report for that month exists
+        totalExpected = 1; // One report expected per month
+        submitted = student.monthlyReports.length > 0 ? 1 : 0;
+        approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length > 0 ? 1 : 0;
+      } else {
+        // Overall compliance
+        totalExpected = app?.totalExpectedReports ?? 0;
+        submitted = student.monthlyReports.length;
+        approved = student.monthlyReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
+      }
+
+      const pending = Math.max(0, totalExpected - submitted);
       const compliancePercent = totalExpected > 0
         ? Math.round((submitted / totalExpected) * 100)
         : 0;
 
       const lastSubmission = student.monthlyReports[0]?.submittedAt;
 
-      return {
+      results.push({
         studentName: student.user?.name,
         rollNumber: student.user?.rollNumber,
         branchName: student.branch?.name ?? student.user?.branchName,
@@ -2560,13 +2715,15 @@ export class ReportGeneratorService {
         totalReportsExpected: totalExpected,
         reportsSubmitted: submitted,
         reportsApproved: approved,
-        reportsPending: Math.max(0, pending),
+        reportsPending: pending,
         compliancePercent,
-        lastSubmissionDate: lastSubmission ?? null,
+        lastSubmissionDate: this.formatToIST(lastSubmission ?? null),
         isActive: student.user?.active ?? false,
         userActive: student.user?.active ?? true,
-      };
-    });
+      });
+    }
+
+    return results;
   }
 
   /**
@@ -2643,10 +2800,10 @@ export class ReportGeneratorService {
         rollNumber: app.student.user?.rollNumber,
         branchName: app.student.branch?.name ?? app.student.user?.branchName,
         companyName: app.companyName,
-        internshipStartDate: startDate,
+        internshipStartDate: this.formatToISTDateOnly(startDate),
         joiningLetterStatus,
-        joiningLetterSubmittedAt: app.joiningLetterUrl ? app.createdAt : null, // Use createdAt as proxy
-        joiningLetterApprovedAt: app.joiningLetterUrl ? app.createdAt : null,
+        joiningLetterSubmittedAt: this.formatToIST(app.joiningLetterUrl ? app.createdAt : null), // Use createdAt as proxy
+        joiningLetterApprovedAt: this.formatToIST(app.joiningLetterUrl ? app.createdAt : null),
         daysSinceStart,
         mentorName: app.mentor?.name ?? 'N/A',
         isActive: app.student.user?.active ?? false,
@@ -2821,7 +2978,7 @@ export class ReportGeneratorService {
   /**
    * Generate Pending Monthly Visits Report
    * Faculty with overdue visits - matches pending-reports.definition.ts columns
-   * @param filters - Filter criteria (institutionId, mentorId, urgency)
+   * @param filters - Filter criteria (institutionId, mentorId, month, year, urgency)
    * @param pagination - Optional pagination options
    */
   async generatePendingMonthlyVisitsReport(
@@ -2842,6 +2999,27 @@ export class ReportGeneratorService {
       where.id = filters.mentorId;
     }
 
+    // Build date filter for visits based on month/year
+    const visitLogsWhere: Record<string, unknown> = {};
+    if (filters?.month && filters?.year) {
+      const filterMonth = Number(filters.month);
+      const filterYear = Number(filters.year);
+      const startDate = new Date(filterYear, filterMonth - 1, 1);
+      const endDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+      visitLogsWhere.visitDate = {
+        gte: startDate,
+        lte: endDate,
+      };
+    } else if (filters?.year) {
+      const filterYear = Number(filters.year);
+      const startDate = new Date(filterYear, 0, 1);
+      const endDate = new Date(filterYear, 11, 31, 23, 59, 59, 999);
+      visitLogsWhere.visitDate = {
+        gte: startDate,
+        lte: endDate,
+      };
+    }
+
     const mentors = await this.prisma.user.findMany({
       where,
       include: {
@@ -2860,9 +3038,9 @@ export class ReportGeneratorService {
                     totalExpectedVisits: true,
                     completedVisitsCount: true,
                     facultyVisitLogs: {
+                      where: Object.keys(visitLogsWhere).length > 0 ? visitLogsWhere : undefined,
                       select: { visitDate: true },
                       orderBy: { visitDate: 'desc' },
-                      take: 1,
                     },
                   },
                 },
@@ -2881,17 +3059,31 @@ export class ReportGeneratorService {
     const now = new Date();
     const results: any[] = [];
 
+    // Determine the reference date for calculations (either filter date or now)
+    let referenceDate = now;
+    if (filters?.month && filters?.year) {
+      const filterMonth = Number(filters.month);
+      const filterYear = Number(filters.year);
+      // Use end of the specified month as reference
+      referenceDate = new Date(filterYear, filterMonth, 0, 23, 59, 59, 999);
+    }
+
     mentors.forEach((mentor) => {
       mentor.mentorAssignments.forEach((assignment) => {
         // Only include active students
         if (!assignment.student.user?.active) return;
 
         assignment.student.internshipApplications.forEach((app) => {
-          const visitsDue = app.totalExpectedVisits - app.completedVisitsCount;
+          // When filtering by month/year, calculate visits due based on filtered visits
+          const visitsInPeriod = app.facultyVisitLogs.length;
+          const visitsDue = filters?.month && filters?.year
+            ? (visitsInPeriod === 0 ? 1 : 0) // If no visit in the period, 1 visit is due
+            : app.totalExpectedVisits - app.completedVisitsCount;
+
           if (visitsDue > 0) {
             const lastVisit = app.facultyVisitLogs[0]?.visitDate ?? null;
             const daysSinceLastVisit = lastVisit
-              ? Math.floor((now.getTime() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
+              ? Math.floor((referenceDate.getTime() - new Date(lastVisit).getTime()) / (1000 * 60 * 60 * 24))
               : null;
 
             // Apply urgency filter if specified
@@ -2910,7 +3102,7 @@ export class ReportGeneratorService {
               studentName: assignment.student.user?.name,
               rollNumber: assignment.student.user?.rollNumber,
               companyName: app.companyName,
-              lastVisitDate: lastVisit,
+              lastVisitDate: this.formatToIST(lastVisit),
               daysSinceLastVisit,
               visitsDue,
             });
@@ -2956,6 +3148,7 @@ export class ReportGeneratorService {
           select: {
             companyName: true,
             startDate: true,
+            endDate: true,
             totalExpectedReports: true,
             submittedReportsCount: true,
             mentor: { select: { id: true, name: true } },
@@ -2966,7 +3159,6 @@ export class ReportGeneratorService {
         monthlyReports: {
           select: { submittedAt: true, reportMonth: true, reportYear: true },
           orderBy: { submittedAt: 'desc' },
-          take: 1,
         },
       },
       take,
@@ -2984,56 +3176,135 @@ export class ReportGeneratorService {
 
     const results: any[] = [];
 
+    // Determine if we're filtering by specific month/year
+    const filterMonth = filters?.month ? Number(filters.month) : null;
+    const filterYear = filters?.year ? Number(filters.year) : null;
+
     for (const student of students) {
       const app = student.internshipApplications[0];
       if (!app) continue;
-      if (app.totalExpectedReports <= app.submittedReportsCount) continue;
 
       // Apply mentor filter if specified
       if (filters?.mentorId && app.mentor?.id !== filters.mentorId) continue;
 
-      const totalPendingReports = app.totalExpectedReports - app.submittedReportsCount;
+      // Get internship date range
+      const startDate = app.startDate ? new Date(app.startDate) : null;
+      const endDate = app.endDate ? new Date(app.endDate) : null;
 
-      // Calculate pending month (first month without a report)
+      if (!startDate) continue;
+
+      // Create a set of submitted report months for quick lookup
+      const submittedMonths = new Set(
+        student.monthlyReports.map(r => `${r.reportYear}-${r.reportMonth}`)
+      );
+
+      // Get the last submitted report
       const lastReport = student.monthlyReports[0];
-      let pendingMonth = currentMonth;
-      let pendingYear = currentYear;
 
-      if (lastReport) {
-        // Next month after last report
-        pendingMonth = lastReport.reportMonth + 1;
-        pendingYear = lastReport.reportYear;
-        if (pendingMonth > 12) {
-          pendingMonth = 1;
-          pendingYear++;
+      // If filtering by specific month/year, check if that month's report is pending
+      if (filterMonth && filterYear) {
+        const filterKey = `${filterYear}-${filterMonth}`;
+
+        // Check if student should have submitted for this month
+        // (internship was active during this month)
+        const filterMonthStart = new Date(filterYear, filterMonth - 1, 1);
+        const filterMonthEnd = new Date(filterYear, filterMonth, 0);
+
+        // Skip if internship hadn't started yet
+        if (startDate > filterMonthEnd) continue;
+
+        // Skip if internship ended before this month
+        if (endDate && endDate < filterMonthStart) continue;
+
+        // Skip if report already submitted for this month
+        if (submittedMonths.has(filterKey)) continue;
+
+        // Calculate reports expected up to and including the filtered month
+        // Count months from internship start to filter month
+        const internshipStartMonth = startDate.getMonth() + 1;
+        const internshipStartYear = startDate.getFullYear();
+
+        let reportsExpectedUpToFilter = 0;
+        let tempYear = internshipStartYear;
+        let tempMonth = internshipStartMonth;
+
+        while (tempYear < filterYear || (tempYear === filterYear && tempMonth <= filterMonth)) {
+          // Check if internship was active in this month
+          const monthStart = new Date(tempYear, tempMonth - 1, 1);
+          if (!endDate || endDate >= monthStart) {
+            reportsExpectedUpToFilter++;
+          }
+          tempMonth++;
+          if (tempMonth > 12) {
+            tempMonth = 1;
+            tempYear++;
+          }
         }
-      } else if (app.startDate) {
-        // Start from internship start date
-        const startDate = new Date(app.startDate);
-        pendingMonth = startDate.getMonth() + 1;
-        pendingYear = startDate.getFullYear();
+
+        // Calculate reports submitted up to and including the filtered month
+        const reportsSubmittedUpToFilter = student.monthlyReports.filter(r => {
+          if (r.reportYear < filterYear) return true;
+          if (r.reportYear === filterYear && r.reportMonth <= filterMonth) return true;
+          return false;
+        }).length;
+
+        // Calculate days past due
+        const dueDate = new Date(filterYear, filterMonth, 5); // 5th of the next month
+        const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+        results.push({
+          studentName: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          branchName: student.branch?.name ?? student.user?.branchName,
+          mentorName: app.mentor?.name ?? 'N/A',
+          companyName: app.companyName,
+          pendingMonth: monthNames[filterMonth],
+          pendingYear: filterYear,
+          daysPastDue,
+          lastSubmittedReport: lastReport?.submittedAt ?? null,
+          reportsSubmitted: reportsSubmittedUpToFilter,
+          reportsExpected: reportsExpectedUpToFilter,
+        });
+      } else {
+        // No month/year filter - show first pending month for each student
+        if (app.totalExpectedReports <= app.submittedReportsCount) continue;
+
+        // Calculate pending month (first month without a report)
+        let pendingMonth = currentMonth;
+        let pendingYear = currentYear;
+
+        if (lastReport) {
+          // Next month after last report
+          pendingMonth = lastReport.reportMonth + 1;
+          pendingYear = lastReport.reportYear;
+          if (pendingMonth > 12) {
+            pendingMonth = 1;
+            pendingYear++;
+          }
+        } else {
+          // Start from internship start date
+          pendingMonth = startDate.getMonth() + 1;
+          pendingYear = startDate.getFullYear();
+        }
+
+        // Calculate days past due (assuming reports due by 5th of following month)
+        const dueDate = new Date(pendingYear, pendingMonth, 5);
+        const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
+
+        results.push({
+          studentName: student.user?.name,
+          rollNumber: student.user?.rollNumber,
+          branchName: student.branch?.name ?? student.user?.branchName,
+          mentorName: app.mentor?.name ?? 'N/A',
+          companyName: app.companyName,
+          pendingMonth: monthNames[pendingMonth],
+          pendingYear,
+          daysPastDue,
+          lastSubmittedReport: lastReport?.submittedAt ?? null,
+          reportsSubmitted: app.submittedReportsCount,
+          reportsExpected: app.totalExpectedReports,
+        });
       }
-
-      // Apply month/year filter if specified
-      if (filters?.month && pendingMonth !== Number(filters.month)) continue;
-      if (filters?.year && pendingYear !== Number(filters.year)) continue;
-
-      // Calculate days past due (assuming reports due by 5th of following month)
-      const dueDate = new Date(pendingYear, pendingMonth, 5); // 5th of the month after pending month
-      const daysPastDue = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
-
-      results.push({
-        studentName: student.user?.name,
-        rollNumber: student.user?.rollNumber,
-        branchName: student.branch?.name ?? student.user?.branchName,
-        mentorName: app.mentor?.name ?? 'N/A',
-        companyName: app.companyName,
-        pendingMonth: monthNames[pendingMonth],
-        pendingYear,
-        daysPastDue,
-        lastSubmittedReport: lastReport?.submittedAt ?? null,
-        totalPendingReports,
-      });
     }
 
     return results;
@@ -3108,7 +3379,7 @@ export class ReportGeneratorService {
         branchName: app.student.branch?.name ?? app.student.user?.branchName,
         mentorName: app.mentor?.name ?? 'N/A',
         companyName: app.companyName,
-        internshipStartDate: startDate,
+        internshipStartDate: this.formatToISTDateOnly(startDate),
         daysSinceStart,
         institutionName: app.student.Institution?.name ?? 'N/A',
       };

@@ -128,6 +128,31 @@ export class GrievanceService {
       });
       if (!student) throw new NotFoundException('Student not found');
 
+      // Auto-assign to student's mentor if no assignedToId provided
+      let assignedToId = data.assignedToId;
+      let mentorUser: any = null;
+
+      if (!assignedToId) {
+        // Find student's active mentor assignment
+        const mentorAssignment = await this.prisma.mentorAssignment.findFirst({
+          where: {
+            studentId: student.id,
+            isActive: true,
+          },
+          include: {
+            mentor: {
+              select: { id: true, name: true, email: true },
+            },
+          },
+        });
+
+        if (mentorAssignment?.mentor) {
+          assignedToId = mentorAssignment.mentor.id;
+          mentorUser = mentorAssignment.mentor;
+          this.logger.log(`Auto-assigning grievance to mentor ${mentorUser.name} (${assignedToId})`);
+        }
+      }
+
       // Create grievance with initial status
       const grievance = await this.prisma.grievance.create({
         data: {
@@ -139,7 +164,7 @@ export class GrievanceService {
           attachments: data.attachments || [],
           status: GrievanceStatus.SUBMITTED,
           escalationLevel: EscalationLevel.MENTOR,
-          assignedToId: data.assignedToId,
+          assignedToId: assignedToId,
           facultySupervisorId: data.facultySupervisorId,
           actionRequested: data.actionRequested,
           preferredContactMethod: data.preferredContactMethod,
@@ -160,17 +185,19 @@ export class GrievanceService {
         },
       });
 
-      // Notify assigned person if exists
-      if (data.assignedToId) {
+      // Notify assigned person (mentor) if exists
+      if (assignedToId) {
+        const mentorName = mentorUser?.name || 'assigned mentor';
         await this.notificationService.create(
-          data.assignedToId,
+          assignedToId,
           'GRIEVANCE_ASSIGNED',
           'New Grievance Assigned',
-          `A new grievance "${data.title}" has been assigned to you by ${student.user.name}`,
+          `A new grievance "${data.title}" has been ${mentorUser ? 'auto-' : ''}assigned to you by ${student.user.name}`,
           { grievanceId: grievance.id, studentName: student.user.name }
         );
         // Invalidate faculty cache for assigned mentor
-        await this.cache.del(`grievances:faculty:${data.assignedToId}`);
+        await this.cache.del(`grievances:faculty:${assignedToId}`);
+        this.logger.log(`Notified mentor ${mentorName} about new grievance assignment`);
       }
 
       // Invalidate cache

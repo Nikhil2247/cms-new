@@ -24,6 +24,21 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
       { id: 'mentorId', label: 'Mentor', type: 'select', dynamic: true, required: false },
+      { id: 'month', label: 'Month', type: 'select', required: false, options: [
+        { label: 'January', value: 1 },
+        { label: 'February', value: 2 },
+        { label: 'March', value: 3 },
+        { label: 'April', value: 4 },
+        { label: 'May', value: 5 },
+        { label: 'June', value: 6 },
+        { label: 'July', value: 7 },
+        { label: 'August', value: 8 },
+        { label: 'September', value: 9 },
+        { label: 'October', value: 10 },
+        { label: 'November', value: 11 },
+        { label: 'December', value: 12 },
+      ]},
+      { id: 'year', label: 'Year', type: 'select', dynamic: true, required: false },
       { id: 'urgency', label: 'Urgency', type: 'select', required: false, options: [
         { label: 'Critical (>30 days)', value: 'critical' },
         { label: 'High (15-30 days)', value: 'high' },
@@ -52,7 +67,8 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'pendingYear', label: 'Year', type: 'number', default: true },
       { id: 'daysPastDue', label: 'Days Past Due', type: 'number', default: true, sortable: true },
       { id: 'lastSubmittedReport', label: 'Last Submitted', type: 'date', default: true },
-      { id: 'totalPendingReports', label: 'Total Pending', type: 'number', default: true, sortable: true },
+      { id: 'reportsSubmitted', label: 'Reports Submitted', type: 'number', default: true, sortable: true },
+      { id: 'reportsExpected', label: 'Reports Expected', type: 'number', default: true, sortable: true },
     ],
     filters: [
       { id: 'institutionId', label: 'Institution', type: 'select', dynamic: true, required: true },
@@ -75,7 +91,7 @@ export const pendingReportDefinitions: Record<string, ReportDefinition> = {
       { id: 'year', label: 'Year', type: 'select', dynamic: true, required: false },
     ],
     groupBy: ['branchName', 'mentorName', 'pendingMonth'],
-    sortableColumns: ['studentName', 'daysPastDue', 'totalPendingReports'],
+    sortableColumns: ['studentName', 'daysPastDue', 'reportsSubmitted', 'reportsExpected'],
     exportFormats: ['excel', 'csv', 'pdf', 'json'],
   },
 
