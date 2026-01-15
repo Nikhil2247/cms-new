@@ -453,16 +453,91 @@ const StudentDashboard = () => {
     const totalExpected = currentInternship.totalExpectedReports ?? 0;
     const pendingCount = totalExpected - submittedCount;
 
-    // Generate pending months display based on counter difference
-    const pendingMonths = pendingCount > 0 ? [`${pendingCount} pending`] : [];
+    // Generate month-wise pending reports
+    const getPendingMonths = () => {
+      if (pendingCount === 0) return [];
+
+      const startDate = new Date(
+        currentInternship.isSelfIdentified
+          ? currentInternship.startDate
+          : currentInternship.joiningDate || currentInternship.internship?.startDate
+      );
+
+      if (!startDate || isNaN(startDate.getTime())) return [];
+
+      const now = new Date();
+      const submittedReports = currentInternshipReports || [];
+      const submittedMonthYears = new Set(
+        submittedReports.map(r => `${r.reportMonth}-${r.reportYear}`)
+      );
+
+      const pendingMonths = [];
+      const current = new Date(startDate);
+      
+      // Generate list of expected months from start date to now
+      while (current <= now && pendingMonths.length < totalExpected) {
+        const month = current.getMonth() + 1; // 1-12
+        const year = current.getFullYear();
+        const monthYear = `${month}-${year}`;
+        
+        // Check if this month's report is missing
+        if (!submittedMonthYears.has(monthYear)) {
+          const monthName = current.toLocaleString('default', { month: 'short' });
+          pendingMonths.push(`${monthName} pending`);
+        }
+        
+        // Move to next month
+        current.setMonth(current.getMonth() + 1);
+        
+        // Safety break - don't show more than 5 pending months
+        if (pendingMonths.length >= 5) break;
+      }
+
+      return pendingMonths;
+    };
+
+    const pendingMonths = getPendingMonths();
+
+    // Check if internship starts in the future and get start date display
+    const getStartDateInfo = () => {
+      const startDate = new Date(
+        currentInternship.isSelfIdentified
+          ? currentInternship.startDate
+          : currentInternship.joiningDate || currentInternship.internship?.startDate
+      );
+
+      if (!startDate || isNaN(startDate.getTime())) return null;
+
+      const now = new Date();
+      now.setHours(0, 0, 0, 0); // Reset to start of day for accurate comparison
+      const startDateOnly = new Date(startDate);
+      startDateOnly.setHours(0, 0, 0, 0);
+
+      // Show start date if internship hasn't started yet
+      if (startDateOnly > now) {
+        const startMonth = startDate.toLocaleString('default', { month: 'short' });
+        const monthsUntilStart = Math.ceil((startDateOnly - now) / (1000 * 60 * 60 * 24 * 30));
+
+        return {
+          dateStr: `${startMonth} ${startDate.getDate()}, ${startDate.getFullYear()}`,
+          message: monthsUntilStart <= 1
+            ? "Starting soon - Reports will be due monthly"
+            : `Starts in ~${monthsUntilStart} month${monthsUntilStart > 1 ? 's' : ''}`
+        };
+      }
+
+      return null;
+    };
+
+    const startDateInfo = getStartDateInfo();
 
     return {
       submitted: submittedCount,
       total: totalExpected,
       pending: pendingMonths,
-      startDateInfo: null,
+      startDateInfo,
     };
-  }, [currentInternship]);
+  }, [currentInternship, currentInternshipReports]);
 
   // Internship data status check
   const getInternshipDataStatus = useCallback((application) => {

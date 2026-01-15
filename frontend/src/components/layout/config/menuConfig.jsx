@@ -86,7 +86,7 @@ export const menuConfig = {
     items: [
       { key: 'master-data', label: 'Master Data', icon: <DatabaseOutlined />, path: '/app/master-data' },
       { key: 'state-staff-list', label: 'Staff', icon: <SolutionOutlined />, path: '/app/state-staff' },
-      { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/app/users/bulk-create' },
+      // { key: 'bulk-user-creation', label: 'Bulk Users', icon: <UsergroupAddOutlined />, path: '/app/users/bulk-create' },
       { key: 'credentials-reset', label: 'Reset Credentials', icon: <LockOutlined />, path: '/app/users/reset-credentials' },
       { key: 'restore-center', label: 'Restore Center', icon: <HistoryOutlined />, path: '/app/restore-center' },
       { key: 'audit-logs', label: 'Audit Logs', icon: <AuditOutlined />, path: '/app/audit-logs' },

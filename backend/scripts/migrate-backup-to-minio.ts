@@ -49,8 +49,8 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const CONFIG = {
   // MinIO Configuration
-  MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || 'http://localhost:9000',
-  MINIO_BUCKET: process.env.MINIO_BUCKET || 'cms-files',
+  MINIO_ENDPOINT: process.env.MINIO_ENDPOINT || 'http://147.93.106.69:9000',
+  MINIO_BUCKET: process.env.MINIO_BUCKE || 'cms-uploads',
   MINIO_ACCESS_KEY: process.env.MINIO_ROOT_USER || 'minioadmin',
   MINIO_SECRET_KEY: process.env.MINIO_ROOT_PASSWORD || 'minioadmin123',
   MINIO_REGION: process.env.MINIO_REGION || 'us-east-1',

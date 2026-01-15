@@ -158,6 +158,9 @@ const StudentReportSubmit = () => {
 
   useEffect(() => {
     fetchReports();
+      // Refresh dashboard and applications to update report counts
+      dispatch(fetchStudentDashboard({ forceRefresh: true }));
+      dispatch(fetchApplications({ forceRefresh: true }));
   }, [fetchReports]);
 
   // Handle file change
@@ -254,6 +257,10 @@ const StudentReportSubmit = () => {
       message.success('Report uploaded successfully!');
       handleCloseModal();
       fetchReports();
+      // Refresh dashboard, applications, and reports to update counts and pending tags
+      dispatch(fetchStudentDashboard({ forceRefresh: true }));
+      dispatch(fetchApplications({ forceRefresh: true }));
+      dispatch(fetchMyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
       message.error(errorMessage);
@@ -268,6 +275,10 @@ const StudentReportSubmit = () => {
       await dispatch(deleteMonthlyReport(id)).unwrap();
       message.success('Report deleted');
       fetchReports();
+      // Refresh dashboard, applications, and reports to update counts and pending tags
+      dispatch(fetchStudentDashboard({ forceRefresh: true }));
+      dispatch(fetchApplications({ forceRefresh: true }));
+      dispatch(fetchMyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
       message.error(errorMessage);

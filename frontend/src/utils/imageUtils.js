@@ -10,15 +10,11 @@ const getUploadsBaseUrl = () => {
   if (import.meta.env.VITE_UPLOADS_URL) {
     return import.meta.env.VITE_UPLOADS_URL;
   }
-  // Fallback for local development
-  if (import.meta.env.DEV) {
-    const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000';
-    const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'cms-uploads';
-    return `${minioEndpoint}/${minioBucket}`;
-  }
-  // Production fallback - derive from API URL
-  const apiUrl = import.meta.env.VITE_API_BASE_URL || '';
-  return apiUrl.replace('/api', '/uploads');
+  
+  // Use MinIO endpoint and bucket for both dev and production
+  const minioEndpoint = import.meta.env.VITE_MINIO_ENDPOINT || 'http://localhost:9000';
+  const minioBucket = import.meta.env.VITE_MINIO_BUCKET || 'cms-uploads';
+  return `${minioEndpoint}/${minioBucket}`;
 };
 
 const UPLOADS_BASE_URL = getUploadsBaseUrl();

@@ -168,7 +168,7 @@ const PrincipalDashboard = () => {
 
   // Memoized data for BasicStatisticsGrid - uses dashboard data, details fetched on-demand
   const basicStatsData = useMemo(() => ({
-    totalStudents: stats?.students?.total || 0,
+    totalStudents: stats?.students?.active || 0,
     totalMentors: mentorCoverage?.totalMentors || stats?.staff?.total || 0,
     unassignedStudents: dashboardStats?.unassignedStudents || 0,
     partnerCompanies: stats?.partnerCompanies || 0,

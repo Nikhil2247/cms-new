@@ -1,27 +1,56 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { PrismaService } from '../../core/database/prisma.service';
-import { LruCacheService } from '../../core/cache/lru-cache.service';
-import { CacheService } from '../../core/cache/cache.service';
-import { FacultyVisitService } from '../../domain/report/faculty-visit/faculty-visit.service';
-import { ExpectedCycleService } from '../../domain/internship/expected-cycle/expected-cycle.service';
-import { Prisma, ApplicationStatus, InternshipPhase, MonthlyReportStatus, DocumentType, AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
-import { AuditService } from '../../infrastructure/audit/audit.service';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
+import { PrismaService } from "../../core/database/prisma.service";
+import { LruCacheService } from "../../core/cache/lru-cache.service";
+import { CacheService } from "../../core/cache/cache.service";
+import { FacultyVisitService } from "../../domain/report/faculty-visit/faculty-visit.service";
+import { ExpectedCycleService } from "../../domain/internship/expected-cycle/expected-cycle.service";
+import {
+  Prisma,
+  ApplicationStatus,
+  InternshipPhase,
+  MonthlyReportStatus,
+  DocumentType,
+  AuditAction,
+  AuditCategory,
+  AuditSeverity,
+  Role,
+} from "../../generated/prisma/client";
+import { AuditService } from "../../infrastructure/audit/audit.service";
 import {
   calculateExpectedMonths,
   MonthlyCycle,
   getReportSubmissionStatus as getMonthlyReportStatus,
   MONTHLY_CYCLE,
   getMonthName,
-} from '../../common/utils/monthly-cycle.util';
+} from "../../common/utils/monthly-cycle.util";
 
 // Month names for display
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 // Report submission status types
-type ReportSubmissionStatus = 'NOT_YET_DUE' | 'CAN_SUBMIT' | 'OVERDUE' | 'SUBMITTED' | 'APPROVED';
+type ReportSubmissionStatus =
+  | "NOT_YET_DUE"
+  | "CAN_SUBMIT"
+  | "OVERDUE"
+  | "SUBMITTED"
+  | "APPROVED";
 
 // REMOVED: ReportPeriod interface - was used by removed generateExpectedReports function
 // Expected counts are now calculated via ExpectedCycleService using getTotalExpectedCount()
@@ -34,7 +63,7 @@ export class StudentService {
     private readonly redisCache: CacheService,
     private readonly facultyVisitService: FacultyVisitService,
     private readonly auditService: AuditService,
-    private readonly expectedCycleService: ExpectedCycleService,
+    private readonly expectedCycleService: ExpectedCycleService
   ) {}
 
   // REMOVED: calculateExpectedReportPeriods function - was used by removed generateExpectedReports
@@ -54,27 +83,52 @@ export class StudentService {
     const now = new Date();
 
     // Normalize status for comparison (case-insensitive)
-    const normalizedStatus = report.status ?
-      (typeof report.status === 'string' ? report.status.toUpperCase() : report.status) :
-      null;
+    const normalizedStatus = report.status
+      ? typeof report.status === "string"
+        ? report.status.toUpperCase()
+        : report.status
+      : null;
 
     // If report is already submitted/approved
-    if (normalizedStatus === MonthlyReportStatus.APPROVED || normalizedStatus === 'APPROVED' || report.isApproved) {
-      return { status: 'APPROVED', label: 'Approved', color: 'green', canSubmit: false };
+    if (
+      normalizedStatus === MonthlyReportStatus.APPROVED ||
+      normalizedStatus === "APPROVED" ||
+      report.isApproved
+    ) {
+      return {
+        status: "APPROVED",
+        label: "Approved",
+        color: "green",
+        canSubmit: false,
+      };
     }
 
-    if (normalizedStatus === MonthlyReportStatus.SUBMITTED || normalizedStatus === 'SUBMITTED') {
-      return { status: 'SUBMITTED', label: 'Submitted', color: 'blue', canSubmit: false };
+    if (
+      normalizedStatus === MonthlyReportStatus.SUBMITTED ||
+      normalizedStatus === "SUBMITTED"
+    ) {
+      return {
+        status: "SUBMITTED",
+        label: "Submitted",
+        color: "blue",
+        canSubmit: false,
+      };
     }
 
     // Calculate submission window if not stored
-    const windowStart = report.submissionWindowStart ? new Date(report.submissionWindowStart) : null;
-    const windowEnd = report.submissionWindowEnd ? new Date(report.submissionWindowEnd) : null;
+    const windowStart = report.submissionWindowStart
+      ? new Date(report.submissionWindowStart)
+      : null;
+    const windowEnd = report.submissionWindowEnd
+      ? new Date(report.submissionWindowEnd)
+      : null;
 
     if (!windowStart || !windowEnd) {
       // Fallback: use monthly cycle calculation based on period dates
       // Reports are due on the 5th of the following month
-      const periodEndDate = report.periodEndDate ? new Date(report.periodEndDate) : null;
+      const periodEndDate = report.periodEndDate
+        ? new Date(report.periodEndDate)
+        : null;
 
       if (periodEndDate) {
         // Calculate submission window: first day of next month to 5th of next month
@@ -86,81 +140,97 @@ export class StudentService {
         const calcWindowStart = new Date(nextYear, nextMonth - 1, 1);
         calcWindowStart.setHours(0, 0, 0, 0);
 
-        const calcWindowEnd = new Date(nextYear, nextMonth - 1, MONTHLY_CYCLE.REPORT_DUE_DAY);
+        const calcWindowEnd = new Date(
+          nextYear,
+          nextMonth - 1,
+          MONTHLY_CYCLE.REPORT_DUE_DAY
+        );
         calcWindowEnd.setHours(23, 59, 59, 999);
 
         if (now < calcWindowStart) {
-          const daysUntil = Math.ceil((calcWindowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const daysUntil = Math.ceil(
+            (calcWindowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          );
           return {
-            status: 'NOT_YET_DUE',
-            label: 'In Progress',
-            color: 'default',
+            status: "NOT_YET_DUE",
+            label: "In Progress",
+            color: "default",
             canSubmit: false,
-            sublabel: `Month ends in ${daysUntil} days`
+            sublabel: `Month ends in ${daysUntil} days`,
           };
         }
 
         if (now >= calcWindowStart && now <= calcWindowEnd) {
-          const daysLeft = Math.ceil((calcWindowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          const daysLeft = Math.ceil(
+            (calcWindowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+          );
           return {
-            status: 'CAN_SUBMIT',
-            label: 'Submit Now',
-            color: 'blue',
+            status: "CAN_SUBMIT",
+            label: "Submit Now",
+            color: "blue",
             canSubmit: true,
-            sublabel: `${daysLeft} days left`
+            sublabel: `${daysLeft} days left`,
           };
         }
 
-        const daysOverdue = Math.ceil((now.getTime() - calcWindowEnd.getTime()) / (1000 * 60 * 60 * 24));
+        const daysOverdue = Math.ceil(
+          (now.getTime() - calcWindowEnd.getTime()) / (1000 * 60 * 60 * 24)
+        );
         return {
-          status: 'OVERDUE',
-          label: 'Overdue',
-          color: 'red',
+          status: "OVERDUE",
+          label: "Overdue",
+          color: "red",
           canSubmit: true,
-          sublabel: `${daysOverdue} days overdue`
+          sublabel: `${daysOverdue} days overdue`,
         };
       }
 
       // No valid period end date available - cannot determine status
       return {
-        status: 'NOT_YET_DUE',
-        label: 'Pending',
-        color: 'default',
+        status: "NOT_YET_DUE",
+        label: "Pending",
+        color: "default",
         canSubmit: false,
-        sublabel: 'Unable to calculate due date'
+        sublabel: "Unable to calculate due date",
       };
     }
 
     // Use stored submission window
     if (now < windowStart) {
-      const daysUntil = Math.ceil((windowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysUntil = Math.ceil(
+        (windowStart.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
       return {
-        status: 'NOT_YET_DUE',
-        label: 'Not Yet Due',
-        color: 'default',
+        status: "NOT_YET_DUE",
+        label: "Not Yet Due",
+        color: "default",
         canSubmit: false,
-        sublabel: `Opens in ${daysUntil} days`
+        sublabel: `Opens in ${daysUntil} days`,
       };
     }
 
     if (now >= windowStart && now <= windowEnd) {
-      const daysLeft = Math.ceil((windowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      const daysLeft = Math.ceil(
+        (windowEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+      );
       return {
-        status: 'CAN_SUBMIT',
-        label: 'Submit Now',
-        color: 'blue',
+        status: "CAN_SUBMIT",
+        label: "Submit Now",
+        color: "blue",
         canSubmit: true,
-        sublabel: `${daysLeft} days left`
+        sublabel: `${daysLeft} days left`,
       };
     }
 
-    const daysOverdue = Math.ceil((now.getTime() - windowEnd.getTime()) / (1000 * 60 * 60 * 24));
+    const daysOverdue = Math.ceil(
+      (now.getTime() - windowEnd.getTime()) / (1000 * 60 * 60 * 24)
+    );
     return {
-      status: 'OVERDUE',
-      label: 'Overdue',
-      color: 'red',
+      status: "OVERDUE",
+      label: "Overdue",
+      color: "red",
       canSubmit: true,
-      sublabel: `${daysOverdue} days overdue`
+      sublabel: `${daysOverdue} days overdue`,
     };
   }
 
@@ -170,11 +240,13 @@ export class StudentService {
   async getDashboard(userId: string) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
-      include: { user: { select: { name: true, rollNumber: true, email: true } } },
+      include: {
+        user: { select: { name: true, rollNumber: true, email: true } },
+      },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
@@ -184,40 +256,49 @@ export class StudentService {
       cacheKey,
       async () => {
         // OPTIMIZED: Get current self-identified internship with only necessary fields
-        const currentInternship = await this.prisma.internshipApplication.findFirst({
-          where: {
-            studentId,
-            isActive: true,
-            isSelfIdentified: true,
-            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED] },
-            internshipPhase: InternshipPhase.ACTIVE,
-          },
-          select: {
-            id: true,
-            status: true,
-            isSelfIdentified: true,
-            companyName: true,
-            jobProfile: true,
-            startDate: true,
-            endDate: true,
-            joiningDate: true,
-            internshipDuration: true,
-            joiningLetterUrl: true,
-            joiningLetterUploadedAt: true,
-            facultyMentorName: true,
-            totalExpectedReports: true,
-            totalExpectedVisits: true,
-            // Internship model removed - self-identified only
-            mentor: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-                phoneNo: true,
+        const currentInternship =
+          await this.prisma.internshipApplication.findFirst({
+            where: {
+              studentId,
+              isActive: true,
+              isSelfIdentified: true,
+              status: {
+                in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED],
+              },
+              internshipPhase: InternshipPhase.ACTIVE,
+            },
+            select: {
+              id: true,
+              status: true,
+              isSelfIdentified: true,
+              companyName: true,
+              jobProfile: true,
+              startDate: true,
+              endDate: true,
+              hrContact: true,
+              hrEmail: true,
+              hrName: true,
+              hrDesignation: true,
+              joiningDate: true,
+              internshipDuration: true,
+              joiningLetterUrl: true,
+              joiningLetterUploadedAt: true,
+              facultyMentorName: true,
+              totalExpectedReports: true,
+              totalExpectedVisits: true,
+              submittedReportsCount: true,
+              completedVisitsCount: true,
+              // Internship model removed - self-identified only
+              mentor: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phoneNo: true,
+                },
               },
             },
-          },
-        });
+          });
 
         // Get pending reports count
         const pendingReports = await this.prisma.monthlyReport.count({
@@ -232,44 +313,58 @@ export class StudentService {
         const availableInternships = 0;
 
         // FIXED: Get total self-identified applications count - filter by appropriate status
-        const totalApplications = await this.prisma.internshipApplication.count({
-          where: {
-            studentId,
-            isSelfIdentified: true,
-            status: { in: [ApplicationStatus.APPROVED, ApplicationStatus.JOINED, ApplicationStatus.COMPLETED] },
-          },
-        });
+        const totalApplications = await this.prisma.internshipApplication.count(
+          {
+            where: {
+              studentId,
+              isSelfIdentified: true,
+              status: {
+                in: [
+                  ApplicationStatus.APPROVED,
+                  ApplicationStatus.JOINED,
+                  ApplicationStatus.COMPLETED,
+                ],
+              },
+            },
+          }
+        );
 
         // Get upcoming deadlines
         const upcomingDeadlines = await this.prisma.monthlyReport.findMany({
           where: {
             studentId,
             isDeleted: false,
-            status: { in: [MonthlyReportStatus.DRAFT, MonthlyReportStatus.REVISION_REQUIRED] },
+            status: {
+              in: [
+                MonthlyReportStatus.DRAFT,
+                MonthlyReportStatus.REVISION_REQUIRED,
+              ],
+            },
           },
           take: 3,
-          orderBy: { reportMonth: 'asc' },
+          orderBy: { reportMonth: "asc" },
         });
 
         // Get recent notifications (placeholder - would integrate with notification system)
         const notifications = [];
 
         // OPTIMIZED: Get recent activities with only necessary fields
-        const recentActivities = await this.prisma.internshipApplication.findMany({
-          where: { studentId, isActive: true, isSelfIdentified: true },
-          take: 5,
-          orderBy: { updatedAt: 'desc' },
-          select: {
-            id: true,
-            status: true,
-            companyName: true,
-            jobProfile: true,
-            isSelfIdentified: true,
-            updatedAt: true,
-            createdAt: true,
-            // Internship model removed - self-identified only
-          },
-        });
+        const recentActivities =
+          await this.prisma.internshipApplication.findMany({
+            where: { studentId, isActive: true, isSelfIdentified: true },
+            take: 5,
+            orderBy: { updatedAt: "desc" },
+            select: {
+              id: true,
+              status: true,
+              companyName: true,
+              jobProfile: true,
+              isSelfIdentified: true,
+              updatedAt: true,
+              createdAt: true,
+              // Internship model removed - self-identified only
+            },
+          });
 
         return {
           profile: {
@@ -287,7 +382,7 @@ export class StudentService {
           recentActivities,
         };
       },
-      { ttl: 300, tags: ['student', `student:${studentId}`] },
+      { ttl: 300, tags: ["student", `student:${studentId}`] }
     );
   }
 
@@ -356,6 +451,10 @@ export class StudentService {
             startDate: true,
             endDate: true,
             joiningDate: true,
+            hrName: true,
+            hrContact: true,
+            hrEmail: true,
+            hrDesignation: true,
             internshipDuration: true,
             joiningLetterUrl: true,
             joiningLetterUploadedAt: true,
@@ -363,6 +462,8 @@ export class StudentService {
             facultyMentorEmail: true,
             totalExpectedReports: true,
             totalExpectedVisits: true,
+            submittedReportsCount: true,
+            completedVisitsCount: true,
             createdAt: true,
             updatedAt: true,
             mentor: {
@@ -372,8 +473,21 @@ export class StudentService {
                 email: true,
               },
             },
+            // Include monthly reports for pending tags calculation
+            monthlyReports: {
+              where: { isDeleted: false },
+              select: {
+                id: true,
+                reportMonth: true,
+                reportYear: true,
+                status: true,
+                submittedAt: true,
+                applicationId: true,
+              },
+              orderBy: { submittedAt: "desc" },
+            },
           },
-          orderBy: { appliedDate: 'desc' },
+          orderBy: { appliedDate: "desc" },
         },
         _count: {
           select: {
@@ -386,7 +500,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     return student;
@@ -396,34 +510,37 @@ export class StudentService {
    * Update student profile
    * Syncs common fields (name, email, contact) to User record
    */
-  async updateProfile(userId: string, updateProfileDto: Prisma.StudentUpdateInput) {
+  async updateProfile(
+    userId: string,
+    updateProfileDto: Prisma.StudentUpdateInput
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     // IMPORTANT: Do not allow Student Portal to toggle activation/deactivation or perform nested updates.
     // This endpoint is intended only for basic profile fields.
     const dto: any = updateProfileDto as any;
     const allowedKeys = new Set([
-      'name',
-      'email',
-      'contact',
-      'address',
-      'pinCode',
-      'tehsil',
-      'district',
-      'city',
-      'state',
-      'dob',
-      'parentName',
-      'parentContact',
-      'motherName',
-      'gender',
+      "name",
+      "email",
+      "contact",
+      "address",
+      "pinCode",
+      "tehsil",
+      "district",
+      "city",
+      "state",
+      "dob",
+      "parentName",
+      "parentContact",
+      "motherName",
+      "gender",
     ]);
 
     const safeUpdateData: Record<string, any> = {};
@@ -438,8 +555,19 @@ export class StudentService {
     if (safeUpdateData.name) userUpdateData.name = safeUpdateData.name;
     if (safeUpdateData.email) userUpdateData.email = safeUpdateData.email;
     if (safeUpdateData.contact) userUpdateData.phoneNo = safeUpdateData.contact; // Student.contact -> User.phoneNo
+    if (safeUpdateData.dob) userUpdateData.dob = safeUpdateData.dob;
 
-    if (Object.keys(safeUpdateData).length === 0 && Object.keys(userUpdateData).length === 0) {
+    // Remove User-only fields from Student update data
+    // These fields dont exist on Student model - theyre on User model
+    delete safeUpdateData.name;
+    delete safeUpdateData.email;
+    delete safeUpdateData.contact;
+    delete safeUpdateData.dob;
+
+    if (
+      Object.keys(safeUpdateData).length === 0 &&
+      Object.keys(userUpdateData).length === 0
+    ) {
       return student;
     }
 
@@ -456,29 +584,37 @@ export class StudentService {
       }),
       // Only update user if there are fields to sync
       ...(Object.keys(userUpdateData).length > 0
-        ? [this.prisma.user.update({
-            where: { id: userId },
-            data: userUpdateData,
-          })]
+        ? [
+            this.prisma.user.update({
+              where: { id: userId },
+              data: userUpdateData,
+            }),
+          ]
         : []),
     ]);
 
     // Audit profile update
-    this.auditService.log({
-      action: AuditAction.STUDENT_PROFILE_UPDATE,
-      entityType: 'Student',
-      entityId: student.id,
-      userId,
-      userName: student.user?.name,
-      userRole: student.user?.role || Role.STUDENT,
-      description: `Student profile updated: ${student.user.name}`,
-      category: AuditCategory.PROFILE_MANAGEMENT,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: safeUpdateData as any,
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: "Student",
+        entityId: student.id,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Student profile updated: ${student.user.name}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: safeUpdateData as any,
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['student', `student:${updated.id}`, `user:${userId}`]);
+    await this.cache.invalidateByTags([
+      "student",
+      `student:${updated.id}`,
+      `user:${userId}`,
+    ]);
 
     return updated;
   }
@@ -493,7 +629,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const updated = await this.prisma.student.update({
@@ -504,26 +640,28 @@ export class StudentService {
     });
 
     // Audit profile image upload
-    this.auditService.log({
-      action: AuditAction.STUDENT_PROFILE_UPDATE,
-      entityType: 'Student',
-      entityId: student.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Profile image uploaded for student: ${student.user.name}`,
-      category: AuditCategory.PROFILE_MANAGEMENT,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: { profileImage: imageUrl },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_PROFILE_UPDATE,
+        entityType: "Student",
+        entityId: student.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Profile image uploaded for student: ${student.user.name}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: { profileImage: imageUrl },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['student', `student:${student.id}`]);
+    await this.cache.invalidateByTags(["student", `student:${student.id}`]);
 
     return {
       success: true,
       imageUrl,
-      message: 'Profile image uploaded successfully',
+      message: "Profile image uploaded successfully",
     };
   }
 
@@ -531,36 +669,47 @@ export class StudentService {
    * Get available internships for student
    * DEPRECATED: Internship model has been removed - only self-identified internships are supported
    */
-  async getAvailableInternships(userId: string, params: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    industryType?: string;
-    location?: string;
-  }) {
-    throw new NotFoundException('Internship browsing is no longer available - the Internship model has been removed. Only self-identified internships are supported.');
+  async getAvailableInternships(
+    userId: string,
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      industryType?: string;
+      location?: string;
+    }
+  ) {
+    throw new NotFoundException(
+      "Internship browsing is no longer available - the Internship model has been removed. Only self-identified internships are supported."
+    );
   }
 
   /**
    * Apply for internship
    * DEPRECATED: Internship model has been removed - only self-identified internships are supported
    */
-  async applyToInternship(userId: string, internshipId: string, applicationDto: {
-    coverLetter?: string;
-    resume?: string;
-    additionalInfo?: string;
-  }) {
+  async applyToInternship(
+    userId: string,
+    internshipId: string,
+    applicationDto: {
+      coverLetter?: string;
+      resume?: string;
+      additionalInfo?: string;
+    }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     // Internship model removed - throw error
-    throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
+    throw new NotFoundException(
+      "Internship model has been removed - only self-identified internships are supported"
+    );
   }
 
   /**
@@ -568,7 +717,7 @@ export class StudentService {
    */
   async getApplications(
     userId: string,
-    params: { page?: number; limit?: number; status?: string },
+    params: { page?: number; limit?: number; status?: string }
   ) {
     const { page = 1, limit = 10, status } = params;
     const skip = (page - 1) * limit;
@@ -579,7 +728,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const where: Prisma.InternshipApplicationWhereInput = {
@@ -605,6 +754,21 @@ export class StudentService {
               email: true,
             },
           },
+          // Include monthly reports for pending tags calculation
+          monthlyReports: {
+            where: { isDeleted: false },
+            select: {
+              id: true,
+              reportMonth: true,
+              reportYear: true,
+              status: true,
+              submittedAt: true,
+              applicationId: true,
+              reportFileUrl: true,
+              monthName: true,
+            },
+            orderBy: { submittedAt: "desc" },
+          },
           _count: {
             select: {
               monthlyReports: true,
@@ -612,7 +776,7 @@ export class StudentService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       this.prisma.internshipApplication.count({ where }),
     ]);
@@ -636,14 +800,16 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     // Internship model removed - return empty object for backward compatibility
     const internship = null;
 
     if (!internship) {
-      throw new NotFoundException('Internship model has been removed - only self-identified internships are supported');
+      throw new NotFoundException(
+        "Internship model has been removed - only self-identified internships are supported"
+      );
     }
 
     const application = null; // Internship model removed
@@ -661,7 +827,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const application = await this.prisma.internshipApplication.findUnique({
@@ -675,12 +841,12 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Verify ownership
     if (application.studentId !== student.id) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     return application;
@@ -696,7 +862,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const application = await this.prisma.internshipApplication.findUnique({
@@ -704,12 +870,12 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Verify ownership
     if (application.studentId !== student.id) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Check if application can be withdrawn
@@ -736,26 +902,31 @@ export class StudentService {
     });
 
     // Audit application withdrawal
-    this.auditService.log({
-      action: AuditAction.APPLICATION_WITHDRAW,
-      entityType: 'InternshipApplication',
-      entityId: applicationId,
-      userId,
-      userName: student.user?.name,
-      userRole: student.user?.role || Role.STUDENT,
-      description: `Application withdrawn: ${application.companyName || 'Unknown Company'}`,
-      category: AuditCategory.APPLICATION_PROCESS,
-      severity: AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      oldValues: { status: oldStatus },
-      newValues: { status: ApplicationStatus.WITHDRAWN },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.APPLICATION_WITHDRAW,
+        entityType: "InternshipApplication",
+        entityId: applicationId,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Application withdrawn: ${application.companyName || "Unknown Company"}`,
+        category: AuditCategory.APPLICATION_PROCESS,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        oldValues: { status: oldStatus },
+        newValues: { status: ApplicationStatus.WITHDRAWN },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['applications', `student:${student.id}`]);
+    await this.cache.invalidateByTags([
+      "applications",
+      `student:${student.id}`,
+    ]);
 
     return {
       success: true,
-      message: 'Application withdrawn successfully',
+      message: "Application withdrawn successfully",
       application: updated,
     };
   }
@@ -778,7 +949,7 @@ export class StudentService {
       jobProfile?: string;
       joiningLetterUrl?: string;
       deleteJoiningLetter?: boolean;
-    },
+    }
   ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
@@ -786,7 +957,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const application = await this.prisma.internshipApplication.findUnique({
@@ -794,17 +965,19 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Verify ownership
     if (application.studentId !== student.id) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Only allow updates for self-identified applications
     if (!application.isSelfIdentified) {
-      throw new BadRequestException('Only self-identified applications can be updated');
+      throw new BadRequestException(
+        "Only self-identified applications can be updated"
+      );
     }
 
     const oldValues = {
@@ -822,14 +995,20 @@ export class StudentService {
     // Build update data - explicitly exclude time period fields
     const updateData: any = {};
 
-    if (updateDto.companyName !== undefined) updateData.companyName = updateDto.companyName;
-    if (updateDto.companyAddress !== undefined) updateData.companyAddress = updateDto.companyAddress;
-    if (updateDto.companyContact !== undefined) updateData.companyContact = updateDto.companyContact;
-    if (updateDto.companyEmail !== undefined) updateData.companyEmail = updateDto.companyEmail;
+    if (updateDto.companyName !== undefined)
+      updateData.companyName = updateDto.companyName;
+    if (updateDto.companyAddress !== undefined)
+      updateData.companyAddress = updateDto.companyAddress;
+    if (updateDto.companyContact !== undefined)
+      updateData.companyContact = updateDto.companyContact;
+    if (updateDto.companyEmail !== undefined)
+      updateData.companyEmail = updateDto.companyEmail;
     if (updateDto.hrName !== undefined) updateData.hrName = updateDto.hrName;
-    if (updateDto.hrContact !== undefined) updateData.hrContact = updateDto.hrContact;
+    if (updateDto.hrContact !== undefined)
+      updateData.hrContact = updateDto.hrContact;
     if (updateDto.hrEmail !== undefined) updateData.hrEmail = updateDto.hrEmail;
-    if (updateDto.jobProfile !== undefined) updateData.jobProfile = updateDto.jobProfile;
+    if (updateDto.jobProfile !== undefined)
+      updateData.jobProfile = updateDto.jobProfile;
 
     // Handle joining letter
     if (updateDto.deleteJoiningLetter) {
@@ -855,26 +1034,31 @@ export class StudentService {
     });
 
     // Audit application update
-    this.auditService.log({
-      action: AuditAction.APPLICATION_UPDATE,
-      entityType: 'InternshipApplication',
-      entityId: applicationId,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Self-identified application updated: ${updated.companyName}`,
-      category: AuditCategory.APPLICATION_PROCESS,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      oldValues,
-      newValues: updateData,
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.APPLICATION_UPDATE,
+        entityType: "InternshipApplication",
+        entityId: applicationId,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Self-identified application updated: ${updated.companyName}`,
+        category: AuditCategory.APPLICATION_PROCESS,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        oldValues,
+        newValues: updateData,
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['applications', `student:${student.id}`]);
+    await this.cache.invalidateByTags([
+      "applications",
+      `student:${student.id}`,
+    ]);
 
     return {
       success: true,
-      message: 'Application updated successfully',
+      message: "Application updated successfully",
       application: updated,
     };
   }
@@ -882,61 +1066,79 @@ export class StudentService {
   /**
    * Submit self-identified internship
    */
-  async submitSelfIdentified(userId: string, selfIdentifiedDto: {
-    companyName: string;
-    companyAddress: string;
-    companyContact?: string;
-    companyEmail?: string;
-    hrName?: string;
-    hrDesignation?: string;
-    hrContact?: string;
-    hrEmail?: string;
-    internshipDuration?: string;
-    stipend?: string;
-    startDate?: Date;
-    endDate?: Date;
-    jobProfile?: string;
-    joiningLetterUrl?: string;
-    coverLetter?: string;
-  }) {
+  async submitSelfIdentified(
+    userId: string,
+    selfIdentifiedDto: {
+      companyName: string;
+      companyAddress: string;
+      companyContact?: string;
+      companyEmail?: string;
+      hrName?: string;
+      hrDesignation?: string;
+      hrContact?: string;
+      hrEmail?: string;
+      internshipDuration?: string;
+      stipend?: string;
+      startDate?: Date;
+      endDate?: Date;
+      jobProfile?: string;
+      joiningLetterUrl?: string;
+      coverLetter?: string;
+    }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
 
     // Check if student already has an active internship application
-    const activeApplication = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId,
-        isActive: true,
+    const activeApplication = await this.prisma.internshipApplication.findFirst(
+      {
+        where: {
+          studentId,
+          isActive: true,
 
-        status: { in: [ApplicationStatus.SELECTED, ApplicationStatus.JOINED, ApplicationStatus.APPLIED] },
-      },
-    });
+          status: {
+            in: [
+              ApplicationStatus.SELECTED,
+              ApplicationStatus.JOINED,
+              ApplicationStatus.APPLIED,
+            ],
+          },
+        },
+      }
+    );
 
     if (activeApplication && !activeApplication.isSelfIdentified) {
-      throw new BadRequestException('You already have an active internship application');
+      throw new BadRequestException(
+        "You already have an active internship application"
+      );
     }
 
     // Check if student already has an approved self-identified internship
-    const existingSelfIdentified = await this.prisma.internshipApplication.findFirst({
-      where: {
-        studentId,
-        isActive: true,
-        isSelfIdentified: true,
-        status: ApplicationStatus.APPROVED,
-        internshipPhase: { in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE] },
-      },
-    });
+    const existingSelfIdentified =
+      await this.prisma.internshipApplication.findFirst({
+        where: {
+          studentId,
+          isActive: true,
+          isSelfIdentified: true,
+          status: ApplicationStatus.APPROVED,
+          internshipPhase: {
+            in: [InternshipPhase.NOT_STARTED, InternshipPhase.ACTIVE],
+          },
+        },
+      });
 
     if (existingSelfIdentified) {
-      throw new BadRequestException('You already have an approved self-identified internship. Please edit the existing one instead of creating a new application.');
+      throw new BadRequestException(
+        "You already have an approved self-identified internship. Please edit the existing one instead of creating a new application."
+      );
     }
 
     // Self-identified internships are auto-approved
@@ -958,28 +1160,30 @@ export class StudentService {
     });
 
     // Audit self-identified internship submission
-    this.auditService.log({
-      action: AuditAction.APPLICATION_SUBMIT,
-      entityType: 'InternshipApplication',
-      entityId: application.id,
-      userId,
-      userName: student.user?.name,
-      userRole: student.user?.role || Role.STUDENT,
-      description: `Self-identified internship submitted: ${selfIdentifiedDto.companyName}`,
-      category: AuditCategory.APPLICATION_PROCESS,
-      severity: AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        applicationId: application.id,
-        companyName: selfIdentifiedDto.companyName,
-        isSelfIdentified: true,
-        status: ApplicationStatus.APPROVED,
-        startDate: selfIdentifiedDto.startDate,
-        endDate: selfIdentifiedDto.endDate,
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.APPLICATION_SUBMIT,
+        entityType: "InternshipApplication",
+        entityId: application.id,
+        userId,
+        userName: student.user?.name,
+        userRole: student.user?.role || Role.STUDENT,
+        description: `Self-identified internship submitted: ${selfIdentifiedDto.companyName}`,
+        category: AuditCategory.APPLICATION_PROCESS,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          applicationId: application.id,
+          companyName: selfIdentifiedDto.companyName,
+          isSelfIdentified: true,
+          status: ApplicationStatus.APPROVED,
+          startDate: selfIdentifiedDto.startDate,
+          endDate: selfIdentifiedDto.endDate,
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['applications', `student:${studentId}`]);
+    await this.cache.invalidateByTags(["applications", `student:${studentId}`]);
 
     return application;
   }
@@ -987,7 +1191,10 @@ export class StudentService {
   /**
    * Get self-identified internship applications
    */
-  async getSelfIdentified(userId: string, params: { page?: number; limit?: number }) {
+  async getSelfIdentified(
+    userId: string,
+    params: { page?: number; limit?: number }
+  ) {
     const { page = 1, limit = 10 } = params;
     const skip = (page - 1) * limit;
 
@@ -997,7 +1204,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const where: Prisma.InternshipApplicationWhereInput = {
@@ -1029,7 +1236,7 @@ export class StudentService {
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       this.prisma.internshipApplication.count({ where }),
     ]);
@@ -1049,27 +1256,30 @@ export class StudentService {
    * - If no report exists, create and auto-approve
    * - Check submission window and mark overdue if applicable
    */
-  async submitMonthlyReport(userId: string, reportDto: {
-    applicationId: string;
-    reportMonth: number;
-    reportYear: number;
-    reportFileUrl: string; // Required for submission
-    monthName?: string;
-  }) {
+  async submitMonthlyReport(
+    userId: string,
+    reportDto: {
+      applicationId: string;
+      reportMonth: number;
+      reportYear: number;
+      reportFileUrl: string; // Required for submission
+      monthName?: string;
+    }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
 
     // Require file URL for submission
     if (!reportDto.reportFileUrl) {
-      throw new BadRequestException('Report file is required for submission');
+      throw new BadRequestException("Report file is required for submission");
     }
 
     // Verify application belongs to student
@@ -1088,20 +1298,29 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // CRITICAL FIX 10.1: Monthly Report Timing Validation
     // Validate report month is not before internship started
-    const internshipStartDate = application.startDate || application.joiningDate;
+    const internshipStartDate =
+      application.startDate || application.joiningDate;
     if (internshipStartDate) {
-      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+      const reportDate = new Date(
+        reportDto.reportYear,
+        reportDto.reportMonth - 1,
+        1
+      );
+      const startDate = new Date(
+        internshipStartDate.getFullYear(),
+        internshipStartDate.getMonth(),
+        1
+      );
 
       if (reportDate < startDate) {
         throw new BadRequestException(
           `Cannot submit report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
-          `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
+            `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
         );
       }
     }
@@ -1109,13 +1328,21 @@ export class StudentService {
     // Validate report month is not after internship ended
     const internshipEndDate = application.endDate || application.completionDate;
     if (internshipEndDate) {
-      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-      const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+      const reportDate = new Date(
+        reportDto.reportYear,
+        reportDto.reportMonth - 1,
+        1
+      );
+      const endDate = new Date(
+        internshipEndDate.getFullYear(),
+        internshipEndDate.getMonth(),
+        1
+      );
 
       if (reportDate > endDate) {
         throw new BadRequestException(
           `Cannot submit report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
-          `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
+            `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
         );
       }
     }
@@ -1131,10 +1358,21 @@ export class StudentService {
     });
 
     // Calculate submission window
-    const nextMonth = reportDto.reportMonth === 12 ? 1 : reportDto.reportMonth + 1;
-    const nextYear = reportDto.reportMonth === 12 ? reportDto.reportYear + 1 : reportDto.reportYear;
+    const nextMonth =
+      reportDto.reportMonth === 12 ? 1 : reportDto.reportMonth + 1;
+    const nextYear =
+      reportDto.reportMonth === 12
+        ? reportDto.reportYear + 1
+        : reportDto.reportYear;
     const submissionWindowStart = new Date(nextYear, nextMonth - 1, 1);
-    const submissionWindowEnd = new Date(nextYear, nextMonth - 1, 10, 23, 59, 59);
+    const submissionWindowEnd = new Date(
+      nextYear,
+      nextMonth - 1,
+      10,
+      23,
+      59,
+      59
+    );
     const now = new Date();
     const isOverdue = now > submissionWindowEnd;
 
@@ -1142,25 +1380,32 @@ export class StudentService {
     if (existingReport) {
       // Don't allow re-submission if already approved
       if (existingReport.status === MonthlyReportStatus.APPROVED) {
-        throw new BadRequestException('Report has already been approved');
+        throw new BadRequestException("Report has already been approved");
       }
 
       // Calculate period dates if not already set
-      const periodStartDate = existingReport.periodStartDate || new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-      const periodEndDate = existingReport.periodEndDate || new Date(reportDto.reportYear, reportDto.reportMonth, 0, 23, 59, 59);
+      const periodStartDate =
+        existingReport.periodStartDate ||
+        new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
+      const periodEndDate =
+        existingReport.periodEndDate ||
+        new Date(reportDto.reportYear, reportDto.reportMonth, 0, 23, 59, 59);
 
       // Update existing report with file and AUTO-APPROVE
       const updated = await this.prisma.monthlyReport.update({
         where: { id: existingReport.id },
         data: {
           reportFileUrl: reportDto.reportFileUrl,
-          monthName: reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
+          monthName:
+            reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
           status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
           isApproved: true,
           approvedAt: now,
           submittedAt: now,
-          submissionWindowStart: existingReport.submissionWindowStart || submissionWindowStart,
-          submissionWindowEnd: existingReport.submissionWindowEnd || submissionWindowEnd,
+          submissionWindowStart:
+            existingReport.submissionWindowStart || submissionWindowStart,
+          submissionWindowEnd:
+            existingReport.submissionWindowEnd || submissionWindowEnd,
           dueDate: existingReport.dueDate || submissionWindowEnd,
           periodStartDate,
           periodEndDate,
@@ -1169,43 +1414,58 @@ export class StudentService {
       });
 
       // Audit monthly report submission (update)
-      this.auditService.log({
-        action: AuditAction.MONTHLY_REPORT_SUBMIT,
-        entityType: 'MonthlyReport',
-        entityId: updated.id,
-        userId,
-        userName: student.user.name,
-        userRole: student.user.role || Role.STUDENT,
-        description: `Monthly report submitted for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}${isOverdue ? ' (overdue)' : ''}`,
-        category: AuditCategory.INTERNSHIP_WORKFLOW,
-        severity: isOverdue ? AuditSeverity.MEDIUM : AuditSeverity.LOW,
-        institutionId: student.institutionId || undefined,
-        newValues: {
-          reportId: updated.id,
-          reportMonth: reportDto.reportMonth,
-          reportYear: reportDto.reportYear,
-          status: MonthlyReportStatus.APPROVED,
-          isOverdue,
-          autoApproved: true,
-        },
-      }).catch(() => {});
+      this.auditService
+        .log({
+          action: AuditAction.MONTHLY_REPORT_SUBMIT,
+          entityType: "MonthlyReport",
+          entityId: updated.id,
+          userId,
+          userName: student.user.name,
+          userRole: student.user.role || Role.STUDENT,
+          description: `Monthly report submitted for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}${isOverdue ? " (overdue)" : ""}`,
+          category: AuditCategory.INTERNSHIP_WORKFLOW,
+          severity: isOverdue ? AuditSeverity.MEDIUM : AuditSeverity.LOW,
+          institutionId: student.institutionId || undefined,
+          newValues: {
+            reportId: updated.id,
+            reportMonth: reportDto.reportMonth,
+            reportYear: reportDto.reportYear,
+            status: MonthlyReportStatus.APPROVED,
+            isOverdue,
+            autoApproved: true,
+          },
+        })
+        .catch(() => {});
 
-      await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
+      await this.cache.invalidateByTags(["reports", `student:${studentId}`, `student:dashboard:${studentId}`]);
 
       // Increment submitted reports counter
       // Note: We know status is not APPROVED here (checked earlier on line 1143)
-      await this.expectedCycleService.incrementReportCount(reportDto.applicationId);
+      await this.expectedCycleService.incrementReportCount(
+        reportDto.applicationId
+      );
 
       return {
         ...updated,
-        message: 'Report submitted and auto-approved successfully',
+        message: "Report submitted and auto-approved successfully",
         autoApproved: true,
       };
     }
 
     // Calculate period dates for the report
-    const periodStartDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-    const periodEndDate = new Date(reportDto.reportYear, reportDto.reportMonth, 0, 23, 59, 59);
+    const periodStartDate = new Date(
+      reportDto.reportYear,
+      reportDto.reportMonth - 1,
+      1
+    );
+    const periodEndDate = new Date(
+      reportDto.reportYear,
+      reportDto.reportMonth,
+      0,
+      23,
+      59,
+      59
+    );
 
     // Create new report with AUTO-APPROVAL
     const report = await this.prisma.monthlyReport.create({
@@ -1215,7 +1475,8 @@ export class StudentService {
         reportMonth: reportDto.reportMonth,
         reportYear: reportDto.reportYear,
         reportFileUrl: reportDto.reportFileUrl,
-        monthName: reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
+        monthName:
+          reportDto.monthName || MONTH_NAMES[reportDto.reportMonth - 1],
         status: MonthlyReportStatus.APPROVED, // AUTO-APPROVAL
         isApproved: true,
         approvedAt: now,
@@ -1230,35 +1491,39 @@ export class StudentService {
     });
 
     // Audit monthly report submission (create)
-    this.auditService.log({
-      action: AuditAction.MONTHLY_REPORT_SUBMIT,
-      entityType: 'MonthlyReport',
-      entityId: report.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Monthly report submitted for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}${isOverdue ? ' (overdue)' : ''}`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: isOverdue ? AuditSeverity.MEDIUM : AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        reportId: report.id,
-        reportMonth: reportDto.reportMonth,
-        reportYear: reportDto.reportYear,
-        status: MonthlyReportStatus.APPROVED,
-        isOverdue,
-        autoApproved: true,
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.MONTHLY_REPORT_SUBMIT,
+        entityType: "MonthlyReport",
+        entityId: report.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Monthly report submitted for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}${isOverdue ? " (overdue)" : ""}`,
+        category: AuditCategory.INTERNSHIP_WORKFLOW,
+        severity: isOverdue ? AuditSeverity.MEDIUM : AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          reportId: report.id,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          status: MonthlyReportStatus.APPROVED,
+          isOverdue,
+          autoApproved: true,
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
+    await this.cache.invalidateByTags(["reports", `student:${studentId}`, `student:dashboard:${studentId}`]);
 
     // Increment submitted reports counter for new report
-    await this.expectedCycleService.incrementReportCount(reportDto.applicationId);
+    await this.expectedCycleService.incrementReportCount(
+      reportDto.applicationId
+    );
 
     return {
       ...report,
-      message: 'Report submitted and auto-approved successfully',
+      message: "Report submitted and auto-approved successfully",
       autoApproved: true,
     };
   }
@@ -1266,19 +1531,23 @@ export class StudentService {
   /**
    * Update a monthly report (student-owned)
    */
-  async updateMonthlyReport(userId: string, id: string, reportDto: {
-    reportFileUrl?: string;
-    monthName?: string;
-    status?: MonthlyReportStatus;
-    reviewComments?: string;
-  }) {
+  async updateMonthlyReport(
+    userId: string,
+    id: string,
+    reportDto: {
+      reportFileUrl?: string;
+      monthName?: string;
+      status?: MonthlyReportStatus;
+      reviewComments?: string;
+    }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
@@ -1288,7 +1557,7 @@ export class StudentService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Monthly report not found');
+      throw new NotFoundException("Monthly report not found");
     }
 
     const oldValues = {
@@ -1304,27 +1573,32 @@ export class StudentService {
         monthName: reportDto.monthName,
         status: reportDto.status,
         reviewComments: reportDto.reviewComments,
-        submittedAt: reportDto.status === MonthlyReportStatus.SUBMITTED ? new Date() : undefined,
+        submittedAt:
+          reportDto.status === MonthlyReportStatus.SUBMITTED
+            ? new Date()
+            : undefined,
       },
     });
 
     // Audit monthly report update
-    this.auditService.log({
-      action: AuditAction.MONTHLY_REPORT_SUBMIT,
-      entityType: 'MonthlyReport',
-      entityId: id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Monthly report updated for ${existing.monthName || MONTH_NAMES[(existing.reportMonth || 1) - 1]} ${existing.reportYear}`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      oldValues,
-      newValues: reportDto,
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.MONTHLY_REPORT_SUBMIT,
+        entityType: "MonthlyReport",
+        entityId: id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Monthly report updated for ${existing.monthName || MONTH_NAMES[(existing.reportMonth || 1) - 1]} ${existing.reportYear}`,
+        category: AuditCategory.INTERNSHIP_WORKFLOW,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        oldValues,
+        newValues: reportDto,
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
+    await this.cache.invalidateByTags(["reports", `student:${studentId}`]);
     return updated;
   }
 
@@ -1338,7 +1612,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
@@ -1348,7 +1622,7 @@ export class StudentService {
     });
 
     if (!existing) {
-      throw new NotFoundException('Monthly report not found');
+      throw new NotFoundException("Monthly report not found");
     }
 
     // Soft delete instead of hard delete
@@ -1362,47 +1636,57 @@ export class StudentService {
 
     // Decrement the submitted reports counter ONLY if report was APPROVED
     // DRAFT/SUBMITTED/REJECTED reports were never counted, so don't decrement
-    if (existing.applicationId && existing.status === MonthlyReportStatus.APPROVED) {
-      await this.expectedCycleService.decrementReportCount(existing.applicationId);
+    if (
+      existing.applicationId &&
+      existing.status === MonthlyReportStatus.APPROVED
+    ) {
+      await this.expectedCycleService.decrementReportCount(
+        existing.applicationId
+      );
     }
 
     // Audit monthly report deletion
-    this.auditService.log({
-      action: AuditAction.MONTHLY_REPORT_DELETE,
-      entityType: 'MonthlyReport',
-      entityId: id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Monthly report deleted for ${existing.monthName || MONTH_NAMES[(existing.reportMonth || 1) - 1]} ${existing.reportYear}`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      oldValues: {
-        reportId: id,
-        reportMonth: existing.reportMonth,
-        reportYear: existing.reportYear,
-        status: existing.status,
-        isDeleted: false,
-      },
-      newValues: {
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.MONTHLY_REPORT_DELETE,
+        entityType: "MonthlyReport",
+        entityId: id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Monthly report deleted for ${existing.monthName || MONTH_NAMES[(existing.reportMonth || 1) - 1]} ${existing.reportYear}`,
+        category: AuditCategory.INTERNSHIP_WORKFLOW,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        oldValues: {
+          reportId: id,
+          reportMonth: existing.reportMonth,
+          reportYear: existing.reportYear,
+          status: existing.status,
+          isDeleted: false,
+        },
+        newValues: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['reports', `student:${studentId}`]);
+    await this.cache.invalidateByTags(["reports", `student:${studentId}`, `student:dashboard:${studentId}`]);
 
     return {
       success: true,
-      message: 'Monthly report deleted successfully',
+      message: "Monthly report deleted successfully",
     };
   }
 
   /**
    * Get student documents (only non-deleted)
    */
-  async getDocuments(userId: string, params: { page?: number; limit?: number; type?: string }) {
+  async getDocuments(
+    userId: string,
+    params: { page?: number; limit?: number; type?: string }
+  ) {
     const { page = 1, limit = 10, type } = params;
     const skip = (page - 1) * limit;
 
@@ -1412,7 +1696,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const where: Prisma.DocumentWhereInput = {
@@ -1426,7 +1710,7 @@ export class StudentService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       }),
       this.prisma.document.count({ where }),
     ]);
@@ -1443,18 +1727,27 @@ export class StudentService {
   /**
    * Upload a document
    */
-  async uploadDocument(userId: string, file: any, documentDto: { type: string }) {
+  async uploadDocument(
+    userId: string,
+    file: any,
+    documentDto: { type: string }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
-    const fileUrl = (file as any)?.path || (file as any)?.location || (file as any)?.url || '';
-    const fileName = (file as any)?.originalname || (file as any)?.filename || 'document';
+    const fileUrl =
+      (file as any)?.path ||
+      (file as any)?.location ||
+      (file as any)?.url ||
+      "";
+    const fileName =
+      (file as any)?.originalname || (file as any)?.filename || "document";
 
     const created = await this.prisma.document.create({
       data: {
@@ -1466,26 +1759,28 @@ export class StudentService {
     });
 
     // Audit document upload
-    this.auditService.log({
-      action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
-      entityType: 'Document',
-      entityId: created.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Document uploaded: ${fileName} (${documentDto.type})`,
-      category: AuditCategory.PROFILE_MANAGEMENT,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        documentId: created.id,
-        fileName,
-        fileUrl,
-        type: documentDto.type,
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_DOCUMENT_UPLOAD,
+        entityType: "Document",
+        entityId: created.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Document uploaded: ${fileName} (${documentDto.type})`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          documentId: created.id,
+          fileName,
+          fileUrl,
+          type: documentDto.type,
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['documents', `student:${student.id}`]);
+    await this.cache.invalidateByTags(["documents", `student:${student.id}`]);
     return created;
   }
 
@@ -1499,7 +1794,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const document = await this.prisma.document.findFirst({
@@ -1507,7 +1802,7 @@ export class StudentService {
     });
 
     if (!document) {
-      throw new NotFoundException('Document not found');
+      throw new NotFoundException("Document not found");
     }
 
     // Soft delete instead of hard delete
@@ -1520,38 +1815,43 @@ export class StudentService {
     });
 
     // Audit document deletion
-    this.auditService.log({
-      action: AuditAction.STUDENT_DOCUMENT_DELETE,
-      entityType: 'Document',
-      entityId: id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Document deleted: ${document.fileName}`,
-      category: AuditCategory.PROFILE_MANAGEMENT,
-      severity: AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      oldValues: {
-        documentId: id,
-        fileName: document.fileName,
-        type: document.type,
-        isDeleted: false,
-      },
-      newValues: {
-        isDeleted: true,
-        deletedAt: new Date(),
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.STUDENT_DOCUMENT_DELETE,
+        entityType: "Document",
+        entityId: id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Document deleted: ${document.fileName}`,
+        category: AuditCategory.PROFILE_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        oldValues: {
+          documentId: id,
+          fileName: document.fileName,
+          type: document.type,
+          isDeleted: false,
+        },
+        newValues: {
+          isDeleted: true,
+          deletedAt: new Date(),
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['documents', `student:${student.id}`]);
-    return { success: true, message: 'Document deleted successfully' };
+    await this.cache.invalidateByTags(["documents", `student:${student.id}`]);
+    return { success: true, message: "Document deleted successfully" };
   }
 
   /**
    * Get monthly reports
    * CRITICAL FIX 10.3: Filter reports by valid internship period
    */
-  async getMonthlyReports(userId: string, params: { page?: number; limit?: number; applicationId?: string }) {
+  async getMonthlyReports(
+    userId: string,
+    params: { page?: number; limit?: number; applicationId?: string }
+  ) {
     const { page = 1, limit = 10, applicationId } = params;
     const skip = (page - 1) * limit;
 
@@ -1561,7 +1861,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
@@ -1592,10 +1892,7 @@ export class StudentService {
             },
           },
         },
-        orderBy: [
-          { reportYear: 'desc' },
-          { reportMonth: 'desc' },
-        ],
+        orderBy: [{ reportYear: "desc" }, { reportMonth: "desc" }],
       }),
       this.prisma.monthlyReport.count({ where }),
     ]);
@@ -1605,21 +1902,31 @@ export class StudentService {
       const application = report.application;
       if (!application) return true; // Keep if no application data
 
-      const internshipStartDate = application.startDate || application.joiningDate;
-      const internshipEndDate = application.endDate || application.completionDate;
+      const internshipStartDate =
+        application.startDate || application.joiningDate;
+      const internshipEndDate =
+        application.endDate || application.completionDate;
 
       // If no start date, keep all reports
       if (!internshipStartDate) return true;
 
       const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
-      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+      const startDate = new Date(
+        internshipStartDate.getFullYear(),
+        internshipStartDate.getMonth(),
+        1
+      );
 
       // Filter out reports before internship started
       if (reportDate < startDate) return false;
 
       // Filter out reports after internship ended
       if (internshipEndDate) {
-        const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+        const endDate = new Date(
+          internshipEndDate.getFullYear(),
+          internshipEndDate.getMonth(),
+          1
+        );
         if (reportDate > endDate) return false;
       }
 
@@ -1638,19 +1945,28 @@ export class StudentService {
   /**
    * Submit grievance
    */
-  async submitGrievance(userId: string, grievanceDto: {
-    title: string;
-    category: string;
-    description: string;
-    severity?: string;
-    // industryId removed - Industry model no longer exists
-    actionRequested?: string;
-    preferredContactMethod?: string;
-    attachments?: string[];
-    assignedToId?: string;
-  }) {
-    console.log('[StudentService.submitGrievance] Received grievanceDto:', JSON.stringify(grievanceDto, null, 2));
-    console.log('[StudentService.submitGrievance] assignedToId:', grievanceDto.assignedToId);
+  async submitGrievance(
+    userId: string,
+    grievanceDto: {
+      title: string;
+      category: string;
+      description: string;
+      severity?: string;
+      // industryId removed - Industry model no longer exists
+      actionRequested?: string;
+      preferredContactMethod?: string;
+      attachments?: string[];
+      assignedToId?: string;
+    }
+  ) {
+    console.log(
+      "[StudentService.submitGrievance] Received grievanceDto:",
+      JSON.stringify(grievanceDto, null, 2)
+    );
+    console.log(
+      "[StudentService.submitGrievance] assignedToId:",
+      grievanceDto.assignedToId
+    );
 
     const student = await this.prisma.student.findUnique({
       where: { userId },
@@ -1658,7 +1974,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const studentId = student.id;
@@ -1669,44 +1985,50 @@ export class StudentService {
         title: grievanceDto.title,
         category: grievanceDto.category as any,
         description: grievanceDto.description,
-        severity: (grievanceDto.severity as any) || 'MEDIUM',
+        severity: (grievanceDto.severity as any) || "MEDIUM",
         actionRequested: grievanceDto.actionRequested,
         preferredContactMethod: grievanceDto.preferredContactMethod,
         attachments: grievanceDto.attachments || [],
         assignedToId: grievanceDto.assignedToId,
-        escalationLevel: 'MENTOR',
-        status: 'SUBMITTED',
+        escalationLevel: "MENTOR",
+        status: "SUBMITTED",
       },
     });
 
     // Audit grievance submission
-    this.auditService.log({
-      action: AuditAction.GRIEVANCE_SUBMIT,
-      entityType: 'Grievance',
-      entityId: grievance.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Grievance submitted: ${grievanceDto.title} (${grievanceDto.category})`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: grievanceDto.severity === 'HIGH' || grievanceDto.severity === 'CRITICAL'
-        ? AuditSeverity.HIGH
-        : AuditSeverity.MEDIUM,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        grievanceId: grievance.id,
-        title: grievanceDto.title,
-        category: grievanceDto.category,
-        severity: grievanceDto.severity || 'MEDIUM',
-        status: 'PENDING',
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.GRIEVANCE_SUBMIT,
+        entityType: "Grievance",
+        entityId: grievance.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Grievance submitted: ${grievanceDto.title} (${grievanceDto.category})`,
+        category: AuditCategory.INTERNSHIP_WORKFLOW,
+        severity:
+          grievanceDto.severity === "HIGH" ||
+          grievanceDto.severity === "CRITICAL"
+            ? AuditSeverity.HIGH
+            : AuditSeverity.MEDIUM,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          grievanceId: grievance.id,
+          title: grievanceDto.title,
+          category: grievanceDto.category,
+          severity: grievanceDto.severity || "MEDIUM",
+          status: "PENDING",
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['grievances', `student:${studentId}`]);
+    await this.cache.invalidateByTags(["grievances", `student:${studentId}`]);
 
     // Invalidate Redis cache for assigned faculty so they see the new grievance
     if (grievanceDto.assignedToId) {
-      await this.redisCache.del(`grievances:faculty:${grievanceDto.assignedToId}`);
+      await this.redisCache.del(
+        `grievances:faculty:${grievanceDto.assignedToId}`
+      );
     }
 
     return grievance;
@@ -1717,7 +2039,7 @@ export class StudentService {
    */
   async getGrievances(
     userId: string,
-    params: { page?: number; limit?: number; status?: string },
+    params: { page?: number; limit?: number; status?: string }
   ) {
     const { page = 1, limit = 10, status } = params;
     const skip = (page - 1) * limit;
@@ -1728,7 +2050,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const where: Prisma.GrievanceWhereInput = {
@@ -1766,7 +2088,7 @@ export class StudentService {
             },
           },
         },
-        orderBy: { submittedDate: 'desc' },
+        orderBy: { submittedDate: "desc" },
       }),
       this.prisma.grievance.count({ where }),
     ]);
@@ -1800,7 +2122,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     // Verify ownership
@@ -1810,13 +2132,13 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // Get all reports for this application
     const reports = await this.prisma.monthlyReport.findMany({
       where: { applicationId, isDeleted: false },
-      orderBy: [{ reportYear: 'asc' }, { reportMonth: 'asc' }],
+      orderBy: [{ reportYear: "asc" }, { reportMonth: "asc" }],
     });
 
     return this.formatReportsWithStatus(reports, application);
@@ -1827,7 +2149,8 @@ export class StudentService {
    * HIGH PRIORITY FIX 10.5: Progress calculated based on valid reports only
    */
   private formatReportsWithStatus(reports: any[], application: any) {
-    const internshipStartDate = application.startDate || application.joiningDate;
+    const internshipStartDate =
+      application.startDate || application.joiningDate;
     const internshipEndDate = application.endDate || application.completionDate;
 
     // Filter for valid reports (within internship period)
@@ -1835,14 +2158,22 @@ export class StudentService {
       if (!internshipStartDate) return true;
 
       const reportDate = new Date(report.reportYear, report.reportMonth - 1, 1);
-      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+      const startDate = new Date(
+        internshipStartDate.getFullYear(),
+        internshipStartDate.getMonth(),
+        1
+      );
 
       // Filter out reports before internship started
       if (reportDate < startDate) return false;
 
       // Filter out reports after internship ended
       if (internshipEndDate) {
-        const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+        const endDate = new Date(
+          internshipEndDate.getFullYear(),
+          internshipEndDate.getMonth(),
+          1
+        );
         if (reportDate > endDate) return false;
       }
 
@@ -1854,19 +2185,26 @@ export class StudentService {
       return {
         ...report,
         submissionStatus,
-        autoApproved: report.isApproved && report.status === MonthlyReportStatus.APPROVED, // HIGH PRIORITY FIX 10.4
+        autoApproved:
+          report.isApproved && report.status === MonthlyReportStatus.APPROVED, // HIGH PRIORITY FIX 10.4
       };
     });
 
     // Calculate progress - only for valid reports
     const total = validReports.length;
-    const approved = validReports.filter((r) => r.status === MonthlyReportStatus.APPROVED).length;
-    const submitted = validReports.filter((r) => r.status === MonthlyReportStatus.SUBMITTED).length;
-    const draft = validReports.filter((r) => r.status === MonthlyReportStatus.DRAFT).length;
+    const approved = validReports.filter(
+      (r) => r.status === MonthlyReportStatus.APPROVED
+    ).length;
+    const submitted = validReports.filter(
+      (r) => r.status === MonthlyReportStatus.SUBMITTED
+    ).length;
+    const draft = validReports.filter(
+      (r) => r.status === MonthlyReportStatus.DRAFT
+    ).length;
     const overdue = validReports.filter((r) => {
       if (r.status === MonthlyReportStatus.APPROVED) return false;
       const status = this.getReportSubmissionStatus(r);
-      return status.status === 'OVERDUE';
+      return status.status === "OVERDUE";
     }).length;
 
     return {
@@ -1898,7 +2236,7 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     const report = await this.prisma.monthlyReport.findFirst({
@@ -1918,7 +2256,7 @@ export class StudentService {
     });
 
     if (!report) {
-      throw new NotFoundException('Report not found');
+      throw new NotFoundException("Report not found");
     }
 
     const submissionStatus = this.getReportSubmissionStatus(report);
@@ -1926,26 +2264,30 @@ export class StudentService {
     return {
       ...report,
       submissionStatus,
-      autoApproved: report.isApproved && report.status === MonthlyReportStatus.APPROVED,
+      autoApproved:
+        report.isApproved && report.status === MonthlyReportStatus.APPROVED,
     };
   }
 
   /**
    * Upload report file and save as DRAFT (for cases where user wants to upload before submitting)
    */
-  async uploadReportFile(userId: string, reportDto: {
-    applicationId: string;
-    reportMonth: number;
-    reportYear: number;
-    reportFileUrl: string;
-  }) {
+  async uploadReportFile(
+    userId: string,
+    reportDto: {
+      applicationId: string;
+      reportMonth: number;
+      reportYear: number;
+      reportFileUrl: string;
+    }
+  ) {
     const student = await this.prisma.student.findUnique({
       where: { userId },
       include: { user: true },
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
     // Verify application belongs to student
@@ -1964,32 +2306,49 @@ export class StudentService {
     });
 
     if (!application) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException("Application not found");
     }
 
     // CRITICAL FIX 10.1: Validate report timing for upload as well
-    const internshipStartDate = application.startDate || application.joiningDate;
+    const internshipStartDate =
+      application.startDate || application.joiningDate;
     if (internshipStartDate) {
-      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-      const startDate = new Date(internshipStartDate.getFullYear(), internshipStartDate.getMonth(), 1);
+      const reportDate = new Date(
+        reportDto.reportYear,
+        reportDto.reportMonth - 1,
+        1
+      );
+      const startDate = new Date(
+        internshipStartDate.getFullYear(),
+        internshipStartDate.getMonth(),
+        1
+      );
 
       if (reportDate < startDate) {
         throw new BadRequestException(
           `Cannot upload report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
-          `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
+            `Internship started in ${MONTH_NAMES[internshipStartDate.getMonth()]} ${internshipStartDate.getFullYear()}.`
         );
       }
     }
 
     const internshipEndDate = application.endDate || application.completionDate;
     if (internshipEndDate) {
-      const reportDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-      const endDate = new Date(internshipEndDate.getFullYear(), internshipEndDate.getMonth(), 1);
+      const reportDate = new Date(
+        reportDto.reportYear,
+        reportDto.reportMonth - 1,
+        1
+      );
+      const endDate = new Date(
+        internshipEndDate.getFullYear(),
+        internshipEndDate.getMonth(),
+        1
+      );
 
       if (reportDate > endDate) {
         throw new BadRequestException(
           `Cannot upload report for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}. ` +
-          `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
+            `Internship ended in ${MONTH_NAMES[internshipEndDate.getMonth()]} ${internshipEndDate.getFullYear()}.`
         );
       }
     }
@@ -2007,7 +2366,7 @@ export class StudentService {
     if (existingReport) {
       // Don't update if already approved
       if (existingReport.status === MonthlyReportStatus.APPROVED) {
-        throw new BadRequestException('Approved reports cannot be modified');
+        throw new BadRequestException("Approved reports cannot be modified");
       }
 
       // Update existing report with file
@@ -2017,36 +2376,60 @@ export class StudentService {
       });
 
       // Audit report file upload (update)
-      this.auditService.log({
-        action: AuditAction.MONTHLY_REPORT_UPDATE,
-        entityType: 'MonthlyReport',
-        entityId: updated.id,
-        userId,
-        userName: student.user.name,
-        userRole: student.user.role || Role.STUDENT,
-        description: `Report file uploaded for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}`,
-        category: AuditCategory.INTERNSHIP_WORKFLOW,
-        severity: AuditSeverity.LOW,
-        institutionId: student.institutionId || undefined,
-        newValues: {
-          reportId: updated.id,
-          reportMonth: reportDto.reportMonth,
-          reportYear: reportDto.reportYear,
-          reportFileUrl: reportDto.reportFileUrl,
-        },
-      }).catch(() => {});
+      this.auditService
+        .log({
+          action: AuditAction.MONTHLY_REPORT_UPDATE,
+          entityType: "MonthlyReport",
+          entityId: updated.id,
+          userId,
+          userName: student.user.name,
+          userRole: student.user.role || Role.STUDENT,
+          description: `Report file uploaded for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}`,
+          category: AuditCategory.INTERNSHIP_WORKFLOW,
+          severity: AuditSeverity.LOW,
+          institutionId: student.institutionId || undefined,
+          newValues: {
+            reportId: updated.id,
+            reportMonth: reportDto.reportMonth,
+            reportYear: reportDto.reportYear,
+            reportFileUrl: reportDto.reportFileUrl,
+          },
+        })
+        .catch(() => {});
 
-      await this.cache.invalidateByTags(['reports', `student:${student.id}`]);
+      await this.cache.invalidateByTags(["reports", `student:${student.id}`]);
       return updated;
     }
 
     // Calculate submission window and period dates
-    const nextMonth = reportDto.reportMonth === 12 ? 1 : reportDto.reportMonth + 1;
-    const nextYear = reportDto.reportMonth === 12 ? reportDto.reportYear + 1 : reportDto.reportYear;
+    const nextMonth =
+      reportDto.reportMonth === 12 ? 1 : reportDto.reportMonth + 1;
+    const nextYear =
+      reportDto.reportMonth === 12
+        ? reportDto.reportYear + 1
+        : reportDto.reportYear;
     const submissionWindowStart = new Date(nextYear, nextMonth - 1, 1);
-    const submissionWindowEnd = new Date(nextYear, nextMonth - 1, 10, 23, 59, 59);
-    const periodStartDate = new Date(reportDto.reportYear, reportDto.reportMonth - 1, 1);
-    const periodEndDate = new Date(reportDto.reportYear, reportDto.reportMonth, 0, 23, 59, 59);
+    const submissionWindowEnd = new Date(
+      nextYear,
+      nextMonth - 1,
+      10,
+      23,
+      59,
+      59
+    );
+    const periodStartDate = new Date(
+      reportDto.reportYear,
+      reportDto.reportMonth - 1,
+      1
+    );
+    const periodEndDate = new Date(
+      reportDto.reportYear,
+      reportDto.reportMonth,
+      0,
+      23,
+      59,
+      59
+    );
 
     // Create new DRAFT report with file
     const report = await this.prisma.monthlyReport.create({
@@ -2067,27 +2450,29 @@ export class StudentService {
     });
 
     // Audit report file upload (create draft)
-    this.auditService.log({
-      action: AuditAction.MONTHLY_REPORT_UPDATE,
-      entityType: 'MonthlyReport',
-      entityId: report.id,
-      userId,
-      userName: student.user.name,
-      userRole: student.user.role || Role.STUDENT,
-      description: `Report file uploaded (draft) for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}`,
-      category: AuditCategory.INTERNSHIP_WORKFLOW,
-      severity: AuditSeverity.LOW,
-      institutionId: student.institutionId || undefined,
-      newValues: {
-        reportId: report.id,
-        reportMonth: reportDto.reportMonth,
-        reportYear: reportDto.reportYear,
-        reportFileUrl: reportDto.reportFileUrl,
-        status: MonthlyReportStatus.DRAFT,
-      },
-    }).catch(() => {});
+    this.auditService
+      .log({
+        action: AuditAction.MONTHLY_REPORT_UPDATE,
+        entityType: "MonthlyReport",
+        entityId: report.id,
+        userId,
+        userName: student.user.name,
+        userRole: student.user.role || Role.STUDENT,
+        description: `Report file uploaded (draft) for ${MONTH_NAMES[reportDto.reportMonth - 1]} ${reportDto.reportYear}`,
+        category: AuditCategory.INTERNSHIP_WORKFLOW,
+        severity: AuditSeverity.LOW,
+        institutionId: student.institutionId || undefined,
+        newValues: {
+          reportId: report.id,
+          reportMonth: reportDto.reportMonth,
+          reportYear: reportDto.reportYear,
+          reportFileUrl: reportDto.reportFileUrl,
+          status: MonthlyReportStatus.DRAFT,
+        },
+      })
+      .catch(() => {});
 
-    await this.cache.invalidateByTags(['reports', `student:${student.id}`]);
+    await this.cache.invalidateByTags(["reports", `student:${student.id}`]);
     return report;
   }
 
@@ -2106,7 +2491,7 @@ export class StudentService {
    * Get the assigned mentor for the student
    */
   async getMyMentor(userId: string) {
-    console.log('[StudentService.getMyMentor] userId:', userId);
+    console.log("[StudentService.getMyMentor] userId:", userId);
 
     const student = await this.prisma.student.findUnique({
       where: { userId },
@@ -2114,10 +2499,10 @@ export class StudentService {
     });
 
     if (!student) {
-      throw new NotFoundException('Student not found');
+      throw new NotFoundException("Student not found");
     }
 
-    console.log('[StudentService.getMyMentor] studentId:', student.id);
+    console.log("[StudentService.getMyMentor] studentId:", student.id);
 
     // Find active mentor assignment
     const assignment = await this.prisma.mentorAssignment.findFirst({
@@ -2136,11 +2521,16 @@ export class StudentService {
           },
         },
       },
-      orderBy: { assignmentDate: 'desc' },
+      orderBy: { assignmentDate: "desc" },
     });
 
-    console.log('[StudentService.getMyMentor] assignment found:', !!assignment);
-    console.log('[StudentService.getMyMentor] mentor:', assignment?.mentor ? { id: assignment.mentor.id, name: assignment.mentor.name } : null);
+    console.log("[StudentService.getMyMentor] assignment found:", !!assignment);
+    console.log(
+      "[StudentService.getMyMentor] mentor:",
+      assignment?.mentor
+        ? { id: assignment.mentor.id, name: assignment.mentor.name }
+        : null
+    );
 
     return {
       data: {

@@ -919,6 +919,113 @@ export class ReportGeneratorService {
     return results;
   }
 
+
+  /**
+   * Generate Students Without Internship Report
+   * Returns students who have not filled any internship application
+   * Includes: Name, Roll Number, College Name, Mentor Name
+   * @param filters - Filter criteria for the report
+   * @param pagination - Optional pagination options (take, skip)
+   */
+  async generateStudentsWithoutInternshipReport(
+    filters: any,
+    pagination?: ReportPaginationOptions,
+  ): Promise<any[]> {
+    const where: Record<string, unknown> = {};
+    const { take, skip } = this.getPaginationParams(pagination);
+
+    // Institution filter
+    if (filters?.institutionId) {
+      where.institutionId = filters.institutionId;
+    }
+
+    // Branch filter
+    if (filters?.branchId) {
+      where.branchId = filters.branchId;
+    }
+
+    // Year filter
+    if (filters?.currentYear !== undefined && filters?.currentYear !== null) {
+      where.currentYear = Number(filters.currentYear);
+    }
+
+    // Handle isActive filter - default to active students with active user accounts
+    const isActiveValue = this.parseBooleanLike(filters?.isActive);
+    if (isActiveValue !== undefined) {
+      where.user = { active: isActiveValue };
+    } else {
+      where.user = { active: true };
+    }
+
+    // Mentor filter (applied post-query)
+    const mentorFilter = filters?.mentorId;
+
+    // Find students who have NO internship applications at all
+    const students = await this.prisma.student.findMany({
+      where: {
+        ...where,
+        internshipApplications: {
+          none: {},
+        },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phoneNo: true,
+            active: true,
+            rollNumber: true,
+            branchName: true,
+          },
+        },
+        branch: { select: { id: true, name: true } },
+        Institution: { select: { id: true, name: true, shortName: true } },
+        mentorAssignments: {
+          where: { isActive: true },
+          select: {
+            mentor: { select: { id: true, name: true } },
+          },
+          orderBy: { assignmentDate: 'desc' },
+          take: 1,
+        },
+      },
+      take,
+      skip,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    this.warnOnLargeResultSet(students.length, 'StudentsWithoutInternshipReport');
+
+    // Apply mentor filter if specified
+    let filteredStudents = students;
+    if (mentorFilter) {
+      filteredStudents = students.filter((student) => {
+        const assignedMentor = student.mentorAssignments[0]?.mentor?.id;
+        return assignedMentor === mentorFilter;
+      });
+    }
+
+    return filteredStudents.map((student) => {
+      const mentorName = student.mentorAssignments[0]?.mentor?.name ?? 'Not Assigned';
+
+      return {
+        rollNumber: student.user.rollNumber,
+        name: student.user.name,
+        email: student.user.email ?? '',
+        phoneNumber: student.user.phoneNo ?? '',
+        branchName: student.branch?.name ?? student.user.branchName ?? '',
+        currentYear: student.currentYear,
+        currentSemester: student.currentSemester,
+        institutionName: student.Institution?.name ?? '',
+        mentorName,
+        isActive: student.user?.active ?? false,
+        createdAt: student.createdAt,
+      };
+    });
+  }
+
   /**
    * Generate User Login Activity Report
    * Tracks user login activity, password changes, and first-time logins
@@ -1600,6 +1707,8 @@ export class ReportGeneratorService {
         return this.generateStudentProgressReport(filters, pagination);
       case 'student-compliance':
         return this.generateStudentComplianceReport(filters, pagination);
+      case 'students-without-internship':
+        return this.generateStudentsWithoutInternshipReport(filters, pagination);
 
       // ==================== Mentor Reports (4) ====================
       case 'mentor-list':

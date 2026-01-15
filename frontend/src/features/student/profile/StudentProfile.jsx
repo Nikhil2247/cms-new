@@ -732,67 +732,6 @@ export default function StudentProfile() {
                 key: "3",
                 label: (
                   <span className="flex items-center text-xs font-medium">
-                    <BulbOutlined className="mr-1.5" /> Placements
-                  </span>
-                ),
-                children: (
-                  <div className="p-5">
-                    {(student.placements || []).length > 0 ? (
-                      <Row gutter={[12, 12]}>
-                        {(student.placements || []).map((p, i) => (
-                          <Col xs={24} sm={12} lg={8} key={i}>
-                            <div
-                              className="p-4 rounded-xl border"
-                              style={{ 
-                                backgroundColor: token.colorBgContainer, 
-                                borderColor: token.colorBorderSecondary 
-                              }}
-                            >
-                              <div className="flex justify-between items-start mb-3">
-                                <Title level={5} className="!mb-0 !text-sm font-semibold" style={{ color: token.colorText }}>
-                                  {p.companyName}
-                                </Title>
-                                <Tag color={getPlacementStatusColor(p.status)} className="m-0 text-[10px] rounded-md border-0">
-                                  {p.status}
-                                </Tag>
-                              </div>
-                              <div
-                                className="p-3 rounded-lg mb-3"
-                                style={{ backgroundColor: token.colorSuccessBg }}
-                              >
-                                <Text className="text-[10px] uppercase font-semibold block" style={{ color: token.colorSuccess }}>
-                                  Annual CTC
-                                </Text>
-                                <Text className="text-lg font-bold" style={{ color: token.colorSuccessText }}>
-                                  ₹ {p.salary?.toFixed(2)} <span className="text-xs font-medium">LPA</span>
-                                </Text>
-                              </div>
-                              <div className="space-y-1.5">
-                                <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
-                                  <SolutionOutlined style={{ fontSize: '11px' }} />
-                                  <span className="truncate">{p.jobRole}</span>
-                                </div>
-                                <div className="flex items-center gap-2 text-xs" style={{ color: token.colorTextSecondary }}>
-                                  <CalendarOutlined style={{ fontSize: '11px' }} />
-                                  <span>{formatDate(p.offerDate)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </Col>
-                        ))}
-                      </Row>
-                    ) : (
-                      <div className="py-12 text-center rounded-xl border border-dashed" style={{ borderColor: token.colorBorderSecondary }}>
-                        <Empty description={<span className="text-xs" style={{ color: token.colorTextSecondary }}>No placement offers yet</span>} image={Empty.PRESENTED_IMAGE_SIMPLE} />
-                      </div>
-                    )}
-                  </div>
-                ),
-              },
-              {
-                key: "4",
-                label: (
-                  <span className="flex items-center text-xs font-medium">
                     <LaptopOutlined className="mr-1.5" /> Internships
                   </span>
                 ),

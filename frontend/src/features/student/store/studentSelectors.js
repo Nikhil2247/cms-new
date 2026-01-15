@@ -827,7 +827,7 @@ export const selectNormalizedGrievancesList = createSelector(
  */
 export const selectActiveInternships = createSelector(
   [selectNormalizedApplicationsList],
-  (applications) => applications.filter(app =>
+  (applications) => (applications || []).filter(app =>
     ['SELECTED', 'APPROVED', 'JOINED', 'ACTIVE'].includes(app.status) && app.isActive === true
   )
 );
@@ -843,7 +843,7 @@ export const selectRecentApplications = createSelector(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    return applications.filter(app => {
+    return (applications || []).filter(app => {
       const appDate = new Date(app.updatedAt || app.createdAt);
       return appDate >= thirtyDaysAgo;
     }).sort((a, b) => {
@@ -861,9 +861,13 @@ export const selectRecentApplications = createSelector(
  * @returns {Array} Array of monthly reports enriched with application data
  */
 export const selectMonthlyReportsWithInfo = createSelector(
-  [selectNormalizedApplicationsList],
-  (applications) => applications.flatMap(app => {
-    const internshipStartDate = app.internship?.startDate;
+  [selectProfileData, selectNormalizedApplicationsList],
+  (profileData, stateApplications) => {
+    const applications = (profileData?.internshipApplications?.length > 0)
+      ? profileData.internshipApplications
+      : (stateApplications || []);
+    return applications.flatMap(app => {
+    const internshipStartDate = app.internship?.startDate || app.startDate;
 
     return (app.monthlyReports || [])
       .filter(report => {
@@ -882,11 +886,12 @@ export const selectMonthlyReportsWithInfo = createSelector(
       })
       .map(report => ({
         ...report,
-        applicationId: app.id,
-        internshipTitle: app.internship?.title || app.title,
+        applicationId: report.applicationId || app.id,
+        internshipTitle: app.internship?.title || app.title || app.jobProfile,
         companyName: app.internship?.industry?.companyName || app.companyName,
       }));
-  })
+    });
+  }
 );
 
 /**

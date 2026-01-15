@@ -25,6 +25,16 @@ node_modules/
 # Build outputs
 dist/
 build/
+backend/dist/
+frontend/dist/
+frontend/build/
+# Temporary files
+tmp/
+temp/
+
+#backups
+*.bak
+*.backup
 
 # Deployment state
 .deploy-state

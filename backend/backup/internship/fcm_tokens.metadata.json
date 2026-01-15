@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"818d5cc13d1d4411baefa88cb96abf74","collectionName":"fcm_tokens","type":"collection"}

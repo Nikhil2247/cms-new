@@ -496,54 +496,6 @@ const AllStudents = () => {
     },
     {
       key: '3',
-      label: <span><BulbOutlined /> Placements</span>,
-      children: (
-        <div style={{ padding: 16 }}>
-          {(displayStudent?.placements || []).length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 16 }}>
-              {(displayStudent.placements || []).map((placement, index) => (
-                <Card
-                  key={placement.id || index}
-                  style={{
-                    borderRadius: token.borderRadiusLG,
-                    borderLeft: `4px solid ${
-                      placement.status === 'ACCEPTED' || placement.status === 'JOINED'
-                        ? token.colorSuccess
-                        : placement.status === 'OFFERED'
-                        ? token.colorPrimary
-                        : token.colorError
-                    }`,
-                    backgroundColor: token.colorBgContainer
-                  }}
-                  size="small"
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 16 }}>
-                      {placement.companyName}
-                    </div>
-                    <Tag color={placement.status === 'ACCEPTED' || placement.status === 'JOINED' ? 'success' : 'default'} bordered={false}>
-                      {placement.status}
-                    </Tag>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13 }}>
-                    <div>Job Role: <span style={{ fontWeight: 500 }}>{placement.jobRole || 'N/A'}</span></div>
-                    <div>Salary: <span style={{ fontWeight: 500 }}>{placement.salary ? `₹ ${placement.salary} LPA` : 'N/A'}</span></div>
-                    <div>Offer Date: <span style={{ fontWeight: 500 }}>{formatDate(placement.offerDate)}</span></div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <div style={{ textAlign: 'center', color: token.colorTextDescription, padding: 48, backgroundColor: token.colorBgLayout, borderRadius: token.borderRadiusLG }}>
-              <BulbOutlined style={{ fontSize: 32, marginBottom: 12, color: token.colorTextDisabled }} />
-              <div>No placement records available</div>
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: '4',
       label: (
         <span>
           <LaptopOutlined /> Internships

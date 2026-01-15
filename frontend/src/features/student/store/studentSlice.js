@@ -551,7 +551,11 @@ const studentSlice = createSlice({
           state.reports.list = [];
         }
         state.reports.list = [action.payload, ...state.reports.list];
-        state.lastFetched.reports = null; // Invalidate cache after mutation
+        // Invalidate all caches that contain report counts
+        state.lastFetched.reports = null;
+        state.lastFetched.dashboard = null;
+        state.lastFetched.applications = null;
+        state.lastFetched.profile = null;
       })
       .addCase(createReport.rejected, (state, action) => {
         state.reports.loading = false;
@@ -571,7 +575,11 @@ const studentSlice = createSlice({
         if (index !== -1) {
           state.reports.list[index] = action.payload;
         }
-        state.lastFetched.reports = null; // Invalidate cache after mutation
+        // Invalidate all caches that contain report counts
+        state.lastFetched.reports = null;
+        state.lastFetched.dashboard = null;
+        state.lastFetched.applications = null;
+        state.lastFetched.profile = null;
       })
       .addCase(updateReport.rejected, (state, action) => {
         state.reports.loading = false;
@@ -702,7 +710,11 @@ const studentSlice = createSlice({
         if (index !== -1) {
           state.reports.list[index] = action.payload;
         }
-        state.lastFetched.reports = null; // Invalidate cache after mutation
+        // Invalidate all caches that contain report counts
+        state.lastFetched.reports = null;
+        state.lastFetched.dashboard = null;
+        state.lastFetched.applications = null;
+        state.lastFetched.profile = null;
       })
       .addCase(submitMonthlyReport.rejected, (state, action) => {
         state.reports.loading = false;
@@ -747,7 +759,11 @@ const studentSlice = createSlice({
           state.reports.list = [];
         }
         state.reports.list = state.reports.list.filter(r => r.id !== action.payload.id);
+        // Invalidate all caches that contain report counts
         state.lastFetched.reports = null;
+        state.lastFetched.dashboard = null;
+        state.lastFetched.applications = null;
+        state.lastFetched.profile = null;
       })
 
       // Submit self-identified
