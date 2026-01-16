@@ -18,9 +18,9 @@ import {
   Tooltip,
   Tabs,
   DatePicker,
-  message,
   Popconfirm,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   UndoOutlined,
   SearchOutlined,
@@ -127,31 +127,31 @@ const RestoreCenter = () => {
   // Handle single restore
   const handleRestore = async (id) => {
     if (!id) {
-      message.error('Invalid item ID');
+      toast.error('Invalid item ID');
       return;
     }
     try {
       const result = await dispatch(restoreDeletedItem({ type: selectedType, id })).unwrap();
-      message.success(result?.message || 'Item restored successfully');
+      toast.success(result?.message || 'Item restored successfully');
       // Refresh summary
       dispatch(fetchDeletedItemsSummary(institutionId || undefined));
     } catch (err) {
       const errorMessage = typeof err === 'string' ? err : err?.message || 'Failed to restore item';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
   // Handle bulk restore
   const handleBulkRestore = async () => {
     if (!selectedRowKeys || selectedRowKeys.length === 0) {
-      message.warning('No items selected for restore');
+      toast('No items selected for restore', { icon: '⚠️' });
       return;
     }
 
     // Filter out any invalid IDs
     const validIds = selectedRowKeys.filter(id => id && typeof id === 'string');
     if (validIds.length === 0) {
-      message.error('No valid items selected');
+      toast.error('No valid items selected');
       return;
     }
 
@@ -161,16 +161,16 @@ const RestoreCenter = () => {
       const failedCount = result?.failed || 0;
 
       if (failedCount > 0) {
-        message.warning(`Restored ${restoredCount} items. ${failedCount} items failed.`);
+        toast(`Restored ${restoredCount} items. ${failedCount} items failed.`, { icon: '⚠️' });
       } else {
-        message.success(`${restoredCount} items restored successfully`);
+        toast.success(`${restoredCount} items restored successfully`);
       }
       setSelectedRowKeys([]);
       // Refresh summary
       dispatch(fetchDeletedItemsSummary(institutionId || undefined));
     } catch (err) {
       const errorMessage = typeof err === 'string' ? err : err?.message || 'Failed to restore items';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

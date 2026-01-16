@@ -8,7 +8,6 @@ import {
   Space,
   Modal,
   Input,
-  message,
   Typography,
   Avatar,
   Tooltip,
@@ -18,6 +17,7 @@ import {
   Select,
   theme,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
   CheckCircleOutlined,
@@ -83,10 +83,10 @@ const JoiningLettersPage = () => {
       onOk: async () => {
         try {
           await dispatch(deleteJoiningLetter(letter.id)).unwrap();
-          message.success('Joining letter deleted successfully');
+          toast.success('Joining letter deleted successfully');
           handleRefresh();
         } catch (error) {
-          message.error(error || 'Failed to delete joining letter');
+          toast.error(error || 'Failed to delete joining letter');
         }
       },
     });
@@ -96,7 +96,7 @@ const JoiningLettersPage = () => {
     if (letter.joiningLetterUrl) {
       await openFileWithPresignedUrl(letter.joiningLetterUrl);
     } else {
-      message.info('No document available');
+      toast('No document available', { icon: 'ℹ️' });
     }
   };
 
@@ -120,7 +120,7 @@ const JoiningLettersPage = () => {
 
   const handleUpload = async () => {
     if (!uploadModal.student || !selectedFile) {
-      message.warning('Please select a student and file');
+      toast('Please select a student and file', { icon: '⚠️' });
       return;
     }
 
@@ -129,7 +129,7 @@ const JoiningLettersPage = () => {
       // Find the application for the selected student
       const studentData = students.find(s => s.student.id === uploadModal.student);
       if (!studentData || !studentData.student.internshipApplications || studentData.student.internshipApplications.length === 0) {
-        message.error('No active internship application found for this student');
+        toast.error('No active internship application found for this student');
         setUploadLoading(false);
         return;
       }
@@ -138,12 +138,12 @@ const JoiningLettersPage = () => {
       const application = studentData.student.internshipApplications[0];
 
       await dispatch(uploadJoiningLetter({ applicationId: application.id, file: selectedFile })).unwrap();
-      message.success('Joining letter uploaded successfully');
+      toast.success('Joining letter uploaded successfully');
       setUploadModal({ visible: false, student: null });
       setSelectedFile(null);
       handleRefresh();
     } catch (error) {
-      message.error(error || 'Failed to upload joining letter');
+      toast.error(error || 'Failed to upload joining letter');
     } finally {
       setUploadLoading(false);
     }

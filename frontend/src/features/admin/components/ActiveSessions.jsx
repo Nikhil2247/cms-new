@@ -3,7 +3,6 @@ import {
   Card,
   Table,
   Button,
-  message,
   Tag,
   Space,
   Popconfirm,
@@ -16,6 +15,7 @@ import {
   Tooltip,
   Badge,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   DeleteOutlined,
   ReloadOutlined,
@@ -58,7 +58,7 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
       });
     } catch (error) {
       console.error('Failed to fetch sessions:', error);
-      message.error('Failed to load sessions');
+      toast.error('Failed to load sessions');
     } finally {
       setLoading(false);
     }
@@ -75,26 +75,26 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
   const handleTerminateSession = async (id) => {
     try {
       await adminService.terminateSession(id);
-      message.success('Session terminated');
+      toast.success('Session terminated');
       fetchSessions();
       // Trigger real-time update via WebSocket
       if (onRefreshSessions) onRefreshSessions();
     } catch (error) {
       console.error('Failed to terminate session:', error);
-      message.error('Failed to terminate session');
+      toast.error('Failed to terminate session');
     }
   };
 
   const handleTerminateUserSessions = async (userId) => {
     try {
       await adminService.terminateUserSessions(userId);
-      message.success('All user sessions terminated');
+      toast.success('All user sessions terminated');
       fetchSessions();
       // Trigger real-time update via WebSocket
       if (onRefreshSessions) onRefreshSessions();
     } catch (error) {
       console.error('Failed to terminate user sessions:', error);
-      message.error('Failed to terminate user sessions');
+      toast.error('Failed to terminate user sessions');
     }
   };
 
@@ -102,14 +102,14 @@ const ActiveSessions = ({ realtimeStats, connected, onRefreshSessions }) => {
     try {
       setTerminatingAll(true);
       await adminService.terminateAllSessions({ exceptCurrent: true });
-      message.success('All sessions terminated');
+      toast.success('All sessions terminated');
       setTerminateAllModalOpen(false);
       fetchSessions();
       // Trigger real-time update via WebSocket
       if (onRefreshSessions) onRefreshSessions();
     } catch (error) {
       console.error('Failed to terminate all sessions:', error);
-      message.error('Failed to terminate all sessions');
+      toast.error('Failed to terminate all sessions');
     } finally {
       setTerminatingAll(false);
     }

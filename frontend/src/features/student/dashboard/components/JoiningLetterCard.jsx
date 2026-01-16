@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Typography, Button, Tag, Tooltip, Modal, Upload, message, Space, theme } from 'antd';
+import { Typography, Button, Tag, Tooltip, Modal, Upload, Space, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
   CheckCircleOutlined,
@@ -39,12 +40,12 @@ const JoiningLetterCard = ({
     const isLt5M = file.size / 1024 / 1024 < 5;
 
     if (!isPdf) {
-      message.error('Only PDF files are allowed');
+      toast.error('Only PDF files are allowed');
       return false;
     }
 
     if (!isLt5M) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return false;
     }
 
@@ -55,7 +56,7 @@ const JoiningLetterCard = ({
   // Handle upload
   const handleUpload = async () => {
     if (!selectedFile) {
-      message.error('Please select a file first');
+      toast.error('Please select a file first');
       return;
     }
 
@@ -64,14 +65,14 @@ const JoiningLetterCard = ({
       await dispatch(uploadJoiningLetter({ applicationId: application.id, file: selectedFile })).unwrap();
       setUploadModalVisible(false);
       setSelectedFile(null);
-      message.success('Joining letter uploaded successfully');
+      toast.success('Joining letter uploaded successfully');
 
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -83,14 +84,14 @@ const JoiningLetterCard = ({
       setUploading(true);
       await dispatch(deleteJoiningLetter(application.id)).unwrap();
       setDeleteConfirmVisible(false);
-      message.success('Joining letter deleted successfully');
+      toast.success('Joining letter deleted successfully');
 
       if (onRefresh) {
         onRefresh();
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }

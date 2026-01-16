@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, theme } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStudent, updateStudent, fetchStudents } from '../store/principalSlice';
 import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined } from '@ant-design/icons';
@@ -157,15 +158,15 @@ const StudentModal = ({ open, onClose, studentId, onSuccess }) => {
 
       if (isEditMode) {
         await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
-        message.success('Student updated successfully');
+        toast.success('Student updated successfully');
       } else {
         await dispatch(createStudent(formattedValues)).unwrap();
-        message.success('Student created successfully');
+        toast.success('Student created successfully');
       }
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || error || 'Operation failed');
+      toast.error(error?.message || error || 'Operation failed');
     } finally {
       setLoading(false);
     }

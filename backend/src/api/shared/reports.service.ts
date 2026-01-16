@@ -95,6 +95,23 @@ export class ReportsService {
         userRole,
       );
 
+      // Audit log for report generation
+      this.auditService.log({
+        action: AuditAction.REPORT_GENERATE,
+        entityType: 'GeneratedReport',
+        entityId: result.reportId,
+        userId,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        description: `Report generation initiated: ${type} (${format})`,
+        newValues: {
+          reportType: type,
+          format,
+          columns: columns.length,
+          filters,
+        },
+      }).catch(() => {});
+
       this.logger.log(`Report generation queued: ${result.reportId} for user ${userId} (role: ${userRole})`);
 
       return {
@@ -197,6 +214,17 @@ export class ReportsService {
       if (report.expiresAt && new Date() > new Date(report.expiresAt)) {
         throw new Error('Report has expired');
       }
+
+      // Audit log for report download
+      this.auditService.log({
+        action: AuditAction.REPORT_DOWNLOAD,
+        entityType: 'GeneratedReport',
+        entityId: reportId,
+        userId,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.LOW,
+        description: `Report downloaded: ${reportId}`,
+      }).catch(() => {});
 
       return {
         url: report.fileUrl,

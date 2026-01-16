@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Select, DatePicker, Button, message, Row, Col, Divider, Spin, Switch } from 'antd';
+import { Modal, Form, Input, Select, DatePicker, Button, Row, Col, Divider, Spin, Switch } from 'antd';
+import { toast } from 'react-hot-toast';
 import { SaveOutlined } from '@ant-design/icons';
 import { createPrincipal, updatePrincipal, fetchPrincipalById, clearCurrentPrincipal } from '../store/stateSlice';
 import dayjs from 'dayjs';
@@ -27,7 +28,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
             await dispatch(fetchPrincipalById(principalId));
           }
         } catch (error) {
-          message.error('Failed to load data');
+          toast.error('Failed to load data');
         } finally {
           setDataLoading(false);
         }
@@ -72,7 +73,7 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
           active: values.isActive !== false,
         };
         await dispatch(updatePrincipal({ id: principalId, data: updatePayload })).unwrap();
-        message.success('Principal updated successfully');
+        toast.success('Principal updated successfully');
       } else {
         // Create payload - include institutionId and password
         const createPayload = {
@@ -85,13 +86,13 @@ const PrincipalModal = ({ open, onClose, principalId, onSuccess }) => {
           password: values.password || 'Principal@123',
         };
         await dispatch(createPrincipal(createPayload)).unwrap();
-        message.success('Principal created successfully');
+        toast.success('Principal created successfully');
       }
 
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} principal`);
+      toast.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} principal`);
     } finally {
       setLoading(false);
     }

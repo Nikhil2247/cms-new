@@ -694,31 +694,31 @@ const StudentDashboard = () => {
   // Handle joining letter upload
   const handleJoiningLetterUpload = async (file) => {
     if (!currentInternship?.id) {
-      message.error("No active internship found");
+      toast.error("No active internship found");
       return false;
     }
 
     // Backend only accepts PDF files
     if (file.type !== "application/pdf") {
-      message.error("Only PDF files are allowed");
+      toast.error("Only PDF files are allowed");
       return false;
     }
 
     // Backend has 5MB limit
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
-      message.error("File size must be less than 5MB");
+      toast.error("File size must be less than 5MB");
       return false;
     }
 
     setUploading(true);
     try {
       await studentService.uploadJoiningLetter(currentInternship.id, file);
-      message.success("Joining letter uploaded successfully");
+      toast.success("Joining letter uploaded successfully");
       setUploadModalVisible(false);
       refresh();
     } catch (err) {
-      message.error(
+      toast.error(
         err.response?.data?.message ||
           err.message ||
           "Failed to upload joining letter"

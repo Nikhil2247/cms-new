@@ -7,12 +7,15 @@ import { AuthGuard } from '@nestjs/passport';
 import { Reflector } from '@nestjs/core';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { TokenBlacklistService } from '../services/token-blacklist.service';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
+import { AuditAction, AuditCategory, AuditSeverity } from '../../../generated/prisma/client';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
     private reflector: Reflector,
     private tokenBlacklistService: TokenBlacklistService,
+    private auditService: AuditService,
   ) {
     super();
   }
@@ -33,6 +36,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     const token = this.extractTokenFromHeader(request);
 
     if (!token) {
+      // Audit: Unauthorized access attempt - no token provided
+      this.logSecurityEvent(request, 'NO_TOKEN', 'No token provided').catch(() => {});
       throw new UnauthorizedException('No token provided');
     }
 
@@ -43,10 +48,14 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     ]);
 
     if (!canActivate) {
+      // Audit: Unauthorized access attempt - invalid token
+      this.logSecurityEvent(request, 'INVALID_TOKEN', 'Invalid token').catch(() => {});
       throw new UnauthorizedException('Invalid token');
     }
 
     if (isBlacklisted) {
+      // Audit: Unauthorized access attempt - revoked token
+      this.logSecurityEvent(request, 'REVOKED_TOKEN', 'Token has been revoked', request.user?.sub).catch(() => {});
       throw new UnauthorizedException('Token has been revoked');
     }
 
@@ -60,6 +69,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
         );
 
       if (isInvalidated) {
+        // Audit: Unauthorized access attempt - invalidated session
+        this.logSecurityEvent(request, 'INVALIDATED_SESSION', 'Session has been invalidated', user.sub).catch(() => {});
         throw new UnauthorizedException('Session has been invalidated');
       }
     }
@@ -88,5 +99,53 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       throw err || new UnauthorizedException('Authentication failed');
     }
     return user;
+  }
+
+  /**
+   * Log security events for unauthorized access attempts
+   */
+  private async logSecurityEvent(
+    request: any,
+    reason: string,
+    description: string,
+    userId?: string,
+  ) {
+    try {
+      const ipAddress = this.getClientIp(request);
+      const userAgent = request.headers?.['user-agent'];
+      const url = request.url;
+      const method = request.method;
+
+      await this.auditService.log({
+        action: AuditAction.UNAUTHORIZED_ACCESS,
+        entityType: 'SecurityEvent',
+        userId: userId || null,
+        description: `Unauthorized access attempt: ${description}`,
+        category: AuditCategory.SECURITY,
+        severity: AuditSeverity.HIGH,
+        newValues: {
+          reason,
+          url,
+          method,
+          ipAddress,
+          userAgent,
+          timestamp: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      // Silent fail - don't break request flow
+    }
+  }
+
+  /**
+   * Get client IP address from request
+   */
+  private getClientIp(request: any): string | undefined {
+    return (
+      request.headers['x-forwarded-for']?.split(',')[0] ||
+      request.headers['x-real-ip'] ||
+      request.connection?.remoteAddress ||
+      request.socket?.remoteAddress
+    );
   }
 }

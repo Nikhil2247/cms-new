@@ -7,11 +7,11 @@ import {
   Select,
   Checkbox,
   Space,
-  message,
   Alert,
   Tag,
   Divider,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SendOutlined,
   BellOutlined,
@@ -148,12 +148,12 @@ const SendNotification = () => {
       }
 
       const data = response.data;
-      message.success(data.message || `Notification sent to ${data.sentCount || 0} users`);
+      toast.success(data.message || `Notification sent to ${data.sentCount || 0} users`);
       form.resetFields();
       setSendType(null);
     } catch (error) {
       console.error('Failed to send notification:', error);
-      message.error(error.response?.data?.message || 'Failed to send notification');
+      toast.error(error.response?.data?.message || 'Failed to send notification');
     } finally {
       setLoading(false);
     }

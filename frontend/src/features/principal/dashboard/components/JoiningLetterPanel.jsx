@@ -20,8 +20,8 @@ import {
   Typography,
   Statistic,
   Space,
-  message,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDebouncedCallback } from '../../../../hooks/useDebounce';
 import {
   FileTextOutlined,
@@ -127,7 +127,7 @@ const JoiningLetterPanel = () => {
     try {
       await openFileWithPresignedUrl(url);
     } catch {
-      message.error('Failed to open file');
+      toast.error('Failed to open file');
     }
   }, []);
 
@@ -154,13 +154,13 @@ const JoiningLetterPanel = () => {
           },
         })
       ).unwrap();
-      message.success('Joining letter verified successfully');
+      toast.success('Joining letter verified successfully');
       setVerifyModalVisible(false);
       form.resetFields();
       // Refresh all data with consolidated function
       refreshAllData();
     } catch (error) {
-      message.error(error.message || 'Failed to verify joining letter');
+      toast.error(error.message || 'Failed to verify joining letter');
     } finally {
       setActionLoading(false);
     }
@@ -169,7 +169,7 @@ const JoiningLetterPanel = () => {
   const submitReject = async (values) => {
     if (!selectedLetter) return;
     if (!values.remarks?.trim()) {
-      message.error('Please provide a reason for rejection');
+      toast.error('Please provide a reason for rejection');
       return;
     }
     setActionLoading(true);
@@ -180,13 +180,13 @@ const JoiningLetterPanel = () => {
           remarks: values.remarks,
         })
       ).unwrap();
-      message.success('Joining letter rejected');
+      toast.success('Joining letter rejected');
       setRejectModalVisible(false);
       form.resetFields();
       // Refresh all data with consolidated function
       refreshAllData();
     } catch (error) {
-      message.error(error.message || 'Failed to reject joining letter');
+      toast.error(error.message || 'Failed to reject joining letter');
     } finally {
       setActionLoading(false);
     }

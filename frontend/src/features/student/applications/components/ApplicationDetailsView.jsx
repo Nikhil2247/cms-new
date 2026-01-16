@@ -1,6 +1,7 @@
 import React, { memo, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Button, Typography, Tabs, Tag, Upload, Modal, message, Progress, Tooltip, theme, Row, Col } from 'antd';
+import { Card, Button, Typography, Tabs, Tag, Upload, Modal, Progress, Tooltip, theme, Row, Col } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   ArrowLeftOutlined,
   FileTextOutlined,
@@ -72,11 +73,11 @@ const ApplicationDetailsView = ({
 
   const handleFileSelect = (file) => {
     if (file.type !== 'application/pdf') {
-      message.error('Only PDF files are allowed');
+      toast.error('Only PDF files are allowed');
       return false;
     }
     if (file.size / 1024 / 1024 > 5) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return false;
     }
     setSelectedFile(file);
@@ -88,13 +89,13 @@ const ApplicationDetailsView = ({
     try {
       setUploading(true);
       await dispatch(uploadJoiningLetter({ applicationId: application.id, file: selectedFile })).unwrap();
-      message.success('Joining letter uploaded successfully');
+      toast.success('Joining letter uploaded successfully');
       setUploadModalVisible(false);
       setSelectedFile(null);
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -104,12 +105,12 @@ const ApplicationDetailsView = ({
     try {
       setUploading(true);
       await dispatch(deleteJoiningLetter(application.id)).unwrap();
-      message.success('Joining letter deleted');
+      toast.success('Joining letter deleted');
       setDeleteConfirmVisible(false);
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }

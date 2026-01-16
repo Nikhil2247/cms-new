@@ -9,11 +9,11 @@ import {
   Tag,
   Space,
   Modal,
-  message,
   Tooltip,
   Alert,
   theme
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   BankOutlined,
   SearchOutlined,
@@ -110,7 +110,7 @@ const InstituteManagement = () => {
     setDeleting(true);
     try {
       await dispatch(deleteInstitution(instituteToDelete.id)).unwrap();
-      message.success('Institution deleted successfully');
+      toast.success('Institution deleted successfully');
       setDeleteModalVisible(false);
       setInstituteToDelete(null);
       // Refresh list if needed (handled by redux optimistic update usually, but safe to fetch)
@@ -118,7 +118,7 @@ const InstituteManagement = () => {
         setCurrentPage(currentPage - 1);
       }
     } catch (error) {
-      message.error(error.message || 'Failed to delete institution');
+      toast.error(error.message || 'Failed to delete institution');
     } finally {
       setDeleting(false);
     }
@@ -273,89 +273,89 @@ const InstituteManagement = () => {
 
   return (
     <div className="p-4 md:p-6 min-h-screen" style={{ backgroundColor: token.colorBgLayout }}>
-      <div className="max-w-[1600px] mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
-          <div className="flex items-center">
-            <div 
-              className="w-12 h-12 flex items-center justify-center rounded-2xl mr-4"
-              style={{ 
-                backgroundColor: token.colorBgContainer, 
-                border: `1px solid ${token.colorBorder}`,
-                color: token.colorPrimary,
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
-              }}
-            >
-              <BankOutlined className="text-xl" />
-            </div>
+      <div className="max-w-[1600px] mx-auto space-y-4">
+        {/* Header - Compact */}
+        <div 
+          style={{
+            padding: '12px 16px',
+            backgroundColor: token.colorBgContainer,
+            borderRadius: token.borderRadiusLG,
+            border: `1px solid ${token.colorBorderSecondary}`,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <BankOutlined style={{ fontSize: 20, color: token.colorPrimary }} />
             <div>
-              <Title level={2} className="!mb-0 !text-2xl font-bold" style={{ color: token.colorText }}>
+              <Title level={4} style={{ margin: 0, lineHeight: 1.2, color: token.colorText }}>
                 Institution Management
               </Title>
-              <Paragraph className="!mb-0 text-sm" style={{ color: token.colorTextSecondary }}>
-                Manage educational institutions, track performance, and oversee administrative details.
-              </Paragraph>
+              <Text type="secondary" style={{ fontSize: 12 }}>
+                Manage educational institutions and track performance
+              </Text>
             </div>
           </div>
         </div>
 
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
-            <div className="flex items-center gap-4 p-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
+            <div className="flex items-center gap-3">
               <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: token.colorPrimaryBg, color: token.colorPrimary }}
               >
-                <BankOutlined className="text-xl" />
+                <BankOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.total}</div>
+                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.total}</div>
                 <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Total Institutes</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
-            <div className="flex items-center gap-4 p-2">
+          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
+            <div className="flex items-center gap-3">
               <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: token.colorSuccessBg, color: token.colorSuccess }}
               >
-                <CheckCircleOutlined className="text-xl" />
+                <CheckCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.active}</div>
+                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.active}</div>
                 <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Active</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
-            <div className="flex items-center gap-4 p-2">
+          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
+            <div className="flex items-center gap-3">
               <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: token.colorErrorBg, color: token.colorError }}
               >
-                <CloseCircleOutlined className="text-xl" />
+                <CloseCircleOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.inactive}</div>
+                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.inactive}</div>
                 <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Inactive</div>
               </div>
             </div>
           </Card>
 
-          <Card size="small" className="rounded-2xl hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }}>
-            <div className="flex items-center gap-4 p-2">
+          <Card size="small" className="rounded-lg hover:shadow-md transition-all duration-300" style={{ borderColor: token.colorBorder, boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)' }} bodyStyle={{ padding: '10px' }}>
+            <div className="flex items-center gap-3">
               <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
+                className="w-10 h-10 rounded-lg flex items-center justify-center"
                 style={{ backgroundColor: token.colorFillQuaternary, color: token.colorTextSecondary }}
               >
-                <GlobalOutlined className="text-xl" />
+                <GlobalOutlined className="text-lg" />
               </div>
               <div>
-                <div className="text-2xl font-bold" style={{ color: token.colorText }}>{stats.autonomous}</div>
+                <div className="text-xl font-bold" style={{ color: token.colorText }}>{stats.autonomous}</div>
                 <div className="text-[10px] uppercase tracking-wider font-bold" style={{ color: token.colorTextTertiary }}>Autonomous</div>
               </div>
             </div>

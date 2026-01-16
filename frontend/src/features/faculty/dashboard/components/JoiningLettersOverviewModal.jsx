@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { Modal, Table, Tag, Button, Space, Input, message, Typography, Tooltip } from 'antd';
+import { Modal, Table, Tag, Button, Space, Input, Typography, Tooltip } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
   CheckCircleOutlined,
@@ -48,12 +49,12 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
     setActionLoading(true);
     try {
       await dispatch(verifyJoiningLetter({ letterId: actionModal.letter.id, remarks })).unwrap();
-      message.success('Joining letter verified');
+      toast.success('Joining letter verified');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error?.message || 'Failed to verify');
+      toast.error(error?.message || 'Failed to verify');
     } finally {
       setActionLoading(false);
     }
@@ -61,18 +62,18 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
 
   const handleReject = async () => {
     if (!actionModal.letter || !remarks.trim()) {
-      message.warning('Please provide a reason');
+      toast.warning('Please provide a reason');
       return;
     }
     setActionLoading(true);
     try {
       await dispatch(rejectJoiningLetter({ letterId: actionModal.letter.id, reason: remarks })).unwrap();
-      message.success('Joining letter rejected');
+      toast.success('Joining letter rejected');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
-      message.error(error?.message || 'Failed to reject');
+      toast.error(error?.message || 'Failed to reject');
     } finally {
       setActionLoading(false);
     }
@@ -87,10 +88,10 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
       onOk: async () => {
         try {
           await dispatch(deleteJoiningLetter(letter.id)).unwrap();
-          message.success('Deleted');
+          toast.success('Deleted');
           onRefresh?.();
         } catch (error) {
-          message.error(error?.message || 'Failed to delete');
+          toast.error(error?.message || 'Failed to delete');
         }
       },
     });
@@ -100,7 +101,7 @@ const JoiningLettersOverviewModal = ({ visible, onClose, letters = [], onRefresh
     if (letter.joiningLetterUrl) {
       await openFileWithPresignedUrl(letter.joiningLetterUrl);
     } else {
-      message.info('No document available');
+      toast.info('No document available');
     }
   };
 

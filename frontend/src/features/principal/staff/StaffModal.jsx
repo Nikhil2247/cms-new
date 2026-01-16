@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, Button, Row, Col, message, Spin, Modal, Divider } from 'antd';
+import { Form, Input, Select, Button, Row, Col, Spin, Modal, Divider } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { createStaff, updateStaff, fetchStaff } from '../store/principalSlice';
 import { SaveOutlined } from '@ant-design/icons';
@@ -86,15 +87,15 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
 
       if (isEditMode) {
         await dispatch(updateStaff({ id: staffId, data: formattedValues })).unwrap();
-        message.success('Staff updated successfully');
+        toast.success('Staff updated successfully');
       } else {
         await dispatch(createStaff(formattedValues)).unwrap();
-        message.success('Staff created successfully');
+        toast.success('Staff created successfully');
       }
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || 'Operation failed');
+      toast.error(error?.message || 'Operation failed');
     } finally {
       setLoading(false);
     }

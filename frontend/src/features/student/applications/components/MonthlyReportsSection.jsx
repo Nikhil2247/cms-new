@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useMemo, useEffect, memo } from 'react';
 import {
   Card, Button, Tag, Empty, Spin, Progress, Select, Popconfirm, Switch,
-  Typography, message, Modal, Alert, Tooltip, Upload
+  Typography, Modal, Alert, Tooltip, Upload
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined, UploadOutlined, DeleteOutlined, CheckCircleOutlined,
   ClockCircleOutlined, ExclamationCircleOutlined, EyeOutlined, CalendarOutlined,
@@ -107,7 +108,7 @@ const MonthlyReportsSection = ({
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 10 * 1024 * 1024) {
-      message.error('File size should be less than 10MB');
+      toast.error('File size should be less than 10MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -116,7 +117,7 @@ const MonthlyReportsSection = ({
   // Handle upload
   const handleUpload = useCallback(async () => {
     if (fileList.length === 0) {
-      message.warning('Please select a file');
+      toast('Please select a file', { icon: '⚠️' });
       return;
     }
 
@@ -125,7 +126,7 @@ const MonthlyReportsSection = ({
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.warning('Please select report month and year');
+      toast('Please select report month and year', { icon: '⚠️' });
       return;
     }
 
@@ -136,7 +137,7 @@ const MonthlyReportsSection = ({
       setAutoMonthSelection(true);
       setSelectedMonth(dayjs().month() + 1);
       setSelectedYear(dayjs().year());
-      message.success('Report uploaded successfully!');
+      toast.success('Report uploaded successfully!');
       onRefresh?.();
     } catch (error) {
       // Error handled in hook
@@ -146,7 +147,7 @@ const MonthlyReportsSection = ({
   // Handle delete
   const handleDeleteReport = useCallback(async (reportId, status) => {
     if (status === 'APPROVED') {
-      message.warning('Approved reports cannot be deleted');
+      toast('Approved reports cannot be deleted', { icon: '⚠️' });
       return;
     }
     try {

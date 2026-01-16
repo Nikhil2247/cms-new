@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../core/database/prisma.service';
 import { LruCacheService } from '../../core/cache/lru-cache.service';
+import { AuditService } from '../../infrastructure/audit/audit.service';
+import { AuditAction, AuditCategory, AuditSeverity, Role } from '../../generated/prisma/client';
 
 // Cache TTLs in milliseconds
 const CACHE_TTL = {
@@ -19,6 +21,7 @@ export class LookupService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly cache: LruCacheService,
+    private readonly auditService: AuditService,
   ) {}
 
   /**
@@ -258,7 +261,7 @@ export class LookupService {
   // ==========================================
 
   // Batch CRUD
-  async createBatch(data: { name: string }) {
+  async createBatch(data: { name: string }, userId?: string, userRole?: Role) {
     try {
       const batch = await this.prisma.batch.create({
         data: {
@@ -266,6 +269,20 @@ export class LookupService {
           isActive: true,
         },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Batch',
+        entityId: batch.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Batch created: ${batch.name}`,
+        newValues: { name: batch.name, isActive: batch.isActive },
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('batches');
       return { success: true, batch };
     } catch (error) {
@@ -274,12 +291,30 @@ export class LookupService {
     }
   }
 
-  async updateBatch(id: string, data: { name?: string; isActive?: boolean }) {
+  async updateBatch(id: string, data: { name?: string; isActive?: boolean }, userId?: string, userRole?: Role) {
     try {
+      const oldBatch = await this.prisma.batch.findUnique({ where: { id } });
+      
       const batch = await this.prisma.batch.update({
         where: { id },
         data,
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Batch',
+        entityId: batch.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Batch updated: ${batch.name}`,
+        oldValues: { name: oldBatch?.name, isActive: oldBatch?.isActive },
+        newValues: data,
+        changedFields: Object.keys(data),
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('batches');
       return { success: true, batch };
     } catch (error) {
@@ -288,13 +323,30 @@ export class LookupService {
     }
   }
 
-  async deleteBatch(id: string) {
+  async deleteBatch(id: string, userId?: string, userRole?: Role) {
     try {
+      const batch = await this.prisma.batch.findUnique({ where: { id } });
+      
       // Soft delete by setting isActive to false
       await this.prisma.batch.update({
         where: { id },
         data: { isActive: false },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_EXPORT,
+        entityType: 'Batch',
+        entityId: id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Batch deleted (deactivated): ${batch?.name}`,
+        oldValues: { name: batch?.name, isActive: true },
+        newValues: { isActive: false },
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('batches');
       return { success: true };
     } catch (error) {
@@ -304,7 +356,7 @@ export class LookupService {
   }
 
   // Department CRUD
-  async createDepartment(data: { name: string; shortName?: string; code: string }) {
+  async createDepartment(data: { name: string; shortName?: string; code: string }, userId?: string, userRole?: Role) {
     try {
       const department = await this.prisma.department.create({
         data: {
@@ -314,6 +366,20 @@ export class LookupService {
           isActive: true,
         },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Department',
+        entityId: department.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Department created: ${department.name}`,
+        newValues: data,
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('departments');
       return { success: true, department };
     } catch (error) {
@@ -322,12 +388,30 @@ export class LookupService {
     }
   }
 
-  async updateDepartment(id: string, data: { name?: string; shortName?: string; code?: string; isActive?: boolean }) {
+  async updateDepartment(id: string, data: { name?: string; shortName?: string; code?: string; isActive?: boolean }, userId?: string, userRole?: Role) {
     try {
+      const oldDept = await this.prisma.department.findUnique({ where: { id } });
+      
       const department = await this.prisma.department.update({
         where: { id },
         data,
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Department',
+        entityId: department.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Department updated: ${department.name}`,
+        oldValues: { name: oldDept?.name, shortName: oldDept?.shortName, code: oldDept?.code, isActive: oldDept?.isActive },
+        newValues: data,
+        changedFields: Object.keys(data),
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('departments');
       return { success: true, department };
     } catch (error) {
@@ -336,12 +420,29 @@ export class LookupService {
     }
   }
 
-  async deleteDepartment(id: string) {
+  async deleteDepartment(id: string, userId?: string, userRole?: Role) {
     try {
+      const dept = await this.prisma.department.findUnique({ where: { id } });
+      
       await this.prisma.department.update({
         where: { id },
         data: { isActive: false },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_EXPORT,
+        entityType: 'Department',
+        entityId: id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Department deleted (deactivated): ${dept?.name}`,
+        oldValues: { name: dept?.name, isActive: true },
+        newValues: { isActive: false },
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('departments');
       return { success: true };
     } catch (error) {
@@ -351,7 +452,7 @@ export class LookupService {
   }
 
   // Branch CRUD
-  async createBranch(data: { name: string; shortName: string; code: string; duration: number }) {
+  async createBranch(data: { name: string; shortName: string; code: string; duration: number }, userId?: string, userRole?: Role) {
     try {
       const branch = await this.prisma.branch.create({
         data: {
@@ -362,6 +463,20 @@ export class LookupService {
           isActive: true,
         },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Branch',
+        entityId: branch.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Branch created: ${branch.name}`,
+        newValues: data,
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('branches');
       return { success: true, branch };
     } catch (error) {
@@ -370,12 +485,30 @@ export class LookupService {
     }
   }
 
-  async updateBranch(id: string, data: { name?: string; shortName?: string; code?: string; duration?: number; isActive?: boolean }) {
+  async updateBranch(id: string, data: { name?: string; shortName?: string; code?: string; duration?: number; isActive?: boolean }, userId?: string, userRole?: Role) {
     try {
+      const oldBranch = await this.prisma.branch.findUnique({ where: { id } });
+      
       const branch = await this.prisma.branch.update({
         where: { id },
         data,
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_IMPORT,
+        entityType: 'Branch',
+        entityId: branch.id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Branch updated: ${branch.name}`,
+        oldValues: { name: oldBranch?.name, shortName: oldBranch?.shortName, code: oldBranch?.code, duration: oldBranch?.duration, isActive: oldBranch?.isActive },
+        newValues: data,
+        changedFields: Object.keys(data),
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('branches');
       return { success: true, branch };
     } catch (error) {
@@ -384,12 +517,29 @@ export class LookupService {
     }
   }
 
-  async deleteBranch(id: string) {
+  async deleteBranch(id: string, userId?: string, userRole?: Role) {
     try {
+      const branch = await this.prisma.branch.findUnique({ where: { id } });
+      
       await this.prisma.branch.update({
         where: { id },
         data: { isActive: false },
       });
+      
+      // Audit log
+      this.auditService.log({
+        action: AuditAction.DATA_EXPORT,
+        entityType: 'Branch',
+        entityId: id,
+        userId,
+        userRole,
+        category: AuditCategory.DATA_MANAGEMENT,
+        severity: AuditSeverity.MEDIUM,
+        description: `Branch deleted (deactivated): ${branch?.name}`,
+        oldValues: { name: branch?.name, isActive: true },
+        newValues: { isActive: false },
+      }).catch(() => {});
+      
       await this.invalidateLookupCache('branches');
       return { success: true };
     } catch (error) {

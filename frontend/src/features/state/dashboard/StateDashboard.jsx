@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { Row, Col, Spin, Typography, message, Card, Badge, Tag } from 'antd';
+import { Row, Col, Spin, Typography, Card, Badge, Tag } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   ClockCircleOutlined,
   WarningOutlined,
@@ -183,7 +184,7 @@ const StateDashboard = () => {
     dispatch(fetchActionItems({ forceRefresh: true }));
     dispatch(fetchComplianceSummary({ forceRefresh: true }));
     dispatch(fetchTopIndustries({ limit: 10, forceRefresh: true }));
-    message.success('Dashboard refreshed');
+    toast.success('Dashboard refreshed');
   }, [dispatch]);
 
   // Export handler
@@ -202,9 +203,9 @@ const StateDashboard = () => {
       const filename = `state_dashboard_report_${new Date().toISOString().split('T')[0]}.json`;
 
       downloadBlob(blob, filename);
-      message.success('Dashboard report exported successfully');
+      toast.success('Dashboard report exported successfully');
     } catch (error) {
-      message.error('Failed to export dashboard report');
+      toast.error('Failed to export dashboard report');
     } finally {
       setExporting(false);
     }
@@ -228,7 +229,7 @@ const StateDashboard = () => {
         dispatch(fetchTopPerformers(filterParams));
         dispatch(fetchTopIndustries({ ...filterParams, limit: 10 }));
 
-        message.info(`Filtering data for ${date.format('MMMM YYYY')}`);
+        toast(`Filtering data for ${date.format('MMMM YYYY')}`);
       } else {
         // Clear filter - fetch current/all-time data
         const refreshParams = { forceRefresh: true };
@@ -238,7 +239,7 @@ const StateDashboard = () => {
         dispatch(fetchTopPerformers(refreshParams));
         dispatch(fetchTopIndustries({ ...refreshParams, limit: 10 }));
 
-        message.info('Showing all-time data');
+        toast('Showing all-time data');
       }
     },
     [dispatch]
@@ -269,53 +270,6 @@ const StateDashboard = () => {
       <div className="mb-6">
         <StatisticsCards stats={stats} selectedMonth={selectedMonth} />
       </div>
-
-      {/* Action Items */}
-      {actionItemsList.length > 0 && (
-        <div className="mb-6">
-          <Card
-            title={
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <ClockCircleOutlined className="text-primary text-lg" />
-                </div>
-                <span className="font-bold text-text-primary text-lg">Action Items</span>
-                <Badge count={actionItemsList.length} className="ml-auto" style={{ backgroundColor: 'rgb(var(--color-primary))' }} />
-              </div>
-            }
-            className="shadow-sm border-border rounded-2xl bg-surface"
-            loading={actionItemsLoading}
-            styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '0' } }}
-          >
-            <div className="flex flex-col">
-              {actionItemsList.slice(0, 5).map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className={`
-                    hover:bg-background-tertiary transition-colors px-6 py-4 flex items-start gap-4 w-full
-                    ${index !== actionItemsList.slice(0, 5).length - 1 ? 'border-b border-border/50' : ''}
-                  `}
-                >
-                  <div className={`w-2 h-2 rounded-full mt-2 shrink-0 ${
-                    item.priority === 'high' ? 'bg-error' :
-                    item.priority === 'medium' ? 'bg-warning' : 'bg-primary'
-                  }`} />
-                  <div className="flex-1">
-                    <Text strong className="block text-text-primary text-base mb-1">{item.title}</Text>
-                    <Text className="text-text-secondary text-sm block">{item.description}</Text>
-                  </div>
-                  <Tag className="m-0 rounded-md border-0 px-2 py-0.5 font-bold uppercase tracking-wider text-[10px]" color={
-                    item.priority === 'high' ? 'red' :
-                    item.priority === 'medium' ? 'orange' : 'blue'
-                  }>
-                    {item.priority}
-                  </Tag>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* Joining Letter Tracker - State-wide overview */}
       <div className="mb-6">
@@ -349,72 +303,6 @@ const StateDashboard = () => {
         </Col>
       </Row>
 
-      {/* Monthly Summary Section */}
-      {monthlyAnalytics?.metrics && (
-        <Card 
-          title={
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <ClockCircleOutlined className="text-indigo-500 text-lg" />
-              </div>
-              <span className="font-bold text-text-primary text-lg">Monthly Summary</span>
-            </div>
-          }
-          className="shadow-sm border-border rounded-2xl bg-surface"
-          styles={{ header: { borderBottom: '1px solid var(--color-border)', padding: '20px 24px' }, body: { padding: '24px' } }}
-        >
-          <Row gutter={[24, 24]}>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-primary mb-1">
-                  {monthlyAnalytics.metrics.newStudents || 0}
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">New Students</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-success mb-1">
-                  {monthlyAnalytics.metrics.newApplications || 0}
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Applications</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-info mb-1">
-                  {monthlyAnalytics.metrics.approvedApplications || monthlyAnalytics.metrics.selectedApplications || 0}
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Approved</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-warning mb-1">
-                  {monthlyAnalytics.metrics.newInternships || 0}
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">New Internships</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-purple-500 mb-1">
-                  {monthlyAnalytics.metrics.facultyVisits || 0}
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Faculty Visits</div>
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={4}>
-              <div className="text-center p-4 rounded-xl bg-background-tertiary/30 border border-border/50">
-                <div className="text-2xl font-black text-text-secondary mb-1">
-                  {monthlyAnalytics.metrics.approvalRate || monthlyAnalytics.metrics.placementRate || 0}%
-                </div>
-                <div className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Approval Rate</div>
-              </div>
-            </Col>
-          </Row>
-        </Card>
-      )}
 
     </div>
   );

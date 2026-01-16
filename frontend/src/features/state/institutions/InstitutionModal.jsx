@@ -10,11 +10,11 @@ import {
   Col,
   Divider,
   Typography,
-  message,
   Checkbox,
   Alert,
   Spin
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SaveOutlined,
   BankOutlined,
@@ -105,17 +105,17 @@ const InstitutionModal = ({ open, onClose, institutionId, onSuccess }) => {
 
       if (isEditMode) {
         await dispatch(updateInstitution({ id: institutionId, data: payload })).unwrap();
-        message.success('Institution updated successfully');
+        toast.success('Institution updated successfully');
       } else {
         await dispatch(createInstitution(payload)).unwrap();
-        message.success('Institution created successfully');
+        toast.success('Institution created successfully');
       }
       
       handleClose();
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Submission error:", error);
-      message.error(error.message || 'Failed to save institution');
+      toast.error(error.message || 'Failed to save institution');
     } finally {
       setSubmitting(false);
     }

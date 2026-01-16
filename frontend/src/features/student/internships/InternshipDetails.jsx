@@ -14,12 +14,12 @@ import {
   Modal,
   Form,
   Input,
-  message,
   Spin,
   Progress,
   Alert,
   Upload,
 } from "antd";
+import { toast } from 'react-hot-toast';
 import {
   BankOutlined,
   EnvironmentOutlined,
@@ -42,7 +42,6 @@ import {
 } from "@ant-design/icons";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { toast } from "react-hot-toast";
 import { theme } from "antd";
 import { selectApplicationsList } from "../store/studentSelectors";
 import { fetchInternshipDetails, applyForInternship, fetchApplications } from "../store/studentSlice";
@@ -190,14 +189,14 @@ const InternshipDetails = () => {
       file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     
     if (!isValidType) {
-      message.error('You can only upload PDF or DOC/DOCX files!');
+      toast.error('You can only upload PDF or DOC/DOCX files!');
       return;
     }
     
     // Validate file size (5MB)
     const isValidSize = file.size / 1024 / 1024 < 5;
     if (!isValidSize) {
-      message.error('File must be smaller than 5MB!');
+      toast.error('File must be smaller than 5MB!');
       return;
     }
     

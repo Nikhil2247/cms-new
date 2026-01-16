@@ -11,13 +11,13 @@ import {
   Space,
   Spin,
   Empty,
-  message,
   Modal,
   Form,
   Select,
   Upload,
   Divider,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
   QuestionCircleOutlined,
@@ -160,7 +160,7 @@ const HelpCenter = () => {
       setPopularFaqs(popularData);
     } catch (error) {
       console.error('Failed to fetch FAQs:', error);
-      message.error('Failed to load help articles');
+      toast.error('Failed to load help articles');
     } finally {
       setLoading(false);
     }
@@ -209,7 +209,7 @@ const HelpCenter = () => {
   const handleMarkHelpful = async (id) => {
     try {
       await helpSupportService.markFAQHelpful(id);
-      message.success('Thanks for your feedback!');
+      toast.success('Thanks for your feedback!');
       // Update local state to reflect the change
       setFaqs(prev => prev.map(faq =>
         faq.id === id ? { ...faq, helpfulCount: (faq.helpfulCount || 0) + 1 } : faq
@@ -225,7 +225,7 @@ const HelpCenter = () => {
       await handleMarkHelpful(id);
     } else {
       // For 'down' votes, just show feedback message (no backend tracking for unhelpful)
-      message.info('Thanks for your feedback! We\'ll work to improve this article.');
+      toast('ℹ️ Thanks for your feedback! We\'ll work to improve this article.', { icon: 'ℹ️' });
     }
   };
 
@@ -240,12 +240,12 @@ const HelpCenter = () => {
         priority: values.priority || 'MEDIUM',
         attachments: [],
       });
-      message.success('Support ticket submitted successfully! We will respond soon.');
+      toast.success('Support ticket submitted successfully! We will respond soon.');
       setTicketModalVisible(false);
       ticketForm.resetFields();
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      message.error('Failed to submit support ticket. Please try again.');
+      toast.error('Failed to submit support ticket. Please try again.');
     } finally {
       setSubmittingTicket(false);
     }

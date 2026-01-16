@@ -11,8 +11,8 @@ import {
   Empty,
   Badge,
   Tooltip,
-  message,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   WarningOutlined,
   ExclamationCircleOutlined,
@@ -46,7 +46,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
   // Navigation handlers - wrapped in useCallback for stability
   const handleViewInstitution = useCallback((institutionId) => {
     if (!institutionId) {
-      message.warning('Institution details not available');
+      toast('Institution details not available', { icon: '⚠️' });
       return;
     }
     onClose();
@@ -56,7 +56,7 @@ const CriticalAlertsModal = ({ open, onClose, alerts, defaultTab = 'lowComplianc
   const handleViewStudentInstitution = useCallback((record) => {
     const institutionId = record.institutionId;
     if (!institutionId) {
-      message.warning('Institution details not available');
+      toast('Institution details not available', { icon: '⚠️' });
       return;
     }
     onClose();

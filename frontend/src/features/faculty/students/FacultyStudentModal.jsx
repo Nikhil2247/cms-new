@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Select, DatePicker, Button, Row, Col, message, Upload, Spin, Modal, Divider, Avatar, Image, theme } from 'antd';
+import { Form, Input, Select, DatePicker, Button, Row, Col, Upload, Spin, Modal, Divider, Avatar, Image, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateStudent, fetchAssignedStudents, selectStudents } from '../store/facultySlice';
 import { UploadOutlined, SaveOutlined, UserOutlined, PhoneOutlined, MailOutlined, HomeOutlined, PlusOutlined } from '@ant-design/icons';
@@ -178,7 +179,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
     if (file) {
       // Validate file size (max 500KB)
       if (file.size > 500 * 1024) {
-        message.error('Image must be less than 500KB');
+        toast.error('Image must be less than 500KB');
         return;
       }
       setProfileImageFile(file);
@@ -199,7 +200,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
 
   const onFinish = async (values) => {
     if (!studentId) {
-      message.error('Student ID is missing');
+      toast.error('Student ID is missing');
       return;
     }
 
@@ -230,7 +231,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
           }
         } catch (uploadError) {
           console.error('Profile image upload failed:', uploadError);
-          message.warning('Profile image upload failed, but other data will be saved');
+          toast('Profile image upload failed, but other data will be saved', { icon: '⚠️' });
         } finally {
           setUploadingImage(false);
         }
@@ -238,7 +239,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
 
       // Use faculty updateStudent action
       const result = await dispatch(updateStudent({ id: studentId, data: formattedValues })).unwrap();
-      message.success('Student updated successfully');
+      toast.success('Student updated successfully');
 
       // Pass the updated data to parent for optimistic update
       const updatedData = result?.data || formattedValues;
@@ -246,7 +247,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
       onSuccess?.(updatedData);
     } catch (error) {
       console.error('Update error:', error);
-      message.error(error?.message || error || 'Operation failed');
+      toast.error(error?.message || error || 'Operation failed');
     } finally {
       setLoading(false);
     }
@@ -254,7 +255,7 @@ const FacultyStudentModal = ({ open, onClose, studentId, studentData: propStuden
 
   const onFinishFailed = (errorInfo) => {
     console.log('Form validation failed:', errorInfo);
-    message.error('Please fill in all required fields');
+    toast.error('Please fill in all required fields');
   };
 
   const normFile = (e) => {

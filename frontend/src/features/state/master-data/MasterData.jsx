@@ -12,12 +12,12 @@ import {
   Tabs,
   Tag,
   Popconfirm,
-  message,
   Row,
   Col,
   Tooltip,
   Switch,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
   EditOutlined,
@@ -66,7 +66,7 @@ const MasterData = () => {
       setDepartments(deptRes.departments || []);
       setBranches(branchRes.branches || []);
     } catch (error) {
-      message.error('Failed to load data');
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ const MasterData = () => {
             await lookupService.updateBranch(editingItem.id, values);
             break;
         }
-        message.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} updated successfully`);
+        toast.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} updated successfully`);
       } else {
         // Create
         switch (modalType) {
@@ -122,12 +122,12 @@ const MasterData = () => {
             await lookupService.createBranch(values);
             break;
         }
-        message.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} created successfully`);
+        toast.success(`${modalType.charAt(0).toUpperCase() + modalType.slice(1)} created successfully`);
       }
       closeModal();
       loadAllData();
     } catch (error) {
-      message.error(error.message || 'Operation failed');
+      toast.error(error.message || 'Operation failed');
     } finally {
       setSaving(false);
     }
@@ -147,10 +147,10 @@ const MasterData = () => {
           await lookupService.deleteBranch(id);
           break;
       }
-      message.success('Deleted successfully');
+      toast.success('Deleted successfully');
       loadAllData();
     } catch (error) {
-      message.error('Delete failed');
+      toast.error('Delete failed');
     }
   };
 

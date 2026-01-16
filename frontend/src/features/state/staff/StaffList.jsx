@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
+import { Card, Table, Button, Tag, Space, Input, Avatar, Dropdown, App, Select, Row, Col } from 'antd';
+import { toast } from 'react-hot-toast';
 import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, FilterOutlined, ClearOutlined, StopOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { fetchStaff, resetStaffPassword, toggleStaffStatus } from '../store/stateSlice';
 import StaffModal from './StaffModal';
@@ -78,7 +79,7 @@ const StaffList = () => {
         setResettingId(id);
         try {
           const result = await dispatch(resetStaffPassword(id)).unwrap();
-          message.success('Password reset successfully');
+          toast.success('Password reset successfully');
           modal.success({
             title: 'Password Reset Successful',
             content: (
@@ -91,7 +92,7 @@ const StaffList = () => {
             width: 500,
           });
         } catch (error) {
-          message.error(error?.message || 'Failed to reset password');
+          toast.error(error?.message || 'Failed to reset password');
           throw error;
         } finally {
           setResettingId(null);
@@ -116,10 +117,10 @@ const StaffList = () => {
         setTogglingId(id);
         try {
           const result = await dispatch(toggleStaffStatus(id)).unwrap();
-          message.success(result.message || `Staff member ${actionPast} successfully`);
+          toast.success(result.message || `Staff member ${actionPast} successfully`);
           loadStaff({ forceRefresh: true });
         } catch (error) {
-          message.error(error?.message || `Failed to ${action} staff member`);
+          toast.error(error?.message || `Failed to ${action} staff member`);
           throw error;
         } finally {
           setTogglingId(null);

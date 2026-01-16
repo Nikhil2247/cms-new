@@ -1,5 +1,6 @@
 import React, { useState, useCallback, memo } from 'react';
-import { Row, Col, Spin, Alert, Modal, message, FloatButton, theme } from 'antd';
+import { Row, Col, Spin, Alert, Modal, FloatButton, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import { SyncOutlined, CameraOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -72,9 +73,9 @@ const FacultyDashboard = () => {
       onOk: async () => {
         try {
           await handleDeleteVisitLog(visitId);
-          message.success('Visit log deleted successfully');
+          toast.success('Visit log deleted successfully');
         } catch (err) {
-          message.error('Failed to delete visit log');
+          toast.error('Failed to delete visit log');
         }
       },
     });

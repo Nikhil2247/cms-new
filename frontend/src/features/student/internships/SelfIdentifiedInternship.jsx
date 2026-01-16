@@ -7,7 +7,6 @@ import {
   Upload,
   DatePicker,
   InputNumber,
-  message,
   Divider,
   Space,
   Select,
@@ -74,7 +73,7 @@ const SelfIdentifiedInternship = () => {
     if (end.isBefore(start)) {
       setInternshipDuration("");
       form.setFieldsValue({ internshipDuration: "" });
-      message.warning("End date cannot be before start date");
+      toast("End date cannot be before start date", { icon: '⚠️' });
       return;
     }
 
@@ -476,7 +475,7 @@ const SelfIdentifiedInternship = () => {
                   beforeUpload={(file) => {
                     const isLt5M = file.size / 1024 / 1024 < 5;
                     if (!isLt5M) {
-                      message.error("File must be smaller than 5MB!");
+                      toast.error("File must be smaller than 5MB!");
                       return Upload.LIST_IGNORE;
                     }
                     setJoiningLetterFile(file);

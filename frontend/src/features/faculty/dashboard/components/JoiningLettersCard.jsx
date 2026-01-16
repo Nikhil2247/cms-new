@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, Empty, Badge, Tooltip, Avatar, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileProtectOutlined,
   RightOutlined,
@@ -58,13 +59,13 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
     setActionLoading(true);
     try {
       await dispatch(verifyJoiningLetter({ letterId: actionModal.letter.id, remarks })).unwrap();
-      message.success('Joining letter verified successfully');
+      toast.success('Joining letter verified successfully');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to verify joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -72,19 +73,19 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
 
   const handleReject = async () => {
     if (!actionModal.letter || !remarks.trim()) {
-      message.warning('Please provide a reason for rejection');
+      toast.warning('Please provide a reason for rejection');
       return;
     }
     setActionLoading(true);
     try {
       await dispatch(rejectJoiningLetter({ letterId: actionModal.letter.id, reason: remarks })).unwrap();
-      message.success('Joining letter rejected');
+      toast.success('Joining letter rejected');
       setActionModal({ visible: false, letter: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reject joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -99,11 +100,11 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
       onOk: async () => {
         try {
           await dispatch(deleteJoiningLetter(letter.id)).unwrap();
-          message.success('Joining letter deleted');
+          toast.success('Joining letter deleted');
           onRefresh?.();
         } catch (error) {
           const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
-          message.error(errorMessage);
+          toast.error(errorMessage);
         }
       },
     });
@@ -113,7 +114,7 @@ const JoiningLettersCard = ({ letters = [], loading, onRefresh, onViewAll }) => 
     if (letter.joiningLetterUrl) {
       await openFileWithPresignedUrl(letter.joiningLetterUrl);
     } else {
-      message.info('No document available');
+      toast.info('No document available');
     }
   };
 

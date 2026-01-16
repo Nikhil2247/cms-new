@@ -7,13 +7,13 @@ import {
   Table,
   Progress,
   Alert,
-  message,
   Typography,
   Space,
   Row,
   Col,
   Statistic,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   InboxOutlined,
   DownloadOutlined,
@@ -51,13 +51,13 @@ const BulkUpload = () => {
       file.type === 'application/vnd.ms-excel';
 
     if (!isCSV && !isExcel) {
-      message.error('You can only upload CSV or Excel files');
+      toast.error('You can only upload CSV or Excel files');
       return Upload.LIST_IGNORE;
     }
 
     const isLt10M = file.size / 1024 / 1024 < 10;
     if (!isLt10M) {
-      message.error('File must be smaller than 10MB');
+      toast.error('File must be smaller than 10MB');
       return Upload.LIST_IGNORE;
     }
 
@@ -90,7 +90,7 @@ const BulkUpload = () => {
   // Step 1: Validate
   const handleValidate = async () => {
     if (!file) {
-      message.warning('Please select a file first');
+      toast('Please select a file first', { icon: '⚠️' });
       return;
     }
 
@@ -99,9 +99,9 @@ const BulkUpload = () => {
       const result = await bulkService.validateInstitutions(file);
       setValidationResult(result);
       setCurrentStep(1);
-      message.success('Validation completed');
+      toast.success('Validation completed');
     } catch (error) {
-      message.error(error.response?.data?.message || 'Validation failed');
+      toast.error(error.response?.data?.message || 'Validation failed');
     } finally {
       setLoading(false);
     }
@@ -120,9 +120,9 @@ const BulkUpload = () => {
 
       setUploadResult(result);
       setCurrentStep(3);
-      message.success('Upload completed');
+      toast.success('Upload completed');
     } catch (error) {
-      message.error(error.response?.data?.message || 'Upload failed');
+      toast.error(error.response?.data?.message || 'Upload failed');
       setCurrentStep(1); // Go back to review step on error
     } finally {
       setLoading(false);
@@ -141,9 +141,9 @@ const BulkUpload = () => {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      message.success('Template downloaded');
+      toast.success('Template downloaded');
     } catch (error) {
-      message.error('Failed to download template');
+      toast.error('Failed to download template');
     }
   };
 
@@ -168,7 +168,7 @@ const BulkUpload = () => {
     document.body.appendChild(link);
     link.click();
     link.remove();
-    message.success('Error report downloaded');
+    toast.success('Error report downloaded');
   };
 
   // Table columns for preview

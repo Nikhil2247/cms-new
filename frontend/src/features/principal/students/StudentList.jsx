@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, message, theme } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Dropdown, Modal, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStudents,
@@ -109,9 +110,9 @@ const StudentList = () => {
       // Refresh lookup data
       loadBranches();
       loadBatches();
-      message.success('Data refreshed successfully');
+      toast.success('Data refreshed successfully');
     } catch (error) {
-      message.error('Failed to refresh data');
+      toast.error('Failed to refresh data');
     } finally {
       setIsRefreshing(false);
     }
@@ -154,7 +155,7 @@ const StudentList = () => {
       onOk: async () => {
         // Optimistic update - update UI immediately
         dispatch(optimisticallyUpdateStudent({ id: record.id, data: { isActive: newStatus } }));
-        message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+        toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
 
         try {
           await dispatch(updateStudent({
@@ -164,7 +165,7 @@ const StudentList = () => {
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStudentOperation({ list: previousList }));
-          message.error(error || `Failed to ${actionText} student`);
+          toast.error(error || `Failed to ${actionText} student`);
         }
       },
     });
@@ -173,7 +174,7 @@ const StudentList = () => {
   const handleResetPassword = (record) => {
     const userId = record.user?.id;
     if (!userId) {
-      message.error('User account not found for this student');
+      toast.error('User account not found for this student');
       return;
     }
 
@@ -216,7 +217,7 @@ const StudentList = () => {
             okText: 'Close',
           });
         } catch (error) {
-          message.error(error || 'Failed to reset password');
+          toast.error(error || 'Failed to reset password');
         }
       },
     });
@@ -233,14 +234,14 @@ const StudentList = () => {
       onOk: async () => {
         // Optimistic update - remove from active list
         dispatch(optimisticallyDeleteStudent(record.id));
-        message.success('Student deactivated successfully');
+        toast.success('Student deactivated successfully');
 
         try {
           await dispatch(deleteStudent(record.id)).unwrap();
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStudentOperation({ list: previousList }));
-          message.error(error || 'Failed to deactivate student');
+          toast.error(error || 'Failed to deactivate student');
         }
       },
     });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Card, Upload, Button, message, Steps, Table, Alert, Space, Select, Divider } from 'antd';
+import { Card, Upload, Button, Steps, Table, Alert, Space, Select, Divider } from 'antd';
+import { toast } from 'react-hot-toast';
 import { fetchPrincipalDashboard } from '../store/principalSlice';
 import { UploadOutlined, DownloadOutlined, CheckCircleOutlined, CloseCircleOutlined, BankOutlined } from '@ant-design/icons';
 import { bulkService } from '../../../services/bulk.service';
@@ -41,7 +42,7 @@ const BulkUpload = () => {
       const response = await stateService.getInstitutions({ limit: 1000 });
       setInstitutions(response.data || response.institutions || []);
     } catch (error) {
-      message.error('Failed to fetch institutions');
+      toast.error('Failed to fetch institutions');
     } finally {
       setLoadingInstitutions(false);
     }
@@ -58,9 +59,9 @@ const BulkUpload = () => {
       a.download = `bulk-${uploadType}-upload-template.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
-      message.success('Template downloaded successfully');
+      toast.success('Template downloaded successfully');
     } catch (error) {
-      message.error('Failed to download template');
+      toast.error('Failed to download template');
     }
   };
 
@@ -177,7 +178,7 @@ const BulkUpload = () => {
         const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
         if (jsonData.length === 0) {
-          message.error('The file is empty or has no valid data');
+          toast.error('The file is empty or has no valid data');
           setOriginalFile(null);
           return false;
         }
@@ -193,12 +194,12 @@ const BulkUpload = () => {
         setCurrentStep(1);
 
         if (results.invalid.length > 0) {
-          message.warning(`Found ${results.invalid.length} invalid record(s). Please review before uploading.`);
+          toast.warning(`Found ${results.invalid.length} invalid record(s). Please review before uploading.`);
         } else {
-          message.success(`All ${results.valid.length} record(s) are valid!`);
+          toast.success(`All ${results.valid.length} record(s) are valid!`);
         }
       } catch (error) {
-        message.error('Failed to read file. Please ensure it is a valid Excel file.');
+        toast.error('Failed to read file. Please ensure it is a valid Excel file.');
         setOriginalFile(null);
       }
     };
@@ -209,18 +210,18 @@ const BulkUpload = () => {
 
   const handleUpload = async () => {
     if (validationResults.valid.length === 0) {
-      message.error('No valid records to upload');
+      toast.error('No valid records to upload');
       return;
     }
 
     if (!originalFile) {
-      message.error('File not found. Please upload again.');
+      toast.error('File not found. Please upload again.');
       return;
     }
 
     // STATE_DIRECTORATE must select an institution
     if (isStateDirectorate && !selectedInstitution) {
-      message.error('Please select an institution first');
+      toast.error('Please select an institution first');
       return;
     }
 
@@ -240,11 +241,11 @@ const BulkUpload = () => {
 
       // Show appropriate message
       if (result.success === 0 && result.failed > 0) {
-        message.error(`All ${result.failed} records failed validation`);
+        toast.error(`All ${result.failed} records failed validation`);
       } else if (result.failed > 0) {
-        message.warning(`Uploaded ${result.success} ${uploadType}, ${result.failed} failed`);
+        toast.warning(`Uploaded ${result.success} ${uploadType}, ${result.failed} failed`);
       } else {
-        message.success(`Successfully uploaded all ${result.success} ${uploadType}`);
+        toast.success(`Successfully uploaded all ${result.success} ${uploadType}`);
       }
 
       // Refresh dashboard stats if any records were uploaded successfully
@@ -255,7 +256,7 @@ const BulkUpload = () => {
       // Always go to step 2 to show summary
       setCurrentStep(2);
     } catch (error) {
-      message.error(error?.response?.data?.message || error?.message || 'Failed to upload data');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to upload data');
     } finally {
       setUploading(false);
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, message, Input, DatePicker, Typography, Segmented, theme, Row, Col, Empty } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Input, DatePicker, Typography, Segmented, theme, Row, Col, Empty } from 'antd';
+import { toast } from 'react-hot-toast';
 import { PlusOutlined, EyeOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CalendarOutlined, ReloadOutlined, FileTextOutlined, EnvironmentOutlined, FileImageOutlined, UserOutlined, ProjectOutlined, MessageOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { fetchVisitLogs, deleteVisitLog, optimisticallyDeleteVisitLog, rollbackVisitLogOperation, fetchAssignedStudents } from '../store/facultySlice';
 import UnifiedVisitLogModal from './UnifiedVisitLogModal';
@@ -58,9 +59,9 @@ const VisitLogList = React.memo(() => {
     setIsRefreshing(true);
     try {
       await dispatch(fetchVisitLogs({ forceRefresh: true })).unwrap();
-      message.success('Data refreshed successfully');
+      toast.success('Data refreshed successfully');
     } catch (error) {
-      message.error('Failed to refresh data');
+      toast.error('Failed to refresh data');
     } finally {
       setIsRefreshing(false);
     }
@@ -81,12 +82,12 @@ const VisitLogList = React.memo(() => {
         const previousList = [...visitLogsList];
         const previousTotal = visitLogs?.total || 0;
         dispatch(optimisticallyDeleteVisitLog(id));
-        message.success('Visit log deleted successfully');
+        toast.success('Visit log deleted successfully');
         try {
           await dispatch(deleteVisitLog(id)).unwrap();
         } catch (error) {
           dispatch(rollbackVisitLogOperation({ list: previousList, total: previousTotal }));
-          message.error(error?.message || 'Failed to delete visit log');
+          toast.error(error?.message || 'Failed to delete visit log');
         }
       },
     });

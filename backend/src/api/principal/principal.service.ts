@@ -1960,6 +1960,29 @@ export class PrincipalService {
       data: prismaData,
     });
 
+    // Audit staff update
+    this.auditService.log({
+      action: AuditAction.USER_PROFILE_UPDATE,
+      entityType: 'Staff',
+      entityId: staffId,
+      userId: principalId,
+      userName: principal.name,
+      userRole: principal.role,
+      description: `Staff member updated: ${updated.name} (${updated.email})`,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: AuditSeverity.MEDIUM,
+      institutionId: principal.institutionId,
+      oldValues: {
+        name: staff.name,
+        email: staff.email,
+        phoneNo: staff.phoneNo,
+        designation: staff.designation,
+        active: staff.active,
+      },
+      newValues: updateData,
+      changedFields: Object.keys(updateData),
+    }).catch(() => {});
+
     await this.cache.invalidateByTags(['staff', `user:${staffId}`]);
 
     return updated;

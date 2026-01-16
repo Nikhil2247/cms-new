@@ -12,10 +12,10 @@ import {
   Tag,
   Space,
   Popconfirm,
-  message,
   Spin,
   Tooltip,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
   EditOutlined,
@@ -46,7 +46,7 @@ const BackupSchedules = () => {
       setScheduleStatus(statusData || []);
     } catch (error) {
       console.error('Failed to fetch backup schedules:', error);
-      message.error('Failed to load backup schedules');
+      toast.error('Failed to load backup schedules');
     } finally {
       setLoading(false);
     }
@@ -82,48 +82,48 @@ const BackupSchedules = () => {
       const values = await form.validateFields();
       if (editingSchedule) {
         await adminService.updateBackupSchedule(editingSchedule.id, values);
-        message.success('Schedule updated successfully');
+        toast.success('Schedule updated successfully');
       } else {
         await adminService.createBackupSchedule(values);
-        message.success('Schedule created successfully');
+        toast.success('Schedule created successfully');
       }
       setModalVisible(false);
       fetchData();
     } catch (error) {
       console.error('Failed to save schedule:', error);
-      message.error('Failed to save schedule');
+      toast.error('Failed to save schedule');
     }
   };
 
   const handleDelete = async (id) => {
     try {
       await adminService.deleteBackupSchedule(id);
-      message.success('Schedule deleted successfully');
+      toast.success('Schedule deleted successfully');
       fetchData();
     } catch (error) {
       console.error('Failed to delete schedule:', error);
-      message.error('Failed to delete schedule');
+      toast.error('Failed to delete schedule');
     }
   };
 
   const handleTrigger = async (id) => {
     try {
       await adminService.triggerBackupSchedule(id);
-      message.success('Backup triggered successfully');
+      toast.success('Backup triggered successfully');
     } catch (error) {
       console.error('Failed to trigger backup:', error);
-      message.error('Failed to trigger backup');
+      toast.error('Failed to trigger backup');
     }
   };
 
   const handleToggleActive = async (id, isActive) => {
     try {
       await adminService.updateBackupSchedule(id, { isActive });
-      message.success(`Schedule ${isActive ? 'enabled' : 'disabled'}`);
+      toast.success(`Schedule ${isActive ? 'enabled' : 'disabled'}`);
       fetchData();
     } catch (error) {
       console.error('Failed to update schedule:', error);
-      message.error('Failed to update schedule');
+      toast.error('Failed to update schedule');
     }
   };
 

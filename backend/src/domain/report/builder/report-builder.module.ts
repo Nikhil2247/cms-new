@@ -11,6 +11,7 @@ import { ReportCleanupScheduler } from './report-cleanup.scheduler';
 import { PrismaModule } from '../../../core/database/prisma.module';
 import { FileStorageModule } from '../../../infrastructure/file-storage/file-storage.module';
 import { QueueModule } from '../../../core/queue/queue.module';
+import { AuditService } from '../../../infrastructure/audit/audit.service';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { QueueModule } from '../../../core/queue/queue.module';
     CsvService,
     ReportProcessor,
     ReportCleanupScheduler,
+    AuditService,
   ],
   exports: [ReportBuilderService],
 })

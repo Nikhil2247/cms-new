@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Modal, Button, Alert, message } from 'antd';
+import { Modal, Button, Alert } from 'antd';
+import { toast } from 'react-hot-toast';
 import { CalendarOutlined, SendOutlined, UploadOutlined } from '@ant-design/icons';
 
 const MonthlyFeedbackModal = ({
@@ -23,12 +24,12 @@ const MonthlyFeedbackModal = ({
       ];
 
       if (!validTypes.includes(file.type)) {
-        message.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
+        toast.error('Please upload a valid image file (JPEG, PNG, GIF, or WebP)');
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        message.error('Image size should be less than 5MB');
+        toast.error('Image size should be less than 5MB');
         return;
       }
 
@@ -44,7 +45,7 @@ const MonthlyFeedbackModal = ({
 
   const handleSubmit = () => {
     if (!imageFile) {
-      message.warning('Please select an image');
+      toast('Please select an image', { icon: '⚠️' });
       return;
     }
     onSubmit(imageFile);

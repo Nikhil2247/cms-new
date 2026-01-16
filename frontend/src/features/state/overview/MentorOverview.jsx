@@ -276,94 +276,98 @@ const MentorOverview = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div>
-        <Title level={3} className="m-0 mb-2">
-          <GlobalOutlined className="mr-2 text-primary" />
-          Cross-Institutional Mentor Overview
-        </Title>
-        <Text className="text-gray-600">
-          View mentor assignments across all institutions, including cross-institutional mentoring activities
-        </Text>
+    <div className="p-6 space-y-4">
+      {/* Header - Compact */}
+      <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-gray-200">
+        <div className="flex items-center gap-3">
+          <GlobalOutlined style={{ fontSize: 20, color: '#1890ff' }} />
+          <div>
+            <Title level={4} style={{ margin: 0, lineHeight: 1.2 }}>
+              Cross-Institutional Mentor Overview
+            </Title>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              View mentor assignments across all institutions
+            </Text>
+          </div>
+        </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Compact */}
       {totals && (
-        <Row gutter={16}>
+        <Row gutter={12}>
           <Col xs={24} sm={12} lg={6}>
-            <Card className="border-l-4 border-green-500">
+            <Card size="small" className="border-l-4 border-green-500 rounded-lg" bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Internal Mentoring"
+                title={<span className="text-xs">Internal Mentoring</span>}
                 value={totals.internal.students}
-                prefix={<CheckCircleOutlined className="text-green-600" />}
-                suffix={<Text className="text-sm text-gray-500">students</Text>}
-                valueStyle={{ color: '#16a34a' }}
+                prefix={<CheckCircleOutlined className="text-green-600" style={{ fontSize: 16 }} />}
+                suffix={<Text className="text-xs text-gray-500">students</Text>}
+                valueStyle={{ color: '#16a34a', fontSize: 20 }}
               />
-              <Text className="text-xs text-gray-500 block mt-1">
+              <Text className="text-[10px] text-gray-500 block mt-1">
                 {totals.internal.mentors} mentors • {totals.internal.assignments} assignments
               </Text>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card className="border-l-4 border-blue-500">
+            <Card size="small" className="border-l-4 border-blue-500 rounded-lg" bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Incoming External"
+                title={<span className="text-xs">Incoming External</span>}
                 value={totals.incomingExternal.students}
-                prefix={<ArrowLeftOutlined className="text-blue-600" />}
-                suffix={<Text className="text-sm text-gray-500">students</Text>}
-                valueStyle={{ color: '#2563eb' }}
+                prefix={<ArrowLeftOutlined className="text-blue-600" style={{ fontSize: 16 }} />}
+                suffix={<Text className="text-xs text-gray-500">students</Text>}
+                valueStyle={{ color: '#2563eb', fontSize: 20 }}
               />
-              <Text className="text-xs text-gray-500 block mt-1">
+              <Text className="text-[10px] text-gray-500 block mt-1">
                 {totals.incomingExternal.mentors} external mentors helping
               </Text>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card className="border-l-4 border-orange-500">
+            <Card size="small" className="border-l-4 border-orange-500 rounded-lg" bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Outgoing External"
+                title={<span className="text-xs">Outgoing External</span>}
                 value={totals.outgoingExternal.students}
-                prefix={<ArrowRightOutlined className="text-orange-600" />}
-                suffix={<Text className="text-sm text-gray-500">students</Text>}
-                valueStyle={{ color: '#ea580c' }}
+                prefix={<ArrowRightOutlined className="text-orange-600" style={{ fontSize: 16 }} />}
+                suffix={<Text className="text-xs text-gray-500">students</Text>}
+                valueStyle={{ color: '#ea580c', fontSize: 20 }}
               />
-              <Text className="text-xs text-gray-500 block mt-1">
+              <Text className="text-[10px] text-gray-500 block mt-1">
                 {totals.outgoingExternal.mentors} mentors helping others
               </Text>
             </Card>
           </Col>
           <Col xs={24} sm={12} lg={6}>
-            <Card className="border-l-4 border-purple-500">
+            <Card size="small" className="border-l-4 border-purple-500 rounded-lg" bodyStyle={{ padding: '12px' }}>
               <Statistic
-                title="Cross-Institutional"
+                title={<span className="text-xs">Cross-Institutional</span>}
                 value={totals.incomingExternal.students + totals.outgoingExternal.students}
-                prefix={<SwapOutlined className="text-purple-600" />}
-                suffix={<Text className="text-sm text-gray-500">total</Text>}
-                valueStyle={{ color: '#9333ea' }}
+                prefix={<SwapOutlined className="text-purple-600" style={{ fontSize: 16 }} />}
+                suffix={<Text className="text-xs text-gray-500">total</Text>}
+                valueStyle={{ color: '#9333ea', fontSize: 20 }}
               />
-              <Text className="text-xs text-gray-500 block mt-1">
-                Collaborative mentoring across institutions
+              <Text className="text-[10px] text-gray-500 block mt-1">
+                Collaborative mentoring
               </Text>
             </Card>
           </Col>
         </Row>
       )}
 
-      {/* Info Alert */}
+      {/* Info Alert - Compact */}
       <Alert
         type="info"
-        message="Understanding the Data"
+        message={<span className="text-xs font-semibold">Understanding the Data</span>}
         description={
-          <ul className="list-disc list-inside space-y-1 mt-2 text-sm">
-            <li><strong>Internal:</strong> Institution's faculty mentoring their own students (normal operation)</li>
-            <li><strong>Incoming:</strong> Faculty from other institutions helping mentor students (receiving help)</li>
-            <li><strong>Outgoing:</strong> Institution's faculty mentoring students from other institutions (giving help)</li>
-            <li><strong>Totals:</strong> Unique counts (a mentor may appear in both internal and outgoing)</li>
+          <ul className="list-disc list-inside space-y-0.5 mt-1 text-xs">
+            <li><strong>Internal:</strong> Institution's faculty mentoring their own students</li>
+            <li><strong>Incoming:</strong> External faculty helping mentor students</li>
+            <li><strong>Outgoing:</strong> Faculty mentoring students from other institutions</li>
+            <li><strong>Totals:</strong> Unique counts (mentor may appear in both categories)</li>
           </ul>
         }
         showIcon
-        className="border-blue-200 bg-blue-50"
+        className="border-blue-200 bg-blue-50 rounded-lg"
       />
 
       {/* Table */}

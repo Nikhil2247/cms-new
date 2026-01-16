@@ -10,7 +10,6 @@ import {
   Select,
   DatePicker,
   InputNumber,
-  message,
   Spin,
   Empty,
   Timeline,
@@ -28,6 +27,7 @@ import {
   Switch,
   Alert,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   UserOutlined,
   BankOutlined,
@@ -267,7 +267,7 @@ const StudentDetailsModal = ({
   const handleEditInternship = () => {
     const app = effectiveInternship;
     if (!app?.id) {
-      message.warning('No internship application found for this student.');
+      toast.warning('No internship application found for this student.');
       return;
     }
     editForm.setFieldsValue({
@@ -301,7 +301,7 @@ const StudentDetailsModal = ({
       // Get the internship ID - check multiple possible sources
       const internshipId = effectiveInternship?.id || internshipApp?.id;
       if (!internshipId) {
-        message.error('No internship application found. Cannot save changes.');
+        toast.error('No internship application found. Cannot save changes.');
         return;
       }
 
@@ -339,7 +339,7 @@ const StudentDetailsModal = ({
       };
       setLocalInternshipData(optimisticData);
       setIsEditingInternship(false);
-      message.success('Internship details updated successfully');
+      toast.success('Internship details updated successfully');
 
       // API call in background
       try {
@@ -354,11 +354,11 @@ const StudentDetailsModal = ({
         // Revert optimistic update on failure
         setLocalInternshipData(null);
         const errorMessage = typeof apiError === 'string' ? apiError : apiError?.message || 'Failed to save changes. Please try again.';
-        message.error(errorMessage);
+        toast.error(errorMessage);
         setIsEditingInternship(true); // Re-open edit form
       }
     } catch (error) {
-      message.error(error.message || 'Please fill in required fields');
+      toast.error(error.message || 'Please fill in required fields');
     } finally {
       setSaving(false);
     }
@@ -374,17 +374,17 @@ const StudentDetailsModal = ({
   const handleJoiningLetterUpload = async (file) => {
     const applicationId = effectiveInternship?.id || internshipApp?.id;
     if (!applicationId) {
-      message.error('No internship application found. Cannot upload.');
+      toast.error('No internship application found. Cannot upload.');
       return false;
     }
     setUploadingJoiningLetter(true);
     try {
       await dispatch(uploadJoiningLetter({ applicationId, file })).unwrap();
-      message.success('Joining letter uploaded successfully');
+      toast.success('Joining letter uploaded successfully');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingJoiningLetter(false);
     }
@@ -395,16 +395,16 @@ const StudentDetailsModal = ({
   const handleDeleteJoiningLetter = async () => {
     const applicationId = effectiveInternship?.id || internshipApp?.id;
     if (!applicationId) {
-      message.error('No internship application found. Cannot delete.');
+      toast.error('No internship application found. Cannot delete.');
       return;
     }
     try {
       await dispatch(deleteJoiningLetter(applicationId)).unwrap();
-      message.success('Joining letter deleted successfully');
+      toast.success('Joining letter deleted successfully');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -412,11 +412,11 @@ const StudentDetailsModal = ({
   const handleDeleteReport = async (reportId) => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
-      message.success('Report deleted successfully');
+      toast.success('Report deleted successfully');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -424,7 +424,7 @@ const StudentDetailsModal = ({
   const handleReportFileChange = ({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 5 * 1024 * 1024) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return;
     }
     setReportFileList(newFileList.slice(-1));
@@ -453,11 +453,11 @@ const StudentDetailsModal = ({
       if (result?.url) {
         window.open(result.url, '_blank');
       } else {
-        message.error('No file available for this report');
+        toast.error('No file available for this report');
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -465,18 +465,18 @@ const StudentDetailsModal = ({
   const handleReportUploadSubmit = async () => {
     const applicationId = effectiveInternship?.id || internshipApp?.id;
     if (!applicationId) {
-      message.error('No internship application found. Cannot upload report.');
+      toast.error('No internship application found. Cannot upload report.');
       return;
     }
 
     if (reportFileList.length === 0) {
-      message.error('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     const file = reportFileList[0]?.originFileObj || reportFileList[0];
     if (!file) {
-      message.error('Invalid file');
+      toast.error('Invalid file');
       return;
     }
 
@@ -484,7 +484,7 @@ const StudentDetailsModal = ({
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.error('Please select report month and year');
+      toast.error('Please select report month and year');
       return;
     }
 
@@ -497,12 +497,12 @@ const StudentDetailsModal = ({
       formData.append('year', yearValue.toString());
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
-      message.success('Monthly report uploaded successfully');
+      toast.success('Monthly report uploaded successfully');
       handleCloseReportUploadModal();
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingReport(false);
     }
@@ -513,7 +513,7 @@ const StudentDetailsModal = ({
     if (url) {
       await openFileWithPresignedUrl(url);
     } else {
-      message.info('Document not available');
+      toast.info('Document not available');
     }
   };
 

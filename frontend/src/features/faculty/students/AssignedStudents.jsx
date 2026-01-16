@@ -1,7 +1,8 @@
 // src/pages/faculty/AssignedStudents.jsx
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic, Popconfirm, message } from "antd";
+import { Table, Typography, Card, Tag, Spin, Empty, Alert, Button, theme, Input, Select, Space, Row, Col, Statistic, Popconfirm } from "antd";
+import { toast } from 'react-hot-toast';
 import {
   PhoneOutlined,
   MailOutlined,
@@ -54,9 +55,9 @@ const AssignedStudents = React.memo(() => {
   const handleToggleStatus = useCallback(async (student) => {
     try {
       const result = await dispatch(toggleStudentStatus({ studentId: student.id })).unwrap();
-      message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
+      toast.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
-      message.error(error || 'Failed to toggle student status');
+      toast.error(error || 'Failed to toggle student status');
     }
   }, [dispatch]);
 

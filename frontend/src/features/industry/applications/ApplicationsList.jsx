@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, Modal, Input, message, Avatar, Drawer, Descriptions, Divider, Typography, Alert } from 'antd';
+import { Card, Table, Button, Tag, Space, Modal, Input, Avatar, Drawer, Descriptions, Divider, Typography, Alert } from 'antd';
+import { toast } from 'react-hot-toast';
 import { CheckOutlined, CloseOutlined, UserOutlined, EyeOutlined, FileTextOutlined } from '@ant-design/icons';
 import { fetchMyApplications, shortlistApplication, selectApplication, rejectApplication, optimisticallyUpdateApplicationStatus, rollbackApplicationOperation } from '../store/industrySlice';
 import { generateTxnId, snapshotManager, optimisticToast } from '../../../store/optimisticMiddleware';
@@ -90,7 +91,7 @@ const ApplicationsList = () => {
 
   const handleReject = async () => {
     if (!rejectReason.trim()) {
-      message.error('Please provide a reason for rejection');
+      toast.error('Please provide a reason for rejection');
       return;
     }
 

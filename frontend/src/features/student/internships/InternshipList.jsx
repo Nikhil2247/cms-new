@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Space, Tag, Card, Input, Select, message, Typography, Avatar, Tooltip, theme } from 'antd';
+import { Table, Button, Space, Tag, Card, Input, Select, Typography, Avatar, Tooltip, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { fetchInternships, applyForInternship } from '../store/studentSlice';
@@ -42,10 +43,10 @@ const InternshipList = () => {
   const handleApply = async (internshipId) => {
     try {
       await dispatch(applyForInternship(internshipId)).unwrap();
-      message.success('Application submitted successfully');
+      toast.success('Application submitted successfully');
       loadInternships();
     } catch (error) {
-      message.error(error?.message || 'Failed to submit application');
+      toast.error(error?.message || 'Failed to submit application');
     }
   };
 

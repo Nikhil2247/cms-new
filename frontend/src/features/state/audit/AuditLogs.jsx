@@ -97,44 +97,161 @@ const AuditLogs = () => {
     FEEDBACK_SYSTEM: 'magenta',
     ADMINISTRATIVE: 'orange',
     SECURITY: 'red',
+    COMPLIANCE: 'gold',
+    SYSTEM: 'volcano',
+    DATA_MANAGEMENT: 'lime',
+    SUPPORT: 'green',
+    USER_MANAGEMENT: 'blue',
+    SYSTEM_ADMIN: 'red',
   };
 
-  // Action types for dropdown
+  // Action types for dropdown (from backend AuditAction enum)
   const actionTypes = [
-    'LOGIN',
-    'LOGOUT',
-    'PASSWORD_CHANGED',
-    'PROFILE_CREATED',
-    'PROFILE_UPDATED',
-    'DOCUMENT_UPLOADED',
-    'INTERNSHIP_CREATED',
-    'INTERNSHIP_UPDATED',
-    'APPLICATION_SUBMITTED',
-    'APPLICATION_APPROVED',
-    'APPLICATION_REJECTED',
-    'FEEDBACK_SUBMITTED',
+    // User Management
+    'USER_LOGIN',
+    'USER_LOGOUT',
+    'USER_REGISTRATION',
+    'USER_PROFILE_UPDATE',
+    'PASSWORD_CHANGE',
+    'PASSWORD_RESET',
+    'USER_ACTIVATION',
+    'USER_DEACTIVATION',
+    'USER_DELETION',
+    
+    // Student Operations
+    'STUDENT_PROFILE_VIEW',
+    'STUDENT_PROFILE_UPDATE',
+    'STUDENT_DOCUMENT_UPLOAD',
+    'STUDENT_DOCUMENT_DELETE',
+    'STUDENT_DOCUMENT_RESTORE',
+    
+    // Internship Operations
+    'INTERNSHIP_CREATE',
+    'INTERNSHIP_UPDATE',
+    'INTERNSHIP_DELETE',
+    'INTERNSHIP_ACTIVATE',
+    'INTERNSHIP_DEACTIVATE',
+    'INTERNSHIP_VIEW',
+    'INTERNSHIP_SEARCH',
+    
+    // Application Operations
+    'APPLICATION_SUBMIT',
+    'APPLICATION_UPDATE',
+    'APPLICATION_WITHDRAW',
+    'APPLICATION_VIEW',
+    'APPLICATION_APPROVE',
+    'APPLICATION_REJECT',
+    'APPLICATION_BULK_ACTION',
+    
+    // Industry Operations
+    'INDUSTRY_REGISTER',
+    'INDUSTRY_PROFILE_UPDATE',
+    'INDUSTRY_APPROVAL',
+    'INDUSTRY_REJECTION',
+    'INDUSTRY_VIEW_APPLICANTS',
+    
+    // Mentor Assignment
+    'MENTOR_ASSIGN',
+    'MENTOR_UNASSIGN',
+    'MENTOR_UPDATE',
+    
+    // Feedback Operations
+    'MONTHLY_FEEDBACK_SUBMIT',
+    'MONTHLY_FEEDBACK_UPDATE',
+    'COMPLETION_FEEDBACK_SUBMIT',
+    'FEEDBACK_VIEW',
+    
+    // Faculty Operations
+    'VISIT_LOG_CREATE',
+    'VISIT_LOG_UPDATE',
+    'VISIT_LOG_DELETE',
+    'VISIT_LOG_RESTORE',
+    'VISIT_LOG_VIEW',
+    'FACULTY_ASSIGNMENT',
+    
+    // Monthly Report Operations
+    'MONTHLY_REPORT_SUBMIT',
+    'MONTHLY_REPORT_UPDATE',
+    'MONTHLY_REPORT_APPROVE',
+    'MONTHLY_REPORT_REJECT',
+    'MONTHLY_REPORT_DELETE',
+    'MONTHLY_REPORT_RESTORE',
+    
+    // Joining Letter Operations
+    'JOINING_LETTER_UPLOAD',
+    'JOINING_LETTER_VERIFY',
+    'JOINING_LETTER_REJECT',
+    'JOINING_LETTER_DELETE',
+    
+    // Administrative Operations
+    'REPORT_GENERATE',
+    'REPORT_DOWNLOAD',
+    'REPORT_VIEW',
     'BULK_OPERATION',
-    'REPORT_GENERATED',
+    'DATA_EXPORT',
+    'DATA_IMPORT',
+    
+    // Institution Operations
+    'INSTITUTION_CREATE',
+    'INSTITUTION_UPDATE',
+    'INSTITUTION_DELETE',
+    
+    // System Operations
     'SYSTEM_BACKUP',
+    'SYSTEM_RESTORE',
+    'CONFIGURATION_CHANGE',
+    'PERMISSION_CHANGE',
+    
+    // Security Events
     'UNAUTHORIZED_ACCESS',
+    'FAILED_LOGIN',
+    'SUSPICIOUS_ACTIVITY',
+    'DATA_BREACH_ATTEMPT',
+    
+    // Support Operations
+    'GRIEVANCE_SUBMIT',
+    'GRIEVANCE_UPDATE',
+    'GRIEVANCE_RESOLVE',
+    'TECHNICAL_QUERY_SUBMIT',
+    'TECHNICAL_QUERY_RESOLVE',
+    
+    // Compliance Operations
+    'COMPLIANCE_CHECK',
+    'AUDIT_TRAIL_ACCESS',
+    'PRIVACY_POLICY_UPDATE',
+    'CONSENT_GIVEN',
+    'CONSENT_WITHDRAWN',
   ];
 
-  // Entity types for dropdown
+  // Entity types for dropdown (common entity types in system)
   const entityTypes = [
     'User',
     'Student',
+    'Staff',
     'Faculty',
     'Principal',
     'Institution',
     'Internship',
     'Application',
+    'SelfIdentifiedInternship',
     'Feedback',
+    'MonthlyFeedback',
+    'CompletionFeedback',
+    'VisitLog',
+    'MonthlyReport',
+    'JoiningLetter',
     'Document',
     'Report',
+    'Batch',
+    'Department',
+    'Branch',
+    'MentorAssignment',
+    'Grievance',
+    'TechnicalQuery',
     'System',
   ];
 
-  // Categories for dropdown
+  // Categories for dropdown (from backend AuditCategory enum)
   const categories = [
     'AUTHENTICATION',
     'PROFILE_MANAGEMENT',
@@ -143,6 +260,12 @@ const AuditLogs = () => {
     'FEEDBACK_SYSTEM',
     'ADMINISTRATIVE',
     'SECURITY',
+    'COMPLIANCE',
+    'SYSTEM',
+    'DATA_MANAGEMENT',
+    'SUPPORT',
+    'USER_MANAGEMENT',
+    'SYSTEM_ADMIN',
   ];
 
   // Fetch audit logs
@@ -481,7 +604,7 @@ const AuditLogs = () => {
   };
 
   return (
-    <div>
+    <div className='p-5'>
       {/* Header */}
       <div style={{ marginBottom: '24px' }}>
         <Title level={2}>
@@ -538,68 +661,6 @@ const AuditLogs = () => {
           </Row>
         </Spin>
 
-        {/* Charts */}
-        {statistics && (
-          <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-            <Col xs={24} lg={12}>
-              <Card title="Action Breakdown" extra={<SafetyOutlined />}>
-                {actionChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={actionChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {actionChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Empty description="No action data available" />
-                )}
-              </Card>
-            </Col>
-            <Col xs={24} lg={12}>
-              <Card title="Category Breakdown" extra={<InfoCircleOutlined />}>
-                {categoryChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={categoryChartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {categoryChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip />
-                      <Legend />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <Empty description="No category data available" />
-                )}
-              </Card>
-            </Col>
-          </Row>
-        )}
-
         {/* Filters Card */}
         <Card style={{ marginBottom: '24px' }}>
           <Row gutter={[16, 16]} align="middle">
@@ -618,15 +679,90 @@ const AuditLogs = () => {
                 style={{ width: '100%', marginTop: 8 }}
                 placeholder="Select action"
                 allowClear
+                showSearch
+                optionFilterProp="label"
                 value={filters.action}
                 onChange={(value) => handleFilterChange('action', value)}
-              >
-                {actionTypes.map((action) => (
-                  <Option key={action} value={action}>
-                    {action.replace(/_/g, ' ')}
-                  </Option>
-                ))}
-              </Select>
+                options={[
+                  {
+                    label: 'User Management',
+                    options: actionTypes.slice(0, 9).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Student Operations',
+                    options: actionTypes.slice(9, 14).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Internship Operations',
+                    options: actionTypes.slice(14, 21).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Application Operations',
+                    options: actionTypes.slice(21, 28).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Industry Operations',
+                    options: actionTypes.slice(28, 33).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Mentor & Feedback',
+                    options: actionTypes.slice(33, 40).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Faculty Operations',
+                    options: actionTypes.slice(40, 46).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Reports & Documents',
+                    options: actionTypes.slice(46, 58).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Administrative',
+                    options: actionTypes.slice(58, 67).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'System & Security',
+                    options: actionTypes.slice(67, 75).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                  {
+                    label: 'Support & Compliance',
+                    options: actionTypes.slice(75).map(action => ({
+                      label: action.replace(/_/g, ' '),
+                      value: action
+                    }))
+                  },
+                ]}
+              />
             </Col>
             <Col xs={24} sm={12} md={4}>
               <Text strong>Entity Type:</Text>
@@ -634,10 +770,12 @@ const AuditLogs = () => {
                 style={{ width: '100%', marginTop: 8 }}
                 placeholder="Select entity"
                 allowClear
+                showSearch
+                optionFilterProp="children"
                 value={filters.entityType}
                 onChange={(value) => handleFilterChange('entityType', value)}
               >
-                {entityTypes.map((type) => (
+                {[...entityTypes].sort().map((type) => (
                   <Option key={type} value={type}>
                     {type}
                   </Option>
@@ -650,10 +788,12 @@ const AuditLogs = () => {
                 style={{ width: '100%', marginTop: 8 }}
                 placeholder="Select category"
                 allowClear
+                showSearch
+                optionFilterProp="children"
                 value={filters.category}
                 onChange={(value) => handleFilterChange('category', value)}
               >
-                {categories.map((cat) => (
+                {[...categories].sort().map((cat) => (
                   <Option key={cat} value={cat}>
                     {cat.replace(/_/g, ' ')}
                   </Option>

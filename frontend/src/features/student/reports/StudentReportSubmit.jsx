@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import {
-  Card, Table, Button, Modal, Upload, message, Switch, Select, Alert,
+  Card, Table, Button, Modal, Upload, Switch, Select, Alert,
   Tag, Typography, Empty, Spin, Tooltip, Popconfirm, theme
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined, UploadOutlined, EyeOutlined,
   DeleteOutlined, FileTextOutlined, CalendarOutlined, ReloadOutlined,
@@ -149,7 +150,7 @@ const StudentReportSubmit = () => {
       const data = response.data?.reports || [];
       setReports(Array.isArray(data) ? data : []);
     } catch (error) {
-      message.error('Failed to fetch reports');
+      toast.error('Failed to fetch reports');
       setReports([]);
     } finally {
       setLoading(false);
@@ -167,7 +168,7 @@ const StudentReportSubmit = () => {
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 5 * 1024 * 1024) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -176,7 +177,7 @@ const StudentReportSubmit = () => {
   // Open modal
   const handleAdd = useCallback(() => {
     if (!selectedApplication) {
-      message.warning('No active internship found');
+      toast('No active internship found', { icon: '⚠️' });
       return;
     }
     setEditingReport(null);
@@ -198,18 +199,18 @@ const StudentReportSubmit = () => {
   // Submit file
   const handleSubmit = useCallback(async () => {
     if (!selectedApplication?.id) {
-      message.error('No active internship selected');
+      toast.error('No active internship selected');
       return;
     }
 
     if (fileList.length === 0) {
-      message.error('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     const file = fileList[0]?.originFileObj || fileList[0];
     if (!file) {
-      message.error('Invalid file');
+      toast.error('Invalid file');
       return;
     }
 
@@ -217,7 +218,7 @@ const StudentReportSubmit = () => {
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.error('Please select report month and year');
+      toast.error('Please select report month and year');
       return;
     }
 
@@ -254,7 +255,7 @@ const StudentReportSubmit = () => {
         reportFileUrl: fileUrl,
       })).unwrap();
 
-      message.success('Report uploaded successfully!');
+      toast.success('Report uploaded successfully!');
       handleCloseModal();
       fetchReports();
       // Refresh dashboard, applications, and reports to update counts and pending tags
@@ -263,7 +264,7 @@ const StudentReportSubmit = () => {
       dispatch(fetchMyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -273,7 +274,7 @@ const StudentReportSubmit = () => {
   const handleDelete = useCallback(async (id) => {
     try {
       await dispatch(deleteMonthlyReport(id)).unwrap();
-      message.success('Report deleted');
+      toast.success('Report deleted');
       fetchReports();
       // Refresh dashboard, applications, and reports to update counts and pending tags
       dispatch(fetchStudentDashboard({ forceRefresh: true }));
@@ -281,7 +282,7 @@ const StudentReportSubmit = () => {
       dispatch(fetchMyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   }, [dispatch, fetchReports]);
 

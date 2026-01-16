@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { Button, Tag, Avatar, Input, Select, Card, Modal, message, Dropdown, Table, Typography, Space, Tooltip } from 'antd';
+import { Button, Tag, Avatar, Input, Select, Card, Modal, Dropdown, Table, Typography, Space, Tooltip } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStaff,
@@ -80,9 +81,9 @@ const StaffList = () => {
     setIsRefreshing(true);
     try {
       await dispatch(fetchStaff({ ...filters, forceRefresh: true })).unwrap();
-      message.success('Data refreshed successfully');
+      toast.success('Data refreshed successfully');
     } catch (error) {
-      message.error('Failed to refresh data');
+      toast.error('Failed to refresh data');
     } finally {
       setIsRefreshing(false);
     }
@@ -120,13 +121,13 @@ const StaffList = () => {
 
         try {
           const result = await dispatch(toggleStaffStatus(record.id)).unwrap();
-          message.success(result.message || `Staff member ${actionPast} successfully`);
+          toast.success(result.message || `Staff member ${actionPast} successfully`);
           // Refresh dashboard stats (mentor count may change)
           dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
         } catch (error) {
           // Rollback on failure
           dispatch(rollbackStaffOperation({ list: previousList }));
-          message.error(error || `Failed to ${actionText} staff member`);
+          toast.error(error || `Failed to ${actionText} staff member`);
         }
       },
     });
@@ -173,7 +174,7 @@ const StaffList = () => {
             okText: 'Close',
           });
         } catch (error) {
-          message.error(error || 'Failed to reset password');
+          toast.error(error || 'Failed to reset password');
         }
       },
     });

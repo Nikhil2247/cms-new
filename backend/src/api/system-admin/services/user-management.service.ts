@@ -284,14 +284,14 @@ export class UserManagementService {
 
     // Audit log
     await this.auditService.log({
-      action: AuditAction.USER_PROFILE_UPDATE,
+      action: dto.active === false ? AuditAction.USER_DEACTIVATION : AuditAction.USER_ACTIVATION,
       entityType: 'User',
       entityId: userId,
       userId: adminUserId,
       userRole: adminRole,
-      category: AuditCategory.ADMINISTRATIVE,
+      category: AuditCategory.USER_MANAGEMENT,
       severity: AuditSeverity.MEDIUM,
-      description: `User updated by admin: ${updatedUser.email}`,
+      description: `User ${dto.active === false ? 'deactivated' : 'activated'} by admin: ${updatedUser.email}`,
       oldValues: {
         name: existingUser.name,
         email: existingUser.email,
@@ -299,6 +299,7 @@ export class UserManagementService {
         active: existingUser.active,
       },
       newValues: dto,
+      changedFields: Object.keys(dto),
     });
 
     return { user: updatedUser, message: 'User updated successfully' };
@@ -354,15 +355,25 @@ export class UserManagementService {
 
     // Audit log
     await this.auditService.log({
-      action: AuditAction.USER_DEACTIVATION,
+      action: permanent ? AuditAction.USER_DELETION : AuditAction.USER_DEACTIVATION,
       entityType: 'User',
       entityId: userId,
       userId: adminUserId,
       userRole: adminRole,
-      category: AuditCategory.ADMINISTRATIVE,
-      severity: AuditSeverity.HIGH,
+      category: AuditCategory.USER_MANAGEMENT,
+      severity: permanent ? AuditSeverity.CRITICAL : AuditSeverity.HIGH,
       description: `User ${permanent ? 'permanently deleted' : 'deactivated'}: ${user.email}`,
-      oldValues: { email: user.email, role: user.role },
+      oldValues: { 
+        email: user.email, 
+        role: user.role,
+        name: user.name,
+        active: user.active,
+        institutionId: user.institutionId,
+      },
+      newValues: {
+        permanent,
+        deletedAt: new Date().toISOString(),
+      },
     });
 
     return {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Switch, Tag, Spin, message, Input, Space, Button, Alert } from 'antd';
+import { Card, Table, Switch, Tag, Spin, Input, Space, Button, Alert } from 'antd';
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
@@ -7,6 +7,7 @@ import {
   ReloadOutlined,
   ExperimentOutlined,
 } from '@ant-design/icons';
+import { toast } from 'react-hot-toast';
 import { adminService } from '../../../services/admin.service';
 
 const FeatureFlags = () => {
@@ -21,7 +22,7 @@ const FeatureFlags = () => {
       setFeatures(data || []);
     } catch (error) {
       console.error('Failed to fetch features:', error);
-      message.error('Failed to load feature flags');
+      toast.error('Failed to load feature flags');
     } finally {
       setLoading(false);
     }
@@ -34,11 +35,11 @@ const FeatureFlags = () => {
   const handleToggle = async (key, value) => {
     try {
       await adminService.setConfig(key, value);
-      message.success(`Feature ${value ? 'enabled' : 'disabled'}`);
+      toast.success(`Feature ${value ? 'enabled' : 'disabled'}`);
       fetchFeatures();
     } catch (error) {
       console.error('Failed to update feature:', error);
-      message.error('Failed to update feature flag');
+      toast.error('Failed to update feature flag');
     }
   };
 

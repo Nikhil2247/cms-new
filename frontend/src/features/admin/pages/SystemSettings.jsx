@@ -10,12 +10,12 @@ import {
   Button,
   Space,
   Spin,
-  message,
   Popconfirm,
   Tag,
   Tooltip,
   Divider,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SaveOutlined,
   ReloadOutlined,
@@ -54,7 +54,7 @@ const SystemSettings = () => {
       form.setFieldsValue(formValues);
     } catch (error) {
       console.error('Failed to fetch configs:', error);
-      message.error('Failed to load configurations');
+      toast.error('Failed to load configurations');
     } finally {
       setLoading(false);
     }
@@ -77,16 +77,16 @@ const SystemSettings = () => {
       });
 
       if (updates.length === 0) {
-        message.info('No changes to save');
+        toast.info('No changes to save');
         return;
       }
 
       await adminService.bulkUpdateConfigs(updates);
-      message.success('Settings saved successfully');
+      toast.success('Settings saved successfully');
       fetchConfigs();
     } catch (error) {
       console.error('Failed to save settings:', error);
-      message.error('Failed to save settings');
+      toast.error('Failed to save settings');
     } finally {
       setSaving(false);
     }
@@ -95,22 +95,22 @@ const SystemSettings = () => {
   const handleReset = async (key) => {
     try {
       await adminService.resetConfig(key);
-      message.success('Setting reset to default');
+      toast.success('Setting reset to default');
       fetchConfigs();
     } catch (error) {
       console.error('Failed to reset setting:', error);
-      message.error('Failed to reset setting');
+      toast.error('Failed to reset setting');
     }
   };
 
   const handleResetAll = async () => {
     try {
       await adminService.resetAllConfigs();
-      message.success('All settings reset to defaults');
+      toast.success('All settings reset to defaults');
       fetchConfigs();
     } catch (error) {
       console.error('Failed to reset all settings:', error);
-      message.error('Failed to reset all settings');
+      toast.error('Failed to reset all settings');
     }
   };
 
@@ -123,10 +123,10 @@ const SystemSettings = () => {
       a.href = url;
       a.download = `system-config-${new Date().toISOString().split('T')[0]}.json`;
       a.click();
-      message.success('Configuration exported');
+      toast.success('Configuration exported');
     } catch (error) {
       console.error('Failed to export configs:', error);
-      message.error('Failed to export configuration');
+      toast.error('Failed to export configuration');
     }
   };
 

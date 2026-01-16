@@ -8,7 +8,6 @@ import {
   Tag,
   Space,
   Input,
-  message,
   Badge,
   Tabs,
   Typography,
@@ -24,6 +23,7 @@ import {
   Alert,
   Popconfirm,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
   CheckCircleOutlined,
@@ -135,9 +135,9 @@ const MonthlyReportsPage = () => {
     setIsRefreshing(true);
     try {
       await dispatch(fetchMonthlyReports({ forceRefresh: true })).unwrap();
-      message.success('Data refreshed successfully');
+      toast.success('Data refreshed successfully');
     } catch (error) {
-      message.error('Failed to refresh data');
+      toast.error('Failed to refresh data');
     } finally {
       setIsRefreshing(false);
     }
@@ -156,7 +156,7 @@ const MonthlyReportsPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -167,11 +167,11 @@ const MonthlyReportsPage = () => {
       if (result?.url) {
         window.open(result.url, '_blank');
       } else {
-        message.error('No file available for this report');
+        toast.error('No file available for this report');
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -179,11 +179,11 @@ const MonthlyReportsPage = () => {
   const handleDeleteReport = async (reportId) => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
-      message.success('Report deleted successfully');
+      toast.success('Report deleted successfully');
       dispatch(fetchMonthlyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -196,7 +196,7 @@ const MonthlyReportsPage = () => {
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 5 * 1024 * 1024) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -223,18 +223,18 @@ const MonthlyReportsPage = () => {
   // Submit uploaded report
   const handleUploadSubmit = useCallback(async () => {
     if (!selectedStudentId) {
-      message.error('Please select a student');
+      toast.error('Please select a student');
       return;
     }
 
     if (fileList.length === 0) {
-      message.error('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     const file = fileList[0]?.originFileObj || fileList[0];
     if (!file) {
-      message.error('Invalid file');
+      toast.error('Invalid file');
       return;
     }
 
@@ -242,7 +242,7 @@ const MonthlyReportsPage = () => {
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.error('Please select report month and year');
+      toast.error('Please select report month and year');
       return;
     }
 
@@ -256,12 +256,12 @@ const MonthlyReportsPage = () => {
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
 
-      message.success('Report uploaded successfully!');
+      toast.success('Report uploaded successfully!');
       handleCloseModal();
       dispatch(fetchMonthlyReports({ forceRefresh: true }));
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

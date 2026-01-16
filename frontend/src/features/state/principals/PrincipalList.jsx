@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Card, Table, Button, Tag, Space, message, Input, Avatar, Dropdown, App } from 'antd';
+import { Card, Table, Button, Tag, Space, Input, Avatar, Dropdown, App } from 'antd';
+import { toast } from 'react-hot-toast';
 import { PlusOutlined, EditOutlined, StopOutlined, SearchOutlined, UserOutlined, ReloadOutlined, MoreOutlined, KeyOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { fetchPrincipals, togglePrincipalStatus, resetPrincipalPassword } from '../store/stateSlice';
 import PrincipalModal from './PrincipalModal';
@@ -62,10 +63,10 @@ const PrincipalList = () => {
         setTogglingId(id);
         try {
           const result = await dispatch(togglePrincipalStatus(id)).unwrap();
-          message.success(result.message || `Principal ${actionPast} successfully`);
+          toast.success(result.message || `Principal ${actionPast} successfully`);
           loadPrincipals({ forceRefresh: true });
         } catch (error) {
-          message.error(error?.message || `Failed to ${action} principal`);
+          toast.error(error?.message || `Failed to ${action} principal`);
           throw error;
         } finally {
           setTogglingId(null);
@@ -90,7 +91,7 @@ const PrincipalList = () => {
         setResettingId(id);
         try {
           const result = await dispatch(resetPrincipalPassword(id)).unwrap();
-          message.success('Password reset successfully');
+          toast.success('Password reset successfully');
           modal.success({
             title: 'Password Reset Successful',
             content: (
@@ -104,7 +105,7 @@ const PrincipalList = () => {
           });
         } catch (error) {
           console.error('Reset password error:', error);
-          message.error(error?.message || 'Failed to reset password');
+          toast.error(error?.message || 'Failed to reset password');
           throw error;
         } finally {
           setResettingId(null);

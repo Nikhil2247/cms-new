@@ -5,7 +5,6 @@ import {
   Table,
   Button,
   Select,
-  message,
   Space,
   Modal,
   Form,
@@ -21,6 +20,7 @@ import {
   Typography,
   Alert,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   UserAddOutlined,
   SearchOutlined,
@@ -207,7 +207,7 @@ const MentorAssignment = () => {
 
   const handleAssign = async () => {
     if (!selectedMentor || selectedStudents.length === 0) {
-      message.warning('Please select mentor and at least one student');
+      toast.warning('Please select mentor and at least one student');
       return;
     }
 
@@ -228,7 +228,7 @@ const MentorAssignment = () => {
         })
       ).unwrap();
 
-      message.success(`Successfully assigned ${selectedStudents.length} student(s) to mentor`);
+      toast.success(`Successfully assigned ${selectedStudents.length} student(s) to mentor`);
       setAssignModalVisible(false);
       setSelectedStudents([]);
       setSelectedMentor(null);
@@ -239,7 +239,7 @@ const MentorAssignment = () => {
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error?.message || 'Failed to assign mentor');
+      toast.error(error?.message || 'Failed to assign mentor');
     } finally {
       setLoading(false);
     }
@@ -248,14 +248,14 @@ const MentorAssignment = () => {
   const handleRemoveAssignment = async (studentId) => {
     try {
       await dispatch(removeMentorAssignment({ studentId })).unwrap();
-      message.success('Mentor assignment removed');
+      toast.success('Mentor assignment removed');
       // Mentor assignments are updated optimistically in the slice
       // Only refresh stats that need recalculation
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error?.message || 'Failed to remove assignment');
+      toast.error(error?.message || 'Failed to remove assignment');
     }
   };
 
@@ -275,12 +275,12 @@ const MentorAssignment = () => {
 
   const handleChangeMentor = async () => {
     if (!editingStudent || !newMentorId) {
-      message.warning('Please select a mentor');
+      toast.warning('Please select a mentor');
       return;
     }
 
     if (newMentorId === editingStudent.currentMentorId) {
-      message.info('No changes made - same mentor selected');
+      toast.info('No changes made - same mentor selected');
       setEditModalVisible(false);
       return;
     }
@@ -303,7 +303,7 @@ const MentorAssignment = () => {
         })
       ).unwrap();
 
-      message.success('Mentor changed successfully');
+      toast.success('Mentor changed successfully');
       setEditModalVisible(false);
       setEditingStudent(null);
       setNewMentorId(null);
@@ -314,7 +314,7 @@ const MentorAssignment = () => {
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error?.message || 'Failed to change mentor');
+      toast.error(error?.message || 'Failed to change mentor');
     } finally {
       setLoading(false);
     }
@@ -322,20 +322,20 @@ const MentorAssignment = () => {
 
   const handleBulkUnassign = async () => {
     if (selectedStudents.length === 0) {
-      message.warning('Please select students to unassign');
+      toast.warning('Please select students to unassign');
       return;
     }
 
     const studentsToUnassign = selectedStudents.filter((id) => studentsWithMentors.has(id));
     if (studentsToUnassign.length === 0) {
-      message.warning('No selected students have mentors assigned');
+      toast.warning('No selected students have mentors assigned');
       return;
     }
 
     setLoading(true);
     try {
       await dispatch(bulkUnassignMentors({ studentIds: studentsToUnassign })).unwrap();
-      message.success(`Removed mentor assignments from ${studentsToUnassign.length} student(s)`);
+      toast.success(`Removed mentor assignments from ${studentsToUnassign.length} student(s)`);
       setSelectedStudents([]);
       // Mentor assignments are updated optimistically in the slice
       // Only refresh stats that need recalculation
@@ -343,7 +343,7 @@ const MentorAssignment = () => {
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error?.message || 'Failed to bulk unassign');
+      toast.error(error?.message || 'Failed to bulk unassign');
     } finally {
       setLoading(false);
     }
@@ -353,14 +353,14 @@ const MentorAssignment = () => {
     setLoading(true);
     try {
       const result = await dispatch(autoAssignMentors()).unwrap();
-      message.success(result.message || 'Auto-assignment completed');
+      toast.success(result.message || 'Auto-assignment completed');
       // Only refresh mentor assignments and stats - student data doesn't change
       dispatch(fetchMentorAssignments({ forceRefresh: true }));
       dispatch(fetchMentorStats({ forceRefresh: true }));
       // Refresh dashboard stats to update Un-assigned Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error?.message || 'Failed to auto-assign');
+      toast.error(error?.message || 'Failed to auto-assign');
     } finally {
       setLoading(false);
     }

@@ -10,13 +10,13 @@ import {
   Progress,
   Modal,
   Descriptions,
-  message,
   Tooltip,
   Badge,
   Statistic,
   Row,
   Col,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   ReloadOutlined,
   EyeOutlined,
@@ -87,7 +87,7 @@ const BulkJobHistory = () => {
       setJobs(response.jobs || []);
       setPagination((prev) => ({ ...prev, total: response.total }));
     } catch (error) {
-      message.error('Failed to fetch job history');
+      toast.error('Failed to fetch job history');
     } finally {
       setLoading(false);
     }
@@ -144,42 +144,42 @@ const BulkJobHistory = () => {
       setSelectedJob(fullJob);
       setDetailModalVisible(true);
     } catch (error) {
-      message.error('Failed to fetch job details');
+      toast.error('Failed to fetch job details');
     }
   };
 
   const handleCancelJob = async (jobId) => {
     if (!jobId || jobId.startsWith('pending-')) {
-      message.error('Cannot cancel this job - job ID not available');
+      toast.error('Cannot cancel this job - job ID not available');
       return;
     }
     try {
       await bulkService.cancelJob(jobId);
-      message.success('Job cancelled successfully');
+      toast.success('Job cancelled successfully');
       fetchJobs();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to cancel job');
+      toast.error(error.response?.data?.message || 'Failed to cancel job');
     }
   };
 
   const handleRetryJob = async (jobId) => {
     if (!jobId || jobId.startsWith('pending-')) {
-      message.error('Cannot retry this job - job ID not available');
+      toast.error('Cannot retry this job - job ID not available');
       return;
     }
     try {
       await bulkService.retryJob(jobId);
-      message.success('Job queued for retry');
+      toast.success('Job queued for retry');
       fetchJobs();
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to retry job');
+      toast.error(error.response?.data?.message || 'Failed to retry job');
     }
   };
 
   const downloadReport = (job, type) => {
     const data = type === 'success' ? job.successReport : job.errorReport;
     if (!data || data.length === 0) {
-      message.info(`No ${type} records to download`);
+      toast(`ℹ️ No ${type} records to download`, { icon: 'ℹ️' });
       return;
     }
 

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { Card, Tag, Button, Space, Modal, Input, message, Empty, Badge, Tooltip, Avatar, theme, Popconfirm } from 'antd';
+import { Card, Tag, Button, Space, Modal, Input, Empty, Badge, Tooltip, Avatar, theme, Popconfirm } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   FileTextOutlined,
   RightOutlined,
@@ -40,13 +41,13 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
     setActionLoading(true);
     try {
       await dispatch(approveMonthlyReport({ reportId: reviewModal.report.id, remarks })).unwrap();
-      message.success('Report approved successfully');
+      toast.success('Report approved successfully');
       setReviewModal({ visible: false, report: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to approve report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -54,19 +55,19 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
 
   const handleReject = async () => {
     if (!reviewModal.report || !remarks.trim()) {
-      message.warning('Please provide a reason for rejection');
+      toast.warning('Please provide a reason for rejection');
       return;
     }
     setActionLoading(true);
     try {
       await dispatch(rejectMonthlyReport({ reportId: reviewModal.report.id, reason: remarks })).unwrap();
-      message.success('Report rejected');
+      toast.success('Report rejected');
       setReviewModal({ visible: false, report: null, action: null });
       setRemarks('');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to reject report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setActionLoading(false);
     }
@@ -85,7 +86,7 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       window.URL.revokeObjectURL(url);
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to download report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -96,11 +97,11 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
       if (result?.url) {
         window.open(result.url, '_blank');
       } else {
-        message.error('No file available for this report');
+        toast.error('No file available for this report');
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -108,11 +109,11 @@ const MonthlyReportsCard = ({ reports = [], loading, onRefresh, onViewAll }) => 
   const handleDeleteReport = async (reportId) => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
-      message.success('Report deleted successfully');
+      toast.success('Report deleted successfully');
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

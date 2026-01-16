@@ -8,7 +8,6 @@ import {
   Input,
   Select,
   Upload,
-  message,
   Tag,
   Space,
   Popconfirm,
@@ -17,6 +16,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
   DownloadOutlined,
@@ -60,7 +60,7 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       });
     } catch (error) {
       console.error('Failed to fetch backups:', error);
-      message.error('Failed to load backups');
+      toast.error('Failed to load backups');
     } finally {
       setLoading(false);
     }
@@ -101,16 +101,16 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       const response = await adminService.createBackup(values);
 
       if (response.success) {
-        message.info('Backup initiated. Watch progress below...');
+        toast.info('Backup initiated. Watch progress below...');
         setCreateModalOpen(false);
         form.resetFields();
         // Progress will be shown via WebSocket, backup list refreshed on completion
       } else {
-        message.error(response.error || 'Failed to initiate backup');
+        toast.error(response.error || 'Failed to initiate backup');
       }
     } catch (error) {
       console.error('Failed to create backup:', error);
-      message.error(error.response?.data?.message || 'Failed to create backup');
+      toast.error(error.response?.data?.message || 'Failed to create backup');
     } finally {
       setCreateLoading(false);
     }
@@ -122,11 +122,11 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       if (result.url) {
         window.open(result.url, '_blank');
       } else {
-        message.info('Download not available');
+        toast.info('Download not available');
       }
     } catch (error) {
       console.error('Failed to get download URL:', error);
-      message.error('Failed to download backup');
+      toast.error('Failed to download backup');
     }
   };
 
@@ -141,17 +141,17 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
       });
 
       if (response.success) {
-        message.info('Restore initiated. Watch progress below...');
+        toast.info('Restore initiated. Watch progress below...');
         setRestoreModalOpen(false);
         setSelectedBackup(null);
         // Keep restoreLoading true - WebSocket progress handler will set it false on completion/failure
       } else {
-        message.error(response.error || 'Failed to initiate restore');
+        toast.error(response.error || 'Failed to initiate restore');
         setRestoreLoading(false);
       }
     } catch (error) {
       console.error('Failed to restore backup:', error);
-      message.error(error.response?.data?.message || 'Failed to restore backup');
+      toast.error(error.response?.data?.message || 'Failed to restore backup');
       setRestoreLoading(false);
     }
   };
@@ -159,11 +159,11 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
   const handleDelete = async (id) => {
     try {
       await adminService.deleteBackup(id);
-      message.success('Backup deleted');
+      toast.success('Backup deleted');
       fetchBackups();
     } catch (error) {
       console.error('Failed to delete backup:', error);
-      message.error('Failed to delete backup');
+      toast.error('Failed to delete backup');
     }
   };
 
@@ -171,14 +171,14 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
     try {
       const result = await adminService.cleanupStaleBackups();
       if (result.cleaned > 0) {
-        message.success(`Cleaned up ${result.cleaned} stale backups`);
+        toast.success(`Cleaned up ${result.cleaned} stale backups`);
         fetchBackups();
       } else {
-        message.info('No stale backups found');
+        toast.info('No stale backups found');
       }
     } catch (error) {
       console.error('Failed to cleanup stale backups:', error);
-      message.error('Failed to cleanup stale backups');
+      toast.error('Failed to cleanup stale backups');
     }
   };
 
@@ -189,13 +189,13 @@ const DatabaseManagement = ({ backupProgress, restoreProgress, connected }) => {
         const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
         setUploadProgress(percent);
       });
-      message.success('Backup uploaded successfully');
+      toast.success('Backup uploaded successfully');
       setUploadModalOpen(false);
       setUploadProgress(0);
       fetchBackups();
     } catch (error) {
       console.error('Failed to upload backup:', error);
-      message.error('Failed to upload backup');
+      toast.error('Failed to upload backup');
     }
     return false; // Prevent default upload behavior
   };

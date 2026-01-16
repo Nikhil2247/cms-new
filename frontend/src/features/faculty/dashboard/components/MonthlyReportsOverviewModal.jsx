@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
-import { Modal, Table, Tag, Alert, Typography, Button, Upload, Switch, Select, message, theme } from 'antd';
+import { Modal, Table, Tag, Alert, Typography, Button, Upload, Switch, Select, theme } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   ExclamationCircleOutlined,
   CheckCircleOutlined,
@@ -69,7 +70,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
   const handleFileChange = useCallback(({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 5 * 1024 * 1024) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return;
     }
     setFileList(newFileList.slice(-1));
@@ -96,18 +97,18 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
   // Submit uploaded report
   const handleUploadSubmit = useCallback(async () => {
     if (!selectedStudentId) {
-      message.error('Please select a student');
+      toast.error('Please select a student');
       return;
     }
 
     if (fileList.length === 0) {
-      message.error('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     const file = fileList[0]?.originFileObj || fileList[0];
     if (!file) {
-      message.error('Invalid file');
+      toast.error('Invalid file');
       return;
     }
 
@@ -115,7 +116,7 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.error('Please select report month and year');
+      toast.error('Please select report month and year');
       return;
     }
 
@@ -129,12 +130,12 @@ const MonthlyReportsOverviewModal = ({ visible, onClose, students = [], monthlyR
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
 
-      message.success('Report uploaded successfully!');
+      toast.success('Report uploaded successfully!');
       handleCloseUploadModal();
       onRefresh?.();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Upload failed';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }

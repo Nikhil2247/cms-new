@@ -7,9 +7,9 @@ import {
   Typography,
   Spin,
   Alert,
-  message,
   Divider,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   QrcodeOutlined,
   SafetyOutlined,
@@ -55,7 +55,7 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
       const data = await authService.setupMfa();
       setSetupData(data);
     } catch (error) {
-      message.error(error.response?.data?.message || 'Failed to setup MFA');
+      toast.error(error.response?.data?.message || 'Failed to setup MFA');
       onClose();
     } finally {
       setLoading(false);
@@ -64,17 +64,17 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
 
   const handleVerify = async () => {
     if (verifyCode.length !== 6) {
-      message.warning('Please enter a 6-digit code');
+      toast('⚠️ Please enter a 6-digit code', { icon: '⚠️' });
       return;
     }
 
     setVerifying(true);
     try {
       await authService.enableMfa(verifyCode);
-      message.success('Two-factor authentication enabled successfully!');
+      toast.success('Two-factor authentication enabled successfully!');
       setCurrentStep(2);
     } catch (error) {
-      message.error(error.response?.data?.message || 'Invalid verification code');
+      toast.error(error.response?.data?.message || 'Invalid verification code');
     } finally {
       setVerifying(false);
     }
@@ -82,7 +82,7 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text);
-    message.success('Copied to clipboard');
+    toast.success('Copied to clipboard');
   };
 
   const handleComplete = () => {
@@ -130,7 +130,7 @@ const MfaSetup = ({ visible, onClose, onSuccess }) => {
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.style.display = 'none';
-                      message.error('Failed to load QR code');
+                      toast.error('Failed to load QR code');
                     }}
                   />
                 </div>

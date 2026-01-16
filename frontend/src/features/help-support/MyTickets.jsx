@@ -14,12 +14,12 @@ import {
   Timeline,
   Divider,
   Empty,
-  message,
   Spin,
   Avatar,
   Tooltip,
   Badge,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
   SearchOutlined,
@@ -86,7 +86,7 @@ const MyTickets = () => {
       setFilteredTickets(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch tickets:', error);
-      message.error('Failed to load tickets');
+      toast.error('Failed to load tickets');
     } finally {
       setLoading(false);
     }
@@ -133,7 +133,7 @@ const MyTickets = () => {
     try {
       setUpdatingStatusId(ticketId);
       await helpSupportService.updateTicketStatus(ticketId, newStatus);
-      message.success('Status updated successfully');
+      toast.success('Status updated successfully');
       fetchTickets();
       // Also refresh selected ticket if open
       if (selectedTicket?.id === ticketId) {
@@ -142,7 +142,7 @@ const MyTickets = () => {
       }
     } catch (error) {
       console.error('Failed to update status:', error);
-      message.error(error.response?.data?.message || 'Failed to update status');
+      toast.error(error.response?.data?.message || 'Failed to update status');
     } finally {
       setUpdatingStatusId(null);
     }
@@ -157,7 +157,7 @@ const MyTickets = () => {
       setSelectedTicket(ticket);
     } catch (error) {
       console.error('Failed to fetch ticket:', error);
-      message.error('Failed to load ticket details');
+      toast.error('Failed to load ticket details');
     } finally {
       setLoadingTicket(false);
     }
@@ -170,7 +170,7 @@ const MyTickets = () => {
     setSubmittingReply(true);
     try {
       await helpSupportService.respondToTicket(selectedTicket.id, values.message);
-      message.success('Reply sent successfully');
+      toast.success('Reply sent successfully');
       replyForm.resetFields();
       // Refresh ticket details
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
@@ -179,7 +179,7 @@ const MyTickets = () => {
       fetchTickets();
     } catch (error) {
       console.error('Failed to send reply:', error);
-      message.error('Failed to send reply');
+      toast.error('Failed to send reply');
     } finally {
       setSubmittingReply(false);
     }
@@ -196,13 +196,13 @@ const MyTickets = () => {
         priority: values.priority || 'MEDIUM',
         attachments: [],
       });
-      message.success('Ticket submitted successfully');
+      toast.success('Ticket submitted successfully');
       setNewTicketVisible(false);
       ticketForm.resetFields();
       fetchTickets();
     } catch (error) {
       console.error('Failed to submit ticket:', error);
-      message.error('Failed to submit ticket');
+      toast.error('Failed to submit ticket');
     } finally {
       setSubmittingTicket(false);
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Modal, Form, Input, Select, DatePicker, Button, message, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
+import { Modal, Form, Input, Select, DatePicker, Button, Row, Col, Divider, Upload, Spin, Alert } from 'antd';
+import { toast } from 'react-hot-toast';
 import { SaveOutlined, UploadOutlined } from '@ant-design/icons';
 import { createVisitLog, updateVisitLog, fetchVisitLogById, fetchAssignedStudents } from '../store/facultySlice';
 import { fetchCompanies } from '../../../store/slices/companySlice';
@@ -44,7 +45,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
             setFileList([]);
           }
         } catch (error) {
-          message.error('Failed to load data');
+          toast.error('Failed to load data');
         } finally {
           setDataLoading(false);
         }
@@ -168,15 +169,15 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
 
       if (isEdit) {
         await dispatch(updateVisitLog({ id: visitLogId, data: formData })).unwrap();
-        message.success('Visit log updated successfully');
+        toast.success('Visit log updated successfully');
       } else {
         await dispatch(createVisitLog(formData)).unwrap();
-        message.success('Visit log created successfully');
+        toast.success('Visit log created successfully');
       }
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} visit log`);
+      toast.error(error?.message || `Failed to ${isEdit ? 'update' : 'create'} visit log`);
     } finally {
       setLoading(false);
     }
@@ -189,7 +190,7 @@ const VisitLogModal = ({ open, onClose, visitLogId, onSuccess }) => {
   const beforeUpload = useCallback((file) => {
     const isValidSize = file.size / 1024 / 1024 < 10;
     if (!isValidSize) {
-      message.error('File must be smaller than 10MB!');
+      toast.error('File must be smaller than 10MB!');
       return Upload.LIST_IGNORE;
     }
     return false;

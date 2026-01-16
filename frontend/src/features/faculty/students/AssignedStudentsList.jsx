@@ -13,7 +13,6 @@ import {
   Empty,
   Timeline,
   Upload,
-  message,
   Tooltip,
   Dropdown,
   Modal,
@@ -25,6 +24,7 @@ import {
   Switch,
   Alert,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchAssignedStudents,
@@ -231,18 +231,18 @@ const AssignedStudentsList = () => {
   const handleJoiningLetterUpload = async (file) => {
     const app = getActiveApplication();
     if (!app?.id) {
-      message.error('No active internship application found');
+      toast.error('No active internship application found');
       return false;
     }
 
     setUploadingJoiningLetter(true);
     try {
       await dispatch(uploadJoiningLetter({ applicationId: app.id, file })).unwrap();
-      message.success('Joining letter uploaded successfully');
+      toast.success('Joining letter uploaded successfully');
       handleRefresh();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload joining letter';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingJoiningLetter(false);
     }
@@ -253,7 +253,7 @@ const AssignedStudentsList = () => {
   const handleReportFileChange = ({ fileList: newFileList }) => {
     const file = newFileList[0]?.originFileObj;
     if (file && file.size > 5 * 1024 * 1024) {
-      message.error('File must be smaller than 5MB');
+      toast.error('File must be smaller than 5MB');
       return;
     }
     setReportFileList(newFileList.slice(-1));
@@ -282,11 +282,11 @@ const AssignedStudentsList = () => {
       if (result?.url) {
         window.open(result.url, '_blank');
       } else {
-        message.error('No file available for this report');
+        toast.error('No file available for this report');
       }
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to view report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -294,11 +294,11 @@ const AssignedStudentsList = () => {
   const handleDeleteReport = async (reportId) => {
     try {
       await dispatch(deleteMonthlyReport(reportId)).unwrap();
-      message.success('Report deleted successfully');
+      toast.success('Report deleted successfully');
       handleRefresh();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to delete report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -306,18 +306,18 @@ const AssignedStudentsList = () => {
   const handleReportUploadSubmit = async () => {
     const app = getActiveApplication();
     if (!app?.id) {
-      message.error('No active internship application found');
+      toast.error('No active internship application found');
       return;
     }
 
     if (reportFileList.length === 0) {
-      message.error('Please select a file to upload');
+      toast.error('Please select a file to upload');
       return;
     }
 
     const file = reportFileList[0]?.originFileObj || reportFileList[0];
     if (!file) {
-      message.error('Invalid file');
+      toast.error('Invalid file');
       return;
     }
 
@@ -325,7 +325,7 @@ const AssignedStudentsList = () => {
     const yearValue = autoMonthSelection ? dayjs().year() : selectedYear;
 
     if (!monthValue || !yearValue) {
-      message.error('Please select report month and year');
+      toast.error('Please select report month and year');
       return;
     }
 
@@ -338,12 +338,12 @@ const AssignedStudentsList = () => {
       formData.append('year', yearValue.toString());
 
       await dispatch(uploadMonthlyReport(formData)).unwrap();
-      message.success('Monthly report uploaded successfully');
+      toast.success('Monthly report uploaded successfully');
       handleCloseReportUploadModal();
       handleRefresh();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload report';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploadingReport(false);
     }
@@ -354,7 +354,7 @@ const AssignedStudentsList = () => {
     try {
       const values = await uploadForm.validateFields();
       if (fileList.length === 0) {
-        message.error('Please select a file to upload');
+        toast.error('Please select a file to upload');
         return;
       }
 
@@ -366,14 +366,14 @@ const AssignedStudentsList = () => {
         file: file,
         type: values.documentType
       })).unwrap();
-      message.success('Document uploaded successfully');
+      toast.success('Document uploaded successfully');
       setUploadDocumentModal(false);
       uploadForm.resetFields();
       setFileList([]);
       handleRefresh();
     } catch (error) {
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to upload document';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setUploading(false);
     }
@@ -400,13 +400,13 @@ const AssignedStudentsList = () => {
         studentId,
         isActive: newStatus
       })).unwrap();
-      message.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
+      toast.success(`Student ${newStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       // Rollback on error
       dispatch(rollbackStudentOperation({ list: previousList }));
       setSelectedStudent(prev => prev ? { ...prev, user: { ...prev.user, active: !newStatus } } : null);
       const errorMessage = typeof error === 'string' ? error : error?.message || 'Failed to update student status';
-      message.error(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setTogglingStatus(false);
     }
@@ -1117,7 +1117,7 @@ const AssignedStudentsList = () => {
               beforeUpload={(file) => {
                 const isUnderLimit = file.size / 1024 <= 500;
                 if (!isUnderLimit) {
-                  message.error('File must be less than 500KB.');
+                  toast.error('File must be less than 500KB.');
                   return Upload.LIST_IGNORE;
                 }
                 setFileList([file]);

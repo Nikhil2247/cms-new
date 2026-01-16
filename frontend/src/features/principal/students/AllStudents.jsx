@@ -12,7 +12,6 @@ import {
   Upload,
   Form,
   Button,
-  message,
   Select,
   Tabs,
   Empty,
@@ -20,6 +19,7 @@ import {
   theme,
   Grid,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   fetchStudents,
@@ -236,13 +236,13 @@ const AllStudents = () => {
       const result = await dispatch(
         toggleStudentStatus({ studentId: selectedStudent.id })
       ).unwrap();
-      message.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
+      toast.success(result.message || `Student ${result.active ? 'activated' : 'deactivated'} successfully`);
       setSelectedStudent(prev => ({ ...prev, user: { ...prev.user, active: result.active } }));
       setSelectedStudentFull(prev => prev ? { ...prev, user: { ...prev.user, active: result.active } } : null);
       // Refresh dashboard stats to update Active Students count
       dispatch(fetchPrincipalDashboard({ forceRefresh: true }));
     } catch (error) {
-      message.error(error || 'Failed to toggle student status');
+      toast.error(error || 'Failed to toggle student status');
     }
   };
 
@@ -256,32 +256,30 @@ const AllStudents = () => {
           data: { clearanceStatus: newStatus },
         })
       ).unwrap();
-      message.success(`Clearance status updated to ${newStatus}`);
+      toast.success(`Clearance status updated to ${newStatus}`);
       setSelectedStudent(prev => ({ ...prev, clearanceStatus: newStatus }));
       handleRefresh();
     } catch (error) {
-      message.error(error || 'Failed to update clearance status');
+      toast.error(error || 'Failed to update clearance status');
     }
   };
 
   const handleResetCredential = async () => {
     const userId = selectedStudent?.userId || selectedStudent?.user?.id;
     if (!userId) {
-      message.error('Student user ID not found');
+      toast.error('Student user ID not found');
       return;
     }
 
     setResettingCredential(true);
     try {
       const result = await credentialsService.resetUserPassword(userId);
-      message.success(
-        <span>
-          Password reset successfully. New password: <strong>{result.temporaryPassword || result.newPassword || 'Check email'}</strong>
-        </span>,
-        10
+      toast.success(
+        `Password reset successfully. New password: ${result.temporaryPassword || result.newPassword || 'Check email'}`,
+        { duration: 10000 }
       );
     } catch (error) {
-      message.error(error?.response?.data?.message || error?.message || 'Failed to reset credential');
+      toast.error(error?.response?.data?.message || error?.message || 'Failed to reset credential');
     } finally {
       setResettingCredential(false);
     }
@@ -296,7 +294,7 @@ const AllStudents = () => {
 
   const handleUpload = async (values) => {
     if (!fileList.length) {
-      message.error('Please select a file.');
+      toast.error('Please select a file.');
       return;
     }
 
@@ -309,11 +307,11 @@ const AllStudents = () => {
           type: values.type,
         })
       ).unwrap();
-      message.success('Document uploaded successfully');
+      toast.success('Document uploaded successfully');
       setUploadModal(false);
       loadStudentDocuments(selectedStudent.id);
     } catch (error) {
-      message.error(error || 'Failed to upload document');
+      toast.error(error || 'Failed to upload document');
     } finally {
       setUploading(false);
     }
@@ -930,7 +928,7 @@ const AllStudents = () => {
               beforeUpload={(file) => {
                 const isUnderLimit = file.size / 1024 <= 500;
                 if (!isUnderLimit) {
-                  message.error('File must be less than 500KB.');
+                  toast.error('File must be less than 500KB.');
                   return Upload.LIST_IGNORE;
                 }
                 setFileList([file]);

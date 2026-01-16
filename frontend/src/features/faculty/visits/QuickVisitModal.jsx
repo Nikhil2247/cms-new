@@ -8,13 +8,13 @@ import {
   Button,
   Upload,
   Space,
-  message,
   Row,
   Col,
   Alert,
   Spin,
   Divider,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   CameraOutlined,
   EnvironmentOutlined,
@@ -102,7 +102,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         setSelectedApplicationId(application.id);
       } else {
         setSelectedApplicationId(null);
-        message.warning('No active internship found for this student');
+        toast('No active internship found for this student', { icon: '⚠️' });
       }
     }
   }, [students]);
@@ -110,7 +110,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   // Handle GPS location capture
   const captureLocation = () => {
     if (!navigator.geolocation) {
-      message.error('Geolocation is not supported by your browser');
+      toast.error('Geolocation is not supported by your browser');
       return;
     }
 
@@ -128,7 +128,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
         const locationText = `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}`;
         form.setFieldsValue({ visitLocation: locationText });
 
-        message.success('Location captured successfully');
+        toast.success('Location captured successfully');
         setCapturing(false);
       },
       (error) => {
@@ -146,7 +146,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
           default:
             errorMessage = 'An unknown error occurred';
         }
-        message.error(errorMessage);
+        toast.error(errorMessage);
         setCapturing(false);
       },
       {
@@ -177,13 +177,13 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
   const beforeUpload = (file) => {
     const isImage = file.type.startsWith('image/');
     if (!isImage) {
-      message.error('You can only upload image files!');
+      toast.error('You can only upload image files!');
       return Upload.LIST_IGNORE;
     }
 
     const isLt5M = file.size / 1024 / 1024 < 5;
     if (!isLt5M) {
-      message.error('Image must be smaller than 5MB!');
+      toast.error('Image must be smaller than 5MB!');
       return Upload.LIST_IGNORE;
     }
 
@@ -197,7 +197,7 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
 
       // Validate applicationId is available
       if (!selectedApplicationId) {
-        message.error('No active internship application found for this student. Cannot log visit.');
+        toast.error('No active internship application found for this student. Cannot log visit.');
         return;
       }
 
@@ -249,14 +249,14 @@ const QuickVisitModal = React.memo(({ visible, onClose, onSubmit, students, load
 
       // Use Redux thunk for creating visit
       await dispatch(createVisitLog(visitData)).unwrap();
-      message.success('Visit logged successfully!');
+      toast.success('Visit logged successfully!');
       onSubmit?.(); // Notify parent (for refresh)
       onClose();
     } catch (error) {
       if (error.errorFields) {
-        message.error('Please fill in all required fields');
+        toast.error('Please fill in all required fields');
       } else {
-        message.error(error?.message || error || 'Failed to log visit. Please try again.');
+        toast.error(error?.message || error || 'Failed to log visit. Please try again.');
       }
     } finally {
       setSubmitting(false);

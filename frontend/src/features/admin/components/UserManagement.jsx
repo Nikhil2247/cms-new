@@ -7,7 +7,6 @@ import {
   Form,
   Input,
   Select,
-  message,
   Tag,
   Space,
   Popconfirm,
@@ -17,6 +16,7 @@ import {
   Statistic,
   Badge,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   PlusOutlined,
   EditOutlined,
@@ -76,7 +76,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       });
     } catch (error) {
       console.error('Failed to fetch users:', error);
-      message.error('Failed to load users');
+      toast.error('Failed to load users');
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       setSubmitLoading(true);
       if (editingUser) {
         await adminService.updateUser(editingUser.id, values);
-        message.success('User updated successfully');
+        toast.success('User updated successfully');
       } else {
         const result = await adminService.createUser(values);
         if (result.temporaryPassword) {
@@ -134,7 +134,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
             ),
           });
         } else {
-          message.success('User created successfully');
+          toast.success('User created successfully');
         }
       }
       setModalOpen(false);
@@ -143,7 +143,7 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       fetchUsers();
     } catch (error) {
       console.error('Failed to save user:', error);
-      message.error(error.response?.data?.message || 'Failed to save user');
+      toast.error(error.response?.data?.message || 'Failed to save user');
     } finally {
       setSubmitLoading(false);
     }
@@ -164,11 +164,11 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
   const handleDelete = async (id, permanent = false) => {
     try {
       await adminService.deleteUser(id, permanent);
-      message.success(permanent ? 'User permanently deleted' : 'User deactivated');
+      toast.success(permanent ? 'User permanently deleted' : 'User deactivated');
       fetchUsers();
     } catch (error) {
       console.error('Failed to delete user:', error);
-      message.error('Failed to delete user');
+      toast.error('Failed to delete user');
     }
   };
 
@@ -192,23 +192,23 @@ const UserManagement = ({ bulkOperationProgress, connected }) => {
       });
     } catch (error) {
       console.error('Failed to reset password:', error);
-      message.error('Failed to reset password');
+      toast.error('Failed to reset password');
     }
   };
 
   const handleBulkAction = async (action) => {
     if (selectedRowKeys.length === 0) {
-      message.warning('Please select users first');
+      toast.warning('Please select users first');
       return;
     }
     try {
       await adminService.bulkUserAction({ action, userIds: selectedRowKeys });
-      message.success(`Bulk ${action} completed`);
+      toast.success(`Bulk ${action} completed`);
       setSelectedRowKeys([]);
       fetchUsers();
     } catch (error) {
       console.error('Bulk action failed:', error);
-      message.error('Bulk action failed');
+      toast.error('Bulk action failed');
     }
   };
 

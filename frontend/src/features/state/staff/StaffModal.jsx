@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
-import { Modal, Form, Input, Button, Select, Switch, message, Spin, Row, Col, Divider } from 'antd';
+import { Modal, Form, Input, Button, Select, Switch, Spin, Row, Col, Divider } from 'antd';
+import { toast } from 'react-hot-toast';
 import { SaveOutlined } from '@ant-design/icons';
 import { createStaff, updateStaff } from '../store/stateSlice';
 import stateService from '../../../services/state.service';
@@ -44,7 +45,7 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
         active: data.active !== false,
       });
     } catch (error) {
-      message.error('Failed to load staff data');
+      toast.error('Failed to load staff data');
       onClose();
     } finally {
       setInitialLoading(false);
@@ -63,16 +64,16 @@ const StaffModal = ({ open, onClose, staffId, onSuccess }) => {
       if (isEditMode) {
         const { password, ...updateData } = values;
         await dispatch(updateStaff({ id: staffId, data: updateData })).unwrap();
-        message.success('Staff member updated successfully');
+        toast.success('Staff member updated successfully');
       } else {
         await dispatch(createStaff(values)).unwrap();
-        message.success('Staff member created successfully');
+        toast.success('Staff member created successfully');
       }
 
       handleClose();
       onSuccess?.();
     } catch (error) {
-      message.error(error?.message || `Failed to ${isEditMode ? 'update' : 'create'} staff member`);
+      toast.error(error?.message || `Failed to ${isEditMode ? 'update' : 'create'} staff member`);
     } finally {
       setLoading(false);
     }

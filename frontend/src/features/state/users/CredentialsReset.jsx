@@ -5,7 +5,6 @@ import {
   Button,
   Input,
   Modal,
-  message,
   Space,
   Tag,
   Alert,
@@ -19,6 +18,7 @@ import {
   Row,
   Col,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
   LockOutlined,
@@ -123,7 +123,7 @@ const CredentialsReset = () => {
       setUsers(usersData);
       setPagination(prev => ({ ...prev, total }));
     } catch (error) {
-      message.error('Failed to fetch users: ' + (error.response?.data?.message || error.message));
+      toast.error('Failed to fetch users: ' + (error.response?.data?.message || error.message));
       setUsers([]);
     } finally {
       setLoading(false);
@@ -166,7 +166,7 @@ const CredentialsReset = () => {
     try {
       const result = await credentialsService.resetUserPassword(currentUser.id);
 
-      message.success(
+      toast.success(
         <span>
           Password reset successfully for <strong>{currentUser.name}</strong>
           {result.newPassword && (
@@ -175,7 +175,7 @@ const CredentialsReset = () => {
             </div>
           )}
         </span>,
-        8
+        { duration: 8000 }
       );
 
       setResetResults({
@@ -187,7 +187,7 @@ const CredentialsReset = () => {
       });
       setResultsModalVisible(true);
     } catch (error) {
-      message.error('Failed to reset password: ' + (error.response?.data?.message || error.message));
+      toast.error('Failed to reset password: ' + (error.response?.data?.message || error.message));
     } finally {
       setResetting(false);
       setCurrentUser(null);
@@ -227,14 +227,14 @@ const CredentialsReset = () => {
         setSelectedUsers([]);
 
         if (result.successful > 0) {
-          message.success(`Successfully reset ${result.successful} password(s)`);
+          toast.success(`Successfully reset ${result.successful} password(s)`);
         }
         if (result.failed > 0) {
-          message.warning(`Failed to reset ${result.failed} password(s)`);
+          toast(`Failed to reset ${result.failed} password(s)`, { icon: '⚠️' });
         }
       }, 500);
     } catch (error) {
-      message.error('Bulk reset failed: ' + (error.response?.data?.message || error.message));
+      toast.error('Bulk reset failed: ' + (error.response?.data?.message || error.message));
       setResetProgress(0);
     } finally {
       setResetting(false);

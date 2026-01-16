@@ -16,7 +16,6 @@ import {
   Timeline,
   Divider,
   Statistic,
-  message,
   Spin,
   Avatar,
   Tooltip,
@@ -26,6 +25,7 @@ import {
   Tabs,
   Checkbox,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   SearchOutlined,
   SendOutlined,
@@ -105,7 +105,7 @@ const SupportDashboard = () => {
       setAssignableUsers(usersData);
     } catch (error) {
       console.error('Failed to fetch data:', error);
-      message.error('Failed to load support data');
+      toast.error('Failed to load support data');
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ const SupportDashboard = () => {
       setSelectedTicket(ticket);
     } catch (error) {
       console.error('Failed to fetch ticket:', error);
-      message.error('Failed to load ticket details');
+      toast.error('Failed to load ticket details');
     } finally {
       setLoadingTicket(false);
     }
@@ -154,14 +154,14 @@ const SupportDashboard = () => {
         [],
         values.isInternal || false
       );
-      message.success('Reply sent successfully');
+      toast.success('Reply sent successfully');
       replyForm.resetFields();
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
       setSelectedTicket(updatedTicket);
       fetchData();
     } catch (error) {
       console.error('Failed to send reply:', error);
-      message.error('Failed to send reply');
+      toast.error('Failed to send reply');
     } finally {
       setSubmittingReply(false);
     }
@@ -174,7 +174,7 @@ const SupportDashboard = () => {
     setSubmittingAction(true);
     try {
       await helpSupportService.assignTicket(selectedTicket.id, values.assigneeId, values.remarks);
-      message.success('Ticket assigned successfully');
+      toast.success('Ticket assigned successfully');
       setAssignModalVisible(false);
       assignForm.resetFields();
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
@@ -182,7 +182,7 @@ const SupportDashboard = () => {
       fetchData();
     } catch (error) {
       console.error('Failed to assign ticket:', error);
-      message.error('Failed to assign ticket');
+      toast.error('Failed to assign ticket');
     } finally {
       setSubmittingAction(false);
     }
@@ -195,7 +195,7 @@ const SupportDashboard = () => {
     setSubmittingAction(true);
     try {
       await helpSupportService.resolveTicket(selectedTicket.id, values.resolution, values.remarks);
-      message.success('Ticket resolved successfully');
+      toast.success('Ticket resolved successfully');
       setResolveModalVisible(false);
       resolveForm.resetFields();
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
@@ -203,7 +203,7 @@ const SupportDashboard = () => {
       fetchData();
     } catch (error) {
       console.error('Failed to resolve ticket:', error);
-      message.error('Failed to resolve ticket');
+      toast.error('Failed to resolve ticket');
     } finally {
       setSubmittingAction(false);
     }
@@ -215,13 +215,13 @@ const SupportDashboard = () => {
 
     try {
       await helpSupportService.closeTicket(selectedTicket.id);
-      message.success('Ticket closed successfully');
+      toast.success('Ticket closed successfully');
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
       setSelectedTicket(updatedTicket);
       fetchData();
     } catch (error) {
       console.error('Failed to close ticket:', error);
-      message.error('Failed to close ticket');
+      toast.error('Failed to close ticket');
     }
   };
 
@@ -231,13 +231,13 @@ const SupportDashboard = () => {
 
     try {
       await helpSupportService.updateTicketStatus(selectedTicket.id, status);
-      message.success('Status updated successfully');
+      toast.success('Status updated successfully');
       const updatedTicket = await helpSupportService.getTicketById(selectedTicket.id);
       setSelectedTicket(updatedTicket);
       fetchData();
     } catch (error) {
       console.error('Failed to update status:', error);
-      message.error('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 

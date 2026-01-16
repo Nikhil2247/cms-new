@@ -8,7 +8,6 @@ import {
   Button,
   Upload,
   Space,
-  message,
   Alert,
   DatePicker,
   Row,
@@ -19,6 +18,7 @@ import {
   Card,
   Switch,
 } from 'antd';
+import { toast } from 'react-hot-toast';
 import {
   EnvironmentOutlined,
   UploadOutlined,
@@ -154,7 +154,7 @@ const UnifiedVisitLogModal = ({
       } else {
         setSelectedApplicationId(null);
         setSelectedInternship(null);
-        message.warning('No active internship found');
+        toast('No active internship found', { icon: '⚠️' });
       }
     }
   }, [students]);
@@ -169,7 +169,7 @@ const UnifiedVisitLogModal = ({
 
   const captureGpsLocation = () => {
     if (!navigator.geolocation) {
-      message.error('Geolocation not supported');
+      toast.error('Geolocation not supported');
       return;
     }
     setCapturing(true);
@@ -178,11 +178,11 @@ const UnifiedVisitLogModal = ({
         const coords = { latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy };
         setGpsLocation(coords);
         form.setFieldsValue({ visitLocation: `${coords.latitude.toFixed(6)}, ${coords.longitude.toFixed(6)}` });
-        message.success('GPS captured');
+        toast.success('GPS captured');
         setCapturing(false);
       },
       (error) => {
-        message.error(error.code === 1 ? 'Location permission denied' : 'Failed to capture location');
+        toast.error(error.code === 1 ? 'Location permission denied' : 'Failed to capture location');
         setCapturing(false);
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -191,15 +191,15 @@ const UnifiedVisitLogModal = ({
 
   const handlePhotoChange = ({ fileList }) => setPhotoList(fileList.slice(0, 5));
   const beforePhotoUpload = (file) => {
-    if (!file.type.startsWith('image/')) { message.error('Images only!'); return Upload.LIST_IGNORE; }
-    if (file.size / 1024 / 1024 >= 5) { message.error('Max 5MB!'); return Upload.LIST_IGNORE; }
+    if (!file.type.startsWith('image/')) { toast.error('Images only!'); return Upload.LIST_IGNORE; }
+    if (file.size / 1024 / 1024 >= 5) { toast.error('Max 5MB!'); return Upload.LIST_IGNORE; }
     return false;
   };
 
   const handleSignedDocChange = ({ fileList }) => setSignedDocList(fileList.slice(0, 1));
   const beforeSignedDocUpload = (file) => {
-    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)) { message.error('Only JPEG, PNG, GIF, WebP or PDF files allowed!'); return Upload.LIST_IGNORE; }
-    if (file.size / 1024 / 1024 >= 10) { message.error('Max 10MB!'); return Upload.LIST_IGNORE; }
+    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'].includes(file.type)) { toast.error('Only JPEG, PNG, GIF, WebP or PDF files allowed!'); return Upload.LIST_IGNORE; }
+    if (file.size / 1024 / 1024 >= 10) { toast.error('Max 10MB!'); return Upload.LIST_IGNORE; }
     return false;
   };
 
@@ -217,7 +217,7 @@ const UnifiedVisitLogModal = ({
         }
       } catch (error) {
         console.error('Photo upload error:', error);
-        message.error(error?.message || 'Failed to upload photo. Please try again.');
+        toast.error(error?.message || 'Failed to upload photo. Please try again.');
         throw error;
       } finally {
         setUploadingPhotos(false);
@@ -230,7 +230,7 @@ const UnifiedVisitLogModal = ({
         signedDocUrl = result.url;
       } catch (error) {
         console.error('Signed doc upload error:', error);
-        message.error(error?.message || 'Failed to upload signed document. Please try again.');
+        toast.error(error?.message || 'Failed to upload signed document. Please try again.');
         throw error;
       } finally {
         setUploadingSignedDoc(false);
@@ -242,7 +242,7 @@ const UnifiedVisitLogModal = ({
   const handleSubmit = async () => {
     try {
       const values = await form.validateFields();
-      if (!isEdit && !selectedApplicationId) { message.error('No active internship found'); return; }
+      if (!isEdit && !selectedApplicationId) { toast.error('No active internship found'); return; }
       setSubmitting(true);
       const { photoUrls, signedDocUrl } = await uploadFiles();
 
@@ -265,7 +265,7 @@ const UnifiedVisitLogModal = ({
       if (isEdit) {
         // Update: only send editable fields (locked fields are excluded)
         await dispatch(updateVisitLog({ id: visitLogId, data: commonData })).unwrap();
-        message.success('Visit updated');
+        toast.success('Visit updated');
       } else {
         // Create: include all fields including locked ones
         const createData = {
@@ -277,12 +277,12 @@ const UnifiedVisitLogModal = ({
           ...(gpsLocation && { latitude: gpsLocation.latitude, longitude: gpsLocation.longitude, gpsAccuracy: gpsLocation.accuracy }),
         };
         await dispatch(createVisitLog(createData)).unwrap();
-        message.success(values.status === 'DRAFT' ? 'Saved as draft' : 'Visit logged');
+        toast.success(values.status === 'DRAFT' ? 'Saved as draft' : 'Visit logged');
       }
       onSuccess?.();
       onClose();
     } catch (error) {
-      message.error(error?.message || 'Failed to save');
+      toast.error(error?.message || 'Failed to save');
     } finally { setSubmitting(false); }
   };
 
